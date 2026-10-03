@@ -131,7 +131,7 @@ class TestOmDashboard(TransactionCase):
         Dash = self.env['azm.dashboard'].with_user(self.user)
         data = Dash.get_financial_model_data()
         self.assertTrue(data['available'])
-        self.assertEqual(len(data['modules']), 17)
+        self.assertEqual(len(data["modules"]), 19)
         self.assertEqual(data['kpis']['requirements'], 167)
         self.assertEqual(data['kpis']['assessments'], 1)
         self.assertEqual(data['kpis']['completion'], 100)

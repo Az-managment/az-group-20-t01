@@ -12,3 +12,4 @@ from . import azm_fin_assessment
 from . import azm_fin_question
 from . import azm_fin_qanswer
 from . import azm_fin_rollup
+from . import azm_fin_workspace

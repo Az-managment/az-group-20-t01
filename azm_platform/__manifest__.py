@@ -31,6 +31,7 @@ No data is duplicated: every figure is computed live from the source apps.
         'views/azm_menus.xml',
         'views/azm_om_views.xml',
         'views/azm_om_menus.xml',
+        'views/azm_fin_question_views.xml',
         'views/login_templates.xml',
     ],
     'assets': {

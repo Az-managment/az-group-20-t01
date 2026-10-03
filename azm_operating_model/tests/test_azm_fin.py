@@ -211,3 +211,68 @@ class TestAzmFinRollup(TransactionCase):
         self.assertEqual(self.line.impl, "SAP")
         self.assertEqual(self._line_for("state").option_id.name, "مطبق بالكامل")
         self.assertTrue(self.line.is_done)
+
+
+@tagged("post_install", "-at_install")
+class TestAzmFinWorkspaceQuestions(TransactionCase):
+    """Follow-ups are resolved on the server, so the client never has to decide
+    which question to show."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        scope = cls.env["azm.fin.scope"].search([("code", "=", "EDU")])
+        cls.entity = cls.env["azm.entity"].create({
+            "code": "FWQ", "name": "كيان الأسئلة", "fin_scope_ids": [(6, 0, scope.ids)]})
+        cls.assessment = cls.env["azm.fin.assessment"].create({"entity_id": cls.entity.id})
+        cls.line = cls.assessment.answer_ids.filtered(lambda a: a.code == "FIN-004")
+
+    def _keys(self):
+        return [q["key"] for q in self.line._question_dicts()]
+
+    def _state_line(self):
+        return self.line.qanswer_ids.filtered(lambda q: q.role == "state")[:1]
+
+    def test_conditional_questions_start_hidden(self):
+        """FIN-004's three trailing scales all hang off «الوضع الحالي»."""
+        self.assertEqual(self._keys(), ["Q001", "Q002", "Q003"])
+
+    def test_an_unknown_trigger_keeps_the_follow_ups_hidden(self):
+        line = self._state_line()
+        line.option_id = line.question_id.option_ids.filtered(lambda o: o.name == "لا أعرف").id
+        self.assertEqual(self._keys(), ["Q001", "Q002", "Q003"])
+
+    def test_answering_the_trigger_reveals_them(self):
+        line = self._state_line()
+        line.option_id = line.question_id.option_ids.filtered(
+            lambda o: o.name == "مطبق بالكامل").id
+        self.assertEqual(self._keys(), ["Q001", "Q002", "Q003", "Q004", "Q005", "Q006"])
+        # and the flags are persisted, so counts and lists agree
+        self.assertTrue(all(q.is_visible for q in self.line.qanswer_ids))
+
+    def test_the_rpc_round_trip_reveals_the_follow_ups(self):
+        data = self.assessment.workspace_data("FIN.GOV")
+        req = next(r for r in data["requirements"] if r["code"] == "FIN-004")
+        self.assertEqual([q["key"] for q in req["questions"]], ["Q001", "Q002", "Q003"])
+
+        state = next(q for q in req["questions"] if q["role"] == "state")
+        option = next(o for o in state["options"] if o["name"] == "مطبق بالكامل")
+        result = self.assessment.workspace_answer_question(
+            state["line_id"], {"option_id": option["id"]}, module_code="FIN.GOV")
+        fresh = next(r for r in result["requirements"] if r["code"] == "FIN-004")
+        self.assertEqual(len(fresh["questions"]), 6)
+        self.assertEqual(fresh["state"], "full")
+
+    def test_an_option_from_another_question_is_refused(self):
+        """The whole point: a question answers with its own options."""
+        main = self.line.qanswer_ids.filtered(lambda q: q.role == "main")[:1]
+        foreign = self.env["azm.fin.option"].search(
+            [("question_id", "!=", main.question_id.id)], limit=1)
+        with self.assertRaises(UserError):
+            self.assessment.workspace_answer_question(main.id, {"option_id": foreign.id})
+
+    def test_answering_is_refused_outside_draft(self):
+        line = self._state_line()
+        self.assessment.with_context(azm_skip_lock=True).state = "approved"
+        with self.assertRaises(UserError):
+            self.assessment.workspace_answer_question(line.id, {"text": "بعد الاعتماد"})

@@ -100,6 +100,65 @@
                                         </t>
                                     </div>
 
+                                    <!-- Questionnaire: the requirement's own questions and
+                                         the trailing scales, with follow-ups resolved server-side. -->
+                                    <t t-set="questions" t-value="this.questionsOf(r)"/>
+                                    <div t-if="questions.length" class="o_azm_fin_questions">
+                                        <t t-foreach="questions" t-as="q" t-key="q.line_id">
+                                            <div t-attf-class="o_azm_fin_question o_azm_fin_q_{{q.role}}">
+                                                <div class="o_azm_fin_qhead">
+                                                    <span class="o_azm_fin_qkey" t-out="q.key"/>
+                                                    <span class="o_azm_fin_qlabel" t-out="q.label"/>
+                                                </div>
+                                                <div t-if="q.help" class="o_azm_muted o_azm_fin_qhelp" t-out="q.help"/>
+
+                                                <div t-if="['select', 'multi'].includes(q.qtype)" class="o_azm_chips">
+                                                    <t t-foreach="q.options" t-as="opt" t-key="opt.id">
+                                                        <button t-attf-class="o_azm_chip {{q.qtype === 'multi' ? 'o_azm_chip_multi' : ''}} {{this.isPicked(q, opt) ? 'o_azm_chip_on' : ''}} {{opt.kind !== 'normal' ? 'o_azm_chip_soft' : ''}}"
+                                                                t-att-disabled="d.header.readonly"
+                                                                t-on-click="() => this.pickQuestionOption(r, q, opt)"
+                                                                t-out="opt.name"/>
+                                                    </t>
+                                                </div>
+
+                                                <div t-if="q.qtype === 'number'" class="o_azm_fin_row">
+                                                    <input type="number" class="form-control form-control-sm o_azm_fin_qnumber"
+                                                           t-att-value="q.value_number" t-att-readonly="d.header.readonly"
+                                                           t-on-change="(ev) => this.onQuestionNumber(r, q, ev)"/>
+                                                    <span class="o_azm_muted" t-out="q.unit"/>
+                                                </div>
+
+                                                <div t-if="q.qtype === 'table' and q.columns.length" class="o_azm_fin_qtable">
+                                                    <table class="table table-sm">
+                                                        <thead>
+                                                            <tr>
+                                                                <th t-foreach="q.columns" t-as="col" t-key="col_index" t-out="col"/>
+                                                                <th class="o_azm_fin_qtable_act"/>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <t t-foreach="this.questionRows(q)" t-as="row" t-key="row_index">
+                                                                <tr>
+                                                                    <td t-foreach="q.columns" t-as="col" t-key="col_index">
+                                                                        <input class="form-control form-control-sm"
+                                                                               t-att-value="row[col_index]" t-att-readonly="d.header.readonly"
+                                                                               t-on-change="(ev) => this.onQuestionCell(r, q, row_index, col_index, ev)"/>
+                                                                    </td>
+                                                                    <td class="o_azm_fin_qtable_act">
+                                                                        <button class="btn btn-link btn-sm text-danger p-0" t-if="!d.header.readonly"
+                                                                                t-on-click="() => this.removeQuestionRow(r, q, row_index)">×</button>
+                                                                    </td>
+                                                                </tr>
+                                                            </t>
+                                                        </tbody>
+                                                    </table>
+                                                    <button class="btn btn-link btn-sm p-0" t-if="!d.header.readonly"
+                                                            t-on-click="() => this.addQuestionRow(r, q)">+ صف</button>
+                                                </div>
+                                            </div>
+                                        </t>
+                                    </div>
+
                                     <div t-if="r.state" class="o_azm_fin_detail">
                                         <t t-if="['full', 'partial'].includes(r.state)">
                                             <div class="o_azm_fin_row">

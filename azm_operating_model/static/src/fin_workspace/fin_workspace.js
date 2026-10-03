@@ -158,6 +158,101 @@ export class AzmFinWorkspace extends Component {
         this.save(req, { impl: req.impl });
     }
 
+    // ---------------------------------------------------------------------
+    // Questionnaire. The standard «الوضع الحالي» and «وسيلة التنفيذ» questions
+    // keep their own controls above, so only the requirement-specific ones and
+    // the two trailing scales are rendered here.
+    // ---------------------------------------------------------------------
+    questionsOf(req) {
+        return (req.questions || []).filter((q) => !["state", "impl"].includes(q.role));
+    }
+
+    isPicked(question, option) {
+        return question.qtype === "multi"
+            ? question.option_ids.includes(option.id)
+            : question.option_id === option.id;
+    }
+
+    async answerQuestion(req, question, vals) {
+        if (this.readonly) {
+            return;
+        }
+        this.state.saving = true;
+        try {
+            const result = await this.orm.call(
+                MODEL, "workspace_answer_question",
+                [[this.assessmentId], question.line_id, vals],
+                { module_code: this.state.moduleCode, tab: this.state.tab, scope: this.state.scope },
+            );
+            // Answering may reveal or hide a follow-up, and the server decides
+            // which, so the refreshed question list is taken wholesale.
+            const fresh = result.requirements.find((r) => r.answer_id === req.answer_id);
+            const target = this.d.requirements.find((r) => r.answer_id === req.answer_id);
+            if (fresh && target) {
+                for (const key of ["questions", "state", "impl", "current", "future", "done"]) {
+                    target[key] = fresh[key];
+                }
+            }
+            this.d.header = result.header;
+            this.d.modules = result.modules;
+            this.state.output = markup(result.output);
+        } finally {
+            this.state.saving = false;
+        }
+    }
+
+    pickQuestionOption(req, question, option) {
+        if (question.qtype !== "multi") {
+            const same = question.option_id === option.id;
+            this.answerQuestion(req, question, { option_id: same ? false : option.id });
+            return;
+        }
+        const ids = new Set(question.option_ids);
+        const exclusive = ["unknown", "not_listed", "none"];
+        if (ids.has(option.id)) {
+            ids.delete(option.id);
+        } else if (exclusive.includes(option.kind)) {
+            ids.clear();
+            ids.add(option.id);
+        } else {
+            for (const other of question.options) {
+                if (exclusive.includes(other.kind)) {
+                    ids.delete(other.id);
+                }
+            }
+            ids.add(option.id);
+        }
+        this.answerQuestion(req, question, { option_ids: [...ids] });
+    }
+
+    onQuestionNumber(req, question, ev) {
+        this.answerQuestion(req, question, { value_number: parseFloat(ev.target.value) || 0 });
+    }
+
+    questionRows(question) {
+        const width = question.columns.length;
+        const rows = question.table.length ? question.table : [Array(width).fill("")];
+        return rows.map((row) => Array.from({ length: width }, (_v, i) => row[i] || ""));
+    }
+
+    onQuestionCell(req, question, rowIndex, colIndex, ev) {
+        const rows = this.questionRows(question);
+        rows[rowIndex][colIndex] = ev.target.value;
+        question.table = rows;
+        this.answerQuestion(req, question, { table: rows });
+    }
+
+    addQuestionRow(req, question) {
+        const rows = this.questionRows(question);
+        rows.push(Array(question.columns.length).fill(""));
+        this.answerQuestion(req, question, { table: rows });
+    }
+
+    removeQuestionRow(req, question, rowIndex) {
+        const rows = this.questionRows(question).filter((_r, i) => i !== rowIndex);
+        this.answerQuestion(req, question, { table: rows });
+    }
+
     onText(req, key, ev) {
         req[key] = ev.target.value;
         this.debounce(req, key, { [key]: req[key] });
