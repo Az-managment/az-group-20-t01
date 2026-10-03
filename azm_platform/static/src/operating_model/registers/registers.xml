@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="azm_platform.UnifiedList">
+        <div class="o_action o_azm_dashboard o_azm_om o_azm_unified">
+            <div class="o_azm_om_title">
+                <div>
+                    <h1 t-out="this.title"/>
+                    <p t-out="this.subtitle"/>
+                </div>
+                <div t-if="this.state.loaded and this.d.available" class="o_azm_om_title_actions">
+                    <t t-if="!this.isRegister">
+                        <button t-if="this.d.models.procurement" type="button" class="btn btn-light" t-on-click="() => this.newAssessment('procurement')">
+                            <i class="oi" data-icon="add" title="New"/> New procurement assessment
+                        </button>
+                        <button t-if="this.d.models.financial" type="button" class="btn btn-primary" t-on-click="() => this.newAssessment('financial')">
+                            <i class="oi" data-icon="add" title="New"/> New financial assessment
+                        </button>
+                    </t>
+                </div>
+            </div>
+
+            <div t-if="!this.state.loaded" class="o_azm_loading">
+                <i class="oi oi-spin" data-icon="progress_activity" title="Loading"/>
+            </div>
+            <div t-elif="!this.d.available" class="o_azm_card o_azm_empty">
+                <i class="oi" data-icon="lock" title="No access"/>
+                <strong>No operating model is available for your user</strong>
+            </div>
+
+            <t t-else="">
+                <section class="o_azm_om_toolbar">
+                    <div class="o_azm_om_tabs" role="tablist">
+                        <button type="button" t-foreach="this.modelTabs" t-as="tab" t-key="tab.key or 'all'"
+                                t-attf-class="o_azm_om_tab o_azm_tone_{{tab.key === 'financial' ? 'green' : 'blue'}} {{this.state.model === tab.key ? 'active' : ''}}"
+                                t-on-click="() => this.setModel(tab.key)">
+                            <i class="oi" t-att-data-icon="tab.icon" t-att-title="tab.label"/>
+                            <span t-out="tab.label"/>
+                            <span class="o_azm_om_count" t-out="tab.count"/>
+                        </button>
+                    </div>
+                    <div class="o_azm_om_selects">
+                        <input type="search" class="form-control" placeholder="Search…" t-att-value="this.state.search" t-on-input="this.onSearch"/>
+                        <select class="form-select" t-on-change="this.onEntity" aria-label="Entity">
+                            <option value="">All entities</option>
+                            <option t-foreach="this.d.entities" t-as="e" t-key="e.id" t-att-value="e.id"
+                                    t-att-selected="e.id === this.state.entityId" t-out="e.name"/>
+                        </select>
+                        <select class="form-select" t-on-change="this.onStatus" aria-label="Status">
+                            <option value="">All statuses</option>
+                            <option t-foreach="this.statuses" t-as="s" t-key="s.key" t-att-value="s.key"
+                                    t-att-selected="s.key === this.state.status" t-out="s.label"/>
+                        </select>
+                    </div>
+                </section>
+
+                <section class="o_azm_kpis o_azm_unified_kpis">
+                    <div t-foreach="this.kpis" t-as="kpi" t-key="kpi.key" class="o_azm_kpi o_azm_kpi_static">
+                        <span class="o_azm_kpi_text">
+                            <span class="o_azm_kpi_label" t-out="kpi.label"/>
+                            <strong class="o_azm_kpi_value" t-out="kpi.value"/>
+                            <span t-if="kpi.meter !== undefined and kpi.meter !== null" t-attf-class="o_azm_progress o_azm_om_meter o_azm_tone_{{kpi.tone}}">
+                                <span class="o_azm_progress_bar" t-attf-style="width: {{kpi.meter}}%"/>
+                            </span>
+                            <small t-if="kpi.sub" t-out="kpi.sub"/>
+                        </span>
+                        <span t-attf-class="o_azm_icon_badge o_azm_tone_{{kpi.tone}}"><i class="oi" t-att-data-icon="kpi.icon" t-att-title="kpi.label"/></span>
+                    </div>
+                </section>
+
+                <section class="o_azm_card">
+                    <header class="o_azm_card_header">
+                        <h3><t t-out="this.title"/> <small class="text-muted" t-out="'(' + this.rows.length + ')'"/></h3>
+                        <div class="d-flex gap-3 align-items-center flex-wrap">
+                            <label class="d-flex gap-2 align-items-center small text-muted m-0">
+                                <input type="checkbox" t-att-checked="this.state.all" t-on-change="() => this.toggleAll()"/>
+                                <t t-if="this.isRegister">Include closed, dismissed and not applicable</t>
+                                <t t-else="">Include previous versions</t>
+                            </label>
+                            <a t-if="this.d.models.procurement" href="#" t-on-click.prevent="() => this.openNative('procurement')">
+                                <t t-if="this.isRegister">Procurement register (full view)</t><t t-else="">Procurement list (full view)</t>
+                            </a>
+                            <a t-if="this.d.models.financial" href="#" t-on-click.prevent="() => this.openNative('financial')">
+                                <t t-if="this.isRegister">Financial gaps (full view)</t><t t-else="">Financial list (full view)</t>
+                            </a>
+                        </div>
+                    </header>
+
+                    <div t-if="this.rows.length" class="table-responsive">
+                        <!-- assessments -->
+                        <table t-if="!this.isRegister" class="o_azm_table o_azm_om_table">
+                            <thead><tr>
+                                <th>Operating model</th><th>Reference</th><th>Entity</th><th>Scope</th><th>State</th>
+                                <th>Version</th><th>Completion</th><th>Risks / gaps</th><th>Prepared by</th><th>Updated</th><th/>
+                            </tr></thead>
+                            <tbody>
+                                <tr t-foreach="this.rows" t-as="r" t-key="r.model + r.id" t-on-click="() => this.openRow(r)">
+                                    <td><span t-attf-class="o_azm_unified_model o_{{r.model}}" t-out="this.modelLabel(r.model)"/></td>
+                                    <td><strong t-out="r.name"/> <span t-if="r.is_demo" class="o_azm_om_chip_sm">Demo</span></td>
+                                    <td t-out="r.entity"/>
+                                    <td><small t-out="r.detail"/></td>
+                                    <td><span t-attf-class="o_azm_om_state o_azm_om_state_{{r.state}}" t-out="r.state_label"/></td>
+                                    <td t-out="'v' + r.version"/>
+                                    <td>
+                                        <span class="o_azm_mini_progress">
+                                            <span class="o_azm_progress"><span class="o_azm_progress_bar" t-attf-style="width: {{r.progress}}%"/></span>
+                                            <span t-out="r.progress + '%'"/>
+                                        </span>
+                                    </td>
+                                    <td t-att-class="{'text-warning fw-bold': r.issues}" t-out="r.issues or '—'"/>
+                                    <td><small t-out="r.user"/></td>
+                                    <td><small class="text-muted" t-out="r.when"/></td>
+                                    <td><button type="button" class="btn btn-sm btn-light" t-on-click.stop="() => this.openWorkspace(r)">Answer</button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <!-- register -->
+                        <table t-else="" class="o_azm_table o_azm_om_table">
+                            <thead><tr>
+                                <th>Operating model</th><th>Code</th><th>Finding / requirement</th><th>Stage / module</th><th>Entity</th>
+                                <th>Status</th><th>Score</th><th>Owner</th>
+                            </tr></thead>
+                            <tbody>
+                                <tr t-foreach="this.rows" t-as="r" t-key="r.model + r.id" t-on-click="() => this.openRow(r)">
+                                    <td><span t-attf-class="o_azm_unified_model o_{{r.model}}" t-out="this.modelLabel(r.model)"/></td>
+                                    <td><span class="o_azm_om_stage_code" t-out="r.code"/></td>
+                                    <td class="o_azm_unified_title">
+                                        <strong t-out="r.title"/>
+                                        <small t-if="r.detail" t-out="r.detail"/>
+                                        <small t-if="r.model === 'procurement' and r.action" class="o_azm_om_control" t-out="r.action"/>
+                                    </td>
+                                    <td><small t-out="r.area"/></td>
+                                    <td t-out="r.entity"/>
+                                    <td><span t-attf-class="o_azm_om_state o_azm_unified_state_{{r.state}}" t-out="r.state_label"/></td>
+                                    <td><span t-if="r.model === 'procurement'" t-attf-class="o_azm_om_score {{this.scoreClass(r.score)}}" t-out="r.score or '?'"/><t t-else="">—</t></td>
+                                    <td><small t-out="r.owner"/><small t-if="r.due" class="d-block text-muted" t-out="r.due"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div t-else="" class="o_azm_empty">
+                        <i class="oi" t-att-data-icon="this.isRegister ? 'verified' : 'assignment'" title="Empty"/>
+                        <strong>Nothing to show</strong>
+                        <small>Change the filters or the operating model.</small>
+                    </div>
+                </section>
+            </t>
+        </div>
+    </t>
+
+</templates>

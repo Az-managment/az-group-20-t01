@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="azm_fin_menu_root" name="النموذج المالي الموحد" parent="azm_operating_model.azm_menu_root"
+              sequence="30"/>
+    <menuitem id="azm_fin_assessment_menu" name="الإفادات المالية" parent="azm_fin_menu_root"
+              action="azm_fin_assessment_action" sequence="10"/>
+    <menuitem id="azm_fin_gap_menu" name="سجل الفجوات" parent="azm_fin_menu_root"
+              action="azm_fin_gap_action" sequence="20"/>
+
+    <menuitem id="azm_fin_module_menu" name="موديولات النموذج المالي" parent="azm_operating_model.azm_menu_config"
+              action="azm_fin_module_action" sequence="50"/>
+    <menuitem id="azm_fin_requirement_menu" name="متطلبات النموذج المالي" parent="azm_operating_model.azm_menu_config"
+              action="azm_fin_requirement_action" sequence="60"/>
+    <menuitem id="azm_fin_scope_menu" name="أنشطة الكيانات" parent="azm_operating_model.azm_menu_config"
+              action="azm_fin_scope_action" sequence="70"/>
+</odoo>

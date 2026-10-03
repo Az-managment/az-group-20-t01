@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="azm_platform.EntityOverview">
+        <div t-if="this.state.data" class="o_azm_overview">
+            <section class="o_azm_card">
+                <header class="o_azm_card_header">
+                    <h3>Entity Information</h3>
+                    <a t-if="this.canOpen('action_azm_edit_company')" href="#" t-on-click.prevent="() => this.open('action_azm_edit_company')">Edit</a>
+                </header>
+                <div class="o_azm_info_layout">
+                    <dl class="o_azm_info_list">
+                        <t t-foreach="this.infoRows" t-as="row" t-key="row_index">
+                            <t t-if="row.value">
+                                <dt t-out="row.label"/>
+                                <dd>
+                                    <a t-if="row.link" t-att-href="row.link" target="_blank" t-out="row.value"/>
+                                    <t t-else="" t-out="row.value"/>
+                                </dd>
+                            </t>
+                        </t>
+                    </dl>
+                </div>
+            </section>
+
+            <section class="o_azm_card o_azm_donut_card">
+                <header class="o_azm_card_header">
+                    <h3>People by Department</h3>
+                    <a t-if="this.canOpen('action_azm_employees')" href="#" t-on-click.prevent="() => this.open('action_azm_employees')">View all</a>
+                </header>
+                <div class="o_azm_donut_layout">
+                    <AzmDonutChart data="this.state.data.departments" size="180" thickness="30"
+                                   centerLabel="this.donutLabel" emptyLabel="this.donutEmptyLabel"/>
+                    <ul class="o_azm_legend">
+                        <li t-foreach="this.state.data.departments" t-as="dep" t-key="dep.id">
+                            <span class="o_azm_dot" t-attf-style="background: {{dep.color}}"/>
+                            <span class="flex-grow-1" t-out="dep.name"/>
+                            <span class="o_azm_legend_count" t-out="dep.count"/>
+                        </li>
+                    </ul>
+                </div>
+            </section>
+
+            <section class="o_azm_card">
+                <header class="o_azm_card_header">
+                    <h3>Latest Documents</h3>
+                    <a t-if="this.canOpen('action_azm_documents')" href="#" t-on-click.prevent="() => this.open('action_azm_documents')">View all</a>
+                </header>
+                <ul t-if="this.documents.length" class="o_azm_list">
+                    <li t-foreach="this.documents" t-as="doc" t-key="doc.id" t-on-click="() => this.openRecord(doc.model, doc.id)">
+                        <span class="o_azm_icon_badge o_azm_tone_blue small"><i class="oi" t-att-data-icon="doc.icon" title="Document"/></span>
+                        <strong class="flex-grow-1" t-out="doc.name"/>
+                    </li>
+                </ul>
+                <div t-else="" class="o_azm_empty"><small>No documents yet</small></div>
+            </section>
+
+            <section class="o_azm_card">
+                <header class="o_azm_card_header">
+                    <h3>Teams &amp; Responsibilities</h3>
+                    <a t-if="this.canOpen('action_azm_departments')" href="#" t-on-click.prevent="() => this.open('action_azm_departments')">View all</a>
+                </header>
+                <ul t-if="this.state.data.teams.length" class="o_azm_list">
+                    <li t-foreach="this.state.data.teams" t-as="team" t-key="team.id" t-on-click="() => this.openRecord('hr.department', team.id)">
+                        <span class="o_azm_icon_badge o_azm_tone_blue small"><i class="oi" data-icon="group" t-att-title="team.name"/></span>
+                        <span class="flex-grow-1">
+                            <strong t-out="team.name"/>
+                            <small t-out="team.description"/>
+                        </span>
+                        <small class="text-muted"><t t-out="team.members"/> <i class="oi" data-icon="person" title="Members"/></small>
+                    </li>
+                </ul>
+                <div t-else="" class="o_azm_empty"><small>No departments yet</small></div>
+            </section>
+
+            <section class="o_azm_card">
+                <header class="o_azm_card_header">
+                    <h3>Projects</h3>
+                    <a t-if="this.canOpen('action_azm_projects')" href="#" t-on-click.prevent="() => this.open('action_azm_projects')">View all</a>
+                </header>
+                <ul t-if="this.state.data.projects.length" class="o_azm_list">
+                    <li t-foreach="this.state.data.projects" t-as="project" t-key="project.id" t-on-click="() => this.openRecord('project.project', project.id)">
+                        <span class="flex-grow-1">
+                            <strong t-out="project.name"/>
+                            <small><t t-out="project.manager"/><t t-if="project.manager"> · </t><t t-out="project.tasks"/> <t>tasks</t></small>
+                        </span>
+                        <span class="o_azm_mini_progress" style="width: 110px;">
+                            <span class="o_azm_progress"><span class="o_azm_progress_bar" t-attf-style="width: {{project.progress}}%"/></span>
+                            <small t-out="project.progress + '%'"/>
+                        </span>
+                    </li>
+                </ul>
+                <div t-else="" class="o_azm_empty"><small>No projects yet</small></div>
+            </section>
+
+            <section class="o_azm_card">
+                <header class="o_azm_card_header">
+                    <h3>Recent Activity</h3>
+                </header>
+                <ul t-if="this.activities.length" class="o_azm_list o_azm_activity">
+                    <li t-foreach="this.activities" t-as="activity" t-key="activity.id" t-on-click="() => this.openRecord(activity.model, activity.res_id)">
+                        <span class="o_azm_icon_badge o_azm_tone_green small"><i class="oi" t-att-data-icon="activity.icon" title="Activity"/></span>
+                        <span class="flex-grow-1">
+                            <strong t-out="activity.text"/>
+                            <small><t t-out="activity.record"/><t t-if="activity.record"> · </t><t t-out="activity.when"/></small>
+                        </span>
+                    </li>
+                </ul>
+                <div t-else="" class="o_azm_empty"><small>No activity yet</small></div>
+            </section>
+        </div>
+    </t>
+</templates>

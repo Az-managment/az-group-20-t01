@@ -1,0 +1,102 @@
+# AZM Enterprise Operating Model Platform (Odoo 20)
+
+A **read-only cockpit** over the data that already exists in your Odoo database.
+Nothing is duplicated: every figure is computed live.
+
+| Screen element | Source in Odoo |
+|---|---|
+| Entities (cards / list / group tree / entity page) | `res.company` (Settings › Companies) |
+| Employees, "People by department", teams | `hr.employee`, `hr.department` |
+| Projects, open / overdue tasks, task completion %, "My tasks" | `project.project`, `project.task`, `mail.activity` |
+| Documents | `documents.document` (Enterprise, auto-detected) or `ir.attachment` |
+| Recent activity | chatter messages (`mail.message`) of the records above |
+| Login page (group list, stats, hero image) | companies + employee count |
+
+## Install
+1. Copy `azm_platform` into your custom addons path.
+2. Update the apps list, install **AZM Enterprise Operating Model Platform**
+   (pulls `hr`, `project`, `web_hierarchy`, `auth_oauth`).
+3. Give users the group **AZM Platform / User** (or Administrator).
+4. Optional: Settings › Languages › add Arabic — the module ships `i18n/ar.po`.
+
+## Make it look like the design
+On each company (Settings › Companies › *company* › **AZM Platform** tab) set:
+logo, cover image, name in the other language, entity type, sector, tagline.
+The root company's cover image is used as the login-page background.
+
+Status per entity is derived automatically:
+*Active* = has employees, departments and projects · *In preparation* = some of them · *Not started* = none.
+
+## Sign in with Microsoft / Google
+Settings › Integrations › OAuth Providers: enable Google and/or add Azure AD (Microsoft).
+The buttons then appear on the AZM login card.
+
+## AI assistant
+Settings › AZM Platform: paste an Anthropic API key (and optionally the model name).
+The assistant answers using the live figures of your companies.
+
+## Notes
+* Every figure respects the access rights of the person looking at it: counts, charts,
+  lists and the AI assistant only include the records that person is allowed to open
+  (companies they belong to, HR / Project / Documents rights and record rules).
+* The sidebar only appears inside the AZM app; other Odoo apps are untouched.
+
+## Who sees what
+* Every AZM screen (Home, Entities, Group Structure, entity pages, AI assistant) follows the
+  **company switcher** (top right) like the rest of Odoo: tick several companies to see them together.
+* Counts and lists only include records the person may open (HR / Project / Documents rights and record rules).
+* Links, cards and quick links to an app the person has no rights on are hidden (or not clickable)
+  instead of ending on an access error; "Edit entity data" is for Settings › Access Rights administrators.
+* Group Structure only shows companies the person belongs to; a company whose parent is hidden
+  is attached to its nearest visible ancestor.
+
+
+# Operating models
+Included in this module (requires **azm_operating_model**, installed automatically as a dependency).
+It replaces the former bridge module *azm_platform_operating_model*: upgrading `azm_platform` moves its data and retires it.
+
+## Operating Models (files)
+The sidebar entry **Operating Models** opens a landing page where every operating model is a *file*:
+**Procurement cycle** (13 stages · 396 questions) and **Unified financial model** (17 modules · 167 requirements).
+Each file shows its KPIs (assessments, completion, certainty / maturity, open findings / gaps, entities covered);
+clicking it opens the model page with all its data and statistics. Group KPIs and an entity × model table sit on top and below.
+
+## What it adds
+| Where | What |
+|---|---|
+| AZM sidebar | **Operating Model**, **Assessments**, **Risk Register**, **Question Catalogue** (managers) |
+| Unified financial model page | KPIs, application status, one card per financial module (FIN/HRF, templates, applicability, completion, maturity, gaps), charts, entities, top gaps, assessments |
+| Operating Model page | 8 KPIs, 3 domain cards (Governance / Procurement Operations / Financial), one card per question area (stage) with questions, risk rules, risks, findings, completion, certainty, question mix, application status; risk-register & assessment donuts; entities table; top open risks; current assessments |
+| AZM Home | "Operating Model" KPI tile, quick links and an Operating Model section (KPIs, domains, latest assessments, top risks) |
+| Entity (company) page | Operating Model section for the entities linked to that company |
+| Operating Model app | Same page as the first menu "لوحة المؤشرات" |
+
+## Model domains
+Each stage gets a **Model Domain** (Settings › Stages):
+`GOV` → Governance · `BUD INV ADV PAY CLS` → Financial · the rest → Procurement Operations.
+Change it per stage if needed; the value you choose is kept on catalogue reloads.
+Questions, risk rules and findings inherit it (filters/group-by "Model Domain").
+
+## Entities ↔ companies
+On install, Operating Model entities are linked to companies whose name, "Name (other language)"
+or initials match. Otherwise link them in Operating Model › Settings › Entities (column "Company").
+
+## Filters on the page
+Domain tabs · entity · one assessment (then each card opens the answer workspace on that stage).
+
+## Figures
+Computed live with the same engine as the answer workspace:
+* Completion = answered / applicable (visible) questions
+* Certainty = answers that are not "لا أعرف / غير مدرج" / answered
+* Risks triggered = risk rules matched by current answers; Open findings = tracked risk register
+* High = likelihood × impact ≥ 15
+
+## Tests
+`odoo-bin -d <db> -u azm_platform --test-tags=/azm_platform --stop-after-init`
+
+## Who sees what (operating models)
+Every page only counts the records the person may open (no superuser totals):
+* **Role** – preparer: own assessments · reviewer: own + those assigned to them · manager: everything.
+* **Entity** – non-managers only see entities they are listed on (Operating Model › Settings › Entities › "Allowed users").
+* **Company** – only entities/assessments of the companies the person belongs to.
+* Platform figures (employees, departments, projects, tasks, documents) follow HR / Project / Documents rights.

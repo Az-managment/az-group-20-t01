@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="azm_stage_view_list" model="ir.ui.view">
+        <field name="name">azm.stage.view.list</field>
+        <field name="model">azm.stage</field>
+        <field name="arch" type="xml">
+            <list string="المراحل">
+                <field name="sequence" widget="handle"/>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="default_owner"/>
+                <field name="question_count" string="عدد الأسئلة"/>
+                <field name="is_governance" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="azm_stage_view_form" model="ir.ui.view">
+        <field name="name">azm.stage.view.form</field>
+        <field name="model">azm.stage</field>
+        <field name="arch" type="xml">
+            <form string="المرحلة">
+                <header>
+                    <button name="action_reload_catalogue" type="object" string="تحديث الكتالوج من الملف"
+                            groups="azm_operating_model.azm_group_manager"
+                            confirm="هيتم تحديث الأسئلة والاختيارات والقواعد من ملف الكتالوج. تكمل؟"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="code"/>
+                            <field name="sequence"/>
+                            <field name="is_governance"/>
+                        </group>
+                        <group>
+                            <field name="input_desc"/>
+                            <field name="output_desc"/>
+                            <field name="default_owner"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="الأسئلة" name="questions">
+                            <field name="question_ids">
+                                <list>
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="code"/>
+                                    <field name="label"/>
+                                    <field name="group"/>
+                                    <field name="qtype"/>
+                                    <field name="is_common" optional="show"/>
+                                    <field name="condition" optional="hide"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="قواعد المخاطر" name="rules">
+                            <field name="risk_rule_ids">
+                                <list>
+                                    <field name="code"/>
+                                    <field name="question_id"/>
+                                    <field name="trigger_option_id"/>
+                                    <field name="fact"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="azm_stage_action" model="ir.actions.act_window">
+        <field name="name">مراحل الدورة</field>
+        <field name="res_model">azm.stage</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

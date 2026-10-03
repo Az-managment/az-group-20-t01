@@ -1,0 +1,375 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!-- Switch between the two operating models (same header on both pages) -->
+    <t t-name="azm_platform.ModelSwitch">
+        <nav class="o_azm_om_models" role="tablist">
+            <button type="button" class="o_azm_om_model o_azm_om_model_back" t-on-click="() => this.openHub()">
+                <i class="oi" data-icon="folder_open" title="All operating models"/>
+                <span><b>All operating models</b><small>Back to the files</small></span>
+            </button>
+            <button type="button" t-attf-class="o_azm_om_model {{this.currentModel === 'procurement' ? 'active' : ''}}"
+                    t-on-click="() => this.currentModel !== 'procurement' and this.openOperatingModel()">
+                <i class="oi" data-icon="shopping_cart" title="Procurement"/>
+                <span><b>Procurement cycle</b><small>13 stages · 396 questions</small></span>
+            </button>
+            <button type="button" t-attf-class="o_azm_om_model {{this.currentModel === 'financial' ? 'active' : ''}}"
+                    t-on-click="() => this.currentModel !== 'financial' and this.openFinancialModel()">
+                <i class="oi" data-icon="payments" title="Financial"/>
+                <span><b>Unified financial model</b><small>17 modules · 167 requirements</small></span>
+            </button>
+        </nav>
+    </t>
+
+    <t t-name="azm_platform.FinDashboard">
+        <div class="o_action o_azm_dashboard o_azm_om o_azm_fin_page">
+            <div class="o_azm_om_title">
+                <div>
+                    <h1>Unified Financial Model</h1>
+                    <p>Inventory of the financial requirements of each entity and design of the target model</p>
+                </div>
+                <div t-if="this.state.loaded and this.d.available" class="o_azm_om_title_actions">
+                    <button type="button" class="btn btn-light" t-on-click="() => this.openUnified('assessments')">
+                        <i class="oi" data-icon="checklist" title="Financial Assessments"/> Financial Assessments
+                    </button>
+                    <button type="button" class="btn btn-light" t-on-click="() => this.openUnified('register')">
+                        <i class="oi" data-icon="warning" title="Financial Gaps"/> Financial Gaps
+                    </button>
+                    <button type="button" class="btn btn-light" t-on-click="() => this.openRequirements(false)">
+                        <i class="oi" data-icon="list_alt" title="Requirements"/> Requirement Catalogue
+                    </button>
+                    <button type="button" class="btn btn-primary" t-on-click="() => this.newAssessment()">
+                        <i class="oi" data-icon="add" title="New"/> New Financial Assessment
+                    </button>
+                </div>
+            </div>
+            <t t-call="azm_platform.ModelSwitch"/>
+
+            <div t-if="!this.state.loaded" class="o_azm_loading">
+                <i class="oi oi-spin" data-icon="progress_activity" title="Loading"/>
+            </div>
+
+            <div t-elif="!this.d.available" class="o_azm_card o_azm_empty">
+                <i class="oi" data-icon="lock" title="No access"/>
+                <strong>The financial model is not available for your user</strong>
+                <small>Ask an administrator for the “AZM Operating Model” access rights.</small>
+            </div>
+
+            <t t-else="">
+                <!-- ============================== Filters -->
+                <section t-attf-class="o_azm_om_toolbar {{this.state.busy ? 'o_azm_om_busy' : ''}}">
+                    <div class="o_azm_om_tabs" role="tablist">
+                        <button type="button" t-foreach="this.sourceTabs" t-as="tab" t-key="tab.key or 'all'"
+                                t-attf-class="o_azm_om_tab o_azm_tone_green {{this.state.source === tab.key ? 'active' : ''}}"
+                                t-on-click="() => this.setSource(tab.key)">
+                            <i class="oi" t-att-data-icon="tab.icon" t-att-title="tab.label"/>
+                            <span t-out="tab.label"/>
+                            <span t-if="tab.count !== null" class="o_azm_om_count" t-out="tab.count"/>
+                        </button>
+                    </div>
+                    <div class="o_azm_om_selects">
+                        <span t-if="this.state.companyId" class="o_azm_om_chip">
+                            <i class="oi" data-icon="business" title="Company"/>
+                            <t t-out="this.companyName"/>
+                            <button type="button" class="btn btn-link p-0" title="Clear" t-on-click="() => this.clearCompany()">
+                                <i class="oi" data-icon="close" title="Clear"/>
+                            </button>
+                        </span>
+                        <select class="form-select" t-on-change="this.onProfile" aria-label="Answer template">
+                            <option value="" t-att-selected="!this.state.profile">All answer templates</option>
+                            <option t-foreach="this.d.profiles" t-as="p" t-key="p.key" t-att-value="p.key"
+                                    t-att-selected="p.key === this.state.profile" t-out="p.key + ' · ' + p.name"/>
+                        </select>
+                        <select class="form-select" t-on-change="this.onEntity" aria-label="Entity">
+                            <option value="" t-att-selected="!this.state.entityId">All entities</option>
+                            <option t-foreach="this.d.entity_options" t-as="opt" t-key="opt.id" t-att-value="opt.id"
+                                    t-att-selected="opt.id === this.state.entityId" t-out="opt.name"/>
+                        </select>
+                        <select class="form-select" t-on-change="this.onAssessment" aria-label="Assessment">
+                            <option value="" t-att-selected="!this.state.assessmentId">All current assessments</option>
+                            <option t-foreach="this.d.assessment_options" t-as="opt" t-key="opt.id" t-att-value="opt.id"
+                                    t-att-selected="opt.id === this.state.assessmentId" t-out="opt.name"/>
+                        </select>
+                    </div>
+                </section>
+
+                <!-- ============================== KPIs -->
+                <section class="o_azm_kpis o_azm_om_kpis">
+                    <t t-foreach="this.kpis" t-as="kpi" t-key="kpi.key">
+                        <button type="button" t-attf-class="o_azm_kpi o_azm_om_kpi {{kpi.onClick ? '' : 'o_azm_kpi_static'}}"
+                                t-on-click="() => kpi.onClick and kpi.onClick()">
+                            <span class="o_azm_kpi_text">
+                                <span class="o_azm_kpi_label" t-out="kpi.label"/>
+                                <strong class="o_azm_kpi_value" t-out="kpi.value"/>
+                                <span t-if="kpi.meter !== undefined" t-attf-class="o_azm_progress o_azm_om_meter o_azm_tone_{{kpi.tone}}">
+                                    <span class="o_azm_progress_bar" t-attf-style="width: {{this.bar(kpi.meter)}}%"/>
+                                </span>
+                                <small t-if="kpi.sub" t-out="kpi.sub"/>
+                            </span>
+                            <span t-attf-class="o_azm_icon_badge o_azm_tone_{{kpi.tone}}">
+                                <i class="oi" t-att-data-icon="kpi.icon" t-att-title="kpi.label"/>
+                            </span>
+                        </button>
+                    </t>
+                </section>
+
+                <!-- ============================== Application status of all requirements -->
+                <section class="o_azm_card">
+                    <header class="o_azm_card_header">
+                        <h3>Application status</h3>
+                        <a href="#" t-on-click.prevent="() => this.openGaps(false)">Gaps register</a>
+                    </header>
+                    <span class="o_azm_om_stack o_azm_om_stack_lg">
+                        <t t-foreach="this.stateBar" t-as="s" t-key="s.id">
+                            <span t-if="s.count" t-attf-style="width: {{s.width}}%; background: {{s.color}};" t-att-title="s.label + ': ' + s.count"/>
+                        </t>
+                    </span>
+                    <ul class="o_azm_legend o_azm_om_legend_inline">
+                        <li t-foreach="this.stateBar" t-as="s" t-key="s.id">
+                            <span class="o_azm_dot" t-attf-style="background: {{s.color}}"/>
+                            <span t-out="s.label"/>
+                            <span class="o_azm_legend_count" t-out="s.count"/>
+                        </li>
+                    </ul>
+                </section>
+
+                <!-- ============================== Module cards -->
+                <section class="o_azm_card">
+                    <header class="o_azm_card_header o_azm_om_cards_head">
+                        <h3>Financial Modules <small class="text-muted" t-out="'(' + this.modules.length + ')'"/></h3>
+                        <div class="o_azm_om_cards_tools">
+                            <input type="search" class="form-control" placeholder="Search a module…"
+                                   t-att-value="this.state.search" t-on-input="this.onSearch"/>
+                        </div>
+                    </header>
+                    <p class="o_azm_om_hint">
+                        <t t-if="this.state.assessmentId">Click a card to answer that module in the inventory portal.</t>
+                        <t t-else="">Click a card to see its requirements. Pick one assessment above to answer directly from the cards.</t>
+                    </p>
+                    <div class="o_azm_om_stage_grid">
+                        <article t-foreach="this.modules" t-as="mod" t-key="mod.code" class="o_azm_om_stage o_azm_tone_green">
+                            <button type="button" class="o_azm_om_stage_main" t-on-click="() => this.openModule(mod)">
+                                <header>
+                                    <span class="o_azm_om_stage_code" t-out="'FIN-' + mod.code"/>
+                                    <span t-if="mod.fin" class="o_azm_om_pill" t-out="mod.fin + ' FIN'"/>
+                                    <span t-if="mod.hrf" class="o_azm_om_pill o_azm_fin_hrf" t-out="mod.hrf + ' HRF'"/>
+                                    <span t-attf-class="o_azm_om_status o_azm_fin_status_{{mod.status}}" t-out="mod.statusLabel"/>
+                                </header>
+                                <h4 t-out="mod.name"/>
+                                <span class="o_azm_om_chips">
+                                    <span t-foreach="mod.scopes" t-as="sc" t-key="sc.key" class="o_azm_om_chip_sm">
+                                        <t t-out="sc.name"/> <b t-out="sc.count"/>
+                                    </span>
+                                </span>
+                                <div class="o_azm_om_stage_stats">
+                                    <div><strong t-out="mod.requirements"/><small>Requirements</small></div>
+                                    <div><strong t-out="mod.applicable"/><small>Applicable</small></div>
+                                    <div><strong t-out="mod.full"/><small>Fully applied</small></div>
+                                    <div t-att-class="{'o_azm_om_alert': mod.gaps}"><strong t-out="mod.gaps"/><small>Gaps</small></div>
+                                </div>
+                                <div class="o_azm_om_meters">
+                                    <div>
+                                        <span class="o_azm_om_meter_label">
+                                            Completion <b t-out="this.pct(mod.completion)"/>
+                                            <small t-if="mod.applicable"><t t-out="mod.done"/>/<t t-out="mod.applicable"/></small>
+                                        </span>
+                                        <span class="o_azm_progress"><span class="o_azm_progress_bar" t-attf-style="width: {{this.bar(mod.completion)}}%"/></span>
+                                    </div>
+                                    <div>
+                                        <span class="o_azm_om_meter_label">Maturity <b t-out="this.pct(mod.maturity)"/></span>
+                                        <span class="o_azm_progress o_azm_om_alt"><span class="o_azm_progress_bar" t-attf-style="width: {{this.bar(mod.maturity)}}%"/></span>
+                                    </div>
+                                </div>
+                                <div t-if="mod.stack.length" class="o_azm_om_composition">
+                                    <span class="o_azm_om_meter_label">Application status</span>
+                                    <span class="o_azm_om_stack">
+                                        <t t-foreach="mod.stack" t-as="s" t-key="s.key">
+                                            <span t-attf-style="width: {{s.width}}%; background: {{s.color}};" t-att-title="s.label + ': ' + s.count"/>
+                                        </t>
+                                    </span>
+                                </div>
+                                <div class="o_azm_om_composition">
+                                    <span class="o_azm_om_meter_label">Answer templates</span>
+                                    <span class="o_azm_om_chips">
+                                        <span t-foreach="mod.profiles" t-as="p" t-key="p.key" class="o_azm_om_chip_sm"
+                                              t-attf-style="border-inline-start: 3px solid {{p.color}}">
+                                            <t t-out="p.key"/> <b t-out="p.count"/>
+                                        </span>
+                                    </span>
+                                </div>
+                            </button>
+                            <footer>
+                                <button type="button" class="btn btn-link" t-on-click="() => this.openRequirements(mod)">
+                                    <i class="oi" data-icon="list_alt" title="Requirements"/> Requirements
+                                </button>
+                                <button type="button" class="btn btn-link" t-on-click="() => this.openGaps(mod)">
+                                    <i class="oi" data-icon="warning" title="Gaps"/> Gaps
+                                </button>
+                                <button t-if="this.state.assessmentId" type="button" class="btn btn-link" t-on-click="() => this.openModule(mod)">
+                                    <i class="oi" data-icon="edit" title="Answer"/> Answer
+                                </button>
+                            </footer>
+                        </article>
+                    </div>
+                </section>
+
+                <!-- ============================== Charts -->
+                <section class="o_azm_om_row_3">
+                    <div class="o_azm_card o_azm_donut_card">
+                        <header class="o_azm_card_header"><h3>Requirements by status</h3></header>
+                        <div class="o_azm_donut_layout">
+                            <AzmDonutChart data="this.d.charts.states" size="160" thickness="24"
+                                           centerLabel="this.donutStates" emptyLabel="this.donutEmpty"/>
+                            <ul class="o_azm_legend">
+                                <li t-foreach="this.stateBar" t-as="item" t-key="item.id" t-att-class="item.count ? '' : 'o_azm_legend_off'">
+                                    <span class="o_azm_dot" t-attf-style="background: {{item.color}}"/>
+                                    <span class="flex-grow-1" t-out="item.label"/>
+                                    <span class="o_azm_legend_count" t-out="item.count"/>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="o_azm_card">
+                        <header class="o_azm_card_header"><h3>Answer templates</h3></header>
+                        <div class="o_azm_om_bars">
+                            <div t-foreach="this.profileRows" t-as="row" t-key="row.key" class="o_azm_om_bar_row o_azm_fin_bar_row">
+                                <span><b t-out="row.key"/> · <t t-out="row.name"/></span>
+                                <span class="o_azm_om_bar"><span t-attf-style="width: {{row.width}}%; background: {{row.color}}"/></span>
+                                <b t-out="row.requirements"/>
+                                <small t-att-class="row.gaps ? 'text-warning fw-bold' : 'text-muted'" t-out="row.gaps + ' gaps'"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="o_azm_card">
+                        <header class="o_azm_card_header"><h3>Applies to</h3></header>
+                        <div class="o_azm_om_bars">
+                            <div t-foreach="this.scopeRows" t-as="row" t-key="row.key" class="o_azm_om_bar_row">
+                                <span t-out="row.name"/>
+                                <span class="o_azm_om_bar"><span t-attf-style="width: {{row.width}}%"/></span>
+                                <b t-out="row.requirements"/>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ============================== Entities + top gaps -->
+                <section class="o_azm_om_row_2">
+                    <div class="o_azm_card">
+                        <header class="o_azm_card_header">
+                            <h3>Entities</h3>
+                            <a href="#" t-on-click.prevent="() => this.openAssessments()">All financial assessments</a>
+                        </header>
+                        <div class="table-responsive">
+                            <table class="o_azm_table o_azm_om_table">
+                                <thead>
+                                    <tr>
+                                        <th>Entity</th>
+                                        <th>Status</th>
+                                        <th>Activities</th>
+                                        <th>Completion</th>
+                                        <th>Maturity</th>
+                                        <th>Gaps</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr t-foreach="this.entities" t-as="entity" t-key="entity.id" t-on-click="() => this.openEntity(entity)">
+                                        <td>
+                                            <span class="o_azm_entity_cell">
+                                                <img t-if="entity.logoUrl" t-att-src="entity.logoUrl" alt=""/>
+                                                <span t-else="" class="o_azm_code_avatar" t-out="entity.code.slice(0, 3)"/>
+                                                <span>
+                                                    <strong t-out="entity.name"/>
+                                                    <small t-if="entity.company" t-out="entity.company.name"/>
+                                                </span>
+                                            </span>
+                                        </td>
+                                        <td><span t-attf-class="o_azm_status o_azm_status_{{entity.statusClass}}" t-out="entity.statusLabel"/></td>
+                                        <td><small t-out="entity.scopes.join('، ') or '—'"/></td>
+                                        <td>
+                                            <span class="o_azm_mini_progress">
+                                                <span class="o_azm_progress"><span class="o_azm_progress_bar" t-attf-style="width: {{this.bar(entity.completion)}}%"/></span>
+                                                <span t-out="this.pct(entity.completion)"/>
+                                            </span>
+                                        </td>
+                                        <td t-out="this.pct(entity.maturity)"/>
+                                        <td t-att-class="{'text-warning fw-bold': entity.gaps}" t-out="entity.gaps or '—'"/>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="o_azm_card">
+                        <header class="o_azm_card_header">
+                            <h3>Top gaps</h3>
+                            <a href="#" t-on-click.prevent="() => this.openGaps(false)">View all</a>
+                        </header>
+                        <ul t-if="this.d.top_gaps.length" class="o_azm_list o_azm_om_risks">
+                            <li t-foreach="this.d.top_gaps" t-as="g" t-key="g.id" t-on-click="() => this.openGap(g)">
+                                <span class="o_azm_om_score o_mid" t-out="g.module_code"/>
+                                <span class="flex-grow-1">
+                                    <strong t-out="g.title"/>
+                                    <small><t t-out="g.code"/> · <t t-out="g.entity"/> · <t t-out="g.module"/></small>
+                                    <small class="o_azm_om_control" t-out="g.gap"/>
+                                </span>
+                            </li>
+                        </ul>
+                        <div t-else="" class="o_azm_empty">
+                            <i class="oi" data-icon="verified" title="No gaps"/>
+                            <strong>No gaps recorded</strong>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ============================== Assessments -->
+                <section class="o_azm_card">
+                    <header class="o_azm_card_header">
+                        <h3>Current Financial Assessments</h3>
+                        <a href="#" t-on-click.prevent="() => this.openAssessments(this.state.entityId)">Open list</a>
+                    </header>
+                    <div t-if="this.d.assessments.length" class="table-responsive">
+                        <table class="o_azm_table o_azm_om_table">
+                            <thead>
+                                <tr>
+                                    <th>Reference</th>
+                                    <th>Entity</th>
+                                    <th>State</th>
+                                    <th>Version</th>
+                                    <th>Completion</th>
+                                    <th>Fully applied</th>
+                                    <th>Partially</th>
+                                    <th>Not available</th>
+                                    <th>Not applicable</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="this.d.assessments" t-as="row" t-key="row.id" t-on-click="() => this.openAssessment(row)">
+                                    <td><strong t-out="row.name"/> <span t-if="row.is_demo" class="o_azm_om_chip_sm">Demo</span></td>
+                                    <td t-out="row.entity"/>
+                                    <td><span t-attf-class="o_azm_om_state o_azm_om_state_{{row.state}}" t-out="row.state_label"/></td>
+                                    <td t-out="'v' + row.version"/>
+                                    <td>
+                                        <span class="o_azm_mini_progress">
+                                            <span class="o_azm_progress"><span class="o_azm_progress_bar" t-attf-style="width: {{this.bar(row.completion)}}%"/></span>
+                                            <span t-out="this.pct(row.completion)"/>
+                                        </span>
+                                    </td>
+                                    <td t-out="row.full"/>
+                                    <td t-att-class="{'text-warning fw-bold': row.partial}" t-out="row.partial"/>
+                                    <td t-out="row.unavailable"/>
+                                    <td t-out="row.na"/>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div t-else="" class="o_azm_empty">
+                        <i class="oi" data-icon="assignment" title="No assessments"/>
+                        <strong>No financial assessment yet</strong>
+                        <small>Create one per entity, set its activities, then answer the applicable requirements.</small>
+                        <button type="button" class="btn btn-primary btn-sm mt-2" t-on-click="() => this.newAssessment()">New Financial Assessment</button>
+                    </div>
+                </section>
+            </t>
+        </div>
+    </t>
+
+</templates>

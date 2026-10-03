@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- The group reports in Egyptian pounds, which ships archived. -->
+    <record id="base.EGP" model="res.currency">
+        <field name="active" eval="True"/>
+    </record>
+</odoo>
