@@ -62,6 +62,8 @@ class AzmFinAnswer(models.Model):
                 "unit": question.unit or "",
                 "help": question.help_text or "",
                 "text_label": question.text_label or "",
+                # [{label, options}] — a column that lists its choices renders
+                # as a dropdown, one that does not stays a free-text cell.
                 "columns": question._columns(),
                 "options": [{"id": o.id, "name": o.name, "kind": o.kind}
                             for o in question.option_ids],

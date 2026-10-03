@@ -68,19 +68,36 @@ class TestAzmFinancialModel(TransactionCase):
 
     def test_follow_up_conditions_point_backwards(self):
         """A forward reference would never fire, and would do so silently."""
+
+        def leaves(condition):
+            """A gated follow-up keeps its own condition inside an "all"."""
+            if "all" in condition or "any" in condition:
+                for child in condition.get("all") or condition.get("any"):
+                    yield from leaves(child)
+            else:
+                yield condition
+
         conditioned = self.env["azm.fin.question"].search([("condition", "!=", False)])
-        self.assertEqual(len(conditioned), 519)
+        # 519 from the sheet, plus the gate put on every main and follow-up
+        # question that did not already carry one.
+        self.assertEqual(len(conditioned), 969)
         for question in conditioned:
-            condition = json.loads(question.condition)
-            trigger = question.requirement_id.question_ids.filtered(
-                lambda q: q.key == condition["field"])
-            self.assertTrue(trigger, f"{question.code}: trigger {condition['field']} missing")
-            self.assertLess(trigger.sequence, question.sequence, question.code)
-            self.assertEqual(trigger.qtype, "select",
-                             f"{question.code}: engine cannot match a list with 'in'")
-            offered = set(trigger.option_ids.mapped("name"))
-            self.assertFalse(set(condition["in"]) - offered,
-                             f"{question.code}: condition names options {trigger.key} never offers")
+            siblings = question.requirement_id.question_ids
+            for leaf in leaves(json.loads(question.condition)):
+                trigger = siblings.filtered(lambda q: q.key == leaf["field"])
+                self.assertTrue(trigger, f"{question.code}: trigger {leaf['field']} missing")
+                self.assertLess(trigger.sequence, question.sequence, question.code)
+                self.assertEqual(trigger.qtype, "select",
+                                 f"{question.code}: engine cannot match a list with 'in'")
+                offered = set(trigger.option_ids.mapped("name"))
+                self.assertFalse(set(leaf["in"]) - offered,
+                                 f"{question.code}: names options {trigger.key} never offers")
+
+    def test_the_gate_is_first_in_every_requirement(self):
+        """Every requirement asks «هل هذا مطبق؟» before anything else."""
+        firsts = self.env["azm.fin.question"].search([("sequence", "=", 1)])
+        self.assertEqual(len(firsts), 167)
+        self.assertEqual(set(firsts.mapped("role")), {"state"})
 
     def test_applicability_follows_activities(self):
         self.assertEqual(self.assessment.scope_ids, self.edu | self.work)
@@ -233,27 +250,31 @@ class TestAzmFinWorkspaceQuestions(TransactionCase):
     def _state_line(self):
         return self.line.qanswer_ids.filtered(lambda q: q.role == "state")[:1]
 
-    def test_conditional_questions_start_hidden(self):
-        """FIN-004's three trailing scales all hang off «الوضع الحالي»."""
-        self.assertEqual(self._keys(), ["Q001", "Q002", "Q003"])
+    def test_only_the_gate_is_asked_first(self):
+        """«هل هذا مطبق؟» comes first and nothing else is asked until it is
+        answered — the same gate procurement puts on a stage."""
+        self.assertEqual(self._keys(), ["Q003"])
+        self.assertEqual(self.line.qanswer_ids.filtered(
+            lambda q: q.sequence == 1).role, "state")
 
     def test_an_unknown_trigger_keeps_the_follow_ups_hidden(self):
         line = self._state_line()
         line.option_id = line.question_id.option_ids.filtered(lambda o: o.name == "لا أعرف").id
-        self.assertEqual(self._keys(), ["Q001", "Q002", "Q003"])
+        self.assertEqual(self._keys(), ["Q003"])
 
     def test_answering_the_trigger_reveals_them(self):
         line = self._state_line()
         line.option_id = line.question_id.option_ids.filtered(
             lambda o: o.name == "مطبق بالكامل").id
-        self.assertEqual(self._keys(), ["Q001", "Q002", "Q003", "Q004", "Q005", "Q006"])
+        # the gate first, then the requirement's own questions, then the scales
+        self.assertEqual(self._keys(), ["Q003", "Q001", "Q002", "Q004", "Q005", "Q006"])
         # and the flags are persisted, so counts and lists agree
         self.assertTrue(all(q.is_visible for q in self.line.qanswer_ids))
 
     def test_the_rpc_round_trip_reveals_the_follow_ups(self):
         data = self.assessment.workspace_data("FIN.GOV")
         req = next(r for r in data["requirements"] if r["code"] == "FIN-004")
-        self.assertEqual([q["key"] for q in req["questions"]], ["Q001", "Q002", "Q003"])
+        self.assertEqual([q["key"] for q in req["questions"]], ["Q003"])
 
         state = next(q for q in req["questions"] if q["role"] == "state")
         option = next(o for o in state["options"] if o["name"] == "مطبق بالكامل")
@@ -262,6 +283,17 @@ class TestAzmFinWorkspaceQuestions(TransactionCase):
         fresh = next(r for r in result["requirements"] if r["code"] == "FIN-004")
         self.assertEqual(len(fresh["questions"]), 6)
         self.assertEqual(fresh["state"], "full")
+
+    def test_a_table_column_offers_its_own_choices(self):
+        """A column that lists its choices in the sheet becomes a dropdown; one
+        that does not stays a free-text cell."""
+        question = self.env["azm.fin.question"].search(
+            [("qtype", "=", "table"), ("columns_json", "like", "options")], limit=1)
+        columns = question._columns()
+        self.assertTrue(columns, question.code)
+        self.assertTrue(all(isinstance(c, dict) and "label" in c for c in columns))
+        self.assertTrue(any(c.get("options") for c in columns),
+                        "no column offers a choice list")
 
     def test_an_option_from_another_question_is_refused(self):
         """The whole point: a question answers with its own options."""

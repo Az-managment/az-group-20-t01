@@ -34,6 +34,7 @@ export class AzmFinWorkspace extends Component {
             saving: false,
             openTables: {},
             showQuestion: {},
+            showHelp: {},
             detailsOpen: false,
         });
         this.timers = {};
@@ -165,6 +166,38 @@ export class AzmFinWorkspace extends Component {
     // ---------------------------------------------------------------------
     questionsOf(req) {
         return (req.questions || []).filter((q) => !["state", "impl"].includes(q.role));
+    }
+
+    // Same split as the procurement workspace: the real answers are chips,
+    // «لا أعرف» / «غير مدرج» / «لا يوجد» sit apart as soft chips.
+    mainOptions(question) {
+        return question.options.filter((o) => o.kind === "normal");
+    }
+
+    fallbackOptions(question) {
+        return question.options.filter((o) => o.kind !== "normal");
+    }
+
+    isAnswered(question) {
+        if (question.qtype === "multi") {
+            return question.option_ids.length > 0;
+        }
+        if (question.qtype === "number") {
+            return !!question.value_number;
+        }
+        if (question.qtype === "table") {
+            return question.table.length > 0;
+        }
+        return !!question.option_id;
+    }
+
+    toggleHelp(question) {
+        this.state.showHelp[question.line_id] = !this.state.showHelp[question.line_id];
+    }
+
+    pickQuestionSelect(req, question, ev) {
+        const id = parseInt(ev.target.value, 10);
+        this.answerQuestion(req, question, { option_id: id || false });
     }
 
     isPicked(question, option) {

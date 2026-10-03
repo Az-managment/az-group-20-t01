@@ -99,6 +99,12 @@ OPTION_KINDS = {
 
 OPTION_SEP = "/"
 CONDITION_RE = re.compile(r"يظهر\s+لو\s+(Q\d+)\s*=\s*(.+)", re.S)
+COLUMN_OPTIONS_RE = re.compile(r"^(?P<label>[^()]+?)\s*\((?P<opts>[^()]*[،,][^()]*)\)\s*$")
+CHOICE_SEP_RE = re.compile(r"[،,]")
+
+# The gate: a requirement's own questions are only asked once it is applied,
+# the same rule procurement uses for a stage (engine.APPLIED).
+GATE_APPLIED = ["مطبق بالكامل", "مطبق جزئيًا"]
 CONDITION_OR = " أو "
 
 
@@ -122,6 +128,25 @@ def parse_options(raw):
     return [part.strip() for part in raw.split(OPTION_SEP) if part.strip()]
 
 
+def parse_columns(raw):
+    """Split the table-columns cell into {label, options}.
+
+    A column may carry its own choices inline, e.g.
+    "الوجهة (داخل المدينة، محافظات أخرى، دول عربية)". Those become a dropdown;
+    a column with no list stays a free-text cell. Parentheses holding a single
+    phrase are a note, not a list, so they are left in the label.
+    """
+    columns = []
+    for part in parse_options(raw):
+        match = COLUMN_OPTIONS_RE.match(part)
+        if match:
+            choices = [c.strip() for c in CHOICE_SEP_RE.split(match.group("opts")) if c.strip()]
+            columns.append({"label": match.group("label").strip(), "options": choices})
+        else:
+            columns.append({"label": part, "options": None})
+    return columns
+
+
 def parse_condition(raw, local_by_label):
     """Turn 'يظهر لو Q004 = a أو b' into the engine's condition grammar.
 
@@ -136,6 +161,40 @@ def parse_condition(raw, local_by_label):
     trigger, tail = match.group(1), match.group(2)
     labels = [part.strip() for part in tail.split(CONDITION_OR) if part.strip()]
     return {"field": local_by_label.get(trigger, trigger), "in": labels}
+
+
+def apply_presence_gate(questions):
+    """Ask «هل هذا مطبق؟» first, then the requirement's own questions.
+
+    This is the procurement rule: a stage's `presence` question gates everything
+    else in that stage (engine.is_applied). The spreadsheet puts the main
+    question first and asks الوضع الحالي third, which cannot gate anything,
+    because the engine only ever sees the answers of EARLIER questions.
+
+    So الوضع الحالي is resequenced first and the requirement's own questions are
+    made conditional on it. The trailing scales keep the sheet's own conditions,
+    which deliberately include «غير منفذ» so a target design can still be
+    recorded for something that is not implemented yet.
+    """
+    by_requirement = defaultdict(list)
+    for question in questions:
+        by_requirement[question["requirement"]].append(question)
+
+    order = {"state": 0, "main": 1, "followup": 2, "impl": 3, "rule": 4, "target": 5}
+    for group in by_requirement.values():
+        group.sort(key=lambda q: (order.get(q["role"], 9), q["sequence"]))
+        for sequence, question in enumerate(group, 1):
+            question["sequence"] = sequence
+
+        gate = next((q for q in group if q["role"] == "state"), None)
+        if not gate:
+            continue
+        for question in group:
+            if question["role"] not in ("main", "followup"):
+                continue
+            gating = {"field": gate["key"], "in": list(GATE_APPLIED)}
+            question["condition"] = (
+                {"all": [gating, question["condition"]]} if question["condition"] else gating)
 
 
 def build(sheet_path):
@@ -186,7 +245,7 @@ def build(sheet_path):
             "label": cell(row, headers, C_QUESTION),
             "qtype": QTYPES.get(cell(row, headers, C_FORMAT), "select"),
             "unit": cell(row, headers, C_UNIT),
-            "columns": parse_options(cell(row, headers, C_COLUMNS)),
+            "columns": parse_columns(cell(row, headers, C_COLUMNS)),
             "help": cell(row, headers, C_EXPECTED),
             "text_label": cell(row, headers, C_TEXTBOX),
             "response_type": cell(row, headers, C_RESPONSE),
@@ -204,6 +263,7 @@ def build(sheet_path):
     # Conditions reference a sibling by its local Qnnn code, which is already the key.
     for question in questions:
         question["condition"] = parse_condition(question.pop("condition_src"), {})
+    apply_presence_gate(questions)
 
     opening = [{
         "node": cell(row, o_headers, C_NODE),
@@ -246,6 +306,17 @@ def build(sheet_path):
     }
 
 
+def condition_leaves(condition):
+    """Yield the simple {field, in} clauses inside a possibly nested condition."""
+    if not condition:
+        return
+    if "all" in condition or "any" in condition:
+        for child in condition.get("all") or condition.get("any"):
+            yield from condition_leaves(child)
+    else:
+        yield condition
+
+
 def validate(cat):
     """Every rule here exists because breaking it ships a wrong questionnaire."""
     errors = []
@@ -286,29 +357,29 @@ def validate(cat):
         if question["role"] in ("main", "followup") and tuple(names) in generic:
             errors.append(f"{code}: {question['role']} question carries a standard scale")
 
-        condition = question["condition"]
-        if not condition:
-            continue
-        if "__unparsed__" in condition:
-            errors.append(f"{code}: cannot parse condition {condition['__unparsed__']!r}")
+        if not question["condition"]:
             continue
         siblings = {q["key"]: q for q in by_req[question["requirement"]]}
-        trigger = siblings.get(condition["field"])
-        if not trigger:
-            errors.append(f"{code}: condition points at missing question {condition['field']}")
-            continue
-        if trigger["sequence"] >= question["sequence"]:
-            errors.append(
-                f"{code}: trigger {trigger['key']} does not sort before it; the engine "
-                "only sees answers of earlier questions")
-        if trigger["qtype"] == "multi":
-            errors.append(
-                f"{code}: trigger {trigger['key']} is multi-select; engine.condition() "
-                "cannot match a list with 'in'")
-        known = {o["name"] for o in trigger["options"]}
-        unknown = [label for label in condition["in"] if label not in known]
-        if unknown:
-            errors.append(f"{code}: condition labels not offered by {trigger['key']}: {unknown}")
+        for leaf in condition_leaves(question["condition"]):
+            if "__unparsed__" in leaf:
+                errors.append(f"{code}: cannot parse condition {leaf['__unparsed__']!r}")
+                continue
+            trigger = siblings.get(leaf["field"])
+            if not trigger:
+                errors.append(f"{code}: condition points at missing question {leaf['field']}")
+                continue
+            if trigger["sequence"] >= question["sequence"]:
+                errors.append(
+                    f"{code}: trigger {trigger['key']} does not sort before it; the engine "
+                    "only sees answers of earlier questions")
+            if trigger["qtype"] == "multi":
+                errors.append(
+                    f"{code}: trigger {trigger['key']} is multi-select; engine.condition() "
+                    "cannot match a list with 'in'")
+            known = {o["name"] for o in trigger["options"]}
+            unknown = [label for label in leaf.get("in", []) if label not in known]
+            if unknown:
+                errors.append(f"{code}: condition labels not offered by {trigger['key']}: {unknown}")
 
     codes = [q["code"] for q in cat["questions"]]
     if len(codes) != len(set(codes)):

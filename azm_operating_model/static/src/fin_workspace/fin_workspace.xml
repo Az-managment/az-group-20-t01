@@ -100,61 +100,103 @@
                                         </t>
                                     </div>
 
-                                    <!-- Questionnaire: the requirement's own questions and
-                                         the trailing scales, with follow-ups resolved server-side. -->
+                                    <!-- Questionnaire. Same shape as the procurement workspace:
+                                         a card per question, real answers as chips, «لا أعرف» and
+                                         «غير مدرج» apart as soft chips, a dropdown once the list
+                                         gets long. Follow-ups are resolved server-side. -->
                                     <t t-set="questions" t-value="this.questionsOf(r)"/>
                                     <div t-if="questions.length" class="o_azm_fin_questions">
                                         <t t-foreach="questions" t-as="q" t-key="q.line_id">
-                                            <div t-attf-class="o_azm_fin_question o_azm_fin_q_{{q.role}}">
-                                                <div class="o_azm_fin_qhead">
-                                                    <span class="o_azm_fin_qkey" t-out="q.key"/>
-                                                    <span class="o_azm_fin_qlabel" t-out="q.label"/>
+                                            <div t-attf-class="o_azm_q o_azm_fin_q_{{q.role}} {{this.isAnswered(q) ? 'o_azm_q_done' : ''}}">
+                                                <div class="o_azm_q_head">
+                                                    <span class="o_azm_q_label" t-out="q.label"/>
+                                                    <span class="o_azm_code" t-out="q.key"/>
+                                                    <button t-if="q.help" class="btn btn-link btn-sm p-0"
+                                                            t-on-click="() => this.toggleHelp(q)">؟</button>
                                                 </div>
-                                                <div t-if="q.help" class="o_azm_muted o_azm_fin_qhelp" t-out="q.help"/>
+                                                <p t-if="this.state.showHelp[q.line_id]" class="o_azm_muted" t-out="q.help"/>
 
-                                                <div t-if="['select', 'multi'].includes(q.qtype)" class="o_azm_chips">
-                                                    <t t-foreach="q.options" t-as="opt" t-key="opt.id">
-                                                        <button t-attf-class="o_azm_chip {{q.qtype === 'multi' ? 'o_azm_chip_multi' : ''}} {{this.isPicked(q, opt) ? 'o_azm_chip_on' : ''}} {{opt.kind !== 'normal' ? 'o_azm_chip_soft' : ''}}"
-                                                                t-att-disabled="d.header.readonly"
-                                                                t-on-click="() => this.pickQuestionOption(r, q, opt)"
-                                                                t-out="opt.name"/>
-                                                    </t>
-                                                </div>
+                                                <t t-if="q.qtype === 'number'">
+                                                    <div class="o_azm_select_row">
+                                                        <input type="number" class="form-control o_azm_number"
+                                                               t-att-value="q.value_number || ''"
+                                                               t-att-disabled="d.header.readonly"
+                                                               t-on-change="(ev) => this.onQuestionNumber(r, q, ev)"/>
+                                                        <span class="o_azm_muted" t-out="q.unit"/>
+                                                    </div>
+                                                </t>
 
-                                                <div t-if="q.qtype === 'number'" class="o_azm_fin_row">
-                                                    <input type="number" class="form-control form-control-sm o_azm_fin_qnumber"
-                                                           t-att-value="q.value_number" t-att-readonly="d.header.readonly"
-                                                           t-on-change="(ev) => this.onQuestionNumber(r, q, ev)"/>
-                                                    <span class="o_azm_muted" t-out="q.unit"/>
-                                                </div>
-
-                                                <div t-if="q.qtype === 'table' and q.columns.length" class="o_azm_fin_qtable">
-                                                    <table class="table table-sm">
-                                                        <thead>
-                                                            <tr>
-                                                                <th t-foreach="q.columns" t-as="col" t-key="col_index" t-out="col"/>
-                                                                <th class="o_azm_fin_qtable_act"/>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            <t t-foreach="this.questionRows(q)" t-as="row" t-key="row_index">
+                                                <t t-elif="q.qtype === 'table'">
+                                                    <div class="o_azm_fin_qtable">
+                                                        <table class="table table-sm">
+                                                            <thead>
                                                                 <tr>
-                                                                    <td t-foreach="q.columns" t-as="col" t-key="col_index">
-                                                                        <input class="form-control form-control-sm"
-                                                                               t-att-value="row[col_index]" t-att-readonly="d.header.readonly"
-                                                                               t-on-change="(ev) => this.onQuestionCell(r, q, row_index, col_index, ev)"/>
-                                                                    </td>
-                                                                    <td class="o_azm_fin_qtable_act">
-                                                                        <button class="btn btn-link btn-sm text-danger p-0" t-if="!d.header.readonly"
-                                                                                t-on-click="() => this.removeQuestionRow(r, q, row_index)">×</button>
-                                                                    </td>
+                                                                    <th t-foreach="q.columns" t-as="col" t-key="col_index" t-out="col.label"/>
+                                                                    <th class="o_azm_fin_qtable_act"/>
                                                                 </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                <t t-foreach="this.questionRows(q)" t-as="row" t-key="row_index">
+                                                                    <tr>
+                                                                        <td t-foreach="q.columns" t-as="col" t-key="col_index">
+                                                                            <!-- a column that lists its choices is a dropdown,
+                                                                                 one that does not stays free text -->
+                                                                            <select t-if="col.options" class="form-select form-select-sm"
+                                                                                    t-att-disabled="d.header.readonly"
+                                                                                    t-on-change="(ev) => this.onQuestionCell(r, q, row_index, col_index, ev)">
+                                                                                <option value="">—</option>
+                                                                                <t t-foreach="col.options" t-as="opt" t-key="opt_index">
+                                                                                    <option t-att-value="opt" t-att-selected="row[col_index] === opt" t-out="opt"/>
+                                                                                </t>
+                                                                            </select>
+                                                                            <input t-else="" class="form-control form-control-sm"
+                                                                                   t-att-value="row[col_index]" t-att-readonly="d.header.readonly"
+                                                                                   t-on-change="(ev) => this.onQuestionCell(r, q, row_index, col_index, ev)"/>
+                                                                        </td>
+                                                                        <td class="o_azm_fin_qtable_act">
+                                                                            <button class="btn btn-link btn-sm text-danger p-0" t-if="!d.header.readonly"
+                                                                                    t-on-click="() => this.removeQuestionRow(r, q, row_index)">×</button>
+                                                                        </td>
+                                                                    </tr>
+                                                                </t>
+                                                            </tbody>
+                                                        </table>
+                                                        <button class="btn btn-link btn-sm p-0" t-if="!d.header.readonly"
+                                                                t-on-click="() => this.addQuestionRow(r, q)">+ صف</button>
+                                                    </div>
+                                                </t>
+
+                                                <t t-elif="q.qtype === 'select' and this.mainOptions(q).length > 9">
+                                                    <div class="o_azm_select_row">
+                                                        <select class="form-select o_azm_select" t-att-disabled="d.header.readonly"
+                                                                t-on-change="(ev) => this.pickQuestionSelect(r, q, ev)">
+                                                            <option value="" t-att-selected="!q.option_id">اختار…</option>
+                                                            <t t-foreach="this.mainOptions(q)" t-as="opt" t-key="opt.id">
+                                                                <option t-att-value="opt.id" t-att-selected="q.option_id === opt.id" t-out="opt.name"/>
                                                             </t>
-                                                        </tbody>
-                                                    </table>
-                                                    <button class="btn btn-link btn-sm p-0" t-if="!d.header.readonly"
-                                                            t-on-click="() => this.addQuestionRow(r, q)">+ صف</button>
-                                                </div>
+                                                        </select>
+                                                        <t t-foreach="this.fallbackOptions(q)" t-as="opt" t-key="opt.id">
+                                                            <button t-attf-class="o_azm_chip o_azm_chip_soft {{this.isPicked(q, opt) ? 'o_azm_chip_on' : ''}}"
+                                                                    t-att-disabled="d.header.readonly"
+                                                                    t-on-click="() => this.pickQuestionOption(r, q, opt)" t-out="opt.name"/>
+                                                        </t>
+                                                    </div>
+                                                </t>
+
+                                                <t t-else="">
+                                                    <div class="o_azm_chips">
+                                                        <t t-foreach="this.mainOptions(q)" t-as="opt" t-key="opt.id">
+                                                            <button t-attf-class="o_azm_chip {{this.isPicked(q, opt) ? 'o_azm_chip_on' : ''}} {{q.qtype === 'multi' ? 'o_azm_chip_multi' : ''}}"
+                                                                    t-att-disabled="d.header.readonly"
+                                                                    t-on-click="() => this.pickQuestionOption(r, q, opt)" t-out="opt.name"/>
+                                                        </t>
+                                                        <t t-foreach="this.fallbackOptions(q)" t-as="opt" t-key="opt.id">
+                                                            <button t-attf-class="o_azm_chip o_azm_chip_soft {{this.isPicked(q, opt) ? 'o_azm_chip_on' : ''}}"
+                                                                    t-att-disabled="d.header.readonly"
+                                                                    t-on-click="() => this.pickQuestionOption(r, q, opt)" t-out="opt.name"/>
+                                                        </t>
+                                                    </div>
+                                                </t>
                                             </div>
                                         </t>
                                     </div>
