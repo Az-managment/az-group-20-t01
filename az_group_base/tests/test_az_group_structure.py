@@ -1,9 +1,14 @@
+import os
+from unittest.mock import patch
+
 from odoo.tests import TransactionCase
 
 from odoo.addons.az_group_base.hooks import (
     CHART_TEMPLATE,
+    DEV_STAFF,
     ENTITY_COMPANIES,
     JOURNAL_CODES,
+    _load_dev_staff,
     post_init_hook,
 )
 
@@ -132,6 +137,46 @@ class TestAzGroupStructure(TransactionCase):
         admin = self.env.ref('base.user_admin')
         for entity in self.entities:
             self.assertIn(entity, admin.company_ids)
+
+    def test_dev_staff_is_scoped_to_its_entities(self):
+        if os.environ.get('ODOO_STAGE') != 'dev':
+            self.skipTest("the demo staff is only created on development builds")
+        Users = self.env['res.users'].with_context(active_test=False)
+        for login, _name, _password, company_xml_ids, *_groups in DEV_STAFF:
+            user = Users.search([('login', '=', login)], limit=1)
+            self.assertTrue(user, f"{login} was not created")
+            if company_xml_ids is None:
+                expected = set(self.entities.ids)
+            else:
+                expected = {
+                    self.env.ref(f'az_group_base.{xml_id}').id
+                    for xml_id in company_xml_ids
+                }
+            self.assertEqual(
+                set(user.company_ids.ids), expected,
+                f"{login} does not see exactly the entities it was given",
+            )
+
+    def test_demo_staff_never_leaves_a_development_build(self):
+        """The throwaway logins must not be created on staging or production.
+
+        Renaming a user and checking the rename survives proves the hook
+        returned before writing anything, which a plain user count would not:
+        the logins already exist here, so running the hook would quietly reset
+        their passwords instead of adding a row.
+        """
+        Users = self.env['res.users'].with_context(active_test=False)
+        user = Users.search([('login', '=', DEV_STAFF[0][0])], limit=1)
+        if not user:
+            self.skipTest("the demo staff is only created on development builds")
+        user.name = "Renamed By Test"
+        for stage in ('staging', 'production'):
+            with patch.dict(os.environ, {'ODOO_STAGE': stage}):
+                _load_dev_staff(self.env, self.entities)
+            self.assertEqual(
+                user.name, "Renamed By Test",
+                f"a {stage} build must leave the demo logins alone",
+            )
 
     def test_post_init_hook_is_idempotent(self):
         companies_before = self.env['res.company'].search_count([])

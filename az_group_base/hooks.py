@@ -1,4 +1,5 @@
 import logging
+import os
 
 from odoo import Command, SUPERUSER_ID
 from odoo.exceptions import UserError
@@ -43,6 +44,40 @@ JOURNAL_CODES = [
 ]
 
 
+# Demo staff of the group, created on development builds only. The passwords
+# are throwaway and live in the repository, so these logins must never reach a
+# staging or a production database: _load_dev_staff checks ODOO_STAGE first.
+# login, display name, password, company xml ids (None means every entity),
+# groups the module depends on, groups it only uses when they are installed.
+DEV_STAFF = [
+    ('fue.staff', "Mona Hassan (FUE Accountant)", 'FueStaff#2026',
+     ['company_future_univ'],
+     ['base.group_user', 'account.group_account_user'],
+     ['azm_platform.group_azm_user', 'azm_operating_model.azm_group_user']),
+    ('mce.staff', "Omar Fathy (Malvern Accountant)", 'MceStaff#2026',
+     ['company_malvern'],
+     ['base.group_user', 'account.group_account_user'],
+     ['azm_platform.group_azm_user', 'azm_operating_model.azm_group_user']),
+    ('fue.azm', "Sara Adel (FUE Preparer)", 'FueAzm#2026',
+     ['company_future_univ'],
+     ['base.group_user'],
+     ['azm_platform.group_azm_user', 'azm_operating_model.azm_group_user']),
+    ('group.admin', "Khaled Nabil (Group Admin)", 'GroupAdmin#2026',
+     None,
+     ['base.group_user', 'account.group_account_manager'],
+     ['azm_platform.group_azm_manager', 'azm_operating_model.azm_group_manager']),
+]
+
+# A couple of posted invoices per entity, so that the separation between the
+# entities is visible rather than theoretical.
+DEV_INVOICES = [
+    ('company_future_univ', "Nour Ibrahim", 45000.0, "FUE Tuition - Spring"),
+    ('company_future_univ', "Yassin Tarek", 38000.0, "FUE Tuition - Spring"),
+    ('company_malvern', "Laila Samir", 92000.0, "Malvern Term Fees"),
+    ('company_malvern', "Adam Sherif", 88000.0, "Malvern Term Fees"),
+]
+
+
 def post_init_hook(env):
     """Create the entity companies, each with its own chart and journals."""
     companies = env['res.company']
@@ -54,6 +89,7 @@ def post_init_hook(env):
     _grant_entities(env, companies)
     _retire_main_company(env, companies)
     _activate_arabic(env)
+    _load_dev_staff(env, companies)
 
 
 def _ensure_company(env, spec):
@@ -176,6 +212,94 @@ def _retire_main_company(env, companies):
     if main.active:
         main.active = False
         _logger.info("Archived %s", main.name)
+
+
+def _load_dev_staff(env, companies):
+    """Create the demo staff of the group, on development builds only.
+
+    Odoo.sh sets ODOO_STAGE to dev, staging or production, and these logins
+    carry throwaway passwords kept in the repository, so they have no business
+    existing anywhere but a development build.
+
+    Demo data would be the usual home for them, but demo files are loaded
+    before post_init_hook runs, so the companies they belong to do not exist
+    yet at that point, and a build created without demo data would skip them
+    altogether.
+    """
+    stage = os.environ.get('ODOO_STAGE')
+    if stage != 'dev':
+        _logger.info("ODOO_STAGE is %s, not dev: skipping the demo staff", stage or "unset")
+        return
+    if not companies:
+        return
+    Users = env['res.users'].with_context(active_test=False, no_reset_password=True)
+    by_xml_id = {xml_id: company for (xml_id, *_rest), company in zip(ENTITY_COMPANIES, companies)}
+    for login, name, password, company_xml_ids, groups, optional_groups in DEV_STAFF:
+        allowed = companies if company_xml_ids is None else env['res.company'].browse([
+            by_xml_id[xml_id].id for xml_id in company_xml_ids if xml_id in by_xml_id
+        ])
+        if not allowed:
+            continue
+        group_ids = [env.ref(xml_id).id for xml_id in groups]
+        for xml_id in optional_groups:
+            group = env.ref(xml_id, raise_if_not_found=False)
+            if group:
+                group_ids.append(group.id)
+        values = {
+            'name': name,
+            'login': login,
+            'password': password,
+            'company_id': allowed[0].id,
+            'company_ids': [Command.set(allowed.ids)],
+            'group_ids': [Command.set(group_ids)],
+            'tour_enabled': False,
+        }
+        user = Users.search([('login', '=', login)], limit=1)
+        if user:
+            user.write(values)
+        else:
+            user = Users.create(values)
+        # The operating model assigns its work per entity, not per company.
+        if 'azm.entity' in env:
+            entities = env['azm.entity'].sudo().search([('company_id', 'in', allowed.ids)])
+            entities.write({'user_ids': [Command.link(user.id)]})
+    _logger.info("Created %s demo users on this development build", len(DEV_STAFF))
+    _load_dev_invoices(env, by_xml_id)
+
+
+def _load_dev_invoices(env, by_xml_id):
+    """Post a couple of customer invoices in two of the entities."""
+    Move = env['account.move']
+    for company_xml_id, customer, amount, label in DEV_INVOICES:
+        company = by_xml_id.get(company_xml_id)
+        if not company:
+            continue
+        partner = env['res.partner'].search([('name', '=', customer)], limit=1)
+        if not partner:
+            partner = env['res.partner'].create({'name': customer, 'company_id': False})
+        if Move.search_count([('company_id', '=', company.id), ('partner_id', '=', partner.id)]):
+            continue
+        journal = env['account.journal'].search([
+            ('company_id', '=', company.id), ('type', '=', 'sale'),
+        ], limit=1)
+        account = env['account.account'].search([
+            ('company_ids', 'in', company.id), ('account_type', '=', 'income'),
+        ], limit=1)
+        if not journal or not account:
+            continue
+        move = Move.with_company(company).create({
+            'move_type': 'out_invoice',
+            'partner_id': partner.id,
+            'journal_id': journal.id,
+            'invoice_date': '2026-03-01',
+            'invoice_line_ids': [Command.create({
+                'name': label,
+                'quantity': 1,
+                'price_unit': amount,
+                'account_id': account.id,
+            })],
+        })
+        move.action_post()
 
 
 def _activate_arabic(env):
