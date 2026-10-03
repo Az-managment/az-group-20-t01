@@ -109,6 +109,17 @@ $azm-ok: #2f8a4c;
     margin-bottom: 14px;
     > h4 { font-size: 13px; color: $azm-brand; font-weight: 700; margin: 10px 0 2px; }
 }
+.o_azm_workspace {
+    // Typed-in fields read as black on white regardless of the theme.
+    .form-control, .form-select {
+        background-color: #fff;
+        color: $azm-ink;
+        &::placeholder { color: #9aa3ab; opacity: 1; }
+        &:focus { background-color: #fff; color: $azm-ink; }
+        &[readonly], &:disabled { background-color: #f1f5f6; color: $azm-muted; }
+    }
+}
+
 .o_azm_q {
     padding: 12px 0; border-bottom: 1px dashed $azm-line;
     &:last-child { border-bottom: 0; }

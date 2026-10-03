@@ -106,6 +106,7 @@
                                          gets long. Follow-ups are resolved server-side. -->
                                     <t t-set="questions" t-value="this.questionsOf(r)"/>
                                     <div t-if="questions.length" class="o_azm_fin_questions">
+                                        <h5>أسئلة المتطلب</h5>
                                         <t t-foreach="questions" t-as="q" t-key="q.line_id">
                                             <div t-attf-class="o_azm_q o_azm_fin_q_{{q.role}} {{this.isAnswered(q) ? 'o_azm_q_done' : ''}}">
                                                 <div class="o_azm_q_head">
@@ -118,17 +119,17 @@
 
                                                 <t t-if="q.qtype === 'number'">
                                                     <div class="o_azm_select_row">
-                                                        <input type="number" class="form-control o_azm_number"
+                                                        <input type="number" class="form-control form-control-sm o_azm_number"
                                                                t-att-value="q.value_number || ''"
                                                                t-att-disabled="d.header.readonly"
                                                                t-on-change="(ev) => this.onQuestionNumber(r, q, ev)"/>
-                                                        <span class="o_azm_muted" t-out="q.unit"/>
+                                                        <span class="o_azm_fin_qunit" t-out="q.unit"/>
                                                     </div>
                                                 </t>
 
                                                 <t t-elif="q.qtype === 'table'">
-                                                    <div class="o_azm_fin_qtable">
-                                                        <table class="table table-sm">
+                                                    <div class="o_azm_fin_schema o_azm_fin_tablewrap">
+                                                        <table class="table table-sm o_azm_fin_edit">
                                                             <thead>
                                                                 <tr>
                                                                     <th t-foreach="q.columns" t-as="col" t-key="col_index" t-out="col.label"/>

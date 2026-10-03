@@ -6,8 +6,19 @@ $fin-slate: #6886a8;
 $fin-mute: #9aa3ab;
 $fin-bad: #c0392b;
 $fin-muted: #5b7380;
+$fin-ink: #17323d;
 
 .o_azm_fin_ws {
+    // Anything you type into reads as black on white, whatever the surrounding
+    // theme does; read-only cells are greyed so they are obviously not editable.
+    .form-control, .form-select {
+        background-color: #fff;
+        color: $fin-ink;
+        &::placeholder { color: #9aa3ab; opacity: 1; }
+        &:focus { background-color: #fff; color: $fin-ink; }
+        &[readonly], &:disabled { background-color: #f1f5f6; color: $fin-muted; }
+    }
+
     .o_azm_fin_idx { width: auto; min-width: 38px; padding: 0 5px; border-radius: 8px; font: 700 10.5px/26px ui-monospace, SFMono-Regular, Menlo, monospace; }
     .o_azm_fin_showall { display: flex; gap: 6px; align-items: center; font-size: 11.5px; color: $fin-muted; padding: 2px 6px 8px; }
     .o_azm_fin_counter { display: inline-flex; gap: 4px; align-items: center;
@@ -32,15 +43,52 @@ $fin-muted: #5b7380;
     .o_azm_fin_tabletoggle, .o_azm_fin_evidence { align-self: flex-start; text-decoration: none; font-weight: 600; }
     .o_azm_fin_schema { border: 1px solid #e1e8ec; border-radius: 10px; padding: 8px; background: #fbfcfd; }
     .o_azm_fin_tablewrap { overflow-x: auto; }
-    .o_azm_fin_edit { min-width: 640px; margin: 0;
-        th { white-space: nowrap; font-size: 11.5px; }
-        td { padding: 4px; }
-        .form-control, .form-select { font-size: 12px; min-width: 100px; } }
+    .o_azm_fin_edit { min-width: 640px; margin: 0; border-collapse: separate; border-spacing: 0;
+        th { white-space: nowrap; font-size: 11.5px; font-weight: 700; color: $fin-muted;
+             background: #f2f6f7; border-bottom: 1px solid #e1e8ec; padding: 6px 8px;
+             position: sticky; top: 0; z-index: 1; }
+        td { padding: 5px 6px; vertical-align: middle; border-bottom: 1px solid #eef3f5; }
+        tbody tr:last-child td { border-bottom: 0; }
+        tbody tr:nth-child(even) td { background: #fafcfd; }
+        .form-control, .form-select { font-size: 12px; min-width: 110px; } }
     .o_azm_fin_fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;
         label { display: flex; flex-direction: column; gap: 3px; margin: 0; font-size: 12px; } }
     .o_azm_fin_branch { align-items: center; .o_azm_fin_reveal { font-size: 12px; flex-basis: 100%; } }
     .o_azm_fin_adv { margin-top: 8px; font-size: 12.5px;
         .o_azm_fin_advlist { margin: 6px 0 0; padding-inline-start: 20px; li { margin-bottom: 6px; } } }
+
+    // The questionnaire. .o_azm_q, .o_azm_chip, .o_azm_select_row and friends
+    // come from the procurement workspace; only the wrapper, the gate accent
+    // and the per-question table are added here.
+    .o_azm_fin_questions {
+        margin: 10px 0 4px;
+        padding: 2px 14px 6px;
+        background: #fbfcfd;
+        border: 1px solid #e1e8ec;
+        border-radius: 12px;
+
+        > h5 {
+            font-size: 12px;
+            font-weight: 700;
+            color: $fin-slate;
+            margin: 10px 0 2px;
+        }
+
+        .o_azm_q_label { font-size: 13.5px; }
+        .o_azm_code { font-size: 10.5px; color: $fin-mute; white-space: nowrap; }
+
+        // «هل هذا مطبق؟» gates the rest of the requirement, so it reads as a
+        // heading rather than as one question among many.
+        .o_azm_fin_q_state {
+            border-inline-start-color: rgba($fin-slate, .5);
+            .o_azm_q_label { font-weight: 700; }
+        }
+        .o_azm_fin_q_state, .o_azm_fin_q_impl,
+        .o_azm_fin_q_rule, .o_azm_fin_q_target { .o_azm_q_label { color: $fin-muted; } }
+
+        .o_azm_fin_qunit { font-size: 12px; color: $fin-muted; }
+        .o_azm_fin_qtable_act { width: 26px; }
+    }
 }
 
 // ---------------------------------------------------------------- model map (form tab)
@@ -65,55 +113,3 @@ $fin-muted: #5b7380;
     td { padding: 7px 9px; border-bottom: 1px solid #e1e8ec; vertical-align: top; } }
 .o_azm_fin_bar { display: inline-block; width: 90px; height: 6px; border-radius: 99px; background: #e5ebf1; vertical-align: middle; overflow: hidden;
     span { display: block; height: 100%; background: #1f5f73; border-radius: 99px; } }
-
-// Questionnaire inside a requirement card
-.o_azm_fin_questions {
-    margin: 10px 0 4px;
-    border-inline-start: 2px solid #e2e8f0;
-    padding-inline-start: 12px;
-
-    .o_azm_fin_question {
-        margin-bottom: 12px;
-    }
-
-    .o_azm_fin_qhead {
-        display: flex;
-        gap: 8px;
-        align-items: baseline;
-        margin-bottom: 4px;
-    }
-
-    .o_azm_fin_qkey {
-        flex: 0 0 auto;
-        font-size: 11px;
-        font-weight: 700;
-        color: #94a3b8;
-    }
-
-    .o_azm_fin_qlabel {
-        font-size: 13px;
-        font-weight: 600;
-    }
-
-    .o_azm_fin_qhelp {
-        font-size: 12px;
-        margin-bottom: 4px;
-    }
-
-    .o_azm_fin_qnumber {
-        max-width: 140px;
-    }
-
-    .o_azm_fin_qtable {
-        overflow-x: auto;
-    }
-
-    .o_azm_fin_qtable_act {
-        width: 28px;
-    }
-
-    .o_azm_chip_soft {
-        opacity: .75;
-        font-style: italic;
-    }
-}

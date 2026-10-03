@@ -102,6 +102,19 @@ CONDITION_RE = re.compile(r"يظهر\s+لو\s+(Q\d+)\s*=\s*(.+)", re.S)
 COLUMN_OPTIONS_RE = re.compile(r"^(?P<label>[^()]+?)\s*\((?P<opts>[^()]*[،,][^()]*)\)\s*$")
 CHOICE_SEP_RE = re.compile(r"[،,]")
 
+# Wording corrections applied at import, each with the reason it exists. The
+# spreadsheet stays the source of truth: a fix is keyed on the exact text it
+# replaces, so once the sheet is corrected upstream the entry stops matching and
+# is reported as stale rather than silently rewriting something else.
+LABEL_FIXES = {
+    # Asks WHO owns the lock, but offers HOW it is enforced
+    # ("في النظام بالصلاحيات / تعليمات فقط"). Reworded to match its options.
+    "FIN-078/Q001": (
+        "من يملك قفل الفترة وإعادة فتحها واعتماد قيد بعد الإقفال؟",
+        "كيف يُضبط قفل الفترة وإعادة فتحها واعتماد قيد بعد الإقفال؟",
+    ),
+}
+
 # The gate: a requirement's own questions are only asked once it is applied,
 # the same rule procurement uses for a stage (engine.APPLIED).
 GATE_APPLIED = ["مطبق بالكامل", "مطبق جزئيًا"]
@@ -161,6 +174,22 @@ def parse_condition(raw, local_by_label):
     trigger, tail = match.group(1), match.group(2)
     labels = [part.strip() for part in tail.split(CONDITION_OR) if part.strip()]
     return {"field": local_by_label.get(trigger, trigger), "in": labels}
+
+
+def apply_label_fixes(questions):
+    """Apply the wording corrections, and say so for each one."""
+    by_code = {q["code"]: q for q in questions}
+    for code, (old, new) in LABEL_FIXES.items():
+        question = by_code.get(code)
+        if not question:
+            print(f"  stale fix: {code} is no longer in the sheet", file=sys.stderr)
+        elif question["label"] == old:
+            question["label"] = new
+            print(f"  reworded {code}")
+        elif question["label"] == new:
+            print(f"  fix no longer needed, the sheet already says it: {code}", file=sys.stderr)
+        else:
+            print(f"  stale fix: {code} now reads {question['label']!r}", file=sys.stderr)
 
 
 def apply_presence_gate(questions):
@@ -263,6 +292,7 @@ def build(sheet_path):
     # Conditions reference a sibling by its local Qnnn code, which is already the key.
     for question in questions:
         question["condition"] = parse_condition(question.pop("condition_src"), {})
+    apply_label_fixes(questions)
     apply_presence_gate(questions)
 
     opening = [{
