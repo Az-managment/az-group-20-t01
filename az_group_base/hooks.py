@@ -52,6 +52,7 @@ def post_init_hook(env):
         _load_chart_template(env, company)
         _code_entity_journals(env, company)
     _grant_entities(env, companies)
+    _retire_main_company(env, companies)
     _activate_arabic(env)
 
 
@@ -151,6 +152,30 @@ def _grant_entities(env, companies):
         return
     admin.write({'company_ids': [Command.link(company.id) for company in companies]})
     _logger.info("Granted %s entities to %s", len(companies), admin.login)
+
+
+def _retire_main_company(env, companies):
+    """Take the database's main company out of the way, without deleting it.
+
+    The group runs on its own entities, so My Company has no place in the
+    company switcher. It is archived rather than deleted: base.main_company is
+    reached by ref= from the data files of base and of many other modules, so a
+    database missing it breaks the next module install or update, and
+    __system__ has to keep a company to sit on (see _grant_entities).
+    """
+    main = env.ref('base.main_company', raise_if_not_found=False)
+    if not main or not companies:
+        return
+    admin = env.ref('base.user_admin', raise_if_not_found=False)
+    if admin and admin.id != SUPERUSER_ID:
+        # Command.unlink drops the membership only; the company itself stays.
+        admin.write({
+            'company_id': companies[0].id,
+            'company_ids': [Command.unlink(main.id)],
+        })
+    if main.active:
+        main.active = False
+        _logger.info("Archived %s", main.name)
 
 
 def _activate_arabic(env):

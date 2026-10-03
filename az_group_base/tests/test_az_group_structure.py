@@ -106,17 +106,27 @@ class TestAzGroupStructure(TransactionCase):
         self.assertFalse(self.env.ref('az_group_base.company_az_group', raise_if_not_found=False))
         self.assertFalse(self.env['res.company'].search([('name', '=', "AZ Group")]))
 
-    def test_the_main_company_is_left_alone(self):
-        """The main company is what keeps account's late chart load harmless.
+    def test_the_main_company_is_archived_not_deleted(self):
+        """My Company leaves the switcher but stays in the database.
 
+        base.main_company is reached by ref= from the data files of base and of
+        many other modules, so a database missing it breaks the next module
+        install or update. It also keeps account's late chart load harmless:
         account installs the chart it guessed while l10n_eg was loading on
         env.company, the default company of __system__, once every module is
         loaded. Should that be an entity, the load runs over that entity's own
         chart and deletes its accounting records.
         """
         main = self.env.ref('base.main_company')
-        self.assertTrue(main.active)
-        self.assertNotIn(self.env.ref('base.user_root').company_id, self.entities)
+        self.assertFalse(main.active, "My Company must be archived, not active")
+        self.assertEqual(self.env.ref('base.user_root').company_id, main)
+        self.assertNotIn(main, self.env.ref('base.user_admin').company_ids)
+        self.assertNotIn(main, self.entities)
+
+    def test_the_administrator_works_in_an_entity(self):
+        admin = self.env.ref('base.user_admin')
+        self.assertIn(admin.company_id, self.entities)
+        self.assertNotIn(self.env.ref('base.main_company'), admin.company_ids)
 
     def test_the_administrator_can_reach_every_entity(self):
         admin = self.env.ref('base.user_admin')
