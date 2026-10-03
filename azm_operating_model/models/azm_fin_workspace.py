@@ -15,7 +15,7 @@ import json
 from odoo import api, models
 from odoo.exceptions import UserError
 
-from . import engine
+from . import engine, fin_engine
 
 
 class AzmFinAnswer(models.Model):
@@ -64,7 +64,7 @@ class AzmFinAnswer(models.Model):
                 "text_label": question.text_label or "",
                 # [{label, options}] — a column that lists its choices renders
                 # as a dropdown, one that does not stays a free-text cell.
-                "columns": question._columns(),
+                "columns": fin_engine.typed_columns(question._columns()),
                 "options": [{"id": o.id, "name": o.name, "kind": o.kind}
                             for o in question.option_ids],
                 "option_id": line.option_id.id or False,
@@ -80,6 +80,16 @@ class AzmFinAnswer(models.Model):
         if not light:
             data["questions"] = self._question_dicts()
         return data
+
+
+class AzmFinRequirement(models.Model):
+    _inherit = "azm.fin.requirement"
+
+    def _schema(self):
+        """Same schema, with the widget each column should use."""
+        schema = super()._schema()
+        schema["columns"] = fin_engine.typed_columns(schema.get("columns"))
+        return schema
 
 
 class AzmFinQAnswer(models.Model):

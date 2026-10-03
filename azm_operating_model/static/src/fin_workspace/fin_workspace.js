@@ -35,7 +35,6 @@ export class AzmFinWorkspace extends Component {
             openTables: {},
             showQuestion: {},
             showHelp: {},
-            detailsOpen: false,
         });
         this.timers = {};
         onWillStart(() => this.load());
@@ -56,7 +55,6 @@ export class AzmFinWorkspace extends Component {
         this.state.data = data;
         this.state.moduleCode = data.module.code;
         this.state.output = markup(data.output);
-        this.state.detailsOpen = false;
         if (this.focusCode) {
             const req = data.requirements.find((r) => r.code === this.focusCode);
             if (req) {
@@ -334,10 +332,6 @@ export class AzmFinWorkspace extends Component {
         this.state.showQuestion[req.answer_id] = !this.state.showQuestion[req.answer_id];
     }
 
-    toggleDetails() {
-        this.state.detailsOpen = !this.state.detailsOpen;
-    }
-
     toggleShowAll() {
         this.state.showAll = !this.state.showAll;
         this.load();
@@ -358,14 +352,6 @@ export class AzmFinWorkspace extends Component {
         this.actionService.doAction({
             type: "ir.actions.act_window", res_model: MODEL, res_id: this.assessmentId, views: [[false, "form"]],
         });
-    }
-
-    openEvidence(req) {
-        this.flushAll();
-        this.actionService.doAction({
-            type: "ir.actions.act_window", res_model: "azm.fin.answer", res_id: req.answer_id,
-            views: [[false, "form"]], target: "new", name: req.title,
-        }, { onClose: () => this.load() });
     }
 
     // ------------------------------------------------------------ view helpers
@@ -398,15 +384,6 @@ export class AzmFinWorkspace extends Component {
 
     isTextNeeded(req) {
         return { full: "current", partial: "gap", unavailable: "future", na: "reason" }[req.state];
-    }
-
-    detailShape(shape) {
-        return (shape || "")
-            .replace("multi:", "متعدد: ")
-            .replace("select:", "اختيار: ")
-            .replace("table:", "جدول: ")
-            .replace("states", "الحالات الأربع")
-            .replace("files", "رفع ملفات");
     }
 }
 

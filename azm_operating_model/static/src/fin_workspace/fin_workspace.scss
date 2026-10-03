@@ -40,23 +40,30 @@ $fin-ink: #17323d;
     .o_azm_fin_text { display: flex; flex-direction: column; gap: 4px; margin: 0;
         textarea { font-size: 13.5px; }
         &.o_flag textarea { border-color: rgba($fin-warn, .6); background: rgba($fin-warn, .05); } }
-    .o_azm_fin_tabletoggle, .o_azm_fin_evidence { align-self: flex-start; text-decoration: none; font-weight: 600; }
-    .o_azm_fin_schema { border: 1px solid #e1e8ec; border-radius: 10px; padding: 8px; background: #fbfcfd; }
+    .o_azm_fin_tabletoggle { align-self: flex-start; text-decoration: none; font-weight: 600; }
+    .o_azm_fin_schema { border: 1px solid #e1e8ec; border-radius: 12px; padding: 10px; background: #fbfcfd;
+        box-shadow: inset 0 1px 0 #fff; }
     .o_azm_fin_tablewrap { overflow-x: auto; }
     .o_azm_fin_edit { min-width: 640px; margin: 0; border-collapse: separate; border-spacing: 0;
-        th { white-space: nowrap; font-size: 11.5px; font-weight: 700; color: $fin-muted;
-             background: #f2f6f7; border-bottom: 1px solid #e1e8ec; padding: 6px 8px;
-             position: sticky; top: 0; z-index: 1; }
-        td { padding: 5px 6px; vertical-align: middle; border-bottom: 1px solid #eef3f5; }
+        th { white-space: nowrap; font-size: 11px; font-weight: 700; letter-spacing: .02em;
+             color: $fin-muted; background: #eef3f5; border: 0; border-bottom: 1px solid #e1e8ec;
+             padding: 7px 8px; position: sticky; top: 0; z-index: 1;
+             &:first-child { border-start-start-radius: 8px; }
+             &:last-child { border-start-end-radius: 8px; } }
+        td { padding: 4px 6px; vertical-align: middle; border: 0; border-bottom: 1px solid #eef3f5; }
         tbody tr:last-child td { border-bottom: 0; }
-        tbody tr:nth-child(even) td { background: #fafcfd; }
-        .form-control, .form-select { font-size: 12px; min-width: 110px; } }
+        tbody tr:hover td { background: #f4f9fb; }
+        // the row stays quiet; the field you are typing in is the white one
+        .form-control, .form-select { font-size: 12.5px; min-width: 110px; border-radius: 7px;
+            border-color: #dde6ea; padding: 4px 8px;
+            &:focus { border-color: $fin-slate; box-shadow: 0 0 0 .18rem rgba($fin-slate, .18); } }
+        input[type="date"] { min-width: 140px; }
+        .o_azm_fin_rowdel { opacity: 0; transition: opacity .12s; }
+        tbody tr:hover .o_azm_fin_rowdel { opacity: 1; } }
+
     .o_azm_fin_fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;
         label { display: flex; flex-direction: column; gap: 3px; margin: 0; font-size: 12px; } }
     .o_azm_fin_branch { align-items: center; .o_azm_fin_reveal { font-size: 12px; flex-basis: 100%; } }
-    .o_azm_fin_adv { margin-top: 8px; font-size: 12.5px;
-        .o_azm_fin_advlist { margin: 6px 0 0; padding-inline-start: 20px; li { margin-bottom: 6px; } } }
-
     // The questionnaire. .o_azm_q, .o_azm_chip, .o_azm_select_row and friends
     // come from the procurement workspace; only the wrapper, the gate accent
     // and the per-question table are added here.
@@ -88,6 +95,9 @@ $fin-ink: #17323d;
 
         .o_azm_fin_qunit { font-size: 12px; color: $fin-muted; }
         .o_azm_fin_qtable_act { width: 26px; }
+        .o_azm_fin_addrow { width: 100%; margin-top: 6px; border: 1px dashed #cfdbe1; border-radius: 8px;
+            background: transparent; color: $fin-slate; font-size: 12px; font-weight: 600; padding: 5px;
+            &:hover { background: #f1f7f9; border-color: $fin-slate; } }
     }
 }
 

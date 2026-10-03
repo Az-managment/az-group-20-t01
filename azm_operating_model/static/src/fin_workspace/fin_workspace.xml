@@ -150,20 +150,24 @@
                                                                                     <option t-att-value="opt" t-att-selected="row[col_index] === opt" t-out="opt"/>
                                                                                 </t>
                                                                             </select>
+                                                                            <input t-elif="col.type === 'date'" type="date" class="form-control form-control-sm"
+                                                                                   t-att-value="row[col_index]" t-att-readonly="d.header.readonly"
+                                                                                   t-on-change="(ev) => this.onQuestionCell(r, q, row_index, col_index, ev)"/>
                                                                             <input t-else="" class="form-control form-control-sm"
                                                                                    t-att-value="row[col_index]" t-att-readonly="d.header.readonly"
                                                                                    t-on-change="(ev) => this.onQuestionCell(r, q, row_index, col_index, ev)"/>
                                                                         </td>
                                                                         <td class="o_azm_fin_qtable_act">
-                                                                            <button class="btn btn-link btn-sm text-danger p-0" t-if="!d.header.readonly"
+                                                                            <button class="btn btn-link btn-sm text-danger p-0 o_azm_fin_rowdel" t-if="!d.header.readonly"
+                                                                                    title="حذف الصف"
                                                                                     t-on-click="() => this.removeQuestionRow(r, q, row_index)">×</button>
                                                                         </td>
                                                                     </tr>
                                                                 </t>
                                                             </tbody>
                                                         </table>
-                                                        <button class="btn btn-link btn-sm p-0" t-if="!d.header.readonly"
-                                                                t-on-click="() => this.addQuestionRow(r, q)">+ صف</button>
+                                                        <button class="o_azm_fin_addrow" t-if="!d.header.readonly"
+                                                                t-on-click="() => this.addQuestionRow(r, q)">+ إضافة صف</button>
                                                         <!-- a table question still offers «لا يوجد» / «لا أعرف»,
                                                              so nobody is forced to fill a grid that does not apply -->
                                                         <div t-if="this.fallbackOptions(q).length" class="o_azm_chips">
@@ -265,6 +269,9 @@
                                                                     <option t-att-value="opt" t-att-selected="rows[0][col_index] === opt" t-out="opt"/>
                                                                 </t>
                                                             </select>
+                                                            <input t-elif="col.type === 'date'" type="date" class="form-control form-control-sm"
+                                                                   t-att-value="rows[0][col_index]" t-att-readonly="d.header.readonly"
+                                                                   t-on-change="(ev) => this.onCell(r, 0, col_index, ev)"/>
                                                             <input t-else="" class="form-control form-control-sm" t-att-readonly="d.header.readonly"
                                                                    t-att-value="rows[0][col_index]" t-on-input="(ev) => this.onCell(r, 0, col_index, ev)"/>
                                                         </label>
@@ -288,6 +295,9 @@
                                                                                     <option t-att-value="opt" t-att-selected="row[col_index] === opt" t-out="opt"/>
                                                                                 </t>
                                                                             </select>
+                                                                            <input t-elif="col.type === 'date'" type="date" class="form-control form-control-sm"
+                                                                                   t-att-value="row[col_index]" t-att-readonly="d.header.readonly"
+                                                                                   t-on-change="(ev) => this.onCell(r, row_index, col_index, ev)"/>
                                                                             <input t-else="" class="form-control form-control-sm" t-att-readonly="d.header.readonly"
                                                                                    t-att-value="row[col_index]" t-on-input="(ev) => this.onCell(r, row_index, col_index, ev)"/>
                                                                         </td>
@@ -318,25 +328,8 @@
                                             </div>
                                         </t>
 
-                                        <button t-if="['full', 'partial'].includes(r.state)" class="btn btn-link btn-sm p-0 o_azm_fin_evidence"
-                                                t-on-click="() => this.openEvidence(r)">
-                                            📎 المصدر والدليل<t t-if="r.attachments"> (<t t-out="r.attachments"/>)</t>
-                                        </button>
                                     </div>
 
-                                    <!-- documented detailed questions -->
-                                    <div t-if="r.has_details and d.details.length" class="o_azm_fin_adv">
-                                        <button class="btn btn-link btn-sm p-0" t-on-click="() => this.toggleDetails()">
-                                            <t t-if="this.state.detailsOpen">▾</t><t t-else="">◂</t>
-                                            أسئلة العهد التفصيلية الموثّقة (<t t-out="d.details.length"/>)
-                                        </button>
-                                        <ol t-if="this.state.detailsOpen" class="o_azm_fin_advlist">
-                                            <li t-foreach="d.details" t-as="q" t-key="q.code">
-                                                <span class="o_azm_code" t-out="q.code"/> <b t-out="q.question"/>
-                                                <div class="o_azm_muted"><t t-out="this.detailShape(q.shape)"/><t t-if="q.rule"> · <t t-out="q.rule"/></t></div>
-                                            </li>
-                                        </ol>
-                                    </div>
                                 </div>
                             </t>
                         </div>

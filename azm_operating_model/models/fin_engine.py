@@ -10,6 +10,7 @@ item   = {"code", "title", "question", "profile", "profile_name", "scope_name", 
           "columns", "branch_defs", "done"}
 """
 
+import re
 from html import escape
 
 STATE_LABELS = {
@@ -43,6 +44,29 @@ DOC_CODES = {"book": "CS-FIN", "rules": "CS-POL", "workflow": "CS-WF", "authorit
              "reports": "CS-RPT", "integration": "CS-INT", "gaps": "CS-GAP", "future": "CS-TOM",
              "na": "CS-NA", "coverage": "CS-COV"}
 ROLE_COLUMNS = ("المنشئ", "المنفّذ", "المراجع", "المعتمد")
+
+
+# A grid cell is typed from its column: a listed column is a dropdown, a date
+# column gets a date picker, everything else stays free text. «التاريخ/الفترة»
+# deliberately stays text, because it also accepts a period such as "الربع الأول",
+# which a date picker could not express.
+DATE_LABEL_RE = re.compile(r"تاريخ|موعد|مهلة")
+PERIOD_LABEL_RE = re.compile(r"فترة")
+
+
+def column_type(label, options):
+    if options:
+        return "select"
+    label = label or ""
+    if DATE_LABEL_RE.search(label) and not PERIOD_LABEL_RE.search(label):
+        return "date"
+    return "text"
+
+
+def typed_columns(columns):
+    """Return the columns with the widget each one should use."""
+    return [dict(column, type=column_type(column.get("label"), column.get("options")))
+            for column in (columns or [])]
 
 
 def _e(text):
