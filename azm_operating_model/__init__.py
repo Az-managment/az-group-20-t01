@@ -7,3 +7,4 @@ def _azm_post_init(env):
     # unified financial model (النموذج المالي الموحد)
     env["azm.fin.module"]._load_catalogue()
     env["azm.entity"]._azm_fin_default_scopes()
+    env["res.users.settings"]._azm_apply_light_theme()
