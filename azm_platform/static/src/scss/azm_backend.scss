@@ -33,6 +33,16 @@ body.o_azm_mode.o_azm_sidebar_collapsed {
     padding-left: $azm-sidebar-collapsed;
 }
 
+// The client action root is also the action manager's .o_action, and the web
+// client styles it with `.o_web_client > .o_action_manager > .o_action`, which
+// forces display:flex and overflow:hidden. That outranks the single-class
+// rules of the pages below, so their content is clipped and the page cannot be
+// scrolled. Take the root back on a selector that outranks it.
+.o_web_client > .o_action_manager > .o_action.o_azm_dashboard {
+    display: block;
+    overflow: auto;
+}
+
 .o_azm_sidebar {
     position: fixed;
     top: 0;
