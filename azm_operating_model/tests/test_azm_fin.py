@@ -494,3 +494,45 @@ class TestAzmFinOutputs(TransactionCase):
         self.assertEqual(operation["type"], "suggest")
         for expected in ("قيد يومية", "طلب شراء", "سند صرف", "كشف رواتب"):
             self.assertIn(expected, operation["suggestions"])
+
+    def test_each_output_shows_only_its_own_template(self):
+        """A tab that leaks another template's requirements is showing the
+        reader a document that is not the one it claims to be."""
+        import re
+        from odoo.addons.azm_operating_model.models import fin_engine
+        assessment = self.env["azm.fin.assessment"].search([], limit=1)
+        if not assessment:
+            self.skipTest("no financial assessment in this database")
+        profile_of = {r.code: r.profile
+                      for r in self.env["azm.fin.requirement"].search([])}
+        for tab, profiles in fin_engine.TAB_PROFILES.items():
+            html = assessment.workspace_output(False, tab, "model") or ""
+            shown = set(re.findall(r"\b((?:FIN|HRF)-\d{3})\b", html))
+            stray = {c for c in shown if profile_of.get(c) not in profiles}
+            self.assertFalse(stray, f"{tab} shows requirements of another template: {sorted(stray)}")
+
+    def test_an_output_shows_every_applicable_requirement(self):
+        """Anything applicable and answered must reach its document; a silently
+        dropped requirement is worse than an empty one."""
+        import re
+        from odoo.addons.azm_operating_model.models import fin_engine
+        assessment = self.env["azm.fin.assessment"].search([], limit=1)
+        if not assessment:
+            self.skipTest("no financial assessment in this database")
+        for tab, profiles in fin_engine.TAB_PROFILES.items():
+            html = assessment.workspace_output(False, tab, "model") or ""
+            shown = len(set(re.findall(r"\b((?:FIN|HRF)-\d{3})\b", html)))
+            applicable = len(assessment.answer_ids.filtered(
+                lambda a: a.profile in profiles and a.applicable))
+            self.assertEqual(shown, applicable, f"{tab} renders {shown} of {applicable}")
+
+    def test_every_output_is_well_formed(self):
+        import xml.etree.ElementTree as ET
+        from odoo.addons.azm_operating_model.models import fin_engine
+        assessment = self.env["azm.fin.assessment"].search([], limit=1)
+        if not assessment:
+            self.skipTest("no financial assessment in this database")
+        for tab, _title in fin_engine.OUTPUT_TABS:
+            html = assessment.workspace_output(False, tab, "model") or ""
+            self.assertTrue(html.strip(), f"{tab} renders nothing")
+            ET.fromstring(f"<root>{html}</root>")   # raises if the markup is broken
