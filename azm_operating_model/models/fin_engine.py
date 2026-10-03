@@ -77,13 +77,39 @@ COLUMN_VOCABULARY = {
 }
 
 
+# Columns that answer with a recognisable vocabulary but must stay open, because
+# the cell holds real content a fixed list could not express: a formula, a named
+# source, the wording of an exception. These render as a text box WITH a
+# dropdown of suggestions, so the list is offered and anything else is still
+# typeable.
+COLUMN_SUGGESTIONS = {
+    # the shape is already a list in «أساس الحساب»; this cell holds the formula
+    "المعادلة أو الشرائح": [
+        "نسبة ثابتة", "شرائح تصاعدية", "شرائح تنازلية", "معادلة مركّبة",
+        "مبلغ مقطوع", "جدول مرجعي",
+    ],
+    "المصدر": ["النظام", "ملف Excel", "إدخال يدوي", "تكامل مع نظام آخر", "جهة خارجية"],
+    "الاستثناء": ["لا يوجد", "بموافقة المدير المالي", "بموافقة الإدارة العليا", "حسب السياسة"],
+    "التفويض": ["مسموح", "غير مسموح", "مسموح بحدود"],
+    "التعارض": ["لا يوجد", "يوجد ومقبول برقابة بديلة", "يوجد ويحتاج معالجة"],
+    "الجهة المستفيدة": [
+        "الإدارة المالية", "الإدارة العليا", "مجلس الإدارة", "جهة رقابية",
+        "جهة حكومية", "المراجع الخارجي",
+    ],
+}
+
+
 def typed_columns(columns):
     """Return the columns with the widget each one should use."""
     typed = []
     for column in columns or []:
         label = (column.get("label") or "").strip()
         options = column.get("options") or COLUMN_VOCABULARY.get(label)
-        typed.append(dict(column, options=options, type=column_type(label, options)))
+        kind = column_type(label, options)
+        suggestions = None
+        if kind == "text" and label in COLUMN_SUGGESTIONS:
+            kind, suggestions = "suggest", COLUMN_SUGGESTIONS[label]
+        typed.append(dict(column, options=options, suggestions=suggestions, type=kind))
     return typed
 
 

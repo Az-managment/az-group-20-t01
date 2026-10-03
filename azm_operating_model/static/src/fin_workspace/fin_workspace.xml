@@ -136,8 +136,8 @@
                                                             <thead>
                                                                 <tr>
                                                                     <th t-foreach="q.columns" t-as="col" t-key="col_index"
-                                                                        t-att-title="col.options ? col.options.join(' · ') : false">
-                                                                        <t t-out="col.label"/><span t-if="col.options" class="o_azm_fin_haslist">▾</span>
+                                                                        t-att-title="(col.options or col.suggestions) ? (col.options or col.suggestions).join(' · ') : false">
+                                                                        <t t-out="col.label"/><span t-if="col.options or col.suggestions" class="o_azm_fin_haslist">▾</span>
                                                                     </th>
                                                                     <th class="o_azm_fin_qtable_act"/>
                                                                 </tr>
@@ -159,6 +159,14 @@
                                                                             <input t-elif="col.type === 'date'" type="date" class="form-control form-control-sm"
                                                                                    t-att-value="row[col_index]" t-att-readonly="d.header.readonly"
                                                                                    t-on-change="(ev) => this.onQuestionCell(r, q, row_index, col_index, ev)"/>
+                                                                            <t t-elif="col.type === 'suggest'">
+                                                                                <input class="form-control form-control-sm" t-att-list="'azmsug' + col_index + '_' + row_index"
+                                                                                       t-att-value="row[col_index]" t-att-readonly="d.header.readonly"
+                                                                                       t-on-change="(ev) => this.onQuestionCell(r, q, row_index, col_index, ev)"/>
+                                                                                <datalist t-att-id="'azmsug' + col_index + '_' + row_index">
+                                                                                    <option t-foreach="col.suggestions" t-as="sug" t-key="sug_index" t-att-value="sug"/>
+                                                                                </datalist>
+                                                                            </t>
                                                                             <input t-else="" class="form-control form-control-sm"
                                                                                    t-att-value="row[col_index]" t-att-readonly="d.header.readonly"
                                                                                    t-on-change="(ev) => this.onQuestionCell(r, q, row_index, col_index, ev)"/>
@@ -284,6 +292,14 @@
                                                             <input t-elif="col.type === 'date'" type="date" class="form-control form-control-sm"
                                                                    t-att-value="rows[0][col_index]" t-att-readonly="d.header.readonly"
                                                                    t-on-change="(ev) => this.onCell(r, 0, col_index, ev)"/>
+                                                            <t t-elif="col.type === 'suggest'">
+                                                                <input class="form-control form-control-sm" t-att-list="'azmsugf' + col_index"
+                                                                       t-att-value="rows[0][col_index]" t-att-readonly="d.header.readonly"
+                                                                       t-on-change="(ev) => this.onCell(r, 0, col_index, ev)"/>
+                                                                <datalist t-att-id="'azmsugf' + col_index">
+                                                                    <option t-foreach="col.suggestions" t-as="sug" t-key="sug_index" t-att-value="sug"/>
+                                                                </datalist>
+                                                            </t>
                                                             <input t-else="" class="form-control form-control-sm" t-att-readonly="d.header.readonly"
                                                                    t-att-value="rows[0][col_index]" t-on-input="(ev) => this.onCell(r, 0, col_index, ev)"/>
                                                         </label>
@@ -294,8 +310,8 @@
                                                         <table class="o_azm_table o_azm_fin_edit">
                                                             <thead><tr>
                                                                 <t t-foreach="r.schema.columns" t-as="col" t-key="col_index">
-                                                                    <th t-att-title="col.options ? col.options.join(' · ') : false">
-                                                                        <t t-out="col.label"/><span t-if="col.options" class="o_azm_fin_haslist">▾</span>
+                                                                    <th t-att-title="(col.options or col.suggestions) ? (col.options or col.suggestions).join(' · ') : false">
+                                                                        <t t-out="col.label"/><span t-if="col.options or col.suggestions" class="o_azm_fin_haslist">▾</span>
                                                                     </th>
                                                                 </t>
                                                                 <th t-if="!d.header.readonly"/>
@@ -314,6 +330,14 @@
                                                                             <input t-elif="col.type === 'date'" type="date" class="form-control form-control-sm"
                                                                                    t-att-value="row[col_index]" t-att-readonly="d.header.readonly"
                                                                                    t-on-change="(ev) => this.onCell(r, row_index, col_index, ev)"/>
+                                                                            <t t-elif="col.type === 'suggest'">
+                                                                                <input class="form-control form-control-sm" t-att-list="'azmsug' + col_index + '_' + row_index"
+                                                                                       t-att-value="row[col_index]" t-att-readonly="d.header.readonly"
+                                                                                       t-on-change="(ev) => this.onCell(r, row_index, col_index, ev)"/>
+                                                                                <datalist t-att-id="'azmsug' + col_index + '_' + row_index">
+                                                                                    <option t-foreach="col.suggestions" t-as="sug" t-key="sug_index" t-att-value="sug"/>
+                                                                                </datalist>
+                                                                            </t>
                                                                             <input t-else="" class="form-control form-control-sm" t-att-readonly="d.header.readonly"
                                                                                    t-att-value="row[col_index]" t-on-input="(ev) => this.onCell(r, row_index, col_index, ev)"/>
                                                                         </td>

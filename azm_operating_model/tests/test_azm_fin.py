@@ -386,3 +386,21 @@ class TestAzmFinGridColumns(TransactionCase):
         self.assertEqual(fin_engine.column_type("تاريخ السريان", None), "date")
         # an enumerated column stays a dropdown even if its label says موعد
         self.assertEqual(fin_engine.column_type("موعد الانسحاب", ["نعم", "لا"]), "select")
+
+    def test_an_open_column_still_offers_suggestions(self):
+        """«المعادلة أو الشرائح» holds the real formula, so it must stay
+        typeable; it offers a list of shapes rather than replacing the text."""
+        columns = self.env["azm.fin.requirement"].search(
+            [("profile", "=", "C")], limit=1)._schema()["columns"]
+        formula = next(c for c in columns if c["label"] == "المعادلة أو الشرائح")
+        self.assertEqual(formula["type"], "suggest")
+        self.assertIn("شرائح تصاعدية", formula["suggestions"])
+        self.assertFalse(formula["options"], "a suggestion column must not be a closed list")
+
+    def test_the_component_column_stays_free(self):
+        """«المكوّن» names the thing being calculated; it is different in every
+        rule, so a list would be wrong."""
+        columns = self.env["azm.fin.requirement"].search(
+            [("profile", "=", "C")], limit=1)._schema()["columns"]
+        component = next(c for c in columns if c["label"] == "المكوّن")
+        self.assertEqual(component["type"], "text")
