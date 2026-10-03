@@ -1,6 +1,6 @@
 {
     'name': "AZ Group Companies",
-    'version': '20.0.2.1.0',
+    'version': '20.0.2.2.0',
     'author': "AZ Group",
     'summary': "AZ Group entities as independent companies, Egyptian localization and per-entity journals",
     'description': """

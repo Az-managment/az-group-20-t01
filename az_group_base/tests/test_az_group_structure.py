@@ -111,8 +111,8 @@ class TestAzGroupStructure(TransactionCase):
         self.assertFalse(self.env.ref('az_group_base.company_az_group', raise_if_not_found=False))
         self.assertFalse(self.env['res.company'].search([('name', '=', "AZ Group")]))
 
-    def test_the_main_company_is_archived_not_deleted(self):
-        """My Company leaves the switcher but stays in the database.
+    def test_the_main_company_is_out_of_the_way_but_alive(self):
+        """My Company leaves the switcher, stays in the database, stays active.
 
         base.main_company is reached by ref= from the data files of base and of
         many other modules, so a database missing it breaks the next module
@@ -121,12 +121,25 @@ class TestAzGroupStructure(TransactionCase):
         env.company, the default company of __system__, once every module is
         loaded. Should that be an entity, the load runs over that entity's own
         chart and deletes its accounting records.
+
+        It stays active because __system__ sits on it: an inactive default
+        company makes every user created in that user's name fail the
+        constraint that company_id is one of company_ids.
         """
         main = self.env.ref('base.main_company')
-        self.assertFalse(main.active, "My Company must be archived, not active")
+        self.assertTrue(main.active, "__system__ would default to a dead company")
         self.assertEqual(self.env.ref('base.user_root').company_id, main)
         self.assertNotIn(main, self.env.ref('base.user_admin').company_ids)
         self.assertNotIn(main, self.entities)
+
+    def test_a_user_can_be_created_in_the_name_of_system(self):
+        """Regression: archiving My Company broke every superuser user create."""
+        user = self.env['res.users'].with_user(self.env.ref('base.user_root')).create({
+            'name': "Created By System",
+            'login': 'created.by.system',
+        })
+        self.assertTrue(user.company_id.active)
+        self.assertIn(user.company_id, user.company_ids)
 
     def test_the_administrator_works_in_an_entity(self):
         admin = self.env.ref('base.user_admin')

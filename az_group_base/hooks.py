@@ -191,13 +191,22 @@ def _grant_entities(env, companies):
 
 
 def _retire_main_company(env, companies):
-    """Take the database's main company out of the way, without deleting it.
+    """Take the database's main company out of the way of the real users.
 
     The group runs on its own entities, so My Company has no place in the
-    company switcher. It is archived rather than deleted: base.main_company is
-    reached by ref= from the data files of base and of many other modules, so a
-    database missing it breaks the next module install or update, and
-    __system__ has to keep a company to sit on (see _grant_entities).
+    company switcher. Dropping it from the company_ids of the users is what
+    removes it: the switcher and the company list only ever offer the
+    companies a user is allowed on, so it stops existing as far as they are
+    concerned.
+
+    It is neither deleted nor archived. base.main_company is reached by ref=
+    from the data files of base and of many other modules, so a database
+    missing it breaks the next module install or update. And __system__ keeps
+    it as its default company (see _grant_entities), so archiving it leaves
+    that user pointing at an inactive company: every user then created in its
+    name -- an invite, a signup, a test -- takes it as a default company_id
+    that is missing from company_ids, and fails the constraint that the two
+    agree.
     """
     main = env.ref('base.main_company', raise_if_not_found=False)
     if not main or not companies:
@@ -209,9 +218,7 @@ def _retire_main_company(env, companies):
             'company_id': companies[0].id,
             'company_ids': [Command.unlink(main.id)],
         })
-    if main.active:
-        main.active = False
-        _logger.info("Archived %s", main.name)
+        _logger.info("Took %s away from %s", main.name, admin.login)
 
 
 def _load_dev_staff(env, companies):
@@ -259,12 +266,40 @@ def _load_dev_staff(env, companies):
             user.write(values)
         else:
             user = Users.create(values)
-        # The operating model assigns its work per entity, not per company.
-        if 'azm.entity' in env:
-            entities = env['azm.entity'].sudo().search([('company_id', 'in', allowed.ids)])
-            entities.write({'user_ids': [Command.link(user.id)]})
     _logger.info("Created %s demo users on this development build", len(DEV_STAFF))
     _load_dev_invoices(env, by_xml_id)
+    finish_dev_staff(env)
+
+
+def finish_dev_staff(env):
+    """Finish wiring the development staff once the operating model is there.
+
+    az_group_base installs before azm_operating_model and azm_platform: they
+    depend on it, so it cannot depend on them, and neither the AZM groups nor
+    the AZM entities exist yet while _load_dev_staff runs. The platform calls
+    this from its own hook, by which time they do.
+    """
+    if os.environ.get('ODOO_STAGE') != 'dev':
+        return
+    Users = env['res.users'].with_context(active_test=False)
+    Entity = env['azm.entity'].sudo() if 'azm.entity' in env else None
+    for login, _name, _password, _company_xml_ids, _groups, optional_groups in DEV_STAFF:
+        user = Users.search([('login', '=', login)], limit=1)
+        if not user:
+            continue
+        groups = [
+            group for group in (
+                env.ref(xml_id, raise_if_not_found=False) for xml_id in optional_groups
+            ) if group
+        ]
+        if groups:
+            user.write({'group_ids': [Command.link(group.id) for group in groups]})
+        if Entity is None:
+            continue
+        # The operating model assigns its work per entity, not per company.
+        entities = Entity.search([('company_id', 'in', user.company_ids.ids)])
+        if entities:
+            entities.write({'user_ids': [Command.link(user.id)]})
 
 
 def _load_dev_invoices(env, by_xml_id):
