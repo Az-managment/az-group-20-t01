@@ -104,10 +104,60 @@ class TestAzmAccess(TransactionCase):
         finally:
             request_var.reset(token)
 
-    def test_light_theme(self):
+    def test_the_served_theme_follows_the_browser(self):
+        """Regression: forcing the served theme reloaded the page for ever.
+
+        web_enterprise settles the theme on both sides. The browser computes
+        it in ColorSchemePlugin from the user's preference, falling back to the
+        operating system when that preference reads "system", writes the answer
+        into the color_scheme cookie and reloads if it had to change it. The
+        server reads that same cookie back. Answering "light" whatever the
+        cookie said made the two disagree on a machine set to dark: the browser
+        wrote "dark" and reloaded, the next response set "light" again, and the
+        page reloaded for as long as it was left open.
+        """
         IrHttp = self.env["ir.http"]
-        # A request asking for dark mode: AZM still serves its pages light.
-        with self._bound_request(color_scheme="dark"):
-            self.assertEqual(IrHttp.color_scheme(), "light")
-            self.env["ir.config_parameter"].sudo().set_bool("azm.allow_dark_theme", True)
-            self.assertEqual(IrHttp.color_scheme(), "dark")   # back to Odoo's own choice
+        settings = self.env["res.users.settings"]._find_or_create_for_user(self.env.user)
+        settings.color_scheme = "system"
+        for asked in ("dark", "light"):
+            with self._bound_request(color_scheme=asked):
+                self.assertEqual(
+                    IrHttp.color_scheme(), asked,
+                    "the server has to agree with the theme the browser settled on",
+                )
+
+    def test_a_chosen_theme_is_served_whatever_the_cookie_says(self):
+        """A real preference wins on both sides, so the two cannot disagree."""
+        IrHttp = self.env["ir.http"]
+        settings = self.env["res.users.settings"]._find_or_create_for_user(self.env.user)
+        for preference in ("light", "dark"):
+            settings.color_scheme = preference
+            for stale_cookie in ("light", "dark"):
+                with self._bound_request(color_scheme=stale_cookie):
+                    self.assertEqual(IrHttp.color_scheme(), preference)
+
+    def test_a_user_starts_on_the_light_theme(self):
+        """AZM pages are designed light, so that is where a user starts."""
+        Settings = self.env["res.users.settings"]
+        ICP = self.env["ir.config_parameter"].sudo()
+        ICP.set_bool("azm.allow_dark_theme", False)
+        self.assertEqual(Settings._azm_default_color_scheme(), "light")
+        # ... unless an administrator allows dark mode, and then Odoo decides.
+        ICP.set_bool("azm.allow_dark_theme", True)
+        self.assertEqual(Settings._azm_default_color_scheme(), "system")
+
+    def test_existing_users_are_moved_off_the_system_theme(self):
+        Settings = self.env["res.users.settings"]
+        self.env["ir.config_parameter"].sudo().set_bool("azm.allow_dark_theme", False)
+        settings = Settings._find_or_create_for_user(self.prep_1)
+        settings.color_scheme = "system"
+        Settings._azm_apply_light_theme()
+        self.assertEqual(settings.color_scheme, "light")
+
+    def test_a_deliberate_dark_choice_is_left_alone(self):
+        Settings = self.env["res.users.settings"]
+        self.env["ir.config_parameter"].sudo().set_bool("azm.allow_dark_theme", False)
+        settings = Settings._find_or_create_for_user(self.prep_2)
+        settings.color_scheme = "dark"
+        Settings._azm_apply_light_theme()
+        self.assertEqual(settings.color_scheme, "dark", "a user's own choice must survive")

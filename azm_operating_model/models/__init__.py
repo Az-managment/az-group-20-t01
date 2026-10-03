@@ -9,4 +9,4 @@ from . import azm_finding
 from . import azm_assessment_version
 from . import azm_fin_catalogue
 from . import azm_fin_assessment
-from . import ir_http
+from . import res_users_settings
