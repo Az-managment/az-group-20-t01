@@ -14,3 +14,6 @@ def _azm_post_init(env):
     env['azm.entity']._azm_sync_companies()
     from odoo.addons.az_group_base.hooks import finish_dev_staff
     finish_dev_staff(env)
+    from .hooks import describe_entities, load_dev_entity_data
+    describe_entities(env)
+    load_dev_entity_data(env)
