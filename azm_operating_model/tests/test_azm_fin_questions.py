@@ -1,12 +1,15 @@
-from odoo.exceptions import UserError, ValidationError
+from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged
+
+from .fin_common import FULL
 
 
 @tagged("post_install", "-at_install")
 class TestAzmFinQuestions(TransactionCase):
-    """The question catalogue is machine-generated from the spreadsheet, so the
-    invariants that keep a question answering with its OWN options are enforced
-    by the model rather than trusted."""
+    """The catalogue is machine-generated and validated by
+    ``tools/build_fin_catalogue.py`` before it is written, so what the models
+    still have to guarantee is that an answer cannot stray from its question.
+    """
 
     @classmethod
     def setUpClass(cls):
@@ -21,22 +24,23 @@ class TestAzmFinQuestions(TransactionCase):
 
     def _question(self, key, sequence, **extra):
         return self.env["azm.fin.question"].create({
-            "requirement_id": self.requirement.id, "key": key, "sequence": sequence,
-            "label": f"سؤال {key}", "role": extra.pop("role", "main"), **extra,
+            "code": f"{self.requirement.code}-{key}", "requirement_id": self.requirement.id,
+            "key": key, "sequence": sequence, "label": f"سؤال {key}",
+            "role": extra.pop("role", "main"), **extra,
         })
 
-    def test_code_is_derived_from_the_requirement(self):
-        question = self._question("Q001", 1)
-        self.assertEqual(question.code, "ZZ-001/Q001")
-
-    def test_key_is_unique_inside_the_requirement(self):
+    def test_a_question_code_is_unique(self):
+        """The loader matches on the code, so a duplicate would make one
+        question silently overwrite another on every reload."""
         self._question("Q001", 1)
+        self.env.flush_all()
         with self.assertRaises(Exception):
             self._question("Q001", 2)
+            self.env.flush_all()
 
     def test_options_belong_to_their_own_question(self):
         first = self._question("Q001", 1)
-        second = self._question("Q002", 2, role="followup")
+        second = self._question("Q002", 2, role="follow")
         self.env["azm.fin.option"].create([
             {"question_id": first.id, "name": "نعم", "sequence": 1},
             {"question_id": first.id, "name": "لا", "sequence": 2},
@@ -44,56 +48,78 @@ class TestAzmFinQuestions(TransactionCase):
         ])
         self.assertEqual(first.option_ids.mapped("name"), ["نعم", "لا"])
         self.assertEqual(second.option_ids.mapped("name"), ["أخرى"])
-        self.assertEqual((first.option_count, second.option_count), (2, 1))
 
-    def test_a_condition_may_only_point_backwards(self):
-        """A forward reference would never fire: the engine only sees the answers
-        of questions that sort before the one being evaluated."""
-        self._question("Q001", 1)
-        with self.assertRaises(ValidationError):
-            self._question("Q002", 2, role="followup",
-                           condition='{"field": "Q003", "in": ["نعم"]}')
+    def test_a_condition_is_read_back_as_it_was_written(self):
+        question = self._question("Q002", 2, role="follow",
+                                  condition_json='{"q": "Q001", "in": ["نعم"]}')
+        self.assertEqual(question._condition(), {"q": "Q001", "in": ["نعم"]})
+        self.assertIn("Q001", question.condition_text)
 
-        backwards = self._question("Q003", 3, role="followup",
-                                   condition='{"field": "Q001", "in": ["نعم"]}')
-        self.assertTrue(backwards.id)
-
-    def test_a_condition_must_be_valid_json(self):
-        with self.assertRaises(ValidationError):
-            self._question("Q001", 1, condition="not json at all")
-
-    def test_unknown_answers_are_not_counted_as_known(self):
-        """'لا أعرف' leaves the question unknown, which is what keeps the
-        follow-ups depending on it hidden."""
+    def test_a_question_without_a_condition_is_always_shown(self):
         question = self._question("Q001", 1)
-        yes, dunno = self.env["azm.fin.option"].create([
-            {"question_id": question.id, "name": "نعم", "sequence": 1},
-            {"question_id": question.id, "name": "لا أعرف", "sequence": 2, "kind": "unknown"},
-        ])
-        assessment = self.env["azm.fin.assessment"].search([], limit=1)
-        if not assessment:
-            self.skipTest("no financial assessment in this database")
-        answer = self.env["azm.fin.qanswer"].create({
-            "assessment_id": assessment.id, "question_id": question.id})
+        self.assertIsNone(question._condition())
+        self.assertFalse(question.condition_text)
 
-        answer.option_id = yes
-        self.assertTrue(answer.has_value)
-        self.assertTrue(answer.is_known)
-        self.assertEqual(answer._engine_value(), "نعم")
+    def test_the_schema_carries_everything_the_client_renders(self):
+        question = self._question("Q001", 1, qtype="select")
+        self.env["azm.fin.option"].create({"question_id": question.id, "name": "نعم", "sequence": 1})
+        schema = question._schema()
+        for key in ("id", "code", "key", "role", "label", "hint", "qtype", "unit", "columns",
+                    "condition", "condition_text", "note_label", "note_options", "has_priority",
+                    "options"):
+            self.assertIn(key, schema)
+        self.assertEqual([o["name"] for o in schema["options"]], ["نعم"])
 
-        answer.option_id = dunno
-        self.assertTrue(answer.has_value)
-        self.assertFalse(answer.is_known)
+
+@tagged("post_install", "-at_install")
+class TestAzmFinAnswerGuards(TransactionCase):
+    """An answer points at one question of one requirement, and only while the
+    assessment is still a draft."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        scope = cls.env["azm.fin.scope"].search([("code", "=", "EDU")])
+        cls.entity = cls.env["azm.entity"].create({
+            "code": "FQG", "name": "كيان الضوابط", "fin_scope_ids": [(6, 0, scope.ids)]})
+        cls.assessment = cls.env["azm.fin.assessment"].create({"entity_id": cls.entity.id})
+        cls.line = cls.assessment.answer_ids.filtered(lambda a: a.code == "FIN-004")
+
+    def _status(self):
+        return self.line.requirement_id.question_ids.filtered(lambda q: q.role == "status")[:1]
+
+    def test_an_unknown_answer_is_a_fallback(self):
+        """«لا أعرف» is an answer, but not a known one — which is what keeps
+        the questions depending on it hidden."""
+        status = self._status()
+        unknown = status.option_ids.filtered(lambda o: o.kind == "unknown")[:1]
+        known = status.option_ids.filtered(lambda o: o.name == FULL)[:1]
+
+        qa = self.line._set_answer(status.id, {"option_id": known.id})
+        self.assertTrue(qa.is_answered)
+        self.assertFalse(qa._is_fallback())
+        self.assertEqual(qa._names(), {FULL})
+
+        qa = self.line._set_answer(status.id, {"option_id": unknown.id})
+        self.assertTrue(qa.is_answered, "«لا أعرف» is still an answer")
+        self.assertTrue(qa._is_fallback())
+
+    def test_a_question_is_answered_once_per_requirement(self):
+        status = self._status()
+        self.line._set_answer(status.id, {"option_id": self._status().option_ids[:1].id})
+        with self.assertRaises(Exception):
+            self.env["azm.fin.qanswer"].create({"line_id": self.line.id, "question_id": status.id})
+            self.env.flush_all()
+
+    def test_a_question_of_another_requirement_is_refused(self):
+        foreign = self.env["azm.fin.question"].search(
+            [("requirement_id", "!=", self.line.requirement_id.id)], limit=1)
+        with self.assertRaises(UserError):
+            self.line._set_answer(foreign.id, {"note": "ليس من هذا المتطلب"})
 
     def test_answers_are_locked_outside_draft(self):
-        question = self._question("Q001", 1)
-        assessment = self.env["azm.fin.assessment"].search([], limit=1)
-        if not assessment:
-            self.skipTest("no financial assessment in this database")
-        answer = self.env["azm.fin.qanswer"].create({
-            "assessment_id": assessment.id, "question_id": question.id})
-        answer.text = "مسموح في المسودة"
-
-        assessment.with_context(azm_skip_lock=True).state = "approved"
+        status = self._status()
+        self.line._set_answer(status.id, {"note": "مسموح في المسودة"})
+        self.assessment.with_context(azm_skip_lock=True).state = "approved"
         with self.assertRaises(UserError):
-            answer.text = "ممنوع بعد الاعتماد"
+            self.line._set_answer(status.id, {"note": "ممنوع بعد الاعتماد"})

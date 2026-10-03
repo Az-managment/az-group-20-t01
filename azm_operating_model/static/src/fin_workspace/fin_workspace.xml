@@ -2,405 +2,263 @@
 <templates xml:space="preserve">
 
     <t t-name="azm_operating_model.FinWorkspace">
-        <div class="o_azm_workspace o_azm_fin_ws" dir="rtl" t-if="this.state.data">
-            <t t-set="d" t-value="this.state.data"/>
+        <div class="o_azm_workspace o_azm_fin_ws" t-if="d">
 
-            <!-- header (same as the procurement workspace) -->
+            <!-- header -->
             <header class="o_azm_ws_header">
-                <div class="o_azm_ws_title">
-                    <span class="o_azm_ws_eyebrow">AZM · Unified Financial Model</span>
-                    <h2>
-                        <t t-out="d.header.entity"/>
-                        <small> · النموذج المالي الموحد · <t t-out="d.header.scopes.map((s) => s.name).join('، ')"/></small>
-                    </h2>
+                <div>
+                    <b t-out="d.header.name"/>
+                    <span class="o_azm_muted"> · <t t-out="d.header.entity"/></span>
+                    <span t-if="d.header.is_demo" class="o_azm_fin_tag">مثال</span>
+                    <span t-if="d.header.readonly" class="o_azm_fin_tag o_na" t-out="d.header.state_label"/>
                 </div>
-                <div class="o_azm_ws_meta">
-                    <span t-attf-class="o_azm_pill o_azm_state_{{d.header.state}}" t-out="d.header.state_label"/>
-                    <span t-if="d.header.is_demo" class="o_azm_pill o_azm_state_demo">مثال افتراضي</span>
-                    <span class="o_azm_pill">v<t t-out="d.header.version"/></span>
-                    <span class="o_azm_pill o_azm_fin_counter" title="مطبّق بالكامل / جزئيًا / غير متاح / لا ينطبق">
-                        <i class="o_full"/><t t-out="d.header.counts.full"/>
-                        <i class="o_partial"/><t t-out="d.header.counts.partial"/>
-                        <i class="o_unavailable"/><t t-out="d.header.counts.unavailable"/>
-                        <i class="o_na"/><t t-out="d.header.counts.na"/>
+                <div class="o_azm_fin_row">
+                    <span class="o_azm_muted">
+                        <t t-out="d.header.answered"/> / <t t-out="d.header.questions"/> سؤال
                     </span>
                     <div class="o_azm_progress" t-att-title="d.header.progress + '%'">
-                        <div t-attf-style="width: {{d.header.progress}}%"/>
+                        <span class="o_azm_progress_bar" t-attf-style="width: {{d.header.progress}}%"/>
                     </div>
-                    <span class="o_azm_muted"><t t-out="d.header.done"/>/<t t-out="d.header.applicable"/> · <t t-out="d.header.progress"/>٪</span>
-                    <span t-if="this.state.saving" class="o_azm_muted">يحفظ…</span>
-                    <button class="btn btn-secondary btn-sm" t-on-click="() => this.openRecord()">
-                        <t t-out="d.header.name"/>
-                    </button>
+                    <span t-if="state.saving" class="o_azm_muted">يحفظ…</span>
                 </div>
             </header>
 
             <div class="o_azm_ws_body">
-                <!-- module rail -->
+
+                <!-- modules -->
                 <nav class="o_azm_rail">
                     <label class="o_azm_fin_showall">
-                        <input type="checkbox" t-att-checked="this.state.showAll" t-on-change="() => this.toggleShowAll()"/>
-                        إظهار غير المنطبق على الكيان
+                        <input type="checkbox" t-att-checked="state.showAll"
+                               t-on-change="() => this.toggleShowAll()"/>
+                        إظهار غير المنطبق
                     </label>
                     <t t-foreach="d.modules" t-as="mod" t-key="mod.code">
-                        <button t-attf-class="o_azm_rail_item o_azm_status_{{this.moduleStatus(mod)}} {{mod.code === this.state.moduleCode ? 'o_azm_active' : ''}}"
-                                t-on-click="() => this.selectModule(mod)">
-                            <span class="o_azm_rail_idx o_azm_fin_idx" t-out="mod.code"/>
-                            <span class="o_azm_rail_text">
-                                <span class="o_azm_rail_name" t-out="mod.name"/>
-                                <span class="o_azm_rail_sub">
-                                    <t t-out="mod.done"/>/<t t-out="this.state.showAll ? mod.total : mod.applicable"/> متطلب
-                                    <span t-if="mod.gaps" class="o_azm_risk_dot" t-att-title="mod.gaps + ' فجوة'" t-out="mod.gaps"/>
-                                </span>
-                                <span class="o_azm_rail_bar"><span t-attf-style="width: {{this.modulePercent(mod)}}%"/></span>
-                            </span>
+                        <button t-attf-class="o_azm_rail_item {{mod.code === d.module.code ? 'o_azm_active' : ''}}"
+                                t-on-click="() => this.selectModule(mod.code)">
+                            <span class="o_azm_fin_idx" t-out="mod.code"/>
+                            <span class="o_azm_rail_name" t-out="mod.name"/>
+                            <span class="o_azm_muted"><t t-out="mod.answered"/>/<t t-out="mod.questions"/></span>
                         </button>
                     </t>
                 </nav>
 
-                <!-- requirements -->
+                <!-- topics and their requirements -->
                 <section class="o_azm_questions">
-                    <div class="o_azm_stage_intro">
-                        <span class="o_azm_code">FIN-<t t-out="d.module.code"/></span>
-                        <h3 t-out="d.module.name"/>
-                        <p class="o_azm_muted">
-                            <t t-out="d.requirements.length"/> متطلب منطبق من <t t-out="d.module.total"/> ·
-                            لكل متطلب: حالة التطبيق، ثم القاعدة أو الفجوة أو التصور، ثم جدول الإجابة حسب قالبه.
-                        </p>
-                        <div t-if="d.header.readonly" class="o_azm_note o_azm_note_warn">
-                            الإفادة في حالة «<t t-out="d.header.state_label"/>» — للقراءة فقط.
-                        </div>
-                        <div t-if="!d.requirements.length" class="o_azm_note">
-                            لا توجد متطلبات منطبقة على أنشطة هذا الكيان في هذا الموديول.
-                        </div>
-                    </div>
+                    <t t-if="!d.topics.length">
+                        <p class="o_azm_muted">لا توجد متطلبات منطبقة في هذا الموديول.</p>
+                    </t>
 
-                    <t t-foreach="this.profileGroups()" t-as="group" t-key="group.key">
+                    <t t-foreach="d.topics" t-as="topic" t-key="topic.id">
                         <div class="o_azm_group_card">
-                            <h4><t t-out="group.title"/> <small class="o_azm_muted" t-out="'— ' + group.desc"/></h4>
-                            <t t-foreach="group.items" t-as="r" t-key="r.answer_id">
-                                <div t-attf-class="o_azm_q {{r.done ? 'o_azm_q_done' : ''}} {{r.applicable ? '' : 'o_azm_fin_na_req'}}">
+                            <h4>
+                                <t t-out="topic.name"/>
+                                <span class="o_azm_code" t-out="topic.code"/>
+                            </h4>
+
+                            <!-- opening prompts: reference material, not answered here -->
+                            <button t-if="topic.prompts.length" class="btn btn-link btn-sm p-0 o_azm_fin_tabletoggle"
+                                    t-on-click="() => this.togglePrompts(topic)">
+                                <t t-if="state.openPrompts[topic.id]">▾</t><t t-else="">◂</t>
+                                أسئلة افتتاحية (<t t-out="topic.prompts.length"/>)
+                            </button>
+                            <ul t-if="state.openPrompts[topic.id]" class="o_azm_fin_prompts">
+                                <li t-foreach="topic.prompts" t-as="prompt" t-key="prompt.code">
+                                    <span class="o_azm_fin_tag" t-out="prompt.axis_name"/>
+                                    <t t-out="prompt.question"/>
+                                    <span t-if="prompt.output" class="o_azm_muted"> → <t t-out="prompt.output"/></span>
+                                </li>
+                            </ul>
+
+                            <t t-foreach="topic.requirements" t-as="req" t-key="req.answer_id">
+                                <div t-attf-class="o_azm_fin_req {{req.na ? 'o_azm_fin_na_req' : ''}}">
+
                                     <div class="o_azm_q_head">
-                                        <span class="o_azm_q_label" t-out="r.title"/>
-                                        <span class="o_azm_code" t-out="r.code"/>
+                                        <span class="o_azm_q_label" t-out="req.title"/>
+                                        <span class="o_azm_code" t-out="req.code"/>
                                     </div>
-                                    <p class="o_azm_muted o_azm_fin_question" t-out="r.question"/>
+                                    <p class="o_azm_fin_question" t-out="req.question"/>
                                     <div class="o_azm_fin_tags">
-                                        <span class="o_azm_fin_tag" t-out="r.scope_code + ' · ' + r.scope_name"/>
-                                        <span t-if="r.source === 'HRF'" class="o_azm_fin_tag o_hrf">مالية الموارد البشرية</span>
-                                        <span t-if="!r.applicable" class="o_azm_fin_tag o_na">غير منطبق على الكيان</span>
+                                        <span class="o_azm_fin_tag" t-out="req.profile_name"/>
+                                        <span class="o_azm_fin_tag" t-out="req.scope_name"/>
+                                        <span t-if="req.source === 'HRF'" class="o_azm_fin_tag o_hrf">HRF</span>
+                                        <span t-if="req.pack" class="o_azm_fin_tag" t-out="req.pack"/>
+                                        <span class="o_azm_muted"><t t-out="req.q_answered"/>/<t t-out="req.q_total"/></span>
+                                        <div class="o_azm_progress" style="min-width: 70px">
+                                            <span class="o_azm_progress_bar"
+                                                  t-attf-style="width: {{this.progressOf(req)}}%"/>
+                                        </div>
                                     </div>
 
-                                    <!-- the four states, as answer chips -->
-                                    <div class="o_azm_chips">
-                                        <t t-foreach="d.states" t-as="st" t-key="st.key">
-                                            <button t-attf-class="o_azm_chip o_azm_fin_s_{{st.key}} {{r.state === st.key ? 'o_azm_chip_on' : ''}} {{st.key === 'na' ? 'o_azm_chip_soft' : ''}}"
-                                                    t-att-disabled="d.header.readonly" t-att-title="st.hint"
-                                                    t-on-click="() => this.setState(r, st.key)" t-out="st.name"/>
+                                    <!-- «لا ينطبق» closes the requirement instead of answering it -->
+                                    <div class="o_azm_fin_row">
+                                        <button t-attf-class="o_azm_chip o_azm_chip_soft {{req.na ? 'o_azm_chip_on' : ''}}"
+                                                t-att-disabled="d.header.readonly"
+                                                t-on-click="() => this.toggleNa(req)">لا ينطبق على الكيان</button>
+                                        <t t-if="req.na">
+                                            <t t-foreach="d.na_reasons" t-as="reason" t-key="reason">
+                                                <button t-attf-class="o_azm_chip {{req.reason === reason ? 'o_azm_chip_on' : ''}}"
+                                                        t-att-disabled="d.header.readonly"
+                                                        t-on-click="() => this.setReason(req, reason)" t-out="reason"/>
+                                            </t>
                                         </t>
                                     </div>
 
-                                    <!-- Questionnaire. Same shape as the procurement workspace:
-                                         a card per question, real answers as chips, «لا أعرف» and
-                                         «غير مدرج» apart as soft chips, a dropdown once the list
-                                         gets long. Follow-ups are resolved server-side. -->
-                                    <t t-set="questions" t-value="this.questionsOf(r)"/>
-                                    <div t-if="questions.length" class="o_azm_fin_questions">
-                                        <h5>أسئلة المتطلب</h5>
-                                        <t t-foreach="questions" t-as="q" t-key="q.line_id">
-                                            <div t-attf-class="o_azm_q o_azm_fin_q_{{q.role}} {{this.isAnswered(q) ? 'o_azm_q_done' : ''}}">
+                                    <!-- the questionnaire -->
+                                    <t t-if="!req.na">
+                                        <t t-foreach="this.questionsOf(req)" t-as="q" t-key="q.id">
+                                            <div t-attf-class="o_azm_q o_azm_fin_q_{{q.role}} {{q.answered ? 'o_azm_q_done' : ''}}">
                                                 <div class="o_azm_q_head">
                                                     <span class="o_azm_q_label" t-out="q.label"/>
                                                     <span class="o_azm_code" t-out="q.key"/>
-                                                    <button t-if="q.help" class="btn btn-link btn-sm p-0"
-                                                            t-on-click="() => this.toggleHelp(q)">؟</button>
                                                 </div>
-                                                <p t-if="this.state.showHelp[q.line_id]" class="o_azm_muted" t-out="q.help"/>
+                                                <p t-if="q.hint" class="o_azm_muted o_azm_fin_qhelp" t-out="q.hint"/>
 
-                                                <t t-if="q.qtype === 'number'">
-                                                    <div class="o_azm_select_row">
-                                                        <input type="number" class="form-control form-control-sm o_azm_number"
-                                                               t-att-value="q.value_number || ''"
-                                                               t-att-disabled="d.header.readonly"
-                                                               t-on-change="(ev) => this.onQuestionNumber(r, q, ev)"/>
-                                                        <span class="o_azm_fin_qunit" t-out="q.unit"/>
-                                                    </div>
-                                                </t>
+                                                <!-- number -->
+                                                <div t-if="q.qtype === 'number'" class="o_azm_select_row">
+                                                    <input type="number" class="form-control form-control-sm o_azm_number"
+                                                           t-att-value="q.value.number"
+                                                           t-att-disabled="d.header.readonly"
+                                                           t-on-change="(ev) => this.setNumber(req, q, ev)"/>
+                                                    <span class="o_azm_fin_qunit" t-out="q.unit"/>
+                                                </div>
 
-                                                <t t-elif="q.qtype === 'table'">
+                                                <!-- table -->
+                                                <t t-elif="q.qtype === 'table' and q.columns.length">
                                                     <div class="o_azm_fin_schema o_azm_fin_tablewrap">
-                                                        <p t-if="q.response_type" class="o_azm_fin_caption">
-                                                            <b>جدول الإجابة</b> — <t t-out="q.response_type"/>
-                                                        </p>
                                                         <table class="table table-sm o_azm_fin_edit">
                                                             <thead>
                                                                 <tr>
                                                                     <th t-foreach="q.columns" t-as="col" t-key="col_index"
-                                                                        t-att-title="(col.options or col.suggestions) ? (col.options or col.suggestions).join(' · ') : false">
-                                                                        <t t-out="col.label"/><span t-if="col.options or col.suggestions" class="o_azm_fin_haslist">▾</span>
+                                                                        t-att-title="col.options ? col.options.join(' · ') : false">
+                                                                        <t t-out="col.label"/><span t-if="col.options" class="o_azm_fin_haslist">▾</span>
                                                                     </th>
                                                                     <th class="o_azm_fin_qtable_act"/>
                                                                 </tr>
                                                             </thead>
                                                             <tbody>
-                                                                <t t-foreach="this.questionRows(q)" t-as="row" t-key="row_index">
+                                                                <t t-foreach="this.rows(q)" t-as="row" t-key="row_index">
                                                                     <tr>
                                                                         <td t-foreach="q.columns" t-as="col" t-key="col_index">
-                                                                            <!-- a column that lists its choices is a dropdown,
-                                                                                 one that does not stays free text -->
                                                                             <select t-if="col.options" class="form-select form-select-sm"
                                                                                     t-att-disabled="d.header.readonly"
-                                                                                    t-on-change="(ev) => this.onQuestionCell(r, q, row_index, col_index, ev)">
+                                                                                    t-on-change="(ev) => this.onCell(req, q, row_index, col_index, ev)">
                                                                                 <option value="">—</option>
                                                                                 <t t-foreach="col.options" t-as="opt" t-key="opt_index">
                                                                                     <option t-att-value="opt" t-att-selected="row[col_index] === opt" t-out="opt"/>
                                                                                 </t>
                                                                             </select>
-                                                                            <input t-elif="col.type === 'date'" type="date" class="form-control form-control-sm"
-                                                                                   t-att-value="row[col_index]" t-att-readonly="d.header.readonly"
-                                                                                   t-on-change="(ev) => this.onQuestionCell(r, q, row_index, col_index, ev)"/>
-                                                                            <t t-elif="col.type === 'suggest'">
-                                                                                <input class="form-control form-control-sm" t-att-list="'azmsug' + col_index + '_' + row_index"
-                                                                                       t-att-value="row[col_index]" t-att-readonly="d.header.readonly"
-                                                                                       t-on-change="(ev) => this.onQuestionCell(r, q, row_index, col_index, ev)"/>
-                                                                                <datalist t-att-id="'azmsug' + col_index + '_' + row_index">
-                                                                                    <option t-foreach="col.suggestions" t-as="sug" t-key="sug_index" t-att-value="sug"/>
-                                                                                </datalist>
-                                                                            </t>
                                                                             <input t-else="" class="form-control form-control-sm"
+                                                                                   t-att-type="this.cellType(col)"
+                                                                                   t-att-step="col.type === 'number' ? 'any' : false"
                                                                                    t-att-value="row[col_index]" t-att-readonly="d.header.readonly"
-                                                                                   t-on-change="(ev) => this.onQuestionCell(r, q, row_index, col_index, ev)"/>
+                                                                                   t-on-input="(ev) => this.onCell(req, q, row_index, col_index, ev)"/>
                                                                         </td>
                                                                         <td class="o_azm_fin_qtable_act">
-                                                                            <button class="btn btn-link btn-sm text-danger p-0 o_azm_fin_rowdel" t-if="!d.header.readonly"
-                                                                                    title="حذف الصف"
-                                                                                    t-on-click="() => this.removeQuestionRow(r, q, row_index)">×</button>
+                                                                            <button t-if="!d.header.readonly" title="حذف الصف"
+                                                                                    class="btn btn-link btn-sm text-danger p-0 o_azm_fin_rowdel"
+                                                                                    t-on-click="() => this.removeRow(req, q, row_index)">×</button>
                                                                         </td>
                                                                     </tr>
                                                                 </t>
                                                             </tbody>
                                                         </table>
-                                                        <button class="o_azm_fin_addrow" t-if="!d.header.readonly"
-                                                                t-on-click="() => this.addQuestionRow(r, q)">+ إضافة صف</button>
-                                                        <!-- a table question still offers «لا يوجد» / «لا أعرف»,
-                                                             so nobody is forced to fill a grid that does not apply -->
+                                                        <button t-if="!d.header.readonly" class="o_azm_fin_addrow"
+                                                                t-on-click="() => this.addRow(req, q)">+ إضافة صف</button>
+                                                        <!-- a table can still be answered «لا يوجد» -->
                                                         <div t-if="this.fallbackOptions(q).length" class="o_azm_chips">
                                                             <t t-foreach="this.fallbackOptions(q)" t-as="opt" t-key="opt.id">
                                                                 <button t-attf-class="o_azm_chip o_azm_chip_soft {{this.isPicked(q, opt) ? 'o_azm_chip_on' : ''}}"
                                                                         t-att-disabled="d.header.readonly"
-                                                                        t-on-click="() => this.pickQuestionOption(r, q, opt)" t-out="opt.name"/>
+                                                                        t-on-click="() => this.pick(req, q, opt)" t-out="opt.name"/>
                                                             </t>
                                                         </div>
                                                     </div>
                                                 </t>
 
+                                                <!-- a long single-choice list reads better as a dropdown -->
                                                 <t t-elif="q.qtype === 'select' and this.mainOptions(q).length > 9">
                                                     <div class="o_azm_select_row">
                                                         <select class="form-select o_azm_select" t-att-disabled="d.header.readonly"
-                                                                t-on-change="(ev) => this.pickQuestionSelect(r, q, ev)">
-                                                            <option value="" t-att-selected="!q.option_id">اختار…</option>
+                                                                t-on-change="(ev) => this.pickFromSelect(req, q, ev)">
+                                                            <option value="" t-att-selected="!q.value.option_id">اختار…</option>
                                                             <t t-foreach="this.mainOptions(q)" t-as="opt" t-key="opt.id">
-                                                                <option t-att-value="opt.id" t-att-selected="q.option_id === opt.id" t-out="opt.name"/>
+                                                                <option t-att-value="opt.id" t-att-selected="q.value.option_id === opt.id" t-out="opt.name"/>
                                                             </t>
                                                         </select>
                                                         <t t-foreach="this.fallbackOptions(q)" t-as="opt" t-key="opt.id">
                                                             <button t-attf-class="o_azm_chip o_azm_chip_soft {{this.isPicked(q, opt) ? 'o_azm_chip_on' : ''}}"
                                                                     t-att-disabled="d.header.readonly"
-                                                                    t-on-click="() => this.pickQuestionOption(r, q, opt)" t-out="opt.name"/>
+                                                                    t-on-click="() => this.pick(req, q, opt)" t-out="opt.name"/>
                                                         </t>
                                                     </div>
                                                 </t>
 
+                                                <!-- chips -->
                                                 <t t-else="">
                                                     <div class="o_azm_chips">
                                                         <t t-foreach="this.mainOptions(q)" t-as="opt" t-key="opt.id">
                                                             <button t-attf-class="o_azm_chip {{this.isPicked(q, opt) ? 'o_azm_chip_on' : ''}} {{q.qtype === 'multi' ? 'o_azm_chip_multi' : ''}}"
                                                                     t-att-disabled="d.header.readonly"
-                                                                    t-on-click="() => this.pickQuestionOption(r, q, opt)" t-out="opt.name"/>
+                                                                    t-on-click="() => this.pick(req, q, opt)" t-out="opt.name"/>
                                                         </t>
                                                         <t t-foreach="this.fallbackOptions(q)" t-as="opt" t-key="opt.id">
                                                             <button t-attf-class="o_azm_chip o_azm_chip_soft {{this.isPicked(q, opt) ? 'o_azm_chip_on' : ''}}"
                                                                     t-att-disabled="d.header.readonly"
-                                                                    t-on-click="() => this.pickQuestionOption(r, q, opt)" t-out="opt.name"/>
+                                                                    t-on-click="() => this.pick(req, q, opt)" t-out="opt.name"/>
                                                         </t>
                                                     </div>
                                                 </t>
-                                            </div>
-                                        </t>
-                                    </div>
 
-                                    <div t-if="r.state" class="o_azm_fin_detail">
-                                        <t t-if="['full', 'partial'].includes(r.state)">
-                                            <div class="o_azm_fin_row">
-                                                <span class="o_azm_fin_label">طريقة التنفيذ</span>
-                                                <div class="o_azm_chips">
-                                                    <t t-foreach="d.implementations" t-as="imp" t-key="imp">
-                                                        <button t-attf-class="o_azm_chip o_azm_chip_multi {{r.impl.includes(imp) ? 'o_azm_chip_on' : ''}}"
-                                                                t-att-disabled="d.header.readonly" t-on-click="() => this.toggleImpl(r, imp)" t-out="imp"/>
-                                                    </t>
-                                                </div>
-                                            </div>
-                                            <label class="o_azm_fin_text">
-                                                <span class="o_azm_fin_label">القاعدة الحالية المطبّقة <b t-if="r.state === 'full'">*</b></span>
-                                                <textarea class="form-control" rows="2" t-att-value="r.current" t-att-readonly="d.header.readonly"
-                                                          placeholder="صف القاعدة أو الإجراء المطبّق فعليًا…" t-on-input="(ev) => this.onText(r, 'current', ev)"/>
-                                            </label>
-                                        </t>
-                                        <label t-if="r.state === 'partial'" class="o_azm_fin_text o_flag">
-                                            <span class="o_azm_fin_label">الفجوة وأثرها <b>*</b></span>
-                                            <textarea class="form-control" rows="2" t-att-value="r.gap" t-att-readonly="d.header.readonly"
-                                                      placeholder="اذكر النقص وأثره والتعامل الحالي معه…" t-on-input="(ev) => this.onText(r, 'gap', ev)"/>
-                                        </label>
-                                        <label t-if="r.state === 'unavailable'" class="o_azm_fin_text">
-                                            <span class="o_azm_fin_label">التصوّر المستقبلي <b>*</b></span>
-                                            <textarea class="form-control" rows="2" t-att-value="r.future" t-att-readonly="d.header.readonly"
-                                                      placeholder="قاعدة مقترحة… أو «لا يوجد تصور بعد»" t-on-input="(ev) => this.onText(r, 'future', ev)"/>
-                                        </label>
-                                        <label t-if="r.state === 'na'" class="o_azm_fin_text o_flag">
-                                            <span class="o_azm_fin_label">سبب عدم الانطباق <b>*</b></span>
-                                            <textarea class="form-control" rows="2" t-att-value="r.reason" t-att-readonly="d.header.readonly"
-                                                      placeholder="لماذا لا ينطبق هذا المتطلب على النشاط…" t-on-input="(ev) => this.onText(r, 'reason', ev)"/>
-                                        </label>
-
-                                        <!-- answer template -->
-                                        <t t-if="['full', 'partial'].includes(r.state)">
-                                            <button class="btn btn-link btn-sm p-0 o_azm_fin_tabletoggle" t-on-click="() => this.toggleTable(r)">
-                                                <t t-if="this.state.openTables[r.answer_id]">▾</t><t t-else="">◂</t>
-                                                <t t-if="r.schema.shape === 'fields'">حقول الإجابة — قالب سياسة/توقيت</t>
-                                                <t t-else="">جدول الإجابة — قالب <t t-out="r.profile_name"/></t>
-                                                <span class="o_azm_muted" t-if="r.table.length"> (<t t-out="r.table.length"/> صف)</span>
-                                            </button>
-                                            <div t-if="this.state.openTables[r.answer_id]" class="o_azm_fin_schema">
-                                                <!-- say which template this grid is, so the columns
-                                                     explain themselves before anything is typed -->
-                                                <p class="o_azm_fin_caption">
-                                                    <b>جدول <t t-out="r.profile_name"/></b>
-                                                    <t t-if="r.profile_hint"> — <t t-out="r.profile_hint"/></t>
-                                                </p>
-                                                <t t-set="rows" t-value="this.rows(r)"/>
-                                                <div t-if="r.schema.shape === 'fields'" class="o_azm_fin_fields">
-                                                    <t t-foreach="r.schema.columns" t-as="col" t-key="col_index">
-                                                        <label>
-                                                            <span class="o_azm_muted" t-out="col.label"/>
-                                                            <select t-if="col.options" class="form-select form-select-sm" t-att-disabled="d.header.readonly"
-                                                                    t-on-change="(ev) => this.onCell(r, 0, col_index, ev)">
-                                                                <option value="">—</option>
-                                                                <t t-foreach="col.options" t-as="opt" t-key="opt_index">
-                                                                    <option t-att-value="opt" t-att-selected="rows[0][col_index] === opt" t-out="opt"/>
-                                                                </t>
-                                                            </select>
-                                                            <input t-elif="col.type === 'date'" type="date" class="form-control form-control-sm"
-                                                                   t-att-value="rows[0][col_index]" t-att-readonly="d.header.readonly"
-                                                                   t-on-change="(ev) => this.onCell(r, 0, col_index, ev)"/>
-                                                            <t t-elif="col.type === 'suggest'">
-                                                                <input class="form-control form-control-sm" t-att-list="'azmsugf' + col_index"
-                                                                       t-att-value="rows[0][col_index]" t-att-readonly="d.header.readonly"
-                                                                       t-on-change="(ev) => this.onCell(r, 0, col_index, ev)"/>
-                                                                <datalist t-att-id="'azmsugf' + col_index">
-                                                                    <option t-foreach="col.suggestions" t-as="sug" t-key="sug_index" t-att-value="sug"/>
-                                                                </datalist>
-                                                            </t>
-                                                            <input t-else="" class="form-control form-control-sm" t-att-readonly="d.header.readonly"
-                                                                   t-att-value="rows[0][col_index]" t-on-input="(ev) => this.onCell(r, 0, col_index, ev)"/>
-                                                        </label>
-                                                    </t>
-                                                </div>
-                                                <t t-else="">
-                                                    <div class="o_azm_fin_tablewrap">
-                                                        <table class="o_azm_table o_azm_fin_edit">
-                                                            <thead><tr>
-                                                                <t t-foreach="r.schema.columns" t-as="col" t-key="col_index">
-                                                                    <th t-att-title="(col.options or col.suggestions) ? (col.options or col.suggestions).join(' · ') : false">
-                                                                        <t t-out="col.label"/><span t-if="col.options or col.suggestions" class="o_azm_fin_haslist">▾</span>
-                                                                    </th>
-                                                                </t>
-                                                                <th t-if="!d.header.readonly"/>
-                                                            </tr></thead>
-                                                            <tbody>
-                                                                <tr t-foreach="rows" t-as="row" t-key="row_index">
-                                                                    <t t-foreach="r.schema.columns" t-as="col" t-key="col_index">
-                                                                        <td>
-                                                                            <select t-if="col.options" class="form-select form-select-sm" t-att-disabled="d.header.readonly"
-                                                                                    t-on-change="(ev) => this.onCell(r, row_index, col_index, ev)">
-                                                                                <option value="">—</option>
-                                                                                <t t-foreach="col.options" t-as="opt" t-key="opt_index">
-                                                                                    <option t-att-value="opt" t-att-selected="row[col_index] === opt" t-out="opt"/>
-                                                                                </t>
-                                                                            </select>
-                                                                            <input t-elif="col.type === 'date'" type="date" class="form-control form-control-sm"
-                                                                                   t-att-value="row[col_index]" t-att-readonly="d.header.readonly"
-                                                                                   t-on-change="(ev) => this.onCell(r, row_index, col_index, ev)"/>
-                                                                            <t t-elif="col.type === 'suggest'">
-                                                                                <input class="form-control form-control-sm" t-att-list="'azmsug' + col_index + '_' + row_index"
-                                                                                       t-att-value="row[col_index]" t-att-readonly="d.header.readonly"
-                                                                                       t-on-change="(ev) => this.onCell(r, row_index, col_index, ev)"/>
-                                                                                <datalist t-att-id="'azmsug' + col_index + '_' + row_index">
-                                                                                    <option t-foreach="col.suggestions" t-as="sug" t-key="sug_index" t-att-value="sug"/>
-                                                                                </datalist>
-                                                                            </t>
-                                                                            <input t-else="" class="form-control form-control-sm" t-att-readonly="d.header.readonly"
-                                                                                   t-att-value="row[col_index]" t-on-input="(ev) => this.onCell(r, row_index, col_index, ev)"/>
-                                                                        </td>
-                                                                    </t>
-                                                                    <td t-if="!d.header.readonly">
-                                                                        <button t-if="rows.length > 1" class="btn btn-link btn-sm text-danger p-0" title="حذف الصف"
-                                                                                t-on-click="() => this.removeRow(r, row_index)">×</button>
-                                                                    </td>
-                                                                </tr>
-                                                            </tbody>
-                                                        </table>
+                                                <!-- the note that goes with the question, answered from a list -->
+                                                <div t-if="q.note_label" class="o_azm_fin_note">
+                                                    <span class="o_azm_fin_label" t-out="q.note_label"/>
+                                                    <div class="o_azm_chips">
+                                                        <t t-foreach="q.note_options" t-as="tag" t-key="tag">
+                                                            <button t-attf-class="o_azm_chip {{this.hasTag(q, tag) ? 'o_azm_chip_on' : ''}} o_azm_chip_multi"
+                                                                    t-att-disabled="d.header.readonly"
+                                                                    t-on-click="() => this.toggleTag(req, q, tag)" t-out="tag"/>
+                                                        </t>
                                                     </div>
-                                                    <button t-if="!d.header.readonly" class="btn btn-secondary btn-sm mt-1" t-on-click="() => this.addRow(r)">+ إضافة صف</button>
-                                                </t>
+                                                    <textarea t-if="this.wantsFreeText(q)" class="form-control" rows="2"
+                                                              t-att-value="q.value.note" t-att-readonly="d.header.readonly"
+                                                              placeholder="اكتب التفاصيل…"
+                                                              t-on-input="(ev) => this.onNote(req, q, ev)"/>
+                                                    <div t-if="q.has_priority" class="o_azm_fin_row">
+                                                        <span class="o_azm_fin_label">الأولوية</span>
+                                                        <t t-foreach="d.priorities" t-as="prio" t-key="prio.key">
+                                                            <button t-attf-class="o_azm_chip {{q.value.priority === prio.key ? 'o_azm_chip_on' : ''}}"
+                                                                    t-att-disabled="d.header.readonly"
+                                                                    t-on-click="() => this.setPriority(req, q, prio.key)" t-out="prio.name"/>
+                                                        </t>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </t>
-
-                                        <!-- documented branches -->
-                                        <t t-if="r.state !== 'na'">
-                                            <div t-foreach="r.schema.branches" t-as="br" t-key="br_index" class="o_azm_select_row o_azm_fin_branch">
-                                                <span class="o_azm_fin_label" t-out="br.title"/>
-                                                <t t-foreach="br.options" t-as="opt" t-key="opt_index">
-                                                    <button t-attf-class="o_azm_chip {{(r.branches[br_index] || '') === opt ? 'o_azm_chip_on' : ''}}"
-                                                            t-att-disabled="d.header.readonly" t-att-value="(r.branches[br_index] || '') === opt ? '' : opt"
-                                                            t-on-click="(ev) => this.onBranch(r, br_index, ev)" t-out="opt"/>
-                                                </t>
-                                                <span t-if="r.branches[br_index]" class="o_azm_muted o_azm_fin_reveal">↳ <t t-out="br.reveals.join(' · ')"/></span>
-                                            </div>
-                                        </t>
-
-                                    </div>
-
+                                    </t>
                                 </div>
                             </t>
                         </div>
                     </t>
-
-                    <div class="o_azm_stage_nav">
-                        <button class="btn btn-secondary" t-on-click="() => this.nextModule(-1)">الموديول السابق</button>
-                        <button class="btn btn-primary" t-on-click="() => this.nextModule(1)">الموديول التالي</button>
-                    </div>
                 </section>
 
                 <!-- live output -->
                 <aside class="o_azm_live">
                     <div class="o_azm_live_bar">
                         <span class="o_azm_live_title">المخرجات الحية</span>
-                        <div class="btn-group btn-group-sm">
-                            <button t-attf-class="btn {{this.state.scope === 'module' ? 'btn-primary' : 'btn-secondary'}}"
-                                    t-on-click="() => this.setScope('module')">الموديول الحالي</button>
-                            <button t-attf-class="btn {{this.state.scope === 'model' ? 'btn-primary' : 'btn-secondary'}}"
-                                    t-on-click="() => this.setScope('model')">النموذج بالكامل</button>
+                        <div class="o_azm_fin_row">
+                            <button t-attf-class="o_azm_chip {{state.scope === 'module' ? 'o_azm_chip_on' : ''}}"
+                                    t-on-click="() => this.setScope('module')">الموديول</button>
+                            <button t-attf-class="o_azm_chip {{state.scope === 'model' ? 'o_azm_chip_on' : ''}}"
+                                    t-on-click="() => this.setScope('model')">النموذج</button>
                         </div>
                     </div>
                     <div class="o_azm_tabs">
                         <t t-foreach="d.tabs" t-as="tab" t-key="tab.key">
-                            <button t-attf-class="o_azm_tab {{this.state.tab === tab.key ? 'o_azm_tab_on' : ''}}"
-                                    t-on-click="() => this.setTab(tab.key)" t-out="tab.title"/>
+                            <button t-attf-class="o_azm_tab {{state.tab === tab.key ? 'o_azm_tab_on' : ''}}"
+                                    t-on-click="() => this.selectTab(tab.key)" t-out="tab.title"/>
                         </t>
                     </div>
-                    <div t-attf-class="o_azm_live_doc {{this.state.busy ? 'o_azm_busy' : ''}}">
-                        <t t-out="this.state.output"/>
-                    </div>
+                    <div t-attf-class="o_azm_live_doc {{state.busy ? 'o_azm_busy' : ''}}" t-out="state.output"/>
                 </aside>
             </div>
         </div>

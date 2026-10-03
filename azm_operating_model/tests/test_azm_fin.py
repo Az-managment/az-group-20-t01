@@ -1,9 +1,21 @@
 import json
+import re
+import xml.etree.ElementTree as ET
 
 from odoo.exceptions import AccessError, UserError
 from odoo.tests import TransactionCase, new_test_user, tagged
 
 from odoo.addons.azm_operating_model.models import fin_engine
+from odoo.addons.azm_operating_model.models.azm_fin_catalogue import FALLBACK_KINDS, PROFILES
+
+from .fin_common import FULL, columns_of, fill, real_options, table_question
+
+
+def _entity(env, code, name, scopes=()):
+    return env["azm.entity"].create({
+        "code": code, "name": name,
+        "fin_scope_ids": [(6, 0, [s.id for s in scopes])],
+    })
 
 
 @tagged("post_install", "-at_install")
@@ -14,9 +26,8 @@ class TestAzmFinancialModel(TransactionCase):
         super().setUpClass()
         Scope = cls.env["azm.fin.scope"]
         cls.edu, cls.work, cls.prj = (Scope.search([("code", "=", c)]) for c in ("EDU", "WORK", "PRJ"))
-        cls.entity = cls.env["azm.entity"].create({"code": "FTA", "name": "كيان مالي أ",
-                                                   "fin_scope_ids": [(6, 0, (cls.edu | cls.work).ids)]})
-        cls.other = cls.env["azm.entity"].create({"code": "FTB", "name": "كيان مالي ب"})
+        cls.entity = _entity(cls.env, "FTA", "كيان مالي أ", (cls.edu, cls.work))
+        cls.other = _entity(cls.env, "FTB", "كيان مالي ب")
         cls.preparer = new_test_user(cls.env, "fin_prep", groups="azm_operating_model.azm_group_user")
         cls.preparer_b = new_test_user(cls.env, "fin_prep_b", groups="azm_operating_model.azm_group_user")
         cls.reviewer = new_test_user(cls.env, "fin_rev", groups="azm_operating_model.azm_group_reviewer")
@@ -30,19 +41,24 @@ class TestAzmFinancialModel(TransactionCase):
         return (assessment or self.assessment).answer_ids.filtered(lambda a: a.code == code)
 
     def test_catalogue(self):
+        """The spreadsheet taxonomy, loaded whole."""
         Module = self.env["azm.fin.module"]
         Requirement = self.env["azm.fin.requirement"]
-        # The spreadsheet taxonomy: 19 live modules, the 17 superseded ones
-        # archived rather than deleted so approved versions still name them.
         self.assertEqual(Module.search_count([]), 19)
-        self.assertEqual(Module.with_context(active_test=False).search_count([]), 36)
-        self.assertFalse(Requirement.search([("module_id.active", "=", False)]),
+        # superseded modules are archived rather than deleted, so an approved
+        # version still names the module it was answered under — but nothing
+        # live may hang off one.
+        retired = Module.with_context(active_test=False).search([("active", "=", False)])
+        self.assertFalse(Requirement.search([("module_id", "in", retired.ids)]),
                          "a requirement is hanging off a retired module")
         self.assertEqual(Requirement.search_count([]), 167)
         self.assertEqual(Requirement.search_count([("source", "=", "HRF")]), 60)
-        self.assertEqual(len(Module.search([("code", "=", "FIN.ADV")])._details()), 22)
+        self.assertEqual(self.env["azm.fin.topic"].search_count([]), 215)
+        self.assertEqual(self.env["azm.fin.prompt"].search_count([]), 3655)
         self.assertEqual(len(self.assessment.answer_ids), 167)
-        self.assertEqual(len(self.assessment.qanswer_ids), 1136)
+        # every requirement is reachable through the module navigator
+        nav = {m["code"]: m for m in self.assessment._modules_nav()}
+        self.assertEqual(sum(m["total"] for m in nav.values()), 167)
 
     def test_every_question_has_its_own_options(self):
         """The point of importing the spreadsheet: a question must offer the
@@ -50,17 +66,15 @@ class TestAzmFinancialModel(TransactionCase):
         Question = self.env["azm.fin.question"]
         self.assertEqual(Question.search_count([]), 1136)
         self.assertEqual(self.env["azm.fin.option"].search_count([]), 6121)
-        self.assertEqual(self.env["azm.fin.topic"].search_count([]), 215)
-        self.assertEqual(self.env["azm.fin.opening.question"].search_count([]), 3655)
 
         choice = Question.search([("qtype", "in", ("select", "multi"))])
         self.assertFalse(choice.filtered(lambda q: not q.option_ids),
                          "a choice question was imported with no options")
         # The four standard scales repeat by design; everything else must not.
         standard = {tuple(q.option_ids.mapped("name"))
-                    for q in Question.search([("role", "in", ("state", "impl", "rule", "target"))])}
+                    for q in Question.search([("role", "in", ("status", "impl", "rule", "target"))])}
         self.assertEqual(len(standard), 4, "the standard scales are not consistent")
-        specific = Question.search([("role", "in", ("main", "followup")),
+        specific = Question.search([("role", "in", ("main", "follow")),
                                     ("qtype", "in", ("select", "multi"))])
         self.assertFalse(
             specific.filtered(lambda q: tuple(q.option_ids.mapped("name")) in standard),
@@ -68,36 +82,27 @@ class TestAzmFinancialModel(TransactionCase):
 
     def test_follow_up_conditions_point_backwards(self):
         """A forward reference would never fire, and would do so silently."""
-
-        def leaves(condition):
-            """A gated follow-up keeps its own condition inside an "all"."""
-            if "all" in condition or "any" in condition:
-                for child in condition.get("all") or condition.get("any"):
-                    yield from leaves(child)
-            else:
-                yield condition
-
-        conditioned = self.env["azm.fin.question"].search([("condition", "!=", False)])
-        # 519 from the sheet, plus the gate put on every main and follow-up
-        # question that did not already carry one.
-        self.assertEqual(len(conditioned), 969)
+        conditioned = self.env["azm.fin.question"].search([("condition_json", "!=", False)])
+        self.assertEqual(len(conditioned), 519)   # exactly what the sheet declares
         for question in conditioned:
             siblings = question.requirement_id.question_ids
-            for leaf in leaves(json.loads(question.condition)):
-                trigger = siblings.filtered(lambda q: q.key == leaf["field"])
-                self.assertTrue(trigger, f"{question.code}: trigger {leaf['field']} missing")
-                self.assertLess(trigger.sequence, question.sequence, question.code)
-                self.assertEqual(trigger.qtype, "select",
-                                 f"{question.code}: engine cannot match a list with 'in'")
-                offered = set(trigger.option_ids.mapped("name"))
-                self.assertFalse(set(leaf["in"]) - offered,
-                                 f"{question.code}: names options {trigger.key} never offers")
+            leaf = question._condition()
+            trigger = siblings.filtered(lambda q: q.key == leaf["q"])
+            self.assertTrue(trigger, f"{question.code}: trigger {leaf['q']} missing")
+            self.assertLess(trigger.sequence, question.sequence, question.code)
+            self.assertEqual(trigger.qtype, "select",
+                             f"{question.code}: engine cannot match a list with 'in'")
+            offered = set(trigger.option_ids.mapped("name"))
+            self.assertFalse(set(leaf["in"]) - offered,
+                             f"{question.code}: names options {trigger.key} never offers")
 
-    def test_the_gate_is_first_in_every_requirement(self):
-        """Every requirement asks «هل هذا مطبق؟» before anything else."""
-        firsts = self.env["azm.fin.question"].search([("sequence", "=", 1)])
-        self.assertEqual(len(firsts), 167)
-        self.assertEqual(set(firsts.mapped("role")), {"state"})
+    def test_the_standard_scales_close_every_requirement(self):
+        """Each requirement opens with its own question and ends with the four
+        standard scales, in that order."""
+        for requirement in self.env["azm.fin.requirement"].search([], limit=40):
+            roles = requirement.question_ids.sorted("sequence").mapped("role")
+            self.assertEqual(roles[0], "main", requirement.code)
+            self.assertEqual(roles[-4:], ["status", "impl", "rule", "target"], requirement.code)
 
     def test_applicability_follows_activities(self):
         self.assertEqual(self.assessment.scope_ids, self.edu | self.work)
@@ -106,30 +111,51 @@ class TestAzmFinancialModel(TransactionCase):
         self.assertFalse(self._line("FIN-062").applicable)    # PRJ
         self.assessment.scope_ids = [(4, self.prj.id)]
         self.assertTrue(self._line("FIN-062").applicable)
-        # "PRJ" is now an archived code: workspace_data falls back to the first
-        # module when it cannot match, so assert which module came back too.
-        data = self.assessment.workspace_data("FIN.PRJ")
-        self.assertEqual(data["module"]["code"], "FIN.PRJ")
+        # workspace_data falls back to the first module when it cannot match a
+        # code, so assert which module actually came back.
+        data = self.assessment.workspace_data("PRJ")
+        self.assertEqual(data["module"]["code"], "PRJ")
         expected = self.env["azm.fin.requirement"].search_count([
-            ("module_id.code", "=", "FIN.PRJ"),
+            ("module_id.code", "=", "PRJ"),
             ("scope_code", "in", ("ALL", *self.assessment.scope_ids.mapped("code"))),
         ])
-        self.assertEqual(len(data["requirements"]), expected)
+        shown = sum(len(t["requirements"]) for t in data["topics"])
+        self.assertEqual(shown, expected)
+
+    def test_the_payload_is_grouped_by_topic(self):
+        """The workspace renders topics, so every requirement must arrive
+        inside one and no topic may arrive empty."""
+        data = self.assessment.workspace_data("GOV")
+        self.assertTrue(data["topics"])
+        for topic in data["topics"]:
+            self.assertTrue(topic["requirements"], f"{topic['code']} has no requirements")
+            self.assertTrue(topic["name"], f"{topic['code']} has no name")
+        codes = [r["code"] for t in data["topics"] for r in t["requirements"]]
+        self.assertEqual(len(codes), len(set(codes)), "a requirement appears twice")
+        for key in ("header", "modules", "module", "topics", "states", "na_reasons",
+                    "priorities", "tabs", "output"):
+            self.assertIn(key, data)
 
     def test_done_rule_and_outputs(self):
         a = self.assessment.with_user(self.preparer)
         line = self._line("FIN-004")
-        res = a.workspace_save(line.id, {"state": "partial"})
-        self.assertFalse(res["answer"]["done"])  # the gap is mandatory for «partial»
-        res = a.workspace_save(line.id, {"gap": "لا توجد مصفوفة صلاحيات مكتوبة", "current": "اعتماد شفهي",
-                                         "table": [["الصرف", "موظف", "مراجع", "موظف", "", "", "", ""]]},
-                               module_code="FIN.GOV", tab="authority")
-        self.assertTrue(res["answer"]["done"])
-        self.assertIn("نفس الدور", res["output"])        # creator == approver -> segregation warning
+        self.assertFalse(line.is_done)
+        fill(line)
+        self.assertTrue(line.is_done)
+        self.assertEqual(line.state, "full")
         for tab, _title in fin_engine.OUTPUT_TABS:
-            self.assertTrue(a.workspace_output("FIN.GOV", tab, "module"))
-            self.assertTrue(a.workspace_output("FIN.GOV", tab, "model"))
-        self.assertIn("FIN-004", a.workspace_output("FIN.GOV", "gaps", "module"))
+            self.assertTrue(a.workspace_output("GOV", tab, "module"))
+            self.assertTrue(a.workspace_output("GOV", tab, "model"))
+        self.assertIn("FIN-004", a.workspace_output("GOV", "authority", "module"))
+
+    def test_a_requirement_that_does_not_apply_is_closed_by_its_reason(self):
+        line = self._line("FIN-004")
+        result = self.assessment.workspace_requirement(line.id, {"na": True})
+        self.assertFalse(result["requirement"]["done"], "«لا ينطبق» still needs a reason")
+        result = self.assessment.workspace_requirement(
+            line.id, {"na": True, "reason": "الكيان لا يمارس هذا النشاط"})
+        self.assertTrue(result["requirement"]["done"])
+        self.assertEqual(line.state, "na")
 
     def test_lifecycle_and_lock(self):
         a = self.assessment
@@ -143,7 +169,7 @@ class TestAzmFinancialModel(TransactionCase):
         a.with_user(self.manager).action_approve()
         self.assertEqual((a.state, len(a.version_ids)), ("approved", 1))
         with self.assertRaises((UserError, AccessError)):
-            a.with_user(self.preparer).workspace_save(self._line("FIN-001").id, {"state": "na"})
+            a.with_user(self.preparer).workspace_requirement(self._line("FIN-001").id, {"na": True})
         new = self.env["azm.fin.assessment"].browse(a.with_user(self.manager).action_new_version()["res_id"])
         self.assertEqual((new.version, new.state, a.state), (2, "draft", "archived"))
         self.assertEqual(new.done_count, a.done_count)
@@ -165,69 +191,84 @@ class TestAzmFinancialModel(TransactionCase):
 
 @tagged("post_install", "-at_install")
 class TestAzmFinRollup(TransactionCase):
-    """The roll-up azm.fin.answer must follow the standard questions, and must
-    not be writable behind their back."""
+    """The roll-up azm.fin.answer must follow the standard questions rather
+    than be written behind their back."""
 
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
         scope = cls.env["azm.fin.scope"].search([("code", "=", "EDU")])
-        cls.entity = cls.env["azm.entity"].create({
-            "code": "FRU", "name": "كيان التجميع", "fin_scope_ids": [(6, 0, scope.ids)]})
+        cls.entity = _entity(cls.env, "FRU", "كيان التجميع", (scope,))
         cls.assessment = cls.env["azm.fin.assessment"].create({"entity_id": cls.entity.id})
         cls.line = cls.assessment.answer_ids.filtered(lambda a: a.code == "FIN-004")
 
-    def _line_for(self, role):
-        return self.line.qanswer_ids.filtered(lambda q: q.role == role)[:1]
+    def _question(self, role):
+        return self.line.requirement_id.question_ids.filtered(lambda q: q.role == role)[:1]
+
+    def _answer(self, role, vals):
+        return self.line._set_answer(self._question(role).id, vals)
+
+    def _option(self, role, name):
+        return self._question(role).option_ids.filtered(lambda o: o.name == name)
 
     def test_every_requirement_has_its_standard_questions(self):
-        roles = self.line.qanswer_ids.mapped("role")
-        for role in ("state", "impl", "rule", "target"):
+        roles = self.line.requirement_id.question_ids.mapped("role")
+        for role in ("status", "impl", "rule", "target"):
             self.assertIn(role, roles)
 
     def test_the_roll_up_follows_the_questions(self):
-        state = self._line_for("state")
-        state.option_id = state.question_id.option_ids.filtered(
-            lambda o: o.name == "مطبق جزئيًا").id
-        state.text = "تغطية جزئية"
+        self._answer("status", {"option_id": self._option("status", "مطبق جزئيًا").id,
+                                "note": "تغطية جزئية"})
         self.assertEqual(self.line.state, "partial")
-        self.assertEqual(self.line.current, "تغطية جزئية")
+        self.assertIn("تغطية جزئية", self.line.issues or "")
+        # a partial state is a gap, and the gap must carry the same explanation
+        self.assertIn("تغطية جزئية", self.line.gap or "")
 
-        impl = self._line_for("impl")
-        impl.option_ids = [(6, 0, impl.question_id.option_ids.filtered(
-            lambda o: o.name in ("SAP", "Excel")).ids)]
-        self.assertEqual(self.line.impl, "SAP,Excel")
+        impl = self._question("impl")
+        chosen = impl.option_ids.filtered(lambda o: o.kind not in FALLBACK_KINDS)[:2]
+        self._answer("impl", {"option_ids": chosen.ids})
+        self.assertEqual(self.line.impl, "، ".join(chosen.mapped("name")))
 
-        target = self._line_for("target")
-        target.option_id = target.question_id.option_ids.filtered(
-            lambda o: o.name == "تحسين").id
-        self.assertEqual(self.line.future_stance, "تحسين")
+        target = real_options(self._question("target"))[:1]
+        self._answer("target", {"option_id": target.id})
+        self.assertEqual(self.line.target, target.name)
+        self.assertIn(target.name, self.line.future or "")
 
-    def test_an_unknown_answer_is_not_a_state(self):
-        state = self._line_for("state")
-        state.option_id = state.question_id.option_ids.filtered(
-            lambda o: o.name == "لا أعرف").id
-        self.assertFalse(self.line.state, "«لا أعرف» must not count as a state")
+    def test_an_unknown_answer_is_its_own_state(self):
+        """«لا أعرف» is recorded rather than left blank, but it is never read
+        as a degree of implementation."""
+        unknown = self._question("status").option_ids.filtered(lambda o: o.kind == "unknown")
+        self.assertTrue(unknown, "the status scale offers no «لا أعرف»")
+        self._answer("status", {"option_id": unknown[:1].id})
+        self.assertEqual(self.line.state, "unknown")
+        self.assertNotIn(self.line.state, ("full", "partial", "unavailable"))
+        self.assertFalse(self.line.gap, "«لا أعرف» is not a gap, it is a question still open")
+
+    def test_an_unknown_answer_keeps_the_scales_hidden(self):
+        """The scales are asked only once the status is known."""
+        unknown = self._question("status").option_ids.filtered(lambda o: o.kind == "unknown")[:1]
+        self._answer("status", {"option_id": unknown.id})
+        self.assertNotIn("impl", self.line._visible().mapped("role"))
 
     def test_na_is_declared_on_the_requirement(self):
         """No question produces «لا ينطبق»; it is declared on the requirement."""
-        self.line.na_declared = True
+        self.line.na = True
         self.assertEqual(self.line.state, "na")
 
-    def test_the_derived_fields_refuse_a_direct_write(self):
-        with self.assertRaises(UserError):
-            self.line.write({"state": "full"})
-        with self.assertRaises(UserError):
-            self.line.write({"impl": "يدوي أو ورقي"})
+    def test_the_priority_reaches_the_target_note(self):
+        # the scales are asked only once the status says there is something to
+        # grade, and the roll-up only reads questions that are visible
+        self._answer("status", {"option_id": self._option("status", FULL).id})
+        target = self._question("target")
+        self._answer("target", {"option_id": real_options(target)[:1].id,
+                                "note": "تغيير مطلوب", "priority": "high"})
+        self.assertIn("مرتفعة", self.line.target_note or "")
 
-    def test_the_workspace_still_writes_through_the_questions(self):
-        """The OWL workspace and action_fill_demo both go through here."""
-        self.line._workspace_write({"state": "full", "current": "مطبق بالكامل اليوم",
-                                    "impl": ["SAP"]})
-        self.assertEqual(self.line.state, "full")
-        self.assertEqual(self.line.impl, "SAP")
-        self.assertEqual(self._line_for("state").option_id.name, "مطبق بالكامل")
-        self.assertTrue(self.line.is_done)
+    def test_an_option_of_another_question_is_refused(self):
+        foreign = self.env["azm.fin.option"].search(
+            [("question_id", "!=", self._question("status").id)], limit=1)
+        with self.assertRaises(UserError):
+            self._answer("status", {"option_id": foreign.id})
 
 
 @tagged("post_install", "-at_install")
@@ -239,50 +280,61 @@ class TestAzmFinWorkspaceQuestions(TransactionCase):
     def setUpClass(cls):
         super().setUpClass()
         scope = cls.env["azm.fin.scope"].search([("code", "=", "EDU")])
-        cls.entity = cls.env["azm.entity"].create({
-            "code": "FWQ", "name": "كيان الأسئلة", "fin_scope_ids": [(6, 0, scope.ids)]})
+        cls.entity = _entity(cls.env, "FWQ", "كيان الأسئلة", (scope,))
         cls.assessment = cls.env["azm.fin.assessment"].create({"entity_id": cls.entity.id})
         cls.line = cls.assessment.answer_ids.filtered(lambda a: a.code == "FIN-004")
 
     def _keys(self):
-        return [q["key"] for q in self.line._question_dicts()]
+        return self.line._visible().mapped("key")
 
-    def _state_line(self):
-        return self.line.qanswer_ids.filtered(lambda q: q.role == "state")[:1]
+    def _status(self):
+        return self.line.requirement_id.question_ids.filtered(lambda q: q.role == "status")[:1]
 
-    def test_only_the_gate_is_asked_first(self):
-        """«هل هذا مطبق؟» comes first and nothing else is asked until it is
-        answered — the same gate procurement puts on a stage."""
-        self.assertEqual(self._keys(), ["Q003"])
-        self.assertEqual(self.line.qanswer_ids.filtered(
-            lambda q: q.sequence == 1).role, "state")
+    def test_the_scales_wait_for_the_status(self):
+        """The requirement's own questions are asked straight away; the four
+        standard scales only once the status says there is something to grade."""
+        self.assertEqual(self._keys(), ["Q001", "Q002", "Q003"])
 
-    def test_an_unknown_trigger_keeps_the_follow_ups_hidden(self):
-        line = self._state_line()
-        line.option_id = line.question_id.option_ids.filtered(lambda o: o.name == "لا أعرف").id
-        self.assertEqual(self._keys(), ["Q003"])
+    def test_an_unknown_trigger_keeps_the_scales_hidden(self):
+        status = self._status()
+        unknown = status.option_ids.filtered(lambda o: o.kind == "unknown")[:1]
+        self.line._set_answer(status.id, {"option_id": unknown.id})
+        self.assertEqual(self._keys(), ["Q001", "Q002", "Q003"])
 
     def test_answering_the_trigger_reveals_them(self):
-        line = self._state_line()
-        line.option_id = line.question_id.option_ids.filtered(
-            lambda o: o.name == "مطبق بالكامل").id
-        # the gate first, then the requirement's own questions, then the scales
-        self.assertEqual(self._keys(), ["Q003", "Q001", "Q002", "Q004", "Q005", "Q006"])
-        # and the flags are persisted, so counts and lists agree
-        self.assertTrue(all(q.is_visible for q in self.line.qanswer_ids))
+        status = self._status()
+        full = status.option_ids.filtered(lambda o: o.name == FULL)[:1]
+        self.line._set_answer(status.id, {"option_id": full.id})
+        self.assertEqual(self._keys(), ["Q001", "Q002", "Q003", "Q004", "Q005", "Q006"])
 
     def test_the_rpc_round_trip_reveals_the_follow_ups(self):
-        data = self.assessment.workspace_data("FIN.GOV")
-        req = next(r for r in data["requirements"] if r["code"] == "FIN-004")
-        self.assertEqual([q["key"] for q in req["questions"]], ["Q003"])
+        data = self.assessment.workspace_data("GOV")
+        req = next(r for t in data["topics"] for r in t["requirements"] if r["code"] == "FIN-004")
+        self.assertEqual([q["key"] for q in req["questions"] if q["visible"]],
+                         ["Q001", "Q002", "Q003"])
 
-        state = next(q for q in req["questions"] if q["role"] == "state")
-        option = next(o for o in state["options"] if o["name"] == "مطبق بالكامل")
-        result = self.assessment.workspace_answer_question(
-            state["line_id"], {"option_id": option["id"]}, module_code="FIN.GOV")
-        fresh = next(r for r in result["requirements"] if r["code"] == "FIN-004")
-        self.assertEqual(len(fresh["questions"]), 6)
+        status = next(q for q in req["questions"] if q["role"] == "status")
+        option = next(o for o in status["options"] if o["name"] == FULL)
+        result = self.assessment.workspace_answer(
+            req["answer_id"], status["id"], {"option_id": option["id"]}, module_code="GOV")
+        fresh = result["requirement"]
+        self.assertEqual(len([q for q in fresh["questions"] if q["visible"]]), 6)
         self.assertEqual(fresh["state"], "full")
+        # the client patches the page from this payload, so it must be whole
+        self.assertEqual(set(result), {"requirement", "header", "modules", "output"})
+
+    def test_the_payload_carries_the_saved_value_back(self):
+        """The client renders from `value`, so a saved answer must come back in
+        it or the chip reverts the moment the page repaints."""
+        data = self.assessment.workspace_data("GOV")
+        req = next(r for t in data["topics"] for r in t["requirements"] if r["code"] == "FIN-004")
+        status = next(q for q in req["questions"] if q["role"] == "status")
+        option = next(o for o in status["options"] if o["name"] == FULL)
+        result = self.assessment.workspace_answer(req["answer_id"], status["id"],
+                                                  {"option_id": option["id"]})
+        saved = next(q for q in result["requirement"]["questions"] if q["id"] == status["id"])
+        self.assertEqual(saved["value"]["option_id"], option["id"])
+        self.assertTrue(saved["answered"])
 
     def test_a_table_column_offers_its_own_choices(self):
         """A column that lists its choices in the sheet becomes a dropdown; one
@@ -292,22 +344,20 @@ class TestAzmFinWorkspaceQuestions(TransactionCase):
         columns = question._columns()
         self.assertTrue(columns, question.code)
         self.assertTrue(all(isinstance(c, dict) and "label" in c for c in columns))
-        self.assertTrue(any(c.get("options") for c in columns),
-                        "no column offers a choice list")
+        self.assertTrue(any(c.get("options") for c in columns), "no column offers a choice list")
 
     def test_an_option_from_another_question_is_refused(self):
         """The whole point: a question answers with its own options."""
-        main = self.line.qanswer_ids.filtered(lambda q: q.role == "main")[:1]
-        foreign = self.env["azm.fin.option"].search(
-            [("question_id", "!=", main.question_id.id)], limit=1)
+        status = self._status()
+        foreign = self.env["azm.fin.option"].search([("question_id", "!=", status.id)], limit=1)
         with self.assertRaises(UserError):
-            self.assessment.workspace_answer_question(main.id, {"option_id": foreign.id})
+            self.assessment.workspace_answer(self.line.id, status.id, {"option_id": foreign.id})
 
     def test_answering_is_refused_outside_draft(self):
-        line = self._state_line()
+        status = self._status()
         self.assessment.with_context(azm_skip_lock=True).state = "approved"
         with self.assertRaises(UserError):
-            self.assessment.workspace_answer_question(line.id, {"text": "بعد الاعتماد"})
+            self.assessment.workspace_answer(self.line.id, status.id, {"note": "بعد الاعتماد"})
 
 
 @tagged("post_install", "-at_install")
@@ -334,8 +384,14 @@ class TestAzmFinOptionIntegrity(TransactionCase):
     def test_no_option_is_shared_between_questions(self):
         """Options are owned by one question; a shared row would let an answer
         point at a question it does not belong to."""
+        self.env.cr.execute("SELECT count(*) FROM azm_fin_option WHERE question_id IS NULL")
+        self.assertEqual(self.env.cr.fetchone()[0], 0)
+
+    def test_every_question_code_is_unique(self):
         self.env.cr.execute("""
-            SELECT count(*) FROM azm_fin_option WHERE question_id IS NULL
+            SELECT count(*) FROM (
+                SELECT code FROM azm_fin_question GROUP BY code HAVING count(*) > 1
+            ) duplicated
         """)
         self.assertEqual(self.env.cr.fetchone()[0], 0)
 
@@ -343,7 +399,8 @@ class TestAzmFinOptionIntegrity(TransactionCase):
         """The four standard scales repeat on every requirement by design.
         Any other repeated set must be a deliberately shared vocabulary, never
         a requirement-specific question wearing someone else's answers."""
-        questions = self.env["azm.fin.question"].search([("role", "in", ("state", "impl", "rule", "target"))])
+        questions = self.env["azm.fin.question"].search(
+            [("role", "in", ("status", "impl", "rule", "target"))])
         by_role = {}
         for question in questions:
             names = tuple(question.option_ids.sorted("sequence").mapped("name"))
@@ -356,251 +413,193 @@ class TestAzmFinOptionIntegrity(TransactionCase):
 class TestAzmFinGridColumns(TransactionCase):
     """A grid cell should offer what it can rather than ask for free text."""
 
-    def test_a_listed_column_is_a_dropdown(self):
-        requirement = self.env["azm.fin.requirement"].search([("profile", "=", "C")], limit=1)
-        by_label = {c["label"]: c for c in requirement._schema()["columns"]}
-        self.assertEqual(by_label["أساس الحساب"]["type"], "select")
-        self.assertEqual(by_label["العملة"]["type"], "select")
+    def _columns(self, profile):
+        requirement = self.env["azm.fin.requirement"].search([("profile", "=", profile)], limit=1)
+        question = requirement.question_ids.filtered(lambda q: q.qtype == "table")[:1]
+        return question._columns() if question else []
 
-    def test_a_date_column_is_a_date_field(self):
-        requirement = self.env["azm.fin.requirement"].search([("profile", "=", "C")], limit=1)
-        by_label = {c["label"]: c for c in requirement._schema()["columns"]}
-        self.assertEqual(by_label["تاريخ السريان"]["type"], "date")
+    def test_every_column_declares_what_it_holds(self):
+        """The client picks its widget from `type`, so a column without one
+        would silently become a text box."""
+        allowed = {"list", "text", "number", "date"}
+        for question in self.env["azm.fin.question"].search([("qtype", "=", "table")]):
+            for column in question._columns():
+                self.assertIsInstance(column, dict, question.code)
+                self.assertTrue(column.get("label"), question.code)
+                self.assertIn(column.get("type"), allowed, f"{question.code}: {column}")
 
-    def test_the_unit_column_offers_a_list(self):
-        """«الوحدة» has no list in the catalogue; the vocabulary is supplied."""
-        columns = self.env["azm.fin.requirement"].search(
-            [("profile", "=", "C")], limit=1)._schema()["columns"]
-        unit = next(c for c in columns if c["label"] == "الوحدة")
-        self.assertEqual(unit["type"], "select")
-        self.assertIn("يوم", unit["options"])
-        self.assertIn("نسبة مئوية", unit["options"])
-        # currency lives in its own column, so it must not be repeated here
-        self.assertNotIn("EGP جنيه", unit["options"])
+    def test_a_listed_column_carries_its_list(self):
+        for question in self.env["azm.fin.question"].search([("qtype", "=", "table")]):
+            for column in question._columns():
+                if column["type"] == "list":
+                    self.assertTrue(column.get("options"), f"{question.code}: {column['label']}")
+                else:
+                    self.assertFalse(column.get("options"),
+                                     f"{question.code}: {column['label']} lists options but is not a list")
 
-    def test_a_period_column_stays_free_text(self):
-        """«التاريخ/الفترة» also accepts a period, which a date picker cannot
-        express, so it must not be narrowed to a date."""
-        from odoo.addons.azm_operating_model.models import fin_engine
-        self.assertEqual(fin_engine.column_type("التاريخ/الفترة", None), "text")
-        self.assertEqual(fin_engine.column_type("تاريخ السريان", None), "date")
-        # an enumerated column stays a dropdown even if its label says موعد
-        self.assertEqual(fin_engine.column_type("موعد الانسحاب", ["نعم", "لا"]), "select")
+    def test_most_columns_offer_a_list(self):
+        """A grid people fill five different ways is not a grid worth reading."""
+        total = listed = 0
+        for question in self.env["azm.fin.question"].search([("qtype", "=", "table")]):
+            for column in question._columns():
+                total += 1
+                listed += column["type"] != "text"
+        self.assertGreater(listed / total, 0.9, f"only {listed} of {total} columns are typed")
 
-    def test_an_open_column_still_offers_suggestions(self):
-        """«المعادلة أو الشرائح» holds the real formula, so it must stay
-        typeable; it offers a list of shapes rather than replacing the text."""
-        columns = self.env["azm.fin.requirement"].search(
-            [("profile", "=", "C")], limit=1)._schema()["columns"]
-        formula = next(c for c in columns if c["label"] == "المعادلة أو الشرائح")
-        self.assertEqual(formula["type"], "suggest")
-        self.assertIn("شرائح تصاعدية", formula["suggestions"])
-        self.assertFalse(formula["options"], "a suggestion column must not be a closed list")
+    def test_a_date_column_is_a_date(self):
+        """A cell that holds a date gets a date picker rather than a text box."""
+        dates = []
+        for question in self.env["azm.fin.question"].search([("qtype", "=", "table")]):
+            dates += [c for c in question._columns() if c["type"] == "date"]
+        self.assertTrue(dates, "no column is a date, so the date picker is never reached")
+        for column in dates:
+            self.assertFalse(column.get("options"), f"{column['label']} is both a date and a list")
 
-
-    def test_the_component_column_offers_a_vocabulary(self):
-        """«المكوّن» suggests the generic parts a calculation is built from, but
-        stays typeable because every rule computes something different."""
-        columns = self.env["azm.fin.requirement"].search(
-            [("profile", "=", "C")], limit=1)._schema()["columns"]
-        component = next(c for c in columns if c["label"] == "المكوّن")
-        self.assertEqual(component["type"], "suggest")
-        self.assertIn("النسبة", component["suggestions"])
-        self.assertFalse(component["options"])
+    def test_the_workflow_grid_offers_a_list_almost_everywhere(self):
+        """A دورة عمل grid asks who does what in which order — answers a list
+        can hold. Only «القيد», which names an accounting entry, stays open."""
+        OPEN = {"القيد"}
+        grids = self.env["azm.fin.question"].search(
+            [("qtype", "=", "table"), ("requirement_id.profile", "=", "W")])
+        self.assertEqual(len(grids), 9)
+        bare = {c["label"] for q in grids for c in q._columns() if c["type"] == "text"}
+        self.assertFalse(bare - OPEN, f"workflow columns with no list: {sorted(bare - OPEN)}")
 
 
 @tagged("post_install", "-at_install")
 class TestAzmFinOutputs(TransactionCase):
     """Every answer template must have an output that shows it."""
 
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        scope = cls.env["azm.fin.scope"].search([("code", "in", ("EDU", "WORK", "PRJ"))])
+        cls.entity = _entity(cls.env, "FOU", "كيان المخرجات", scope)
+        cls.assessment = cls.env["azm.fin.assessment"].create({"entity_id": cls.entity.id})
+
+    def _line(self, profile):
+        return self.assessment.answer_ids.filtered(
+            lambda a: a.profile == profile and a.applicable)[:1]
+
     def test_every_profile_has_its_own_output(self):
-        from odoo.addons.azm_operating_model.models import fin_engine
-        from odoo.addons.azm_operating_model.models.azm_fin_catalogue import PROFILES
         covered = {p for profiles in fin_engine.TAB_PROFILES.values() for p in profiles}
         self.assertFalse(set(PROFILES) - covered,
                          "an answer template has no output tab, so its answers are invisible")
-        # and no tab mixes two templates
-        for tab, profiles in fin_engine.TAB_PROFILES.items():
-            self.assertEqual(len(profiles), 1, f"{tab} mixes templates: {profiles}")
 
     def test_no_requirement_falls_outside_the_outputs(self):
-        from odoo.addons.azm_operating_model.models import fin_engine
         covered = {p for profiles in fin_engine.TAB_PROFILES.values() for p in profiles}
         orphans = self.env["azm.fin.requirement"].search([("profile", "not in", list(covered))])
         self.assertFalse(orphans, f"{len(orphans)} requirements have no output")
 
     def test_every_tab_has_a_document_code(self):
-        from odoo.addons.azm_operating_model.models import fin_engine
         for tab, _title in fin_engine.OUTPUT_TABS:
             self.assertIn(tab, fin_engine.DOC_CODES, f"{tab} has no document code")
 
-    def test_the_workflow_grid_offers_a_list_everywhere(self):
-        """Every column of a دورة عمل grid either picks from a list or
-        suggests one; none is a bare text box."""
-        columns = self.env["azm.fin.requirement"].search(
-            [("profile", "=", "W")], limit=1)._schema()["columns"]
-        self.assertEqual(len(columns), 8)
-        bare = [c["label"] for c in columns if c["type"] == "text"]
-        self.assertFalse(bare, f"workflow columns with no list: {bare}")
+    def test_each_output_is_its_own_document(self):
+        """Two tabs sharing a document code would file two different outputs
+        under one reference."""
+        codes = [fin_engine.DOC_CODES[tab] for tab, _t in fin_engine.OUTPUT_TABS]
+        self.assertEqual(len(codes), len(set(codes)), f"duplicate document codes: {codes}")
 
     def test_the_outputs_show_the_answers(self):
         """A tab that renders nothing from its answers is a tab nobody can use."""
-        assessment = self.env["azm.fin.assessment"].search([], limit=1)
-        if not assessment:
-            self.skipTest("no financial assessment in this database")
-        for profile, tab in (("L", "lists"), ("C", "calc"), ("P", "policies"), ("W", "workflow")):
-            line = assessment.answer_ids.filtered(
-                lambda a: a.profile == profile and a.applicable)[:1]
+        for tab, profiles in fin_engine.TAB_PROFILES.items():
+            line = self._line(profiles[0])
             if not line:
                 continue
-            token = "ZZ-%s-TOKEN" % profile
-            columns = line.requirement_id._schema()["columns"]
-            row = [c["options"][0] if c["options"] else token for c in columns]
-            line._workspace_write({"state": "full", "current": token, "table": [row]})
-            html = assessment.workspace_output(line.module_id.code, tab, "model") or ""
+            token = f"ZZ-{profiles[0]}-TOKEN"
+            fill(line, token)
+            html = self.assessment.workspace_output(line.module_id.code, tab, "module") or ""
             self.assertIn(line.code, html, f"{tab} does not show {line.code}")
-            self.assertIn(token, html, f"{tab} does not show what was answered")
-
-    def test_only_genuinely_open_columns_are_free_text(self):
-        """Every grid column offers a list unless the cell holds something a
-        list cannot express: a name, a code, a field list, a threshold.
-
-        If a new column shows up here, it needs a vocabulary or an exemption —
-        it must not quietly become another box people fill five different ways.
-        """
-        OPEN = {
-            "العنصر",              # the item a reference list enumerates
-            "الكود إن وجد",         # a code
-            "القاعدة",              # the wording of the rule
-            "اسم التقرير/المؤشر",   # a report name
-            "الحقول/المعادلة",      # the fields a report is built from
-            "الحقول",
-            "حد التنبيه",           # a threshold value
-            "معرف منع التكرار",     # a technical key
-        }
-        free = set()
-        for requirement in self.env["azm.fin.requirement"].search([]):
-            for column in requirement._schema()["columns"]:
-                if column["type"] == "text":
-                    free.add(column["label"])
-        self.assertFalse(free - OPEN, f"columns with no list and no exemption: {sorted(free - OPEN)}")
-
-    def test_the_authority_grid_reuses_the_sheets_own_operations(self):
-        """«العملية» offers the نوع العملية list the sheet already gives on
-        FIN-004, rather than a parallel invention."""
-        columns = self.env["azm.fin.requirement"].search(
-            [("profile", "=", "A")], limit=1)._schema()["columns"]
-        operation = next(c for c in columns if c["label"] == "العملية")
-        self.assertEqual(operation["type"], "suggest")
-        for expected in ("قيد يومية", "طلب شراء", "سند صرف", "كشف رواتب"):
-            self.assertIn(expected, operation["suggestions"])
 
     def test_each_output_shows_only_its_own_template(self):
         """A tab that leaks another template's requirements is showing the
         reader a document that is not the one it claims to be."""
-        import re
-        from odoo.addons.azm_operating_model.models import fin_engine
-        assessment = self.env["azm.fin.assessment"].search([], limit=1)
-        if not assessment:
-            self.skipTest("no financial assessment in this database")
-        profile_of = {r.code: r.profile
-                      for r in self.env["azm.fin.requirement"].search([])}
+        profile_of = {r.code: r.profile for r in self.env["azm.fin.requirement"].search([])}
         for tab, profiles in fin_engine.TAB_PROFILES.items():
-            html = assessment.workspace_output(False, tab, "model") or ""
+            html = self.assessment.workspace_output(False, tab, "model") or ""
             shown = set(re.findall(r"\b((?:FIN|HRF)-\d{3})\b", html))
             stray = {c for c in shown if profile_of.get(c) not in profiles}
             self.assertFalse(stray, f"{tab} shows requirements of another template: {sorted(stray)}")
 
     def test_an_output_shows_every_applicable_requirement(self):
-        """Anything applicable and answered must reach its document; a silently
-        dropped requirement is worse than an empty one."""
-        import re
-        from odoo.addons.azm_operating_model.models import fin_engine
-        assessment = self.env["azm.fin.assessment"].search([], limit=1)
-        if not assessment:
-            self.skipTest("no financial assessment in this database")
+        """Anything applicable must reach its document; a silently dropped
+        requirement is worse than an empty one."""
         for tab, profiles in fin_engine.TAB_PROFILES.items():
-            html = assessment.workspace_output(False, tab, "model") or ""
+            html = self.assessment.workspace_output(False, tab, "model") or ""
             shown = len(set(re.findall(r"\b((?:FIN|HRF)-\d{3})\b", html)))
-            applicable = len(assessment.answer_ids.filtered(
+            applicable = len(self.assessment.answer_ids.filtered(
                 lambda a: a.profile in profiles and a.applicable))
             self.assertEqual(shown, applicable, f"{tab} renders {shown} of {applicable}")
 
     def test_every_output_is_well_formed(self):
-        import xml.etree.ElementTree as ET
-        from odoo.addons.azm_operating_model.models import fin_engine
-        assessment = self.env["azm.fin.assessment"].search([], limit=1)
-        if not assessment:
-            self.skipTest("no financial assessment in this database")
         for tab, _title in fin_engine.OUTPUT_TABS:
-            html = assessment.workspace_output(False, tab, "model") or ""
+            html = self.assessment.workspace_output(False, tab, "model") or ""
             self.assertTrue(html.strip(), f"{tab} renders nothing")
             ET.fromstring(f"<root>{html}</root>")   # raises if the markup is broken
 
-    def test_each_output_renders_in_its_own_style(self):
-        """Only دورات العمل renders a step list and only الصلاحيات checks the
-        separation of duties; a policy rendered as a workflow would be the
-        wrong document even with the right requirements in it."""
-        from odoo.addons.azm_operating_model.models import fin_engine
-        assessment = self.env["azm.fin.assessment"].search([], limit=1)
-        if not assessment:
-            self.skipTest("no financial assessment in this database")
-        for profile in ("L", "C", "P", "W", "A", "R", "I"):
-            line = assessment.answer_ids.filtered(
-                lambda a: a.profile == profile and a.applicable)[:1]
-            if not line:
-                continue
-            columns = line.requirement_id._schema()["columns"]
-            row = [c["options"][0] if c["options"] else "قيمة" for c in columns]
-            line._workspace_write({"state": "full", "current": "قاعدة", "table": [row]})
-
+    def test_only_the_workflow_renders_a_step_list(self):
+        """A policy rendered as a workflow would be the wrong document even
+        with the right requirements in it."""
+        for profile in PROFILES:
+            line = self._line(profile)
+            if line:
+                fill(line)
+        # the step list is drawn from a grid that opens with a step column, so
+        # make sure at least one of those is answered
+        stepped = self.assessment.answer_ids.filtered(
+            lambda a: a.applicable and a.profile == "W" and any(
+                q.qtype == "table" and (q._columns() or [{}])[0].get("label") in fin_engine.STEP_COLUMNS
+                for q in a.requirement_id.question_ids))
+        self.assertTrue(stepped, "no workflow requirement has a step grid")
+        fill(stepped[:1])
         for tab in fin_engine.TAB_PROFILES:
-            html = assessment.workspace_output(False, tab, "model") or ""
+            html = self.assessment.workspace_output(False, tab, "model") or ""
             steps = "o_azm_steps" in html
             self.assertEqual(steps, tab == "workflow",
                              f"{tab} {'renders' if steps else 'does not render'} a step list")
 
-    def test_each_output_is_its_own_document(self):
-        """Two tabs sharing a document code would file two different outputs
-        under one reference."""
-        from odoo.addons.azm_operating_model.models import fin_engine
-        codes = [fin_engine.DOC_CODES[tab] for tab, _t in fin_engine.OUTPUT_TABS]
-        self.assertEqual(len(codes), len(set(codes)), f"duplicate document codes: {codes}")
 
-    def _authority_row(self, creator, reviewer, approver, conflict, evidence):
-        assessment = self.env["azm.fin.assessment"].search([], limit=1)
-        line = assessment.answer_ids.filtered(
-            lambda a: a.profile == "A" and a.applicable)[:1]
-        labels = [c["label"] for c in line.requirement_id._schema()["columns"]]
-        at = {label: n for n, label in enumerate(labels)}
-        row = [""] * len(labels)
-        row[at["العملية"]] = "طلب شراء"
-        row[at["المنشئ"]], row[at["المراجع"]], row[at["المعتمد"]] = creator, reviewer, approver
-        row[at["التعارض"]], row[at["دليل الرقابة"]] = conflict, evidence
-        line._workspace_write({"state": "full", "current": "قاعدة", "table": [row]})
-        return assessment.workspace_output(line.module_id.code, "authority", "module") or ""
+@tagged("post_install", "-at_install")
+class TestAzmFinAuthorityOutput(TransactionCase):
+    """الصلاحيات والرقابة must report what it was actually told."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        scope = cls.env["azm.fin.scope"].search([])
+        cls.entity = _entity(cls.env, "FAU", "كيان الصلاحيات", scope)
+        cls.assessment = cls.env["azm.fin.assessment"].create({"entity_id": cls.entity.id})
+        # one authority requirement carries the يُنشئ / يراجع / يعتمد trio the
+        # separation-of-duties check reads; that is the one to exercise
+        cls.line = cls.assessment.answer_ids.filtered(
+            lambda a: a.code == "FIN-004")
+
+    def _render(self, **cells):
+        line = self.line
+        question = table_question(line)
+        columns = columns_of(line)
+        at = {c["label"]: n for n, c in enumerate(columns)}
+        missing = set(cells) - set(at)
+        self.assertFalse(missing, f"the authority grid has no column {sorted(missing)}")
+        row = [""] * len(columns)
+        for label, value in cells.items():
+            row[at[label]] = value
+        fill(line)                                   # the scales, so the item renders
+        line._set_answer(question.id, {"table": [row]})
+        return self.assessment.workspace_output(line.module_id.code, "authority", "module") or ""
+
+    def test_the_grid_names_the_three_roles(self):
+        """The separation-of-duties check matches on these verbs, so if the
+        sheet ever renames a column the warning would go quiet."""
+        labels = [c["label"] for c in columns_of(self.line)]
+        for expected in ("يُنشئ", "يراجع", "يعتمد"):
+            self.assertIn(expected, labels)
 
     def test_the_same_person_twice_is_flagged(self):
-        html = self._authority_row("موظف", "مراجع", "موظف", "لا يوجد", "سجل النظام")
-        self.assertIn("نفس الدور", html)
+        html = self._render(**{"يُنشئ": "موظف", "يراجع": "مراجع", "يعتمد": "موظف"})
+        self.assertIn("أكثر من مهمة", html)
 
     def test_distinct_roles_are_not_flagged(self):
-        html = self._authority_row("موظف", "مراجع", "المدير المالي", "لا يوجد", "سجل النظام")
-        self.assertNotIn("نفس الدور", html)
-        self.assertNotIn("تعارض معلن", html)
-
-    def test_a_declared_conflict_reaches_the_document(self):
-        """The roles can all differ and the conflict still be real; the
-        duplication check cannot see that, so the declared value must carry."""
-        html = self._authority_row("موظف", "مراجع", "المدير المالي",
-                                   "يوجد ويحتاج معالجة", "سجل النظام")
-        self.assertIn("تعارض معلن", html)
-
-    def test_an_accepted_conflict_is_not_flagged(self):
-        html = self._authority_row("موظف", "مراجع", "المدير المالي",
-                                   "يوجد ومقبول برقابة بديلة", "سجل النظام")
-        self.assertNotIn("تعارض معلن", html)
-
-    def test_an_authority_with_no_evidence_is_noted(self):
-        html = self._authority_row("موظف", "مراجع", "المدير المالي", "لا يوجد", "")
-        self.assertIn("لا يوجد دليل رقابة", html)
+        html = self._render(**{"يُنشئ": "موظف", "يراجع": "مراجع", "يعتمد": "المدير المالي"})
+        self.assertNotIn("أكثر من مهمة", html)

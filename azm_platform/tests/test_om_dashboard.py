@@ -9,7 +9,15 @@ class TestOmDashboard(TransactionCase):
         super().setUpClass()
         cls.company = cls.env['res.company'].create({'name': 'AZM Test Campus'})
         cls.env.user.company_ids = [(4, cls.company.id)]
-        cls.entity = cls.env['azm.entity'].create({'code': 'TST', 'name': 'كيان اختبار', 'company_id': cls.company.id})
+        # creating a company also creates its entity, and a company may only
+        # have one, so take over whatever is already there
+        Entity = cls.env['azm.entity'].with_context(active_test=False)
+        cls.entity = Entity.search([('company_id', '=', cls.company.id)], limit=1)
+        vals = {'code': 'TST', 'name': 'كيان اختبار', 'active': True}
+        if cls.entity:
+            cls.entity.write(vals)
+        else:
+            cls.entity = cls.env['azm.entity'].create({**vals, 'company_id': cls.company.id})
         cls.assessment = cls.env['azm.assessment'].create({
             'company_id': cls.company.id, 'entity_id': cls.entity.id, 'purchase_kind': 'subscriptions', 'scenario': 'petty_cash',
         })
@@ -83,9 +91,14 @@ class TestOmDashboard(TransactionCase):
         everything = self.Dashboard.get_operating_model_data()
         self.assertIn(self.assessment.id, [a['id'] for a in everything['assessments']])
         # another preparer on another entity sees neither
-        other_entity = self.env['azm.entity'].create({'code': 'TS2', 'name': 'كيان آخر', 'company_id': self.company.id})
+        # a company carries exactly one entity, so the other preparer gets
+        # their own company and the entity that came with it
+        other_company = self.env['res.company'].create({'name': 'AZM Other Campus'})
+        other_entity = self.env['azm.entity'].with_context(active_test=False).search(
+            [('company_id', '=', other_company.id)], limit=1)
+        other_entity.write({'code': 'TS2', 'name': 'كيان آخر', 'active': True})
         other = new_test_user(self.env, 'azm_om_other', company_id=self.company.id,
-                              company_ids=[(6, 0, [self.company.id])],
+                              company_ids=[(6, 0, [self.company.id, other_company.id])],
                               groups='azm_platform.group_azm_user,azm_operating_model.azm_group_user')
         other_entity.user_ids = [(4, other.id)]
         theirs = self.env['azm.dashboard'].with_user(other).get_operating_model_data()
@@ -154,7 +167,12 @@ class TestOmDashboard(TransactionCase):
         hub = self.env['azm.dashboard'].with_user(self.user).get_operating_models_hub()
         self.assertTrue(hub['available'])
         self.assertEqual([m['key'] for m in hub['models']], ['procurement', 'financial'])
-        self.assertEqual(hub['totals']['items'], 396 + 167)
+        # both cards count answerable questions, so the total is the two
+        # catalogues added together rather than questions plus requirements
+        items = (self.env['azm.question'].search_count([])
+                 + self.env['azm.fin.question'].search_count([]))
+        self.assertEqual(hub['totals']['items'], items)
+        self.assertEqual(items, 396 + 1136)
         self.assertIn(self.entity.id, [e['id'] for e in hub['entities']])
         none = new_test_user(self.env, 'azm_hub_none', groups='azm_platform.group_azm_user')
         self.assertFalse(self.env['azm.dashboard'].with_user(none).get_operating_models_hub()['available'])
@@ -180,7 +198,17 @@ class TestOmDashboard(TransactionCase):
         self.assertFalse(self.env['azm.dashboard'].with_user(none).get_unified_assessments()['available'])
 
     def test_autolink(self):
+        """Entities that predate their company are matched to it by the other
+        name or by the initials, rather than left dangling."""
         other = self.env['res.company'].create({'name': 'Zeta Branch', 'azm_name_alt': 'فرع زيتا'})
+        # a company now gets an entity the moment it is created, so clear those
+        # away to leave the two companies waiting to be matched
+        Entity = self.env['azm.entity'].with_context(active_test=False)
+        # the entity that came with the new company would match it by name and
+        # make the pairing ambiguous, so it goes; the campus entity only steps
+        # aside, because it carries this class's assessment
+        Entity.search([('company_id', '=', other.id)]).unlink()
+        self.entity.company_id = False
         by_alt = self.env['azm.entity'].create({'code': 'ZB1', 'name': 'فرع زيتا'})
         by_initials = self.env['azm.entity'].create({'code': 'ATC', 'name': 'كيان آخر'})
         self.env['azm.entity']._azm_autolink_companies()

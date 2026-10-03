@@ -72,6 +72,9 @@ class TestAzmAccess(TransactionCase):
 
     def test_company_follows_entity(self):
         company = self.env["res.company"].create({"name": "ACC Co"})
+        # creating a company now creates its entity, and a company may only
+        # have one, so the generated entity makes way for the one under test
+        company.azm_entity_ids.unlink()
         self.ent_b.company_id = company
         a = self.env["azm.assessment"].create({"entity_id": self.ent_b.id, "purchase_kind": "works",
                                                "scenario": "direct"})
