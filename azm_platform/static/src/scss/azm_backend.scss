@@ -279,6 +279,16 @@ body.o_azm_mode.o_azm_sidebar_collapsed {
 // ---------------------------------------------------------------------------
 // Home dashboard
 // ---------------------------------------------------------------------------
+// Odoo clips the root of every client action:
+//   html .o_web_client > .o_action_manager > .o_action { overflow: hidden; }
+// That selector is (0,3,1) and beats the (0,1,0) of .o_azm_dashboard below,
+// so the dashboards were clipped and would not scroll at all. The framework
+// expects the scrolling part to be an inner .o_content, but these pages scroll
+// on their root, so the clip is lifted here at a higher specificity.
+html .o_web_client > .o_action_manager > .o_action.o_azm_dashboard {
+    overflow: auto;
+}
+
 .o_azm_dashboard {
     overflow: auto;
     height: 100%;
