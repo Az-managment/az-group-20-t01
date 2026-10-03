@@ -5,6 +5,8 @@ from odoo.tests import TransactionCase
 
 from odoo.addons.az_group_base.hooks import (
     CHART_TEMPLATE,
+    DEV_BILLS,
+    DEV_INVOICES,
     DEV_STAFF,
     ENTITY_COMPANIES,
     JOURNAL_CODES,
@@ -199,3 +201,55 @@ class TestAzGroupStructure(TransactionCase):
         self.assertEqual(self.env['res.company'].search_count([]), companies_before)
         self.assertEqual(self.env['account.journal'].search_count([]), journals_before)
         self.assertEqual(self.env['account.account'].search_count([]), accounts_before)
+
+    def test_every_entity_keeps_books_of_its_own(self):
+        """Each entity has both sides of its ledger, and shares neither."""
+        if os.environ.get('ODOO_STAGE') != 'dev':
+            self.skipTest("the sample documents are only posted on development builds")
+        Move = self.env['account.move']
+        expected_invoices = {xml_id for xml_id, *_rest in DEV_INVOICES}
+        expected_bills = {xml_id for xml_id, *_rest in DEV_BILLS}
+        seen = {}
+        for xml_id in expected_invoices | expected_bills:
+            company = self.env.ref(f'az_group_base.{xml_id}', raise_if_not_found=False)
+            if not company:
+                continue
+            for move_type, expected in (('out_invoice', expected_invoices),
+                                        ('in_invoice', expected_bills)):
+                moves = Move.search([
+                    ('company_id', '=', company.id),
+                    ('move_type', '=', move_type),
+                    ('state', '=', 'posted'),
+                ])
+                if xml_id in expected:
+                    self.assertTrue(
+                        moves, f"{company.name} has no posted {move_type}")
+                seen.setdefault(move_type, {})[company.id] = set(moves.ids)
+        # No document is counted in two entities at once.
+        for move_type, by_company in seen.items():
+            for company_id, ids in by_company.items():
+                for other_id, other_ids in by_company.items():
+                    if other_id != company_id:
+                        self.assertFalse(
+                            ids & other_ids,
+                            f"two entities share the same {move_type}",
+                        )
+
+    def test_the_entity_code_prefixes_both_sides(self):
+        """Customer invoices and vendor bills both number under the entity."""
+        if os.environ.get('ODOO_STAGE') != 'dev':
+            self.skipTest("the sample documents are only posted on development builds")
+        Move = self.env['account.move']
+        for entity in self.entities:
+            for move_type, suffix in (('out_invoice', 'IN'), ('in_invoice', 'BL')):
+                move = Move.search([
+                    ('company_id', '=', entity.id),
+                    ('move_type', '=', move_type),
+                    ('state', '=', 'posted'),
+                ], limit=1)
+                if not move:
+                    continue
+                self.assertTrue(
+                    move.name.startswith(f"{entity.code}{suffix}"),
+                    f"{move.name} does not carry the code of {entity.name}",
+                )
