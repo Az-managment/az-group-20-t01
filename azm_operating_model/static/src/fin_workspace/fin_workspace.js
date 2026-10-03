@@ -1,7 +1,8 @@
-import { Component, markup, onWillStart, proxy } from "@odoo/owl";
+import { Component, markup, onWillStart, proxy, useProps } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 import { KeepLast } from "@web/core/utils/concurrency";
+import { standardActionServiceProps } from "@web/webclient/actions/action_plugin";
 
 const MODEL = "azm.fin.assessment";
 // An option with a kind is a fallback — «لا أعرف», «غير مدرج», «لا يوجد» —
@@ -13,7 +14,8 @@ const TYPING_PAUSE = 700;
 
 export class AzmFinWorkspace extends Component {
     static template = "azm_operating_model.FinWorkspace";
-    static props = ["*"];
+
+    props = useProps(standardActionServiceProps);
 
     setup() {
         this.orm = useService("orm");
