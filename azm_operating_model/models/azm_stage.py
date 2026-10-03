@@ -52,11 +52,7 @@ class AzmStage(models.Model):
         routes = [f"{s['id']} · {s['name']}" for s in ops] + cat["route_extra"] + [unknown, not_listed]
         lists = {"@R": cat["roles"], "@D": cat["docs"], "@T": routes}
 
-        Entity = self.env["azm.entity"].with_context(active_test=False)
-        for seq, ent in enumerate(cat["entities"], 1):
-            if not Entity.search([("code", "=", ent["code"])]):
-                Entity.create({"code": ent["code"], "name": ent["name"], "sequence": seq})
-
+        # entities are the companies of Odoo (azm.entity._azm_sync_companies), not part of the catalogue
         Question = self.env["azm.question"].with_context(active_test=False)
         Option = self.env["azm.option"].with_context(active_test=False)
         stages = {}

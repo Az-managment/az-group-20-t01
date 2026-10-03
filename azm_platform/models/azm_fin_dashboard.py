@@ -4,8 +4,8 @@ from odoo import api, models
 
 from odoo.addons.azm_operating_model.models.azm_fin_catalogue import PROFILES, SCOPES, STATES
 
-STATE_COLORS = {'full': '#16a34a', 'partial': '#f59e0b', 'unavailable': '#64748b', 'na': '#cbd5e1',
-                'open': '#e2e8f0'}
+STATE_COLORS = {'full': '#16a34a', 'partial': '#f59e0b', 'unavailable': '#64748b', 'unknown': '#a78bfa',
+                'na': '#cbd5e1', 'open': '#e2e8f0'}
 ASSESSMENT_COLORS = {'draft': '#94a3b8', 'review': '#f59e0b', 'approved': '#16a34a'}
 PROFILE_COLORS = {'L': '#5b7fa6', 'C': '#c08a1e', 'W': '#1f9d92', 'A': '#c0504d', 'R': '#7c5cd6',
                   'I': '#1f8ec7', 'P': '#3a9a5f'}
@@ -20,13 +20,16 @@ def _figures(answers):
     states = Counter(a.state or 'open' for a in answers)
     answered = len(answers) - states['open']
     done = len(answers.filtered('is_done'))
+    questions, answered_q = answers._question_totals()
     implemented = states['full'] + states['partial'] + states['unavailable']
     return {
         'applicable': len(answers),
         'done': done,
         'answered': answered,
         'full': states['full'], 'partial': states['partial'],
-        'unavailable': states['unavailable'], 'na': states['na'], 'open': states['open'],
+        'unavailable': states['unavailable'], 'unknown': states['unknown'], 'na': states['na'],
+        'open': states['open'], 'questions': questions, 'answered_questions': answered_q,
+        'question_completion': _pct(answered_q, questions),
         'gaps': states['partial'] + states['unavailable'],
         'completion': _pct(done, len(answers)),
         # maturity: share of the requirements that exist (not N/A) which are fully applied
@@ -86,6 +89,8 @@ class AzmDashboard(models.AbstractModel):
             cards.append({
                 'code': module.code, 'name': module.name,
                 'requirements': len(reqs),
+                'catalogue_questions': len(reqs.question_ids),
+                'topics': len(reqs.topic_id),
                 'fin': len(reqs.filtered(lambda r: r.source == 'FIN')),
                 'hrf': len(reqs.filtered(lambda r: r.source == 'HRF')),
                 'profiles': [{'key': k, 'count': profiles[k], 'color': PROFILE_COLORS[k]} for k in PROFILES if profiles[k]],
@@ -104,6 +109,8 @@ class AzmDashboard(models.AbstractModel):
             'draft': states['draft'], 'review': states['review'], 'approved': states['approved'],
             'modules': len([c for c in cards if c['requirements']]),
             'requirements': len(requirements),
+            'catalogue_questions': len(requirements.question_ids),
+            'topics': len(requirements.topic_id),
             'fin_requirements': len(requirements.filtered(lambda r: r.source == 'FIN')),
             'hrf_requirements': len(requirements.filtered(lambda r: r.source == 'HRF')),
             'entities': len(entities),
@@ -116,7 +123,7 @@ class AzmDashboard(models.AbstractModel):
         # ---------------- charts
         state_labels = dict(STATES)
         state_chart = [{'id': k, 'name': state_labels.get(k, 'لم تتم الإجابة'), 'color': STATE_COLORS[k],
-                        'count': total[k]} for k in ('full', 'partial', 'unavailable', 'na', 'open')]
+                        'count': total[k]} for k in ('full', 'partial', 'unavailable', 'unknown', 'na', 'open')]
         a_labels = dict(Assessment._fields['state']._description_selection(env))
         assessment_chart = [{'id': s, 'name': a_labels.get(s, s), 'color': c, 'count': states[s]}
                             for s, c in ASSESSMENT_COLORS.items()]

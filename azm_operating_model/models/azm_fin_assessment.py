@@ -1,6 +1,5 @@
 import json
 import zlib
-from html import escape
 
 from markupsafe import Markup
 
@@ -8,20 +7,12 @@ from odoo import Command, api, fields, models
 from odoo.exceptions import UserError
 
 from . import fin_engine
-from .azm_fin_catalogue import IMPLEMENTATIONS, PROFILES, SCOPES, STATES
-
-STATE_LABELS = dict(STATES)
-STATE_HINTS = {
-    "full": "قاعدة قائمة ومطبّقة",
-    "partial": "يوجد نقص أو فجوة",
-    "unavailable": "لا توجد ممارسة بعد",
-    "na": "يتطلب سببًا ومراجعة",
-}
-TEXT_KEYS = ("current", "gap", "future", "reason")
+from .azm_fin_catalogue import (FALLBACK_KINDS, NA_REASONS, NOTE_LISTS, OTHER, PRIORITIES, PROFILES, SCOPES,
+                                STATES, STATUS_OPTIONS)
 
 
 def _e(text):
-    return escape(str(text or ""), quote=True)
+    return fin_engine._e(text)
 
 
 class AzmFinAssessment(models.Model):
@@ -55,11 +46,14 @@ class AzmFinAssessment(models.Model):
     version_ids = fields.One2many("azm.fin.version", "assessment_id", string="الإصدارات المعتمدة")
 
     applicable_count = fields.Integer("متطلبات منطبقة", compute="_compute_stats")
-    done_count = fields.Integer("متطلبات مُجابة", compute="_compute_stats")
+    done_count = fields.Integer("متطلبات مكتملة", compute="_compute_stats")
+    question_count = fields.Integer("أسئلة ظاهرة", compute="_compute_stats")
+    answered_count = fields.Integer("أسئلة مُجابة", compute="_compute_stats")
     progress = fields.Float("نسبة الاكتمال", compute="_compute_stats")
     full_count = fields.Integer("مطبّق بالكامل", compute="_compute_stats")
     partial_count = fields.Integer("مطبّق جزئيًا", compute="_compute_stats")
-    unavailable_count = fields.Integer("غير متاح", compute="_compute_stats")
+    unavailable_count = fields.Integer("غير منفذ", compute="_compute_stats")
+    unknown_count = fields.Integer("لا أعرف", compute="_compute_stats")
     na_count = fields.Integer("لا ينطبق", compute="_compute_stats")
     gap_count = fields.Integer("الفجوات", compute="_compute_stats")
 
@@ -83,17 +77,18 @@ class AzmFinAssessment(models.Model):
         for rec in self:
             rec.scope_ids = rec.entity_id.sudo().fin_scope_ids if rec.entity_id else False
 
-    @api.depends("answer_ids.state", "answer_ids.is_done", "answer_ids.applicable")
+    @api.depends("answer_ids.state", "answer_ids.is_done", "answer_ids.applicable",
+                 "answer_ids.q_total", "answer_ids.q_answered")
     def _compute_stats(self):
         for rec in self:
             app = rec.answer_ids.filtered("applicable")
             rec.applicable_count = len(app)
             rec.done_count = len(app.filtered("is_done"))
-            rec.progress = 100.0 * rec.done_count / rec.applicable_count if rec.applicable_count else 0.0
-            rec.full_count = len(app.filtered(lambda a: a.state == "full"))
-            rec.partial_count = len(app.filtered(lambda a: a.state == "partial"))
-            rec.unavailable_count = len(app.filtered(lambda a: a.state == "unavailable"))
-            rec.na_count = len(app.filtered(lambda a: a.state == "na"))
+            total, answered = app._question_totals()
+            rec.question_count, rec.answered_count = total, answered
+            rec.progress = 100.0 * answered / total if total else 0.0
+            for key, _label in STATES:
+                rec[f"{key}_count"] = len(app.filtered(lambda a, k=key: a.state == k))
             rec.gap_count = rec.partial_count + rec.unavailable_count
 
     # ---------------------------------------------------------------- crud
@@ -122,9 +117,11 @@ class AzmFinAssessment(models.Model):
         for module in self.env["azm.fin.module"].search([]):
             lines = self.answer_ids.filtered(lambda a, m=module: a.module_id == m)
             app = lines.filtered("applicable")
+            total, answered = app._question_totals()
             nav.append({
                 "code": module.code, "name": module.name,
                 "total": len(lines), "applicable": len(app), "done": len(app.filtered("is_done")),
+                "questions": total, "answered": answered,
                 "gaps": len(app.filtered(lambda a: a.state in ("partial", "unavailable"))),
             })
         return nav
@@ -136,8 +133,8 @@ class AzmFinAssessment(models.Model):
             "state": self.state, "state_label": dict(self._fields["state"].selection)[self.state],
             "version": self.version, "is_demo": self.is_demo, "readonly": self.state != "draft",
             "applicable": self.applicable_count, "done": self.done_count, "progress": round(self.progress),
-            "counts": {"full": self.full_count, "partial": self.partial_count,
-                       "unavailable": self.unavailable_count, "na": self.na_count},
+            "questions": self.question_count, "answered": self.answered_count,
+            "counts": {key: self[f"{key}_count"] for key, _label in STATES},
             "scopes": [{"code": "ALL", "name": SCOPES["ALL"]}] + [
                 {"code": s.code, "name": s.name} for s in self.scope_ids],
         }
@@ -150,7 +147,7 @@ class AzmFinAssessment(models.Model):
             lines = lines.filtered(lambda a: a.module_id == module)
         if not show_all:
             lines = lines.filtered("applicable")
-        lines = lines.sorted(lambda a: (a.module_sequence, a.requirement_sequence, a.id))
+        lines = lines.sorted(lambda a: (a.module_sequence, a.topic_sequence, a.requirement_sequence, a.id))
         return [line._engine_dict() for line in lines]
 
     def _render(self, tab, module=False):
@@ -160,12 +157,7 @@ class AzmFinAssessment(models.Model):
         else:
             data = [({"code": m.code, "name": m.name}, self._engine_items(m)) for m in self.env["azm.fin.module"].search([])]
             body = fin_engine.render_model(tab, data)
-        banner = ""
-        if self.is_demo:
-            banner = fin_engine.note("مثال افتراضي للتجربة فقط.", "warn")
-        elif self.state != "approved":
-            banner = fin_engine.note("مسودة غير معتمدة · صياغة من الإفادات؛ الأدلة لم تُتحقق.")
-        return Markup(f'<div class="o_azm_output" dir="rtl">{banner}{body}</div>')
+        return Markup(f'<div class="o_azm_output" dir="rtl">{self._banner()}{body}</div>')
 
     def workspace_data(self, module_code=None, tab="book", scope="module", show_all=False):
         """Everything the financial workspace needs in one round trip."""
@@ -173,33 +165,60 @@ class AzmFinAssessment(models.Model):
         modules = self.env["azm.fin.module"].search([])
         module = modules.filtered(lambda m: m.code == module_code)[:1] or modules[:1]
         lines = self.answer_ids.filtered(lambda a: a.module_id == module).sorted(
-            lambda a: (a.requirement_id.sequence, a.id))
+            lambda a: (a.topic_sequence, a.requirement_sequence, a.id))
         if not show_all:
             lines = lines.filtered("applicable")
+        topics = []
+        for line in lines:
+            topic = line.requirement_id.topic_id
+            if not topics or topics[-1]["id"] != topic.id:
+                topics.append({"id": topic.id, "code": topic.code or "", "name": topic.name or "",
+                               "prompts": [{"code": p.code, "axis": p.axis, "axis_name": p.axis_name,
+                                            "stage": p.stage, "question": p.question, "output": p.output or ""}
+                                           for p in topic.prompt_ids],
+                               "requirements": []})
+            topics[-1]["requirements"].append(line._workspace_dict())
         return {
             "header": self._header(),
             "modules": self._modules_nav(),
             "module": {"code": module.code, "name": module.name,
                        "total": len(self.answer_ids.filtered(lambda a: a.module_id == module))},
-            "requirements": [line._workspace_dict() for line in lines],
-            "details": module._details(),
-            "profiles": [{"key": k, "name": v[0], "en": v[1], "desc": v[2]} for k, v in PROFILES.items()],
-            "states": [{"key": k, "name": n, "hint": STATE_HINTS[k]} for k, n in STATES],
-            "implementations": IMPLEMENTATIONS,
+            "topics": topics,
+            "states": [{"key": k, "name": n} for k, n in STATES],
+            "na_reasons": NA_REASONS,
+            "priorities": [{"key": k, "name": n} for k, n in PRIORITIES],
             "tabs": [{"key": k, "title": t} for k, t in fin_engine.OUTPUT_TABS],
             "output": str(self._render(tab, module if scope == "module" else False)),
         }
 
-    def workspace_save(self, answer_id, vals, module_code=None, tab="book", scope="module"):
+    def _workspace_line(self, answer_id):
         self.ensure_one()
         if self.state != "draft":
             raise UserError("الإفادة مش في حالة مسودة.")
         line = self.answer_ids.filtered(lambda a: a.id == answer_id)
         if not line:
             raise UserError("المتطلب غير موجود في الإفادة.")
-        line._workspace_write(vals)
-        return {"answer": line._workspace_dict(), "header": self._header(), "modules": self._modules_nav(),
+        return line
+
+    def _workspace_result(self, line, module_code, tab, scope):
+        return {"requirement": line._workspace_dict(), "header": self._header(), "modules": self._modules_nav(),
                 "output": self.workspace_output(module_code or line.module_id.code, tab, scope)}
+
+    def workspace_answer(self, answer_id, question_id, vals, module_code=None, tab="book", scope="module"):
+        """Save the answer of one question (option_id / option_ids / number / table / note)."""
+        self.ensure_one()
+        line = self._workspace_line(answer_id)
+        line._set_answer(question_id, vals)
+        return self._workspace_result(line, module_code, tab, scope)
+
+    def workspace_requirement(self, answer_id, vals, module_code=None, tab="book", scope="module"):
+        """Requirement level: «لا ينطبق على الكيان» and its reason."""
+        self.ensure_one()
+        line = self._workspace_line(answer_id)
+        clean = {k: vals[k] or False for k in ("na", "reason") if k in vals}
+        if clean:
+            line.write(clean)
+        return self._workspace_result(line, module_code, tab, scope)
 
     def workspace_output(self, module_code=None, tab="book", scope="module"):
         self.ensure_one()
@@ -208,7 +227,7 @@ class AzmFinAssessment(models.Model):
 
     # ---------------------------------------------------------------- outputs
     @api.depends("answer_ids.state", "answer_ids.gap", "answer_ids.future", "answer_ids.reason",
-                 "answer_ids.applicable")
+                 "answer_ids.applicable", "answer_ids.q_answered")
     def _compute_outputs(self):
         for rec in self:
             rec.summary_html = rec._render_summary() if rec.id else False
@@ -218,9 +237,9 @@ class AzmFinAssessment(models.Model):
 
     def _banner(self):
         if self.is_demo:
-            return '<div class="o_azm_fin_note o_warn">مثال افتراضي للتجربة فقط.</div>'
+            return fin_engine.note("مثال افتراضي للتجربة فقط.", "warn")
         if self.state != "approved":
-            return '<div class="o_azm_fin_note">مسودة غير معتمدة · مبنية على الإفادات؛ الأدلة لم تُتحقق.</div>'
+            return fin_engine.note("مسودة غير معتمدة · صياغة من الإفادات؛ الأدلة لم تُتحقق.")
         return ""
 
     def _render_summary(self):
@@ -229,13 +248,15 @@ class AzmFinAssessment(models.Model):
         for m in self._modules_nav():
             lines = self.answer_ids.filtered(lambda a, c=m["code"]: a.module_id.code == c and a.applicable)
             cnt = {k: len(lines.filtered(lambda a, k=k: a.state == k)) for k, _n in STATES}
-            pct = round(100 * m["done"] / m["applicable"]) if m["applicable"] else 0
+            pct = round(100 * m["answered"] / m["questions"]) if m["questions"] else 0
             rows.append(
-                f"<tr><td><b>{_e(m['code'])}</b></td><td>{_e(m['name'])}</td><td>{m['applicable']}/{m['total']}</td>"
-                f"<td>{cnt['full']}</td><td>{cnt['partial']}</td><td>{cnt['unavailable']}</td><td>{cnt['na']}</td>"
+                f"<tr><td><b>FIN.{_e(m['code'])}</b></td><td>{_e(m['name'])}</td><td>{m['applicable']}/{m['total']}</td>"
+                f"<td>{m['answered']}/{m['questions']}</td>"
+                f"<td>{cnt['full']}</td><td>{cnt['partial']}</td><td>{cnt['unavailable']}</td><td>{cnt['unknown']}</td>"
+                f"<td>{cnt['na']}</td>"
                 f"<td><div class='o_azm_fin_bar'><span style='width:{pct}%'></span></div> {pct}%</td></tr>")
-        head = ("<tr><th>الكود</th><th>الموديول</th><th>منطبق/الكل</th><th>بالكامل</th><th>جزئيًا</th>"
-                "<th>غير متاح</th><th>لا ينطبق</th><th>الاكتمال</th></tr>")
+        head = ("<tr><th>الكود</th><th>الموديول</th><th>متطلبات منطبقة</th><th>أسئلة مُجابة</th><th>بالكامل</th>"
+                "<th>جزئيًا</th><th>غير منفذ</th><th>لا أعرف</th><th>لا ينطبق</th><th>الاكتمال</th></tr>")
         return Markup(f'<div class="o_azm_fin_out" dir="rtl">{self._banner()}'
                       f'<table class="o_azm_fin_table"><thead>{head}</thead><tbody>{"".join(rows)}</tbody></table></div>')
 
@@ -243,8 +264,9 @@ class AzmFinAssessment(models.Model):
         self.ensure_one()
         app = self.answer_ids.filtered("applicable")
         sections = [
-            ("partial", "الفجوات (مطبّق جزئيًا)", "gap", "الفجوة وأثرها"),
-            ("unavailable", "غير متاح حاليًا · التصوّر المستقبلي", "future", "التصوّر المستقبلي"),
+            ("partial", "الفجوات (مطبّق جزئيًا)", "gap", "التغطية والمشاكل الحالية"),
+            ("unavailable", "غير منفذ · التوجه المستهدف", "future", "التوجه المستهدف"),
+            ("unknown", "غير معروف · يحتاج استيضاح", "current", "ما تمت الإجابة عليه"),
             ("na", "لا ينطبق · للمراجعة", "reason", "السبب"),
         ]
         html = [f'<div class="o_azm_fin_out" dir="rtl">{self._banner()}']
@@ -259,7 +281,7 @@ class AzmFinAssessment(models.Model):
             for a in lines:
                 text = a[field] or "[لم يُحدد]"
                 html.append(f"<tr><td><b>{_e(a.code)}</b></td><td>{_e(a.requirement_id.title)}</td>"
-                            f"<td>{_e(a.module_id.name)}</td><td>{_e(text)}</td></tr>")
+                            f"<td>{_e(a.module_id.name)}</td><td style='white-space:pre-line'>{_e(text)}</td></tr>")
             html.append("</tbody></table>")
         html.append("</div>")
         return Markup("".join(html))
@@ -276,7 +298,7 @@ class AzmFinAssessment(models.Model):
             if rec.reviewer_id:
                 # the preparer loses write access once the assessment leaves draft: notify as superuser
                 rec.sudo().activity_schedule("mail.mail_activity_data_todo", user_id=rec.reviewer_id.id,
-                                      summary="مراجعة إفادة النموذج المالي")
+                                             summary="مراجعة إفادة النموذج المالي")
 
     def action_back_to_draft(self):
         self.filtered(lambda r: r.state == "review").write({"state": "draft"})
@@ -289,14 +311,12 @@ class AzmFinAssessment(models.Model):
                 raise UserError("الاعتماد يتم من حالة «تحت المراجعة» فقط.")
             if rec.user_id == self.env.user and not self.env.is_superuser():
                 raise UserError("مُعد الإفادة لا يعتمدها بنفسه (فصل المهام).")
-            answers = {a.code: a._workspace_dict(light=True) for a in rec.answer_ids if a.state}
+            answers = {a.code: a._snapshot() for a in rec.answer_ids if a.state or a.q_answered}
             self.env["azm.fin.version"].create({
                 "assessment_id": rec.id, "version": rec.version,
                 "answers_json": json.dumps(answers, ensure_ascii=False, indent=1),
-                # every output except the coverage matrix, taken from the tab
-                # list rather than a literal, so a new output is never missed
-                "summary_html": "".join(str(rec._render(tab)) for tab, _title in fin_engine.OUTPUT_TABS
-                                        if tab not in ("coverage", "na")),
+                "summary_html": "".join(str(rec._render(tab)) for tab in ("book", "rules", "workflow", "authority",
+                                                                            "reports", "integration", "gaps", "future")),
             })
             rec.write({"state": "approved", "approved_by_id": self.env.user.id,
                        "approved_date": fields.Datetime.now()})
@@ -325,33 +345,15 @@ class AzmFinAssessment(models.Model):
                 "context": {"create": False, "search_default_by_module": 1}}
 
     def action_fill_demo(self):
-        """Deterministic demo answers: mostly applied, with partial gaps, unavailable items and a few N/A."""
+        """Deterministic demo answers for every question: mostly applied, with gaps, not implemented,
+        unknown and a few «لا ينطبق»."""
         for rec in self:
             if rec.state != "draft":
                 raise UserError("المثال يتعمل على مسودة فقط.")
+            rec.answer_ids.qanswer_ids.unlink()
+            rec.answer_ids.write({"na": False, "reason": False})
             for line in rec.answer_ids.filtered("applicable"):
-                seed = zlib.crc32(f"{rec.entity_id.code}/{line.code}".encode())
-                pick = seed % 20
-                state = "full" if pick < 9 else "partial" if pick < 14 else "unavailable" if pick < 18 else "na"
-                schema = line.requirement_id._schema()
-                row = []
-                for i, col in enumerate(schema["columns"]):
-                    opts = col.get("options")
-                    row.append(opts[(seed >> i) % len(opts)] if opts else f"{col['label']} — مثال")
-                vals = {
-                    "state": state,
-                    "impl": [IMPLEMENTATIONS[seed % len(IMPLEMENTATIONS)]] if state in ("full", "partial") else [],
-                    "current": f"المطبّق حاليًا في «{line.requirement_id.title}» وفق الممارسة المعتادة بالكيان."
-                    if state in ("full", "partial") else "",
-                    "gap": f"تُطبّق القاعدة على جزء من الحالات فقط؛ يلزم توحيد «{line.requirement_id.title}» وتوثيقه."
-                    if state == "partial" else "",
-                    "future": f"تصميم قاعدة موحّدة لـ «{line.requirement_id.title}» ضمن النموذج المستهدف."
-                    if state == "unavailable" else "",
-                    "reason": "النشاط غير موجود حاليًا بالكيان." if state == "na" else "",
-                    "table": [row] if state in ("full", "partial") else [],
-                    "branches": [b["options"][0] for b in schema["branches"]] if state != "na" else [],
-                }
-                line._workspace_write(vals)
+                line._fill_demo(zlib.crc32(f"{rec.entity_id.code}/{line.code}".encode()))
             rec.is_demo = True
         return True
 
@@ -359,38 +361,50 @@ class AzmFinAssessment(models.Model):
         for rec in self:
             if rec.state != "draft":
                 raise UserError("المسح متاح للمسودة فقط.")
-            rec.answer_ids.write({"state": False, "impl": False, "current": False, "gap": False, "future": False,
-                                  "reason": False, "table_json": False, "branch_json": False})
+            rec.answer_ids.qanswer_ids.unlink()
+            rec.answer_ids.write({"na": False, "reason": False})
             rec.is_demo = False
 
 
 class AzmFinAnswer(models.Model):
+    """One line per requirement in an assessment; its status and texts are derived from the question answers."""
     _name = "azm.fin.answer"
     _description = "إجابة متطلب مالي"
-    _order = "module_sequence, requirement_sequence, id"
+    _order = "module_sequence, topic_sequence, requirement_sequence, id"
 
     assessment_id = fields.Many2one("azm.fin.assessment", required=True, ondelete="cascade", index=True)
     company_id = fields.Many2one(related="assessment_id.company_id", store=True)
     entity_id = fields.Many2one(related="assessment_id.entity_id", store=True, string="الكيان")
     requirement_id = fields.Many2one("azm.fin.requirement", "المتطلب", required=True, ondelete="restrict", index=True)
     module_id = fields.Many2one(related="requirement_id.module_id", store=True, string="الموديول")
+    topic_id = fields.Many2one(related="requirement_id.topic_id", store=True, string="الموضوع الفرعي")
     module_sequence = fields.Integer(related="requirement_id.module_sequence", store=True, string="ترتيب الموديول")
+    topic_sequence = fields.Integer(related="requirement_id.topic_sequence", store=True, string="ترتيب الموضوع")
     requirement_sequence = fields.Integer(related="requirement_id.sequence", store=True, string="ترتيب المتطلب")
     code = fields.Char(related="requirement_id.code", store=True, string="الكود")
+    req_id = fields.Char(related="requirement_id.req_id", string="Requirement ID")
     title = fields.Char(related="requirement_id.title", string="المتطلب ")
     profile = fields.Selection(related="requirement_id.profile", store=True, string="قالب الإجابة")
     scope_code = fields.Selection(related="requirement_id.scope_code", store=True, string="نطاق الانطباق")
     applicable = fields.Boolean("منطبق", compute="_compute_applicable", store=True)
-    state = fields.Selection(STATES, "حالة التطبيق", copy=True)
-    impl = fields.Char("طريقة التنفيذ", help="نظام، يدوي، Excel، مختلط (مفصولة بفاصلة).")
-    current = fields.Text("القاعدة الحالية")
-    gap = fields.Text("الفجوة وأثرها")
-    future = fields.Text("التصوّر المستقبلي")
-    reason = fields.Text("سبب عدم الانطباق")
-    table_json = fields.Text("جدول الإجابة (JSON)")
-    branch_json = fields.Text("التفرعات (JSON)")
+    qanswer_ids = fields.One2many("azm.fin.qanswer", "line_id", string="إجابات الأسئلة", copy=True)
+    na = fields.Boolean("لا ينطبق على الكيان", copy=True)
+    reason = fields.Text("سبب عدم الانطباق", copy=True)
     attachment_ids = fields.Many2many("ir.attachment", string="الأدلة")
-    is_done = fields.Boolean("مُجاب", compute="_compute_is_done", store=True)
+
+    # derived from the question answers
+    state = fields.Selection(STATES, "حالة التطبيق", compute="_compute_from_questions", store=True)
+    impl = fields.Char("وسيلة التنفيذ", compute="_compute_from_questions", store=True)
+    rule_state = fields.Char("حالة القاعدة", compute="_compute_from_questions", store=True)
+    target = fields.Char("التوجه المستهدف", compute="_compute_from_questions", store=True)
+    current = fields.Text("الإجابات (الوضع الحالي)", compute="_compute_from_questions", store=True)
+    issues = fields.Text("تغطية النظام والمشاكل الحالية", compute="_compute_from_questions", store=True)
+    gap = fields.Text("الفجوة", compute="_compute_from_questions", store=True)
+    target_note = fields.Text("التغييرات المطلوبة والأولوية", compute="_compute_from_questions", store=True)
+    future = fields.Text("التوجه والتغييرات المطلوبة", compute="_compute_from_questions", store=True)
+    q_total = fields.Integer("أسئلة ظاهرة", compute="_compute_from_questions", store=True)
+    q_answered = fields.Integer("أسئلة مُجابة", compute="_compute_from_questions", store=True)
+    is_done = fields.Boolean("مكتمل", compute="_compute_from_questions", store=True)
 
     _assessment_requirement_uniq = models.Constraint(
         "UNIQUE(assessment_id, requirement_id)", "المتطلب متكرر في نفس الإفادة.")
@@ -401,77 +415,351 @@ class AzmFinAnswer(models.Model):
             code = a.requirement_id.scope_code
             a.applicable = code == "ALL" or code in a.assessment_id.scope_ids.mapped("code")
 
-    @api.depends("state", "current", "gap", "future", "reason")
-    def _compute_is_done(self):
-        # same rule as the ACEAZ portal: the text the chosen state requires must be filled in
-        need = {"full": "current", "partial": "gap", "unavailable": "future", "na": "reason"}
-        for a in self:
-            a.is_done = bool(a.state and (a[need[a.state]] or "").strip())
+    # ---------------------------------------------------------------- derivation
+    def _answers_by_question(self):
+        self.ensure_one()
+        return {qa.question_id.id: qa for qa in self.qanswer_ids}
 
-    def _workspace_dict(self, light=False):
+    def _visible(self, qas=None):
+        """Visible questions of the requirement, following the «يظهر لو» conditions."""
+        self.ensure_one()
+        qas = self._answers_by_question() if qas is None else qas
+        questions = self.requirement_id.question_ids
+        values = {q.key: qas[q.id]._names() if q.id in qas else set() for q in questions}
+        keys = fin_engine.visible_keys([{"key": q.key, "condition": q._condition()} for q in questions], values)
+        return questions.filtered(lambda q: q.key in keys)
+
+    @api.depends("na", "reason", "requirement_id.question_ids", "qanswer_ids.option_id", "qanswer_ids.option_ids",
+                 "qanswer_ids.has_number", "qanswer_ids.value_number", "qanswer_ids.table_json", "qanswer_ids.note",
+                 "qanswer_ids.note_tags", "qanswer_ids.priority")
+    def _compute_from_questions(self):
+        for line in self:
+            qas = line._answers_by_question()
+            visible = line._visible(qas)
+            answered = visible.filtered(lambda q: q.id in qas and qas[q.id].is_answered)
+
+            def pick(role):
+                q = visible.filtered(lambda x: x.role == role)[:1]
+                return qas.get(q.id) if q else None
+
+            status, impl, rule, target = pick("status"), pick("impl"), pick("rule"), pick("target")
+            state = STATUS_OPTIONS.get(status.option_id.name) if status and status.option_id else False
+            line.state = "na" if line.na else state
+            line.impl = "، ".join(impl.option_ids.mapped("name")) if impl else False
+            line.rule_state = rule.option_id.name if rule and rule.option_id else False
+            line.target = target.option_id.name if target and target.option_id else False
+            line.issues = (status._note_text() if status else "") or False
+            facts = [f"{q.label}: {qas[q.id]._display()}" for q in answered if q.role in ("main", "follow")]
+            line.current = "\n".join(facts) or False
+            line.gap = line.issues if line.state in ("partial", "unavailable") else False
+            line.target_note = (target._note_text() if target else "") or False
+            future = " — ".join(x for x in (line.target, line.target_note) if x)
+            line.future = future or False
+            line.q_total = len(visible)
+            line.q_answered = len(answered)
+            line.is_done = bool((line.reason or "").strip()) if line.na else bool(visible) and len(answered) == len(visible)
+
+    def _question_totals(self):
+        """(visible questions, answered) — a «لا ينطبق» requirement counts as one question answered by its reason."""
+        total = answered = 0
+        for line in self:
+            if line.na:
+                total += 1
+                answered += int(bool((line.reason or "").strip()))
+            else:
+                total += line.q_total
+                answered += line.q_answered
+        return total, answered
+
+    # ---------------------------------------------------------------- answering
+    def _set_answer(self, question_id, vals):
+        self.ensure_one()
+        question = self.requirement_id.question_ids.filtered(lambda q: q.id == question_id)
+        if not question:
+            raise UserError("السؤال غير موجود في هذا المتطلب.")
+        option_ids = set(question.option_ids.ids)
+        clean = {}
+        if "option_id" in vals:
+            if vals["option_id"] and vals["option_id"] not in option_ids:
+                raise UserError("اختيار غير معروف لهذا السؤال.")
+            clean["option_id"] = vals["option_id"] or False
+            if question.qtype == "table" and vals["option_id"]:
+                clean["table_json"] = False
+        if "option_ids" in vals:
+            ids = [i for i in vals["option_ids"] or [] if i in option_ids]
+            clean["option_ids"] = [Command.set(ids)]
+        if "number" in vals:
+            number = vals["number"]
+            clean.update({"value_number": float(number or 0), "has_number": number not in (None, False, "")})
+        if "table" in vals:
+            rows = [[str(c or "") for c in row] for row in (vals["table"] or []) if isinstance(row, list)]
+            rows = [row for row in rows if any(c.strip() for c in row)]
+            clean["table_json"] = json.dumps(rows, ensure_ascii=False) if rows else False
+            if rows:
+                clean["option_id"] = False
+        if "note" in vals:
+            clean["note"] = vals["note"] or False
+        if "note_tags" in vals:
+            allowed = NOTE_LISTS.get(question.note_label or "", [])
+            tags = [t for t in vals["note_tags"] or [] if t in allowed]
+            clean["note_tags"] = json.dumps(tags, ensure_ascii=False) if tags else False
+            if OTHER not in tags and "note" not in vals:
+                clean["note"] = False
+        if "priority" in vals:
+            clean["priority"] = vals["priority"] if vals["priority"] in dict(PRIORITIES) else False
+        qa = self.qanswer_ids.filtered(lambda a: a.question_id == question)
+        if qa:
+            qa.write(clean)
+        else:
+            qa = self.env["azm.fin.qanswer"].create({"line_id": self.id, "question_id": question.id, **clean})
+        return qa
+
+    def _fill_demo(self, seed):
+        self.ensure_one()
+        pick = seed % 20
+        state = ("full" if pick < 9 else "partial" if pick < 14 else "unavailable" if pick < 17
+                 else "unknown" if pick < 18 else "na")
+        if state == "na":
+            self.write({"na": True, "reason": NA_REASONS[0]})
+            return
+        title = self.requirement_id.title
+        status_name = {v: k for k, v in STATUS_OPTIONS.items()}[state]
+        rule_name = {"full": "معتمدة وموثقة", "partial": "مطبقة دون توثيق", "unavailable": "غير موجودة",
+                     "unknown": "لا أعرف"}[state]
+        target_name = {"full": "استمرار", "partial": "تحسين", "unavailable": "أحتاج مقترحًا",
+                       "unknown": "لا أعرف"}[state]
+        notes = {
+            "status": {"full": f"«{title}» مغطى في النظام الحالي دون مشاكل جوهرية.",
+                       "partial": f"يُطبق «{title}» على جزء من الحالات فقط ويُستكمل يدويًا؛ يلزم توحيده وتوثيقه.",
+                       "unavailable": f"لا توجد ممارسة قائمة لـ«{title}» حاليًا.",
+                       "unknown": ""}[state],
+            "target": {"full": "", "partial": f"توحيد «{title}» في النظام وتوثيق القاعدة — أولوية متوسطة.",
+                       "unavailable": f"تصميم قاعدة موحّدة لـ«{title}» ضمن النموذج المستهدف — أولوية مرتفعة.",
+                       "unknown": ""}[state],
+        }
+        values, creates = {}, []
+        for i, q in enumerate(self.requirement_id.question_ids):
+            cond = q._condition()
+            if cond and not (values.get(cond["q"], set()) & set(cond["in"])):
+                continue
+            opts = q.option_ids
+            main = opts.filtered(lambda o: o.kind not in FALLBACK_KINDS) or opts
+            s = seed >> (i % 16)
+            vals = {"line_id": self.id, "question_id": q.id}
+            if q.role in ("status", "rule", "target"):
+                name = {"status": status_name, "rule": rule_name, "target": target_name}[q.role]
+                opt = opts.filtered(lambda o, n=name: o.name == n)[:1] or main[:1]
+                vals["option_id"] = opt.id
+                tags = [t for t in NOTE_LISTS.get(q.note_label or "", []) if t != OTHER]
+                if tags and notes[q.role]:
+                    first = 0 if state == "full" else 1 + s % (len(tags) - 1)
+                    vals["note_tags"] = json.dumps(sorted({tags[first], tags[(first + 3) % len(tags)]} if state != "full"
+                                                          else {tags[0]}, key=tags.index), ensure_ascii=False)
+                    if q.role == "target":
+                        vals["priority"] = "high" if state == "unavailable" else "medium"
+                values[q.key] = {opt.name}
+            elif q.qtype == "select":
+                opt = main[s % len(main)]
+                vals["option_id"] = opt.id
+                values[q.key] = {opt.name}
+            elif q.qtype == "multi":
+                chosen = main[s % len(main)] | main[(s // 7) % len(main)]
+                vals["option_ids"] = [Command.set(chosen.ids)]
+                values[q.key] = set(chosen.mapped("name"))
+            elif q.qtype == "number":
+                unit = q.unit or ""
+                base = 5 + s % 26 if unit in ("%", "يوم", "يوم عمل") else 2 + s % 10
+                if unit == "جنيه":
+                    base = (5 + s % 45) * 1000
+                vals.update({"value_number": base, "has_number": True})
+            elif q.qtype == "table":
+                rows = []
+                for r in range(2):
+                    row = []
+                    for c, col in enumerate(q._columns()):
+                        options = [o for o in col.get("options") or [] if o != "لا يوجد"]
+                        kind = col.get("type")
+                        row.append(options[(s + r + c) % len(options)] if options
+                                   else str((5 + (s + r + c) % 20) * (1000 if "مبلغ" in col["label"] or col["label"] in ("القيمة", "حد القيمة", "البدل اليومي", "حد الصرف للمرة") else 1)) if kind == "number"
+                                   else f"2026-{1 + (s + r) % 12:02d}-28" if kind == "date"
+                                   else f"{col['label']} — مثال {r + 1}")
+                    rows.append(row)
+                vals["table_json"] = json.dumps(rows, ensure_ascii=False)
+            creates.append(vals)
+        self.env["azm.fin.qanswer"].create(creates)
+
+    # ---------------------------------------------------------------- payloads
+    def _workspace_dict(self):
         self.ensure_one()
         req = self.requirement_id
-        data = {
-            "answer_id": self.id, "code": req.code, "state": self.state or False,
-            "impl": [x for x in (self.impl or "").split(",") if x],
-            "current": self.current or "", "gap": self.gap or "", "future": self.future or "",
-            "reason": self.reason or "",
-            "table": json.loads(self.table_json) if self.table_json else [],
-            "branches": json.loads(self.branch_json) if self.branch_json else [],
-        }
-        if light:
-            return data
+        qas = self._answers_by_question()
+        visible = set(self._visible(qas).ids)
+        questions = []
+        for q in req.question_ids:
+            data = q._schema()
+            qa = qas.get(q.id)
+            data.update({"visible": q.id in visible, "answered": bool(qa and qa.is_answered),
+                         "value": qa._value() if qa else self.env["azm.fin.qanswer"]._empty_value()})
+            questions.append(data)
         prof = PROFILES[req.profile]
-        data.update({
-            "title": req.title, "question": req.question, "profile": req.profile,
-            "profile_name": prof[0], "profile_en": prof[1], "profile_hint": prof[2],
-            "scope_code": req.scope_code, "scope_name": SCOPES.get(req.scope_code, ""),
-            "source": req.source, "applicable": self.applicable, "done": self.is_done,
-            "schema": req._schema(), "has_details": req.has_details,
-            "attachments": len(self.attachment_ids),
-        })
-        return data
+        return {
+            "answer_id": self.id, "code": req.code, "req_id": req.req_id or "", "title": req.title,
+            "question": req.question, "profile": req.profile, "profile_name": prof[0],
+            "scope_code": req.scope_code, "scope_name": SCOPES.get(req.scope_code, ""), "source": req.source,
+            "pack": req.pack or "", "owner": req.owner or "", "response_type": req.response_type or "",
+            "applicable": self.applicable, "done": self.is_done, "state": self.state or False,
+            "na": self.na, "reason": self.reason or "", "q_total": self.q_total, "q_answered": self.q_answered,
+            "attachments": len(self.attachment_ids), "questions": questions,
+        }
 
     def _engine_dict(self):
         self.ensure_one()
         req = self.requirement_id
-        schema = req._schema()
+        qas = self._answers_by_question()
+        qa_list, missing = [], []
+        for q in self._visible(qas).filtered(lambda x: x.role in ("main", "follow")):
+            qa = qas.get(q.id)
+            if not (qa and qa.is_answered):
+                missing.append(q.label)
+                continue
+            qa_list.append({
+                "code": q.code, "key": q.key, "label": q.label, "qtype": q.qtype, "unit": q.unit or "",
+                "display": qa._display(), "columns": q._columns(), "rows": qa._rows(),
+                "names": sorted(qa._names()), "fallback": qa._is_fallback(),
+            })
         return {
-            "code": req.code, "title": req.title, "question": req.question, "profile": req.profile,
-            "profile_name": PROFILES[req.profile][0], "scope_name": SCOPES.get(req.scope_code, ""),
-            "state": self.state or False, "impl": [x for x in (self.impl or "").split(",") if x],
-            "current": self.current or "", "gap": self.gap or "", "future": self.future or "",
-            "reason": self.reason or "", "done": self.is_done,
-            "table": json.loads(self.table_json) if self.table_json else [],
-            "branches": json.loads(self.branch_json) if self.branch_json else [],
-            "columns": schema["columns"], "branch_defs": schema["branches"],
+            "code": req.code, "req_id": req.req_id or "", "title": req.title, "question": req.question,
+            "profile": req.profile, "profile_name": PROFILES[req.profile][0],
+            "scope_name": SCOPES.get(req.scope_code, ""), "topic": req.topic_id.name or "",
+            "topic_code": req.topic_id.code or "", "pack": req.pack or "", "owner": req.owner or "",
+            "state": self.state or False, "impl": [x for x in (self.impl or "").split("، ") if x],
+            "rule": self.rule_state or "", "target": self.target or "", "issues": self.issues or "",
+            "target_note": self.target_note or "",
+            "reason": self.reason or "", "done": self.is_done, "qa": qa_list, "missing": missing,
+            "q_total": self.q_total, "q_answered": self.q_answered,
         }
 
-    def _workspace_write(self, vals):
-        clean = {}
-        if "state" in vals:
-            if vals["state"] not in (False, *(k for k, _n in STATES)):
-                raise UserError("حالة غير معروفة.")
-            clean["state"] = vals["state"]
-        if "impl" in vals:
-            clean["impl"] = ",".join(x for x in vals["impl"] or [] if x in IMPLEMENTATIONS) or False
-        for key in TEXT_KEYS:
-            if key in vals:
-                clean[key] = vals[key] or False
-        if "table" in vals:
-            rows = [[str(c or "") for c in row] for row in (vals["table"] or []) if isinstance(row, list)]
-            clean["table_json"] = json.dumps(rows, ensure_ascii=False) if rows else False
-        if "branches" in vals:
-            clean["branch_json"] = json.dumps([str(b or "") for b in vals["branches"] or []], ensure_ascii=False)
-        if clean:
-            self.write(clean)
+    def _snapshot(self):
+        self.ensure_one()
+        qas = self._answers_by_question()
+        return {
+            "state": self.state or False, "na": self.na, "reason": self.reason or "",
+            "answers": {q.code: {"value": qas[q.id]._display(), "note": qas[q.id]._note_text()}
+                        for q in self._visible(qas) if q.id in qas and qas[q.id].is_answered},
+        }
 
     def write(self, vals):
-        locked = {"state", "impl", "current", "gap", "future", "reason", "table_json", "branch_json"}
-        if locked & set(vals) and not self.env.context.get("azm_skip_lock"):
+        if {"na", "reason"} & set(vals) and not self.env.context.get("azm_skip_lock"):
             if any(a.assessment_id.state != "draft" for a in self):
                 raise UserError("الإفادة مش في حالة مسودة؛ لا يمكن تعديل الإجابات.")
         return super().write(vals)
+
+
+class AzmFinQAnswer(models.Model):
+    """The answer to one question of a requirement (created when the question is first answered)."""
+    _name = "azm.fin.qanswer"
+    _description = "إجابة سؤال مالي"
+    _order = "line_id, question_sequence, id"
+
+    line_id = fields.Many2one("azm.fin.answer", "المتطلب", required=True, ondelete="cascade", index=True)
+    assessment_id = fields.Many2one(related="line_id.assessment_id", store=True, index=True)
+    company_id = fields.Many2one(related="line_id.company_id", store=True)
+    question_id = fields.Many2one("azm.fin.question", "السؤال", required=True, ondelete="restrict", index=True)
+    question_sequence = fields.Integer(related="question_id.sequence", store=True)
+    code = fields.Char(related="question_id.code", string="الكود")
+    label = fields.Char(related="question_id.label", string="السؤال ")
+    role = fields.Selection(related="question_id.role", string="الدور")
+    qtype = fields.Selection(related="question_id.qtype", string="شكل الإجابة")
+    option_id = fields.Many2one("azm.fin.option", "الاختيار", ondelete="restrict")
+    option_ids = fields.Many2many("azm.fin.option", "azm_fin_qanswer_option_rel", "qanswer_id", "option_id",
+                                  string="الاختيارات")
+    value_number = fields.Float("الرقم")
+    has_number = fields.Boolean("فيه رقم")
+    table_json = fields.Text("الجدول (JSON)")
+    note = fields.Text("تفاصيل إضافية")
+    note_tags = fields.Text("اختيارات خانة النص (JSON)")
+    priority = fields.Selection(PRIORITIES, "الأولوية")
+    value_display = fields.Char("الإجابة", compute="_compute_value_display")
+    is_answered = fields.Boolean("مُجاب", compute="_compute_is_answered", store=True)
+
+    _line_question_uniq = models.Constraint("UNIQUE(line_id, question_id)", "السؤال متكرر في نفس المتطلب.")
+
+    @api.depends("question_id.qtype", "option_id", "option_ids", "has_number", "table_json")
+    def _compute_is_answered(self):
+        for qa in self:
+            qtype = qa.question_id.qtype
+            qa.is_answered = bool(
+                qa.option_ids if qtype == "multi" else qa.has_number if qtype == "number"
+                else (qa.option_id or qa._rows()) if qtype == "table" else qa.option_id)
+
+    def _compute_value_display(self):
+        for qa in self:
+            qa.value_display = qa._display()
+
+    def _rows(self):
+        return json.loads(self.table_json) if self.table_json else []
+
+    def _tags(self):
+        return json.loads(self.note_tags) if self.note_tags else []
+
+    def _note_text(self):
+        """The text box answer: the chosen items, the free detail and the priority."""
+        self.ensure_one()
+        parts = [t for t in self._tags() if t != OTHER]
+        if self.note:
+            parts.append(self.note)
+        text = "، ".join(parts)
+        if self.priority:
+            text = f"{text} — الأولوية: {dict(PRIORITIES)[self.priority]}" if text else f"الأولوية: {dict(PRIORITIES)[self.priority]}"
+        return text
+
+    def _names(self):
+        return set(self.option_ids.mapped("name")) | ({self.option_id.name} if self.option_id else set())
+
+    def _is_fallback(self):
+        chosen = self.option_ids | self.option_id
+        return bool(chosen) and all(o.kind in FALLBACK_KINDS for o in chosen)
+
+    def _display(self):
+        self.ensure_one()
+        qtype = self.question_id.qtype
+        if qtype == "multi":
+            return "، ".join(self.option_ids.mapped("name"))
+        if qtype == "number":
+            return f"{self.value_number:g} {self.question_id.unit or ''}".strip() if self.has_number else ""
+        if qtype == "table":
+            rows = self._rows()
+            return f"{len(rows)} صف" if rows else (self.option_id.name or "")
+        return self.option_id.name or ""
+
+    @api.model
+    def _empty_value(self):
+        return {"option_id": False, "option_ids": [], "number": None, "table": [], "note": "", "note_tags": [],
+                "priority": False}
+
+    def _value(self):
+        self.ensure_one()
+        return {"option_id": self.option_id.id or False, "option_ids": self.option_ids.ids,
+                "number": self.value_number if self.has_number else None, "table": self._rows(),
+                "note": self.note or "", "note_tags": self._tags(), "priority": self.priority or False}
+
+    def _check_draft(self):
+        if not self.env.context.get("azm_skip_lock") and any(qa.line_id.assessment_id.state != "draft" for qa in self):
+            raise UserError("الإفادة مش في حالة مسودة؛ لا يمكن تعديل الإجابات.")
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        records._check_draft()
+        return records
+
+    def write(self, vals):
+        self._check_draft()
+        return super().write(vals)
+
+    def unlink(self):
+        self._check_draft()
+        return super().unlink()
 
 
 class AzmFinVersion(models.Model):

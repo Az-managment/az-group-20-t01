@@ -82,16 +82,26 @@
                             <field name="source"/>
                         </group>
                         <group>
-                            <field name="shape"/>
+                            <field name="topic_id"/>
                             <field name="sequence"/>
-                            <field name="has_details"/>
+                            <field name="pack"/>
+                            <field name="owner"/>
                             <field name="active"/>
                         </group>
                     </group>
                     <group string="السؤال"><field name="question" nolabel="1" colspan="2"/></group>
                     <notebook>
-                        <page string="أعمدة الإجابة"><field name="columns_json"/></page>
-                        <page string="التفرعات"><field name="branches_json"/></page>
+                        <page string="الأسئلة" name="questions">
+                            <field name="question_ids" readonly="1">
+                                <list>
+                                    <field name="key"/>
+                                    <field name="role"/>
+                                    <field name="qtype"/>
+                                    <field name="label"/>
+                                    <field name="condition_text" optional="show"/>
+                                </list>
+                            </field>
+                        </page>
                     </notebook>
                 </sheet>
             </form>

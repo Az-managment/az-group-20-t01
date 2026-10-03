@@ -55,22 +55,8 @@ class AzmEntity(models.Model):
 
     @api.model
     def _azm_autolink_companies(self):
-        """Match unlinked entities to companies by name, other-language name or initials."""
-        companies = self.env['res.company'].sudo().search([])
-
-        def norm(text):
-            return ' '.join((text or '').split()).casefold()
-
-        def initials(text):
-            return ''.join(w[0] for w in (text or '').split() if w[0].isalnum()).upper()
-
-        for entity in self.sudo().with_context(active_test=False).search([('company_id', '=', False)]):
-            keys = {norm(entity.name), norm(entity.code)}
-            match = companies.filtered(lambda c: keys & {norm(c.name), norm(c.azm_name_alt)})
-            if not match:
-                match = companies.filtered(lambda c: initials(c.name) == (entity.code or '').upper())
-            if len(match) == 1:
-                entity.company_id = match
+        """Kept for compatibility: entities are now created from the companies by azm_operating_model."""
+        return self._azm_sync_companies()
 
 
 class ResCompany(models.Model):

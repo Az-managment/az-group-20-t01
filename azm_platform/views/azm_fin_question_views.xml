@@ -6,12 +6,12 @@
         <field name="name">azm.fin.topic.list</field>
         <field name="model">azm.fin.topic</field>
         <field name="arch" type="xml">
-            <list string="المواضيع الفرعية">
+            <list string="المواضيع">
                 <field name="code"/>
                 <field name="module_id"/>
                 <field name="name"/>
                 <field name="requirement_count"/>
-                <field name="opening_question_count"/>
+                <field name="prompt_count"/>
             </list>
         </field>
     </record>
@@ -20,7 +20,7 @@
         <field name="name">azm.fin.topic.form</field>
         <field name="model">azm.fin.topic</field>
         <field name="arch" type="xml">
-            <form string="موضوع فرعي">
+            <form string="موضوع">
                 <sheet>
                     <div class="oe_title">
                         <h3><field name="code" readonly="1"/></h3>
@@ -42,10 +42,10 @@
                                 </list>
                             </field>
                         </page>
-                        <page string="الأسئلة الافتتاحية" name="opening">
-                            <field name="opening_question_ids" readonly="1">
+                        <page string="الأسئلة الافتتاحية" name="prompts">
+                            <field name="prompt_ids" readonly="1">
                                 <list>
-                                    <field name="axis"/>
+                                    <field name="axis_name"/>
                                     <field name="stage"/>
                                     <field name="question"/>
                                     <field name="output" optional="show"/>
@@ -71,8 +71,7 @@
                 <field name="role"/>
                 <field name="qtype"/>
                 <field name="label"/>
-                <field name="option_count"/>
-                <field name="condition" optional="hide"/>
+                <field name="condition_text" optional="hide"/>
             </list>
         </field>
     </record>
@@ -98,13 +97,12 @@
                             <field name="qtype"/>
                             <field name="sequence"/>
                             <field name="unit" invisible="qtype != 'number'"/>
-                            <field name="response_type" readonly="1"/>
+                            <field name="note_label"/>
                             <field name="active" invisible="1"/>
                         </group>
                     </group>
                     <group string="المطلوب في الإجابة">
-                        <field name="help_text" nolabel="1"/>
-                        <field name="text_label"/>
+                        <field name="hint" nolabel="1"/>
                     </group>
                     <notebook>
                         <page string="الاختيارات" name="options" invisible="qtype not in ('select', 'multi')">
@@ -120,8 +118,8 @@
                             <field name="columns_json" nolabel="1"/>
                         </page>
                         <page string="شرط الظهور" name="condition">
-                            <field name="condition" nolabel="1"
-                                   placeholder='{"field": "Q003", "in": ["مطبق بالكامل"]}'/>
+                            <field name="condition_text" readonly="1"/>
+                            <field name="condition_json" nolabel="1"/>
                         </page>
                     </notebook>
                 </sheet>
@@ -138,9 +136,9 @@
                 <field name="code"/>
                 <field name="requirement_id"/>
                 <field name="module_id"/>
-                <filter name="specific" string="أسئلة المتطلب" domain="[('role', 'in', ('main', 'followup'))]"/>
-                <filter name="standard" string="الأسئلة القياسية" domain="[('role', 'in', ('state', 'impl', 'rule', 'target'))]"/>
-                <filter name="conditional" string="لها شرط ظهور" domain="[('condition', '!=', False)]"/>
+                <filter name="specific" string="أسئلة المتطلب" domain="[('role', 'in', ('main', 'follow'))]"/>
+                <filter name="standard" string="الأسئلة القياسية" domain="[('role', 'in', ('status', 'impl', 'rule', 'target'))]"/>
+                <filter name="conditional" string="لها شرط ظهور" domain="[('condition_json', '!=', False)]"/>
                 <group>
                     <filter name="by_module" string="الموديول" context="{'group_by': 'module_id'}"/>
                     <filter name="by_requirement" string="المتطلب" context="{'group_by': 'requirement_id'}"/>
@@ -151,16 +149,16 @@
         </field>
     </record>
 
-    <!-- Opening questions -->
-    <record id="azm_fin_opening_question_view_list" model="ir.ui.view">
-        <field name="name">azm.fin.opening.question.list</field>
-        <field name="model">azm.fin.opening.question</field>
+    <!-- Opening prompts -->
+    <record id="azm_fin_prompt_view_list" model="ir.ui.view">
+        <field name="name">azm.fin.prompt.list</field>
+        <field name="model">azm.fin.prompt</field>
         <field name="arch" type="xml">
             <list string="الأسئلة الافتتاحية" create="0">
-                <field name="node" optional="hide"/>
+                <field name="code" optional="hide"/>
                 <field name="module_id"/>
                 <field name="topic_id"/>
-                <field name="axis"/>
+                <field name="axis_name"/>
                 <field name="stage"/>
                 <field name="question"/>
                 <field name="output" optional="show"/>
@@ -168,19 +166,18 @@
         </field>
     </record>
 
-    <record id="azm_fin_opening_question_view_search" model="ir.ui.view">
-        <field name="name">azm.fin.opening.question.search</field>
-        <field name="model">azm.fin.opening.question</field>
+    <record id="azm_fin_prompt_view_search" model="ir.ui.view">
+        <field name="name">azm.fin.prompt.search</field>
+        <field name="model">azm.fin.prompt</field>
         <field name="arch" type="xml">
             <search>
                 <field name="question"/>
                 <field name="topic_id"/>
                 <field name="module_id"/>
-                <field name="axis"/>
+                <field name="axis_name"/>
                 <group>
                     <filter name="by_module" string="الموديول" context="{'group_by': 'module_id'}"/>
-                    <filter name="by_topic" string="الموضوع الفرعي" context="{'group_by': 'topic_id'}"/>
-                    <filter name="by_axis" string="المحور" context="{'group_by': 'axis'}"/>
+                    <filter name="by_topic" string="الموضوع" context="{'group_by': 'topic_id'}"/>
                     <filter name="by_stage" string="المرحلة" context="{'group_by': 'stage'}"/>
                 </group>
             </search>
@@ -189,7 +186,7 @@
 
     <!-- Actions -->
     <record id="azm_fin_topic_action" model="ir.actions.act_window">
-        <field name="name">المواضيع الفرعية</field>
+        <field name="name">مواضيع النموذج المالي</field>
         <field name="res_model">azm.fin.topic</field>
         <field name="view_mode">list,form</field>
         <field name="context">{'search_default_by_module': 1}</field>
@@ -202,21 +199,21 @@
         <field name="context">{'search_default_by_requirement': 1}</field>
     </record>
 
-    <record id="azm_fin_opening_question_action" model="ir.actions.act_window">
+    <record id="azm_fin_prompt_action" model="ir.actions.act_window">
         <field name="name">الأسئلة الافتتاحية</field>
-        <field name="res_model">azm.fin.opening.question</field>
+        <field name="res_model">azm.fin.prompt</field>
         <field name="view_mode">list</field>
         <field name="context">{'search_default_by_topic': 1}</field>
     </record>
 
-    <menuitem id="azm_fin_topic_menu" name="المواضيع الفرعية"
+    <menuitem id="azm_fin_topic_menu" name="مواضيع النموذج المالي"
               parent="azm_operating_model.azm_menu_config"
               action="azm_fin_topic_action" sequence="62"/>
     <menuitem id="azm_fin_question_menu" name="أسئلة النموذج المالي"
               parent="azm_operating_model.azm_menu_config"
               action="azm_fin_question_action" sequence="64"/>
-    <menuitem id="azm_fin_opening_question_menu" name="الأسئلة الافتتاحية"
+    <menuitem id="azm_fin_prompt_menu" name="الأسئلة الافتتاحية"
               parent="azm_operating_model.azm_menu_config"
-              action="azm_fin_opening_question_action" sequence="66"/>
+              action="azm_fin_prompt_action" sequence="66"/>
 
 </odoo>

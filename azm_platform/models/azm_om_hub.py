@@ -32,7 +32,7 @@ class AzmDashboard(models.AbstractModel):
                 'key': 'financial', 'icon': 'payments', 'tone': 'green',
                 'name': 'Unified financial model', 'name_ar': 'النموذج المالي الموحد',
                 'description': 'Inventory of the financial requirements of each entity and design of the target model.',
-                'units': k['modules'], 'unit_label': 'modules', 'items': k['requirements'], 'item_label': 'requirements',
+                'units': k['modules'], 'unit_label': 'modules', 'items': k['catalogue_questions'], 'item_label': 'questions',
                 'assessments': k['assessments'], 'approved': k['approved'], 'review': k['review'], 'draft': k['draft'],
                 'completion': k['completion'], 'quality': k['maturity'], 'quality_label': 'Maturity',
                 'issues': k['gaps'], 'issues_label': 'Gaps', 'issues_sub': k['na'], 'issues_sub_label': 'not applicable',
