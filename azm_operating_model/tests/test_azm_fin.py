@@ -397,10 +397,39 @@ class TestAzmFinGridColumns(TransactionCase):
         self.assertIn("شرائح تصاعدية", formula["suggestions"])
         self.assertFalse(formula["options"], "a suggestion column must not be a closed list")
 
-    def test_the_component_column_stays_free(self):
-        """«المكوّن» names the thing being calculated; it is different in every
-        rule, so a list would be wrong."""
+
+    def test_the_component_column_offers_a_vocabulary(self):
+        """«المكوّن» suggests the generic parts a calculation is built from, but
+        stays typeable because every rule computes something different."""
         columns = self.env["azm.fin.requirement"].search(
             [("profile", "=", "C")], limit=1)._schema()["columns"]
         component = next(c for c in columns if c["label"] == "المكوّن")
-        self.assertEqual(component["type"], "text")
+        self.assertEqual(component["type"], "suggest")
+        self.assertIn("النسبة", component["suggestions"])
+        self.assertFalse(component["options"])
+
+
+@tagged("post_install", "-at_install")
+class TestAzmFinOutputs(TransactionCase):
+    """Every answer template must have an output that shows it."""
+
+    def test_every_profile_has_its_own_output(self):
+        from odoo.addons.azm_operating_model.models import fin_engine
+        from odoo.addons.azm_operating_model.models.azm_fin_catalogue import PROFILES
+        covered = {p for profiles in fin_engine.TAB_PROFILES.values() for p in profiles}
+        self.assertFalse(set(PROFILES) - covered,
+                         "an answer template has no output tab, so its answers are invisible")
+        # and no tab mixes two templates
+        for tab, profiles in fin_engine.TAB_PROFILES.items():
+            self.assertEqual(len(profiles), 1, f"{tab} mixes templates: {profiles}")
+
+    def test_no_requirement_falls_outside_the_outputs(self):
+        from odoo.addons.azm_operating_model.models import fin_engine
+        covered = {p for profiles in fin_engine.TAB_PROFILES.values() for p in profiles}
+        orphans = self.env["azm.fin.requirement"].search([("profile", "not in", list(covered))])
+        self.assertFalse(orphans, f"{len(orphans)} requirements have no output")
+
+    def test_every_tab_has_a_document_code(self):
+        from odoo.addons.azm_operating_model.models import fin_engine
+        for tab, _title in fin_engine.OUTPUT_TABS:
+            self.assertIn(tab, fin_engine.DOC_CODES, f"{tab} has no document code")

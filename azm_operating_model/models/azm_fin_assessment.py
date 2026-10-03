@@ -293,8 +293,10 @@ class AzmFinAssessment(models.Model):
             self.env["azm.fin.version"].create({
                 "assessment_id": rec.id, "version": rec.version,
                 "answers_json": json.dumps(answers, ensure_ascii=False, indent=1),
-                "summary_html": "".join(str(rec._render(tab)) for tab in ("book", "rules", "workflow", "authority",
-                                                                            "reports", "integration", "gaps", "future")),
+                # every output except the coverage matrix, taken from the tab
+                # list rather than a literal, so a new output is never missed
+                "summary_html": "".join(str(rec._render(tab)) for tab, _title in fin_engine.OUTPUT_TABS
+                                        if tab not in ("coverage", "na")),
             })
             rec.write({"state": "approved", "approved_by_id": self.env.user.id,
                        "approved_date": fields.Datetime.now()})

@@ -20,9 +20,14 @@ STATE_LABELS = {
     "na": "لا ينطبق",
 }
 
+# One output per answer template, so nothing is answered into a document that
+# never shows it. «حصر مرجعي» used to have no tab at all, and «قاعدة حساب» and
+# «سياسة وتوقيت» shared one even though they are different templates.
 OUTPUT_TABS = [
     ("book", "الوضع الحالي"),
-    ("rules", "القواعد والسياسات"),
+    ("lists", "القوائم المرجعية"),
+    ("calc", "قواعد الاحتساب"),
+    ("policies", "السياسات والتوقيت"),
     ("workflow", "دورات العمل"),
     ("authority", "الصلاحيات والرقابة"),
     ("reports", "التقارير والمؤشرات"),
@@ -34,13 +39,16 @@ OUTPUT_TABS = [
 ]
 
 TAB_PROFILES = {
-    "rules": ("P", "C"),
+    "lists": ("L",),
+    "calc": ("C",),
+    "policies": ("P",),
     "workflow": ("W",),
     "authority": ("A",),
     "reports": ("R",),
     "integration": ("I",),
 }
-DOC_CODES = {"book": "CS-FIN", "rules": "CS-POL", "workflow": "CS-WF", "authority": "CS-AUTH",
+DOC_CODES = {"book": "CS-FIN", "lists": "CS-LST", "calc": "CS-CALC", "policies": "CS-POL",
+             "workflow": "CS-WF", "authority": "CS-AUTH",
              "reports": "CS-RPT", "integration": "CS-INT", "gaps": "CS-GAP", "future": "CS-TOM",
              "na": "CS-NA", "coverage": "CS-COV"}
 ROLE_COLUMNS = ("المنشئ", "المنفّذ", "المراجع", "المعتمد")
@@ -87,6 +95,13 @@ COLUMN_SUGGESTIONS = {
     "المعادلة أو الشرائح": [
         "نسبة ثابتة", "شرائح تصاعدية", "شرائح تنازلية", "معادلة مركّبة",
         "مبلغ مقطوع", "جدول مرجعي",
+    ],
+    # the generic parts a calculation is built from; a rule-specific name is
+    # still typeable, because every rule computes something different
+    "المكوّن": [
+        "المبلغ الأساسي", "النسبة", "الحد الأدنى", "الحد الأقصى", "الشريحة",
+        "معامل التعديل", "البدل", "الخصم", "الضريبة", "الرسوم", "العمولة",
+        "الفائدة", "القسط",
     ],
     "المصدر": ["النظام", "ملف Excel", "إدخال يدوي", "تكامل مع نظام آخر", "جهة خارجية"],
     "الاستثناء": ["لا يوجد", "بموافقة المدير المالي", "بموافقة الإدارة العليا", "حسب السياسة"],
