@@ -67,10 +67,25 @@ class AzmFinModule(models.Model):
 
     @api.model
     def _load_catalogue(self):
-        """Create / update modules, scopes and requirements from data/fin_catalogue.json.
-        Idempotent: records are matched by code, nothing answered is deleted."""
+        """Create / update the whole financial catalogue from data/fin_catalogue.json.
+
+        Idempotent: every record is matched by its code, nothing answered is ever
+        deleted, and options that disappear from the catalogue are archived rather
+        than unlinked, because answers point at them.
+        """
         with file_open("azm_operating_model/data/fin_catalogue.json", "rb") as f:
             cat = json.load(f)
+        self._load_scopes()
+        modules = self._load_modules(cat)
+        topics = self._load_topics(cat, modules)
+        self._load_requirements(cat, modules, topics)
+        self._load_questions(cat)
+        self._load_opening_questions(cat, topics)
+        self._retire_empty_modules()
+        return True
+
+    @api.model
+    def _load_scopes(self):
         Scope = self.env["azm.fin.scope"].with_context(active_test=False)
         for seq, (code, name) in enumerate(SCOPES.items(), 1):
             if code == "ALL":
@@ -79,19 +94,46 @@ class AzmFinModule(models.Model):
             vals = {"name": name, "sequence": seq}
             scope.write(vals) if scope else Scope.create({"code": code, **vals})
 
+    @api.model
+    def _load_modules(self, cat):
         Module = self.with_context(active_test=False)
         modules = {}
         for seq, m in enumerate(cat["modules"], 1):
             module = Module.search([("code", "=", m["code"])])
-            vals = {"name": m["name"], "sequence": seq * 10}
+            vals = {"name": m["name"], "sequence": seq * 10, "active": True}
             if module:
                 module.write(vals)
             else:
                 module = Module.create({"code": m["code"], **vals})
             modules[m["code"]] = module
-        if cat.get("adv_questions") and "ADV" in modules:
-            modules["ADV"].detail_json = json.dumps(cat["adv_questions"], ensure_ascii=False)
+        adv = cat.get("adv_module") or "ADV"
+        if cat.get("adv_questions") and adv in modules:
+            modules[adv].detail_json = json.dumps(cat["adv_questions"], ensure_ascii=False)
+        return modules
 
+    @api.model
+    def _load_topics(self, cat, modules):
+        Topic = self.env["azm.fin.topic"].with_context(active_test=False)
+        topics = {}
+        per_module = {}
+        for t in cat.get("topics", []):
+            per_module[t["module"]] = per_module.get(t["module"], 0) + 1
+            vals = {
+                "name": t["name"],
+                "module_id": modules[t["module"]].id,
+                "sequence": per_module[t["module"]],
+                "active": True,
+            }
+            topic = Topic.search([("code", "=", t["code"])])
+            if topic:
+                topic.write(vals)
+            else:
+                topic = Topic.create({"code": t["code"], **vals})
+            topics[t["code"]] = topic
+        return topics
+
+    @api.model
+    def _load_requirements(self, cat, modules, topics):
         Req = self.env["azm.fin.requirement"].with_context(active_test=False)
         per_module = {}
         for r in cat["requirements"]:
@@ -108,9 +150,96 @@ class AzmFinModule(models.Model):
                 "branches_json": json.dumps(r["branches"], ensure_ascii=False),
                 "has_details": r["adv"],
             }
+            if r.get("topic") in topics:
+                vals["topic_id"] = topics[r["topic"]].id
             req = Req.search([("code", "=", r["code"])])
             req.write(vals) if req else Req.create({"code": r["code"], **vals})
-        return True
+
+    @api.model
+    def _load_questions(self, cat):
+        """Upsert the questions and their options.
+
+        Options are matched by name inside their own question, so an option never
+        leaks between questions, and stale ones are archived because
+        azm.fin.qanswer.option_id is ondelete="restrict".
+        """
+        Question = self.env["azm.fin.question"].with_context(active_test=False)
+        Option = self.env["azm.fin.option"].with_context(active_test=False)
+        requirements = {
+            r.code: r for r in
+            self.env["azm.fin.requirement"].with_context(active_test=False).search([])
+        }
+        for q in cat.get("questions", []):
+            requirement = requirements.get(q["requirement"])
+            if not requirement:
+                continue
+            vals = {
+                "label": q["label"],
+                "role": q["role"],
+                "qtype": q["qtype"],
+                "sequence": q["sequence"],
+                "condition": json.dumps(q["condition"], ensure_ascii=False) if q.get("condition") else False,
+                "unit": q.get("unit") or False,
+                "columns_json": json.dumps(q.get("columns") or [], ensure_ascii=False),
+                "help_text": q.get("help") or False,
+                "text_label": q.get("text_label") or False,
+                "response_type": q.get("response_type") or False,
+                "active": True,
+            }
+            question = Question.search([
+                ("requirement_id", "=", requirement.id), ("key", "=", q["key"])])
+            if question:
+                question.write(vals)
+            else:
+                question = Question.create({
+                    "requirement_id": requirement.id, "key": q["key"], **vals})
+
+            wanted = {o["name"]: o for o in q.get("options", [])}
+            existing = {o.name: o for o in question.option_ids}
+            for name, option in wanted.items():
+                ovals = {"sequence": option["sequence"], "kind": option["kind"], "active": True}
+                if name in existing:
+                    existing[name].write(ovals)
+                else:
+                    Option.create({"question_id": question.id, "name": name, **ovals})
+            stale = [o for name, o in existing.items() if name not in wanted]
+            if stale:
+                Option.browse([o.id for o in stale]).write({"active": False})
+
+    @api.model
+    def _load_opening_questions(self, cat, topics):
+        Opening = self.env["azm.fin.opening.question"].with_context(active_test=False)
+        per_topic = {}
+        for item in cat.get("opening_questions", []):
+            topic = topics.get(item["topic"])
+            if not topic:
+                continue
+            per_topic[item["topic"]] = per_topic.get(item["topic"], 0) + 1
+            vals = {
+                "topic_id": topic.id,
+                "axis_code": item.get("axis_code") or False,
+                "axis": item.get("axis") or False,
+                "stage": item.get("stage") or False,
+                "question": item["question"],
+                "output": item.get("output") or False,
+                "sequence": per_topic[item["topic"]],
+                "active": True,
+            }
+            record = Opening.search([("node", "=", item["node"])])
+            record.write(vals) if record else Opening.create({"node": item["node"], **vals})
+
+    @api.model
+    def _retire_empty_modules(self):
+        """Archive the modules the new taxonomy left without requirements.
+
+        They are archived, not deleted: approved azm.fin.version snapshots name
+        them, and every nav/search call uses search([]), which already skips
+        archived records.
+        """
+        Module = self.with_context(active_test=False)
+        empty = Module.search([("active", "=", True), ("requirement_ids", "=", False)])
+        if empty:
+            empty.write({"active": False})
 
     def action_reload_catalogue(self):
         self._load_catalogue()

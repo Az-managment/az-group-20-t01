@@ -1,3 +1,5 @@
+import json
+
 from odoo.exceptions import AccessError, UserError
 from odoo.tests import TransactionCase, new_test_user, tagged
 
@@ -28,11 +30,57 @@ class TestAzmFinancialModel(TransactionCase):
         return (assessment or self.assessment).answer_ids.filtered(lambda a: a.code == code)
 
     def test_catalogue(self):
-        self.assertEqual(self.env["azm.fin.module"].search_count([]), 17)
-        self.assertEqual(self.env["azm.fin.requirement"].search_count([]), 167)
-        self.assertEqual(self.env["azm.fin.requirement"].search_count([("source", "=", "HRF")]), 60)
-        self.assertEqual(len(self.env["azm.fin.module"].search([("code", "=", "ADV")])._details()), 22)
+        Module = self.env["azm.fin.module"]
+        Requirement = self.env["azm.fin.requirement"]
+        # The spreadsheet taxonomy: 19 live modules, the 17 superseded ones
+        # archived rather than deleted so approved versions still name them.
+        self.assertEqual(Module.search_count([]), 19)
+        self.assertEqual(Module.with_context(active_test=False).search_count([]), 36)
+        self.assertFalse(Requirement.search([("module_id.active", "=", False)]),
+                         "a requirement is hanging off a retired module")
+        self.assertEqual(Requirement.search_count([]), 167)
+        self.assertEqual(Requirement.search_count([("source", "=", "HRF")]), 60)
+        self.assertEqual(len(Module.search([("code", "=", "FIN.ADV")])._details()), 22)
         self.assertEqual(len(self.assessment.answer_ids), 167)
+        self.assertEqual(len(self.assessment.qanswer_ids), 1136)
+
+    def test_every_question_has_its_own_options(self):
+        """The point of importing the spreadsheet: a question must offer the
+        options that answer it, not another question's scale."""
+        Question = self.env["azm.fin.question"]
+        self.assertEqual(Question.search_count([]), 1136)
+        self.assertEqual(self.env["azm.fin.option"].search_count([]), 6121)
+        self.assertEqual(self.env["azm.fin.topic"].search_count([]), 215)
+        self.assertEqual(self.env["azm.fin.opening.question"].search_count([]), 3655)
+
+        choice = Question.search([("qtype", "in", ("select", "multi"))])
+        self.assertFalse(choice.filtered(lambda q: not q.option_ids),
+                         "a choice question was imported with no options")
+        # The four standard scales repeat by design; everything else must not.
+        standard = {tuple(q.option_ids.mapped("name"))
+                    for q in Question.search([("role", "in", ("state", "impl", "rule", "target"))])}
+        self.assertEqual(len(standard), 4, "the standard scales are not consistent")
+        specific = Question.search([("role", "in", ("main", "followup")),
+                                    ("qtype", "in", ("select", "multi"))])
+        self.assertFalse(
+            specific.filtered(lambda q: tuple(q.option_ids.mapped("name")) in standard),
+            "a question answers with one of the standard scales instead of its own")
+
+    def test_follow_up_conditions_point_backwards(self):
+        """A forward reference would never fire, and would do so silently."""
+        conditioned = self.env["azm.fin.question"].search([("condition", "!=", False)])
+        self.assertEqual(len(conditioned), 519)
+        for question in conditioned:
+            condition = json.loads(question.condition)
+            trigger = question.requirement_id.question_ids.filtered(
+                lambda q: q.key == condition["field"])
+            self.assertTrue(trigger, f"{question.code}: trigger {condition['field']} missing")
+            self.assertLess(trigger.sequence, question.sequence, question.code)
+            self.assertEqual(trigger.qtype, "select",
+                             f"{question.code}: engine cannot match a list with 'in'")
+            offered = set(trigger.option_ids.mapped("name"))
+            self.assertFalse(set(condition["in"]) - offered,
+                             f"{question.code}: condition names options {trigger.key} never offers")
 
     def test_applicability_follows_activities(self):
         self.assertEqual(self.assessment.scope_ids, self.edu | self.work)
@@ -41,8 +89,15 @@ class TestAzmFinancialModel(TransactionCase):
         self.assertFalse(self._line("FIN-062").applicable)    # PRJ
         self.assessment.scope_ids = [(4, self.prj.id)]
         self.assertTrue(self._line("FIN-062").applicable)
-        data = self.assessment.workspace_data("PRJ")
-        self.assertEqual(len(data["requirements"]), 7)
+        # "PRJ" is now an archived code: workspace_data falls back to the first
+        # module when it cannot match, so assert which module came back too.
+        data = self.assessment.workspace_data("FIN.PRJ")
+        self.assertEqual(data["module"]["code"], "FIN.PRJ")
+        expected = self.env["azm.fin.requirement"].search_count([
+            ("module_id.code", "=", "FIN.PRJ"),
+            ("scope_code", "in", ("ALL", *self.assessment.scope_ids.mapped("code"))),
+        ])
+        self.assertEqual(len(data["requirements"]), expected)
 
     def test_done_rule_and_outputs(self):
         a = self.assessment.with_user(self.preparer)
@@ -51,13 +106,13 @@ class TestAzmFinancialModel(TransactionCase):
         self.assertFalse(res["answer"]["done"])  # the gap is mandatory for «partial»
         res = a.workspace_save(line.id, {"gap": "لا توجد مصفوفة صلاحيات مكتوبة", "current": "اعتماد شفهي",
                                          "table": [["الصرف", "موظف", "مراجع", "موظف", "", "", "", ""]]},
-                               module_code="GOV", tab="authority")
+                               module_code="FIN.GOV", tab="authority")
         self.assertTrue(res["answer"]["done"])
         self.assertIn("نفس الدور", res["output"])        # creator == approver -> segregation warning
         for tab, _title in fin_engine.OUTPUT_TABS:
-            self.assertTrue(a.workspace_output("GOV", tab, "module"))
-            self.assertTrue(a.workspace_output("GOV", tab, "model"))
-        self.assertIn("FIN-004", a.workspace_output("GOV", "gaps", "module"))
+            self.assertTrue(a.workspace_output("FIN.GOV", tab, "module"))
+            self.assertTrue(a.workspace_output("FIN.GOV", tab, "model"))
+        self.assertIn("FIN-004", a.workspace_output("FIN.GOV", "gaps", "module"))
 
     def test_lifecycle_and_lock(self):
         a = self.assessment

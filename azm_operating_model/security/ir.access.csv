@@ -48,3 +48,15 @@ azm_fin_version_user,azm.fin.version user,azm.fin.version,azm_group_user,r,"[('a
 azm_fin_version_reviewer,azm.fin.version reviewer,azm.fin.version,azm_group_reviewer,c,"[('assessment_id', 'access', 'read')]"
 azm_fin_version_manager,azm.fin.version manager,azm.fin.version,azm_group_manager,crud,
 azm_fin_version_company,azm.fin.version company,azm.fin.version,,crud,"[('company_id', 'in', company_ids)]"
+azm_fin_topic_user,azm.fin.topic user,azm.fin.topic,azm_group_user,r,
+azm_fin_topic_manager,azm.fin.topic manager,azm.fin.topic,azm_group_manager,crud,
+azm_fin_question_user,azm.fin.question user,azm.fin.question,azm_group_user,r,
+azm_fin_question_manager,azm.fin.question manager,azm.fin.question,azm_group_manager,crud,
+azm_fin_option_user,azm.fin.option user,azm.fin.option,azm_group_user,r,
+azm_fin_option_manager,azm.fin.option manager,azm.fin.option,azm_group_manager,crud,
+azm_fin_opening_question_user,azm.fin.opening.question user,azm.fin.opening.question,azm_group_user,r,
+azm_fin_opening_question_manager,azm.fin.opening.question manager,azm.fin.opening.question,azm_group_manager,crud,
+azm_fin_qanswer_user_read,azm.fin.qanswer user read,azm.fin.qanswer,azm_group_user,r,"[('assessment_id', 'access', 'read')]"
+azm_fin_qanswer_user_write,azm.fin.qanswer user draft,azm.fin.qanswer,azm_group_user,cu,"[('assessment_id.state', '=', 'draft'), ('assessment_id', 'access', 'write')]"
+azm_fin_qanswer_manager,azm.fin.qanswer manager,azm.fin.qanswer,azm_group_manager,crud,
+azm_fin_qanswer_company,azm.fin.qanswer company,azm.fin.qanswer,,crud,"[('company_id', 'in', company_ids)]"
