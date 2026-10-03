@@ -433,3 +433,30 @@ class TestAzmFinOutputs(TransactionCase):
         from odoo.addons.azm_operating_model.models import fin_engine
         for tab, _title in fin_engine.OUTPUT_TABS:
             self.assertIn(tab, fin_engine.DOC_CODES, f"{tab} has no document code")
+
+    def test_the_workflow_grid_offers_a_list_everywhere(self):
+        """Every column of a دورة عمل grid either picks from a list or
+        suggests one; none is a bare text box."""
+        columns = self.env["azm.fin.requirement"].search(
+            [("profile", "=", "W")], limit=1)._schema()["columns"]
+        self.assertEqual(len(columns), 8)
+        bare = [c["label"] for c in columns if c["type"] == "text"]
+        self.assertFalse(bare, f"workflow columns with no list: {bare}")
+
+    def test_the_outputs_show_the_answers(self):
+        """A tab that renders nothing from its answers is a tab nobody can use."""
+        assessment = self.env["azm.fin.assessment"].search([], limit=1)
+        if not assessment:
+            self.skipTest("no financial assessment in this database")
+        for profile, tab in (("L", "lists"), ("C", "calc"), ("P", "policies"), ("W", "workflow")):
+            line = assessment.answer_ids.filtered(
+                lambda a: a.profile == profile and a.applicable)[:1]
+            if not line:
+                continue
+            token = "ZZ-%s-TOKEN" % profile
+            columns = line.requirement_id._schema()["columns"]
+            row = [c["options"][0] if c["options"] else token for c in columns]
+            line._workspace_write({"state": "full", "current": token, "table": [row]})
+            html = assessment.workspace_output(line.module_id.code, tab, "model") or ""
+            self.assertIn(line.code, html, f"{tab} does not show {line.code}")
+            self.assertIn(token, html, f"{tab} does not show what was answered")
