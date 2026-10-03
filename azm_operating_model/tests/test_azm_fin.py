@@ -566,3 +566,41 @@ class TestAzmFinOutputs(TransactionCase):
         from odoo.addons.azm_operating_model.models import fin_engine
         codes = [fin_engine.DOC_CODES[tab] for tab, _t in fin_engine.OUTPUT_TABS]
         self.assertEqual(len(codes), len(set(codes)), f"duplicate document codes: {codes}")
+
+    def _authority_row(self, creator, reviewer, approver, conflict, evidence):
+        assessment = self.env["azm.fin.assessment"].search([], limit=1)
+        line = assessment.answer_ids.filtered(
+            lambda a: a.profile == "A" and a.applicable)[:1]
+        labels = [c["label"] for c in line.requirement_id._schema()["columns"]]
+        at = {label: n for n, label in enumerate(labels)}
+        row = [""] * len(labels)
+        row[at["العملية"]] = "طلب شراء"
+        row[at["المنشئ"]], row[at["المراجع"]], row[at["المعتمد"]] = creator, reviewer, approver
+        row[at["التعارض"]], row[at["دليل الرقابة"]] = conflict, evidence
+        line._workspace_write({"state": "full", "current": "قاعدة", "table": [row]})
+        return assessment.workspace_output(line.module_id.code, "authority", "module") or ""
+
+    def test_the_same_person_twice_is_flagged(self):
+        html = self._authority_row("موظف", "مراجع", "موظف", "لا يوجد", "سجل النظام")
+        self.assertIn("نفس الدور", html)
+
+    def test_distinct_roles_are_not_flagged(self):
+        html = self._authority_row("موظف", "مراجع", "المدير المالي", "لا يوجد", "سجل النظام")
+        self.assertNotIn("نفس الدور", html)
+        self.assertNotIn("تعارض معلن", html)
+
+    def test_a_declared_conflict_reaches_the_document(self):
+        """The roles can all differ and the conflict still be real; the
+        duplication check cannot see that, so the declared value must carry."""
+        html = self._authority_row("موظف", "مراجع", "المدير المالي",
+                                   "يوجد ويحتاج معالجة", "سجل النظام")
+        self.assertIn("تعارض معلن", html)
+
+    def test_an_accepted_conflict_is_not_flagged(self):
+        html = self._authority_row("موظف", "مراجع", "المدير المالي",
+                                   "يوجد ومقبول برقابة بديلة", "سجل النظام")
+        self.assertNotIn("تعارض معلن", html)
+
+    def test_an_authority_with_no_evidence_is_noted(self):
+        html = self._authority_row("موظف", "مراجع", "المدير المالي", "لا يوجد", "")
+        self.assertIn("لا يوجد دليل رقابة", html)

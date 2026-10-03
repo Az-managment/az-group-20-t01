@@ -52,6 +52,9 @@ DOC_CODES = {"book": "CS-FIN", "lists": "CS-LST", "calc": "CS-CALC", "policies":
              "reports": "CS-RPT", "integration": "CS-INT", "gaps": "CS-GAP", "future": "CS-TOM",
              "na": "CS-NA", "coverage": "CS-COV"}
 ROLE_COLUMNS = ("المنشئ", "المنفّذ", "المراجع", "المعتمد")
+# The value of «التعارض» that means the conflict is still open. The other
+# values («لا يوجد», «يوجد ومقبول برقابة بديلة») need no warning.
+CONFLICT_UNRESOLVED = "يوجد ويحتاج معالجة"
 
 
 # A grid cell is typed from its column: a listed column is a dropdown, a date
@@ -284,11 +287,25 @@ def _by_profile(tab, module, items):
             body.append(render_table(item["columns"], rows))
         if tab == "authority":
             idx = {c["label"]: n for n, c in enumerate(item["columns"])}
+
+            def cell(row, label):
+                position = idx.get(label)
+                return row[position] if position is not None and position < len(row) else ""
+
             for row in rows:
-                roles = [(name, row[idx[name]]) for name in ROLE_COLUMNS if name in idx and idx[name] < len(row) and row[idx[name]]]
-                values = [v for _n, v in roles]
-                if len(values) != len(set(values)):
-                    body.append(note(f"نفس الدور يظهر في أكثر من مهمة في «{row[0] or item['title']}» — راجع الفصل بين المهام.", "warn"))
+                roles = [cell(row, name) for name in ROLE_COLUMNS if cell(row, name)]
+                where = row[0] or item["title"]
+                if len(roles) != len(set(roles)):
+                    body.append(note(f"نفس الدور يظهر في أكثر من مهمة في «{where}» — راجع الفصل بين المهام.", "warn"))
+                # a conflict the entity declared itself, which the duplication
+                # check above cannot see: the roles may all differ and the
+                # conflict still be real
+                if cell(row, "التعارض") == CONFLICT_UNRESOLVED:
+                    body.append(note(f"تعارض معلن لم يُعالج في «{where}».", "warn"))
+                # an authority with no evidence behind it is an authority
+                # nobody can audit
+                if not cell(row, "دليل الرقابة"):
+                    body.append(note(f"لا يوجد دليل رقابة مسجّل لـ «{where}».", "info"))
         if item["state"] == "partial" and item["gap"]:
             body.append(note(f"فجوة: {item['gap']}", "warn"))
         body.append(_branches(item))
