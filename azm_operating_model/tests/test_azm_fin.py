@@ -350,3 +350,39 @@ class TestAzmFinOptionIntegrity(TransactionCase):
             by_role.setdefault(question.role, set()).add(names)
         for role, sets in by_role.items():
             self.assertEqual(len(sets), 1, f"the {role} scale is not consistent")
+
+
+@tagged("post_install", "-at_install")
+class TestAzmFinGridColumns(TransactionCase):
+    """A grid cell should offer what it can rather than ask for free text."""
+
+    def test_a_listed_column_is_a_dropdown(self):
+        requirement = self.env["azm.fin.requirement"].search([("profile", "=", "C")], limit=1)
+        by_label = {c["label"]: c for c in requirement._schema()["columns"]}
+        self.assertEqual(by_label["أساس الحساب"]["type"], "select")
+        self.assertEqual(by_label["العملة"]["type"], "select")
+
+    def test_a_date_column_is_a_date_field(self):
+        requirement = self.env["azm.fin.requirement"].search([("profile", "=", "C")], limit=1)
+        by_label = {c["label"]: c for c in requirement._schema()["columns"]}
+        self.assertEqual(by_label["تاريخ السريان"]["type"], "date")
+
+    def test_the_unit_column_offers_a_list(self):
+        """«الوحدة» has no list in the catalogue; the vocabulary is supplied."""
+        columns = self.env["azm.fin.requirement"].search(
+            [("profile", "=", "C")], limit=1)._schema()["columns"]
+        unit = next(c for c in columns if c["label"] == "الوحدة")
+        self.assertEqual(unit["type"], "select")
+        self.assertIn("يوم", unit["options"])
+        self.assertIn("نسبة مئوية", unit["options"])
+        # currency lives in its own column, so it must not be repeated here
+        self.assertNotIn("EGP جنيه", unit["options"])
+
+    def test_a_period_column_stays_free_text(self):
+        """«التاريخ/الفترة» also accepts a period, which a date picker cannot
+        express, so it must not be narrowed to a date."""
+        from odoo.addons.azm_operating_model.models import fin_engine
+        self.assertEqual(fin_engine.column_type("التاريخ/الفترة", None), "text")
+        self.assertEqual(fin_engine.column_type("تاريخ السريان", None), "date")
+        # an enumerated column stays a dropdown even if its label says موعد
+        self.assertEqual(fin_engine.column_type("موعد الانسحاب", ["نعم", "لا"]), "select")

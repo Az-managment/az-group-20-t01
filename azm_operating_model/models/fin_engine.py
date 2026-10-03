@@ -63,10 +63,28 @@ def column_type(label, options):
     return "text"
 
 
+# Columns the catalogue leaves as free text although they answer with a known
+# vocabulary. Applied only when the column does not already carry its own list.
+# «الوحدة» is drawn from the units the questionnaire itself uses (يوم، يوم عمل،
+# شهر، سنة، درجة، مستوى، قسط، راتب شهري، موظف، %) plus the الوحدة الزمنية list
+# already in the catalogue. Currency is deliberately absent: the calculation
+# grid carries a separate العملة column.
+COLUMN_VOCABULARY = {
+    "الوحدة": [
+        "نسبة مئوية", "مبلغ", "يوم", "يوم عمل", "أسبوع", "شهر", "ربع سنة", "سنة",
+        "موظف", "درجة", "مستوى", "قسط", "راتب شهري", "أخرى",
+    ],
+}
+
+
 def typed_columns(columns):
     """Return the columns with the widget each one should use."""
-    return [dict(column, type=column_type(column.get("label"), column.get("options")))
-            for column in (columns or [])]
+    typed = []
+    for column in columns or []:
+        label = (column.get("label") or "").strip()
+        options = column.get("options") or COLUMN_VOCABULARY.get(label)
+        typed.append(dict(column, options=options, type=column_type(label, options)))
+    return typed
 
 
 def _e(text):
