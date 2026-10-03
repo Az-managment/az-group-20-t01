@@ -1,0 +1,250 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ================================================================
+         Entities = Odoo companies. These views only read company data
+         and live figures from HR / Project / Documents.
+         ================================================================ -->
+    <record id="res_company_view_kanban_azm" model="ir.ui.view">
+        <field name="name">res.company.kanban.azm</field>
+        <field name="model">res.company</field>
+        <field name="priority">100</field>
+        <field name="arch" type="xml">
+            <kanban js_class="azm_entity_kanban" class="o_azm_entity_kanban" create="0">
+                <field name="azm_cover_image"/>
+                <field name="logo"/>
+                <field name="uses_default_logo"/>
+                <field name="azm_has_data"/>
+                <field name="azm_progress"/>
+                <field name="azm_status"/>
+                <field name="write_date"/>
+                <templates>
+                    <t t-name="card" class="p-0 o_azm_entity_card">
+                        <div class="o_azm_card_cover">
+                            <img t-if="record.azm_cover_image.raw_value" alt="Cover"
+                                 t-att-src="'/web/image/res.company/' + record.id.raw_value + '/azm_cover_image/640x320?unique=' + record.write_date.raw_value"/>
+                            <div t-else="" class="o_azm_card_cover_placeholder">
+                                <i class="oi" data-icon="business" title="Entity"/>
+                            </div>
+                        </div>
+                        <div class="o_azm_card_body">
+                            <div class="o_azm_card_head">
+                                <div class="o_azm_card_names">
+                                    <field name="name" class="o_azm_card_title"/>
+                                    <field name="azm_name_alt" class="o_azm_card_subtitle"/>
+                                </div>
+                                <div class="o_azm_card_logo">
+                                    <img t-if="record.logo.raw_value and !record.uses_default_logo.raw_value" alt="Logo"
+                                         t-att-src="'/web/image/res.company/' + record.id.raw_value + '/logo/128x128?unique=' + record.write_date.raw_value"/>
+                                </div>
+                            </div>
+                            <div class="o_azm_card_meta">
+                                <span><i class="oi" data-icon="account_balance" title="Type"/> <field name="azm_entity_type"/></span>
+                                <span><i class="oi" data-icon="location_on" title="Country"/> <field name="country_id"/></span>
+                                <field name="azm_status" widget="badge" class="ms-auto"
+                                       decoration-success="azm_status == 'active'"
+                                       decoration-warning="azm_status == 'in_progress'"
+                                       decoration-muted="azm_status == 'not_started'"/>
+                            </div>
+                            <div class="o_azm_card_figures">
+                                <span title="Employees"><i class="oi" data-icon="group" title="Employees"/> <field name="azm_employee_count"/></span>
+                                <span title="Departments"><i class="oi" data-icon="account_tree" title="Departments"/> <field name="azm_department_count"/></span>
+                                <span title="Projects"><i class="oi" data-icon="rocket_launch" title="Projects"/> <field name="azm_project_count"/></span>
+                                <span title="Open Tasks"><i class="oi" data-icon="task" title="Open Tasks"/> <field name="azm_open_task_count"/></span>
+                            </div>
+                        </div>
+                        <footer class="o_azm_card_footer">
+                            <span class="o_azm_card_progress_label">Task completion</span>
+                            <div class="o_azm_progress flex-grow-1">
+                                <div class="o_azm_progress_bar" t-attf-style="width: {{record.azm_progress.raw_value}}%"/>
+                            </div>
+                            <span class="o_azm_card_progress_value">
+                                <t t-if="record.azm_has_data.raw_value"><t t-out="Math.round(record.azm_progress.raw_value)"/>%</t>
+                                <t t-else="">—</t>
+                            </span>
+                            <a type="open" class="o_azm_card_open" title="Open"><i class="oi" data-icon="chevron_right" title="Open"/></a>
+                        </footer>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="res_company_view_list_azm" model="ir.ui.view">
+        <field name="name">res.company.list.azm</field>
+        <field name="model">res.company</field>
+        <field name="priority">100</field>
+        <field name="arch" type="xml">
+            <list create="0">
+                <field name="sequence" widget="handle"/>
+                <field name="logo" widget="image" options="{'size': [28, 28]}" string=" "/>
+                <field name="name"/>
+                <field name="azm_name_alt" optional="show"/>
+                <field name="azm_entity_type"/>
+                <field name="country_id"/>
+                <field name="azm_parent_id" optional="hide"/>
+                <field name="azm_employee_count"/>
+                <field name="azm_department_count" optional="show"/>
+                <field name="azm_project_count"/>
+                <field name="azm_open_task_count"/>
+                <field name="azm_document_count" optional="hide"/>
+                <field name="azm_progress" widget="progressbar"/>
+                <field name="azm_status" widget="badge"
+                       decoration-success="azm_status == 'active'" decoration-warning="azm_status == 'in_progress'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="res_company_view_hierarchy_azm" model="ir.ui.view">
+        <field name="name">res.company.hierarchy.azm</field>
+        <field name="model">res.company</field>
+        <field name="priority">100</field>
+        <field name="arch" type="xml">
+            <hierarchy parent_field="azm_parent_id" child_field="azm_child_ids" draggable="0" create="0">
+                <field name="name"/>
+                <field name="azm_name_alt"/>
+                <field name="azm_status"/>
+                <field name="azm_employee_count"/>
+                <templates>
+                    <t t-name="hierarchy-box">
+                        <div class="o_hierarchy_node_header d-flex justify-content-center align-items-center">
+                            <field name="name" class="fw-bold"/>
+                        </div>
+                        <div class="o_hierarchy_node_body d-flex flex-column align-items-center gap-1 py-1">
+                            <field name="azm_name_alt" class="small text-muted"/>
+                            <span class="small"><i class="oi" data-icon="group" title="Employees"/> <field name="azm_employee_count"/></span>
+                            <field name="azm_status" widget="badge" decoration-success="azm_status == 'active'" decoration-warning="azm_status == 'in_progress'"/>
+                        </div>
+                    </t>
+                </templates>
+            </hierarchy>
+        </field>
+    </record>
+
+    <!-- Entity page (read-only: data is edited in the source apps) -->
+    <record id="res_company_view_form_azm" model="ir.ui.view">
+        <field name="name">res.company.form.azm</field>
+        <field name="model">res.company</field>
+        <field name="priority">100</field>
+        <field name="arch" type="xml">
+            <form class="o_azm_entity_form" js_class="azm_entity_form" edit="0" create="0" delete="0">
+                <sheet>
+                    <field name="name" invisible="1"/>
+                    <field name="azm_name_alt" invisible="1"/>
+                    <field name="logo" invisible="1"/>
+                    <field name="uses_default_logo" invisible="1"/>
+                    <field name="azm_cover_image" invisible="1"/>
+                    <field name="azm_tagline" invisible="1"/>
+                    <field name="azm_tagline_alt" invisible="1"/>
+                    <field name="azm_description" invisible="1"/>
+                    <field name="azm_entity_type" invisible="1"/>
+                    <field name="azm_sector" invisible="1"/>
+                    <field name="azm_status" invisible="1"/>
+                    <field name="country_id" invisible="1"/>
+                    <field name="city" invisible="1"/>
+                    <field name="website" invisible="1"/>
+                    <field name="email" invisible="1"/>
+                    <field name="phone" invisible="1"/>
+                    <field name="azm_parent_id" invisible="1"/>
+                    <field name="currency_id" invisible="1"/>
+                    <field name="write_date" invisible="1"/>
+                    <field name="azm_employee_count" invisible="1"/>
+                    <field name="azm_department_count" invisible="1"/>
+                    <field name="azm_project_count" invisible="1"/>
+                    <field name="azm_task_count" invisible="1"/>
+                    <field name="azm_open_task_count" invisible="1"/>
+                    <field name="azm_document_count" invisible="1"/>
+                    <field name="azm_progress" invisible="1"/>
+                    <field name="azm_has_data" invisible="1"/>
+
+                    <widget name="azm_entity_header"/>
+                    <widget name="azm_entity_overview"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- AZM presentation fields on the standard company form -->
+    <record id="res_company_view_form_inherit_azm" model="ir.ui.view">
+        <field name="name">res.company.form.inherit.azm</field>
+        <field name="model">res.company</field>
+        <field name="inherit_id" ref="base.view_company_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="AZM Platform" name="azm_platform" groups="azm_platform.group_azm_user">
+                    <group>
+                        <group>
+                            <field name="azm_name_alt"/>
+                            <field name="azm_entity_type"/>
+                            <field name="azm_sector"/>
+                            <field name="azm_show_on_login"/>
+                        </group>
+                        <group>
+                            <field name="azm_tagline"/>
+                            <field name="azm_tagline_alt"/>
+                            <field name="azm_cover_image" widget="image" options="{'size': [240, 120]}"/>
+                        </group>
+                    </group>
+                    <field name="azm_description" placeholder="Short description shown on the AZM entity page..."/>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="res_company_view_search_azm" model="ir.ui.view">
+        <field name="name">res.company.search.azm</field>
+        <field name="model">res.company</field>
+        <field name="priority">100</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name" filter_domain="['|', ('name', 'ilike', self), ('azm_name_alt', 'ilike', self)]"/>
+                <field name="country_id"/>
+                <field name="azm_parent_id"/>
+                <filter name="education" string="Education" domain="[('azm_entity_type', 'in', ('university', 'school', 'faculty', 'institute'))]"/>
+                <filter name="companies" string="Companies" domain="[('azm_entity_type', 'in', ('company', 'holding', 'office'))]"/>
+                <group>
+                    <filter name="group_type" string="Type" context="{'group_by': 'azm_entity_type'}"/>
+                    <filter name="group_country" string="Country" context="{'group_by': 'country_id'}"/>
+                    <filter name="group_parent" string="Parent Company" context="{'group_by': 'parent_id'}" groups="base.group_erp_manager"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_azm_entity" model="ir.actions.act_window">
+        <field name="name">Entities</field>
+        <field name="res_model">res.company</field>
+        <field name="view_mode">kanban,list,hierarchy,form</field>
+        <field name="search_view_id" ref="res_company_view_search_azm"/>
+        <field name="domain">[('id', 'in', allowed_company_ids)]</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'kanban', 'view_id': ref('res_company_view_kanban_azm')}),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('res_company_view_list_azm')}),
+            (0, 0, {'view_mode': 'hierarchy', 'view_id': ref('res_company_view_hierarchy_azm')}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('res_company_view_form_azm')})]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No entities yet</p>
+            <p>Entities are your Odoo companies (Settings > Companies).</p>
+        </field>
+    </record>
+
+    <record id="action_azm_entity_hierarchy" model="ir.actions.act_window">
+        <field name="name">Group Structure</field>
+        <field name="res_model">res.company</field>
+        <field name="view_mode">hierarchy,kanban,list,form</field>
+        <field name="search_view_id" ref="res_company_view_search_azm"/>
+        <field name="domain">[('id', 'in', allowed_company_ids)]</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'hierarchy', 'view_id': ref('res_company_view_hierarchy_azm')}),
+            (0, 0, {'view_mode': 'kanban', 'view_id': ref('res_company_view_kanban_azm')}),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('res_company_view_list_azm')}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('res_company_view_form_azm')})]"/>
+    </record>
+
+    <record id="action_azm_documents" model="ir.actions.server">
+        <field name="name">Documents</field>
+        <field name="model_id" ref="base.model_res_company"/>
+        <field name="state">code</field>
+        <field name="code">action = env['azm.dashboard'].action_open_documents()</field>
+        <field name="group_ids" eval="[(4, ref('group_azm_user'))]"/>
+    </record>
+</odoo>

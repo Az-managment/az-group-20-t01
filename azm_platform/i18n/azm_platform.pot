@@ -1,0 +1,2785 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* azm_platform
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 20.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-03 09:50+0000\n"
+"PO-Revision-Date: 2026-10-03 09:50+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: \n"
+
+#. module: azm_platform
+#: model:ir.module.module,description:base.module_azm_platform
+msgid ""
+"\n"
+"AZM Enterprise Operating Model Platform\n"
+"=======================================\n"
+"A read-only cockpit over the data you already have in Odoo:\n"
+"\n"
+"* Entities = companies (res.company), with logo, country, cover and type\n"
+"* People and teams from Employees / Departments (hr)\n"
+"* Work and progress from Projects / Tasks (project)\n"
+"* Files from Documents (when installed) or attachments\n"
+"* Home dashboard, entity pages, AZM sidebar, branded login, AI assistant\n"
+"* Operating models (from AZM Operating Model): procurement cycle and unified financial\n"
+"  model as \"files\" with KPIs, unified Assessments and Risk Register pages, Home and\n"
+"  entity-page sections; entities linked to companies (auto-matched by name on install)\n"
+"* Every page follows the user's role, assigned entities and the company switcher\n"
+"* Arabic (RTL) and English\n"
+"\n"
+"No data is duplicated: every figure is computed live from the source apps.\n"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.js:0
+msgid "%(answered)s of %(visible)s applicable questions"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.js:0
+msgid "%(approved)s approved · %(linked)s linked to companies"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.js:0
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.js:0
+msgid "%(approved)s approved · %(review)s in review · %(draft)s draft"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.js:0
+msgid "%(closed)s of %(total)s findings closed with evidence"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.js:0
+msgid "%(done)s of %(applicable)s applicable requirements"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.js:0
+msgid "%(full)s fully applied out of %(n)s existing practices"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.js:0
+msgid "%(m)s modules · %(fin)s finance · %(hrf)s HR finance"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/patches/home_dashboard.js:0
+msgid "%(n)s assessments · %(f)s open findings"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/patches/home_dashboard.js:0
+msgid "%(n)s assessments · %(g)s gaps"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.js:0
+msgid "%(p)s partially applied · %(u)s not available yet"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.js:0
+msgid "%(stages)s question areas · %(common)s common"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.js:0
+msgid "%(u)s modules · %(i)s requirements"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.js:0
+msgid "%(u)s stages / modules · %(i)s questions & requirements"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.js:0
+msgid "%(u)s stages · %(i)s questions"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.js:0
+msgid "%s active on the platform"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.js:0
+msgid "%s answers are “don't know / not listed”"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.js:0
+msgid "%s answers with evidence attached"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_utils.js:0
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.js:0
+#: code:addons/azm_platform/static/src/operating_model/om_utils.js:0
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.js:0
+msgid "%s approved"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.js:0
+msgid "%s departments"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.js:0
+msgid "%s documents"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.js:0
+msgid "%s employees"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.js:0
+msgid "%s entities"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.js:0
+msgid "%s gaps"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.js:0
+#: code:addons/azm_platform/static/src/operating_model/om_utils.js:0
+msgid "%s high"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.js:0
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.js:0
+msgid "%s high (score ≥ 15)"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_utils.js:0
+msgid "%s modules"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.js:0
+msgid "%s not applicable"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_utils.js:0
+msgid "%s not available yet"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.js:0
+msgid "%s open tasks"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.js:0
+msgid "%s overdue"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.js:0
+msgid "%s overdue tasks"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.js:0
+msgid "%s projects"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_utils.js:0
+msgid "%s question areas"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.js:0
+msgid "%s risk indicators"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_utils.js:0
+msgid "%s risk rules"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-python
+#: code:addons/azm_platform/models/azm_dashboard.py:0
+msgid "%s updated"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.js:0
+msgid "%s with an approved assessment"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+msgid "13 stages · 396 questions"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+msgid "17 modules · 167 requirements"
+msgstr ""
+
+#. module: azm_platform
+#: model_terms:ir.ui.view,arch_db:azm_platform.res_company_view_kanban_azm
+msgid "<i class=\"oi\" data-icon=\"account_balance\" title=\"Type\"/>"
+msgstr ""
+
+#. module: azm_platform
+#: model_terms:ir.ui.view,arch_db:azm_platform.res_company_view_kanban_azm
+msgid "<i class=\"oi\" data-icon=\"account_tree\" title=\"Departments\"/>"
+msgstr ""
+
+#. module: azm_platform
+#: model_terms:ir.ui.view,arch_db:azm_platform.res_company_view_kanban_azm
+msgid "<i class=\"oi\" data-icon=\"business\" title=\"Entity\"/>"
+msgstr ""
+
+#. module: azm_platform
+#: model_terms:ir.ui.view,arch_db:azm_platform.res_company_view_kanban_azm
+msgid "<i class=\"oi\" data-icon=\"chevron_right\" title=\"Open\"/>"
+msgstr ""
+
+#. module: azm_platform
+#: model_terms:ir.ui.view,arch_db:azm_platform.res_company_view_hierarchy_azm
+#: model_terms:ir.ui.view,arch_db:azm_platform.res_company_view_kanban_azm
+msgid "<i class=\"oi\" data-icon=\"group\" title=\"Employees\"/>"
+msgstr ""
+
+#. module: azm_platform
+#: model_terms:ir.ui.view,arch_db:azm_platform.res_company_view_kanban_azm
+msgid "<i class=\"oi\" data-icon=\"location_on\" title=\"Country\"/>"
+msgstr ""
+
+#. module: azm_platform
+#: model_terms:ir.ui.view,arch_db:azm_platform.res_company_view_kanban_azm
+msgid "<i class=\"oi\" data-icon=\"rocket_launch\" title=\"Projects\"/>"
+msgstr ""
+
+#. module: azm_platform
+#: model_terms:ir.ui.view,arch_db:azm_platform.res_company_view_kanban_azm
+msgid "<i class=\"oi\" data-icon=\"task\" title=\"Open Tasks\"/>"
+msgstr ""
+
+#. module: azm_platform
+#: model_terms:ir.ui.view,arch_db:azm_platform.res_company_view_kanban_azm
+msgid "<span class=\"o_azm_card_progress_label\">Task completion</span>"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/sidebar/azm_sidebar.xml:0
+msgid "A Stronger Tomorrow"
+msgstr ""
+
+#. module: azm_platform
+#: model_terms:ir.ui.view,arch_db:azm_platform.res_config_settings_view_form
+msgid "AI Assistant"
+msgstr ""
+
+#. module: azm_platform
+#: model:ir.model.fields,field_description:azm_platform.field_res_config_settings__azm_ai_model
+msgid "AI Model"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/sidebar/azm_sidebar.xml:0
+#: model:ir.ui.menu,name:azm_platform.menu_root
+#: model_terms:ir.ui.view,arch_db:azm_platform.login_layout
+msgid "AZM"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.xml:0
+msgid "AZM Assistant"
+msgstr ""
+
+#. module: azm_platform
+#: model:ir.model,name:azm_platform.model_azm_stage
+msgid "AZM Cycle Stage"
+msgstr ""
+
+#. module: azm_platform
+#: model:ir.model,name:azm_platform.model_azm_dashboard
+msgid "AZM Dashboard Services"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.xml:0
+#: model:ir.module.module,shortdesc:base.module_azm_platform
+msgid "AZM Enterprise Operating Model Platform"
+msgstr ""
+
+#. module: azm_platform
+#: model:ir.model,name:azm_platform.model_azm_entity
+msgid "AZM Entity"
+msgstr ""
+
+#. module: azm_platform
+#: model:res.groups.privilege,name:azm_platform.res_groups_privilege_azm
+msgid "AZM Operating Model"
+msgstr ""
+
+#. module: azm_platform
+#: model:ir.module.category,name:azm_platform.module_category_azm
+#: model_terms:ir.ui.view,arch_db:azm_platform.res_company_view_form_inherit_azm
+#: model_terms:ir.ui.view,arch_db:azm_platform.res_config_settings_view_form
+msgid "AZM Platform"
+msgstr ""
+
+#. module: azm_platform
+#: model:ir.model,name:azm_platform.model_azm_question
+msgid "AZM Question"
+msgstr ""
+
+#. module: azm_platform
+#: model:ir.model,name:azm_platform.model_azm_risk_rule
+msgid "AZM Risk Rule"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/entity/entity_kanban.xml:0
+#: model:ir.model.fields.selection,name:azm_platform.selection__res_company__azm_status__active
+msgid "Active"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/entity/entity_kanban.xml:0
+msgid "Active on Platform"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+msgid "Activities"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.xml:0
+#: code:addons/azm_platform/static/src/entity/entity_overview.xml:0
+msgid "Activity"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.xml:0
+msgid "Add departments and employees in the Employees app to see this chart."
+msgstr ""
+
+#. module: azm_platform
+#: model:res.groups,name:azm_platform.group_azm_manager
+msgid "Administrator"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.xml:0
+msgid "All"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+msgid "All answer templates"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+msgid "All assessments"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+msgid "All current assessments"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.js:0
+msgid "All current assessments of %s"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.js:0
+msgid "All current assessments of the group"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.js:0
+#: code:addons/azm_platform/static/src/operating_model/om_utils.js:0
+msgid "All domains"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.xml:0
+msgid "All entities"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+msgid "All financial assessments"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.js:0
+msgid "All operating models"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.js:0
+msgid "All requirements"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.xml:0
+msgid "All statuses"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.xml:0
+msgid "Answer"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.js:0
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.js:0
+#: code:addons/azm_platform/static/src/operating_model/om_utils.js:0
+#: code:addons/azm_platform/static/src/operating_model/patches/home_dashboard.xml:0
+msgid "Answer certainty"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.js:0
+#: code:addons/azm_platform/static/src/operating_model/om_utils.js:0
+msgid "Answer completion"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+msgid "Answer template"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+msgid "Answer templates"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_utils.js:0
+msgid "Answer workspace"
+msgstr ""
+
+#. module: azm_platform
+#: model_terms:ir.ui.view,arch_db:azm_platform.res_config_settings_view_form
+msgid "Anthropic API"
+msgstr ""
+
+#. module: azm_platform
+#: model:ir.model.fields,field_description:azm_platform.field_res_config_settings__azm_ai_api_key
+msgid "Anthropic API Key"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+msgid "Applicable"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+msgid "Application across assessments"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+msgid "Application status"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+msgid "Applies to"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.js:0
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.js:0
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.js:0
+msgid "Approved"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.xml:0
+msgid "Ask an administrator for the “AZM Operating Model” access rights."
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.xml:0
+msgid "Ask. Analyse. Design better."
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+msgid "Assessment"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.js:0
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.js:0
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.js:0
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.xml:0
+#: code:addons/azm_platform/static/src/operating_model/om_utils.js:0
+#: code:addons/azm_platform/static/src/operating_model/patches/home_dashboard.js:0
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.js:0
+#: model:ir.actions.client,name:azm_platform.action_azm_om_assessments
+#: model:ir.ui.menu,name:azm_platform.menu_om_assessments
+msgid "Assessments"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+msgid "Assessments by State"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.js:0
+msgid "Average completion"
+msgstr ""
+
+#. module: azm_platform
+#: model:ir.model.fields,field_description:azm_platform.field_res_company__azm_has_data
+msgid "Azm Has Data"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+msgid "Back to the files"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_utils.js:0
+msgid "Budget, invoices, advances, payment and closing"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+msgid "By answer type"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+msgid "By section"
+msgstr ""
+
+#. module: azm_platform
+#: model:res.groups,comment:azm_platform.group_azm_user
+msgid ""
+"Can view entities and contribute requirements, answers and deliverables."
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+msgid "Certainty"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.xml:0
+msgid "Change the filters or the operating model."
+msgstr ""
+
+#. module: azm_platform
+#: model:ir.model.fields,field_description:azm_platform.field_res_company__azm_child_ids
+msgid "Child Entities"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+msgid "Clear"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+msgid "Click a card to answer that module in the inventory portal."
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+msgid "Click a card to answer that stage in the workspace."
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+msgid ""
+"Click a card to see its questions. Pick one assessment above to answer "
+"directly from the cards."
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+msgid ""
+"Click a card to see its requirements. Pick one assessment above to answer "
+"directly from the cards."
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.js:0
+msgid "Closed tasks / all tasks"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.xml:0
+msgid "Code"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/sidebar/azm_sidebar.xml:0
+msgid "Collapse"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+msgid "Common"
+msgstr ""
+
+#. module: azm_platform
+#: model_terms:ir.ui.view,arch_db:azm_platform.res_company_view_search_azm
+msgid "Companies"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.js:0
+msgid "Companies of the group"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.js:0
+msgid "Companies, departments and people"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+#: model:ir.model,name:azm_platform.model_res_company
+#: model:ir.model.fields.selection,name:azm_platform.selection__res_company__azm_entity_type__company
+msgid "Company"
+msgstr ""
+
+#. module: azm_platform
+#: model_terms:ir.ui.view,arch_db:azm_platform.azm_entity_view_list_inherit_platform
+msgid "Company (AZM Platform)"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.js:0
+msgid "Compare two entities"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.js:0
+msgid "Complete"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.js:0
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.xml:0
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.xml:0
+msgid "Completion"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.js:0
+msgid "Completion by domain"
+msgstr ""
+
+#. module: azm_platform
+#: model:ir.model,name:azm_platform.model_res_config_settings
+msgid "Config Settings"
+msgstr ""
+
+#. module: azm_platform
+#: model:ir.model.fields.selection,name:azm_platform.selection__res_company__azm_sector__contracting
+msgid "Contracting"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+msgid "Control"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/entity/entity_header.xml:0
+#: code:addons/azm_platform/static/src/entity/entity_overview.js:0
+#: model_terms:ir.ui.view,arch_db:azm_platform.res_company_view_search_azm
+msgid "Country"
+msgstr ""
+
+#. module: azm_platform
+#: model_terms:ir.ui.view,arch_db:azm_platform.res_company_view_kanban_azm
+msgid "Cover"
+msgstr ""
+
+#. module: azm_platform
+#: model:ir.model.fields,field_description:azm_platform.field_res_company__azm_cover_image
+msgid "Cover Image"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+msgid ""
+"Create one per entity, purchase type and path, then answer the questions."
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+msgid ""
+"Create one per entity, set its activities, then answer the applicable "
+"requirements."
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+msgid "Current Assessments"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+msgid "Current Financial Assessments"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+msgid "Cycle order"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.xml:0
+msgid "Demo"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#. odoo-python
+#: code:addons/azm_platform/models/res_company.py:0
+#: code:addons/azm_platform/static/src/entity/entity_header.js:0
+#: model:ir.model.fields,field_description:azm_platform.field_res_company__azm_department_count
+#: model_terms:ir.ui.view,arch_db:azm_platform.res_company_view_kanban_azm
+msgid "Departments"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.js:0
+#: model:ir.ui.menu,name:azm_platform.menu_departments
+msgid "Departments & Teams"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.js:0
+msgid "Departments & managers"
+msgstr ""
+
+#. module: azm_platform
+#: model:ir.model.fields,field_description:azm_platform.field_azm_dashboard__display_name
+#: model:ir.model.fields,field_description:azm_platform.field_azm_entity__display_name
+#: model:ir.model.fields,field_description:azm_platform.field_azm_finding__display_name
+#: model:ir.model.fields,field_description:azm_platform.field_azm_question__display_name
+#: model:ir.model.fields,field_description:azm_platform.field_azm_risk_rule__display_name
+#: model:ir.model.fields,field_description:azm_platform.field_azm_stage__display_name
+#: model:ir.model.fields,field_description:azm_platform.field_res_company__display_name
+#: model:ir.model.fields,field_description:azm_platform.field_res_config_settings__display_name
+msgid "Display Name"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/entity/entity_overview.xml:0
+msgid "Document"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#. odoo-python
+#: code:addons/azm_platform/models/azm_dashboard.py:0
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.js:0
+#: code:addons/azm_platform/static/src/entity/entity_header.js:0
+#: model:ir.actions.server,name:azm_platform.action_azm_documents
+#: model:ir.model.fields,field_description:azm_platform.field_res_company__azm_document_count
+#: model:ir.ui.menu,name:azm_platform.menu_documents
+msgid "Documents"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.js:0
+msgid "Documents and evidence"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/entity/entity_header.xml:0
+#: code:addons/azm_platform/static/src/entity/entity_overview.xml:0
+msgid "Edit"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/entity/entity_header.xml:0
+msgid "Edit entity data"
+msgstr ""
+
+#. module: azm_platform
+#: model_terms:ir.ui.view,arch_db:azm_platform.res_company_view_search_azm
+msgid "Education"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/entity/entity_overview.js:0
+msgid "Email"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#. odoo-python
+#: code:addons/azm_platform/models/res_company.py:0
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.js:0
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.xml:0
+#: code:addons/azm_platform/static/src/entity/entity_header.js:0
+#: code:addons/azm_platform/static/src/entity/entity_overview.js:0
+#: model:ir.model.fields,field_description:azm_platform.field_res_company__azm_employee_count
+#: model:ir.ui.menu,name:azm_platform.menu_employees
+#: model_terms:ir.ui.view,arch_db:azm_platform.res_company_view_kanban_azm
+msgid "Employees"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.xml:0
+msgid "Employees by Department"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.js:0
+msgid "Employees in HR"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.xml:0
+msgid "Empty"
+msgstr ""
+
+#. module: azm_platform
+#: model_terms:ir.ui.view,arch_db:azm_platform.login_layout
+msgid "Enterprise Operating Model Platform"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.js:0
+#: code:addons/azm_platform/static/src/entity/entity_kanban.xml:0
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+#: model:ir.actions.act_window,name:azm_platform.action_azm_entity
+#: model:ir.ui.menu,name:azm_platform.menu_entities
+msgid "Entities"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.xml:0
+msgid "Entities Progress"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.xml:0
+msgid "Entities across the operating models"
+msgstr ""
+
+#. module: azm_platform
+#: model_terms:ir.actions.act_window,help:azm_platform.action_azm_entity
+msgid "Entities are your Odoo companies (Settings &gt; Companies)."
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.js:0
+#: code:addons/azm_platform/static/src/operating_model/fin_utils.js:0
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.js:0
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.js:0
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.xml:0
+#: code:addons/azm_platform/static/src/operating_model/om_utils.js:0
+msgid "Entities covered"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.xml:0
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.xml:0
+msgid "Entity"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/entity/entity_overview.xml:0
+msgid "Entity Information"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/entity/entity_header.xml:0
+msgid "Entity Status"
+msgstr ""
+
+#. module: azm_platform
+#: model:ir.model.fields,field_description:azm_platform.field_res_company__azm_entity_type
+msgid "Entity Type"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/entity/entity_kanban.xml:0
+msgid "Entity Types"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.xml:0
+msgid ""
+"Every operating model of the group in one place — open a model to see its "
+"data and statistics"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.js:0
+msgid "Execution"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.js:0
+msgid "Explain the current state"
+msgstr ""
+
+#. module: azm_platform
+#: model:ir.model.fields.selection,name:azm_platform.selection__res_company__azm_sector__facilities
+msgid "Facilities Management"
+msgstr ""
+
+#. module: azm_platform
+#: model:ir.model.fields.selection,name:azm_platform.selection__res_company__azm_entity_type__faculty
+msgid "Faculty"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.js:0
+msgid "Files & evidence"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.js:0
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.js:0
+msgid "Finance (FIN)"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.js:0
+#: code:addons/azm_platform/static/src/operating_model/om_utils.js:0
+#: model:ir.model.fields.selection,name:azm_platform.selection__azm_stage__azm_domain__financial
+#: model_terms:ir.ui.view,arch_db:azm_platform.azm_finding_view_search_inherit_platform
+#: model_terms:ir.ui.view,arch_db:azm_platform.azm_question_view_search_inherit_platform
+msgid "Financial"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.js:0
+msgid "Financial Assessments"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.js:0
+msgid "Financial Gaps"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/patches/home_dashboard.js:0
+msgid "Financial Model"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+msgid "Financial Modules"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.js:0
+#: code:addons/azm_platform/static/src/operating_model/fin_utils.js:0
+msgid "Financial assessments"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.js:0
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.js:0
+msgid "Financial gaps"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.xml:0
+msgid "Financial gaps (full view)"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_utils.js:0
+msgid "Financial inventory"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.xml:0
+msgid "Financial list (full view)"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.js:0
+msgid "Financial requirements"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.xml:0
+msgid "Finding / requirement"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.js:0
+msgid "Findings"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.xml:0
+msgid "From Current Reality to a Unified, Governed and Impactful Future"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+msgid ""
+"From answers to policy, procedure, authority and risk, per entity and per "
+"domain"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.xml:0
+msgid "From current reality to a more governed and sustainable future"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.js:0
+msgid ""
+"From the purchase request to closing: policy, procedure, authority and "
+"risks."
+msgstr ""
+
+#. module: azm_platform
+#: model:res.groups,comment:azm_platform.group_azm_manager
+msgid "Full control over entities, domains and the platform configuration."
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/fin_utils.js:0
+#: code:addons/azm_platform/static/src/operating_model/om_utils.js:0
+msgid "Fully applied"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.js:0
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/fin_utils.js:0
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.js:0
+msgid "Gaps"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+msgid "Gaps register"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.js:0
+#: code:addons/azm_platform/static/src/operating_model/om_utils.js:0
+#: model:ir.model.fields.selection,name:azm_platform.selection__azm_stage__azm_domain__governance
+#: model_terms:ir.ui.view,arch_db:azm_platform.azm_finding_view_search_inherit_platform
+#: model_terms:ir.ui.view,arch_db:azm_platform.azm_question_view_search_inherit_platform
+msgid "Governance"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.js:0
+#: model:ir.actions.act_window,name:azm_platform.action_azm_entity_hierarchy
+#: model:ir.ui.menu,name:azm_platform.menu_structure
+msgid "Group Structure"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.js:0
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.js:0
+msgid "HR finance (HRF)"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.xml:0
+msgid "High"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+msgid "High risks"
+msgstr ""
+
+#. module: azm_platform
+#: model:ir.model.fields.selection,name:azm_platform.selection__res_company__azm_sector__higher_education
+msgid "Higher Education"
+msgstr ""
+
+#. module: azm_platform
+#: model:ir.model.fields.selection,name:azm_platform.selection__res_company__azm_entity_type__holding
+msgid "Holding Company"
+msgstr ""
+
+#. module: azm_platform
+#: model:ir.actions.client,name:azm_platform.action_azm_dashboard
+#: model:ir.ui.menu,name:azm_platform.menu_home
+msgid "Home"
+msgstr ""
+
+#. module: azm_platform
+#: model:ir.model.fields,field_description:azm_platform.field_azm_dashboard__id
+#: model:ir.model.fields,field_description:azm_platform.field_azm_entity__id
+#: model:ir.model.fields,field_description:azm_platform.field_azm_finding__id
+#: model:ir.model.fields,field_description:azm_platform.field_azm_question__id
+#: model:ir.model.fields,field_description:azm_platform.field_azm_risk_rule__id
+#: model:ir.model.fields,field_description:azm_platform.field_azm_stage__id
+#: model:ir.model.fields,field_description:azm_platform.field_res_company__id
+#: model:ir.model.fields,field_description:azm_platform.field_res_config_settings__id
+msgid "ID"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.xml:0
+msgid "Impact"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/entity/entity_kanban.xml:0
+#: model:ir.model.fields.selection,name:azm_platform.selection__res_company__azm_status__in_progress
+msgid "In Preparation"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.js:0
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.js:0
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.js:0
+msgid "In progress"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.xml:0
+msgid "Include closed, dismissed and not applicable"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.xml:0
+msgid "Include previous versions"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.js:0
+msgid "Initiatives in progress"
+msgstr ""
+
+#. module: azm_platform
+#: model:ir.model.fields.selection,name:azm_platform.selection__res_company__azm_entity_type__institute
+msgid "Institute"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.js:0
+#: code:addons/azm_platform/static/src/operating_model/fin_utils.js:0
+msgid "Inventory completion"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+msgid ""
+"Inventory of the financial requirements of each entity and design of the "
+"target model"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.js:0
+msgid ""
+"Inventory of the financial requirements of each entity and design of the "
+"target model."
+msgstr ""
+
+#. module: azm_platform
+#: model:ir.model.fields.selection,name:azm_platform.selection__res_company__azm_sector__investment
+msgid "Investment"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.js:0
+msgid "Items in the register"
+msgstr ""
+
+#. module: azm_platform
+#: model:ir.model.fields.selection,name:azm_platform.selection__res_company__azm_sector__k12
+msgid "K-12 Education"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.js:0
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.xml:0
+msgid "Knowledge"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/entity/entity_overview.xml:0
+msgid "Latest Documents"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/patches/home_dashboard.xml:0
+msgid "Latest assessments"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+msgid "Least complete first"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/patches/entity_overview.xml:0
+msgid "Link an entity"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/patches/entity_overview.xml:0
+msgid "Link it from Operating Model › Settings › Entities (column “Company”)."
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.js:0
+msgid "Linked to records and companies"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.xml:0
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.xml:0
+msgid "Loading"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/entity/entity_header.xml:0
+#: model_terms:ir.ui.view,arch_db:azm_platform.res_company_view_kanban_azm
+msgid "Logo"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.js:0
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/fin_utils.js:0
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.js:0
+msgid "Maturity"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/entity/entity_overview.xml:0
+msgid "Members"
+msgstr ""
+
+#. module: azm_platform
+#: model:ir.model.fields,field_description:azm_platform.field_azm_finding__azm_domain
+#: model:ir.model.fields,field_description:azm_platform.field_azm_question__azm_domain
+#: model:ir.model.fields,field_description:azm_platform.field_azm_risk_rule__azm_domain
+#: model:ir.model.fields,field_description:azm_platform.field_azm_stage__azm_domain
+#: model_terms:ir.ui.view,arch_db:azm_platform.azm_finding_view_search_inherit_platform
+#: model_terms:ir.ui.view,arch_db:azm_platform.azm_question_view_search_inherit_platform
+msgid "Model Domain"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+msgid "Most questions first"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+msgid "Most risks first"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_utils.js:0
+msgid "Multiple choice"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.xml:0
+msgid "My Tasks"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/entity/entity_overview.js:0
+msgid "Name"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/entity/entity_overview.js:0
+#: model:ir.model.fields,field_description:azm_platform.field_res_company__azm_name_alt
+msgid "Name (other language)"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.xml:0
+msgid "New"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+msgid "New Assessment"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+msgid "New Financial Assessment"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.xml:0
+msgid "New financial assessment"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.xml:0
+msgid "New procurement assessment"
+msgstr ""
+
+#. module: azm_platform
+#: model:res.groups.privilege,placeholder:azm_platform.res_groups_privilege_azm
+msgid "No"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/patches/entity_overview.xml:0
+msgid "No Operating Model entity is linked to this company"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.xml:0
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.xml:0
+msgid "No access"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.xml:0
+#: code:addons/azm_platform/static/src/entity/entity_overview.xml:0
+msgid "No activity yet"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/patches/home_dashboard.xml:0
+msgid "No assessment yet"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+msgid "No assessments"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.js:0
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.js:0
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.js:0
+msgid "No data yet"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/entity/entity_overview.xml:0
+msgid "No departments yet"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/entity/entity_overview.xml:0
+msgid "No documents yet"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/entity/entity_overview.js:0
+msgid "No employees yet"
+msgstr ""
+
+#. module: azm_platform
+#: model_terms:ir.actions.act_window,help:azm_platform.action_azm_entity
+msgid "No entities yet"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+msgid "No financial assessment yet"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+msgid "No gaps"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+msgid "No gaps recorded"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/patches/home_dashboard.xml:0
+msgid "No open findings"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.xml:0
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.xml:0
+msgid "No operating model is available for your user"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/entity/entity_overview.xml:0
+msgid "No projects yet"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+msgid "No question area matches."
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+msgid "No risks"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.xml:0
+msgid "No tasks"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.xml:0
+msgid "No tasks right now"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/entity/entity_kanban.xml:0
+#: model:ir.model.fields.selection,name:azm_platform.selection__res_company__azm_status__not_started
+msgid "Not Started"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.js:0
+#: code:addons/azm_platform/static/src/operating_model/fin_utils.js:0
+#: code:addons/azm_platform/static/src/operating_model/om_utils.js:0
+msgid "Not answered yet"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.js:0
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/fin_utils.js:0
+msgid "Not applicable"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.js:0
+msgid "Not applicable to the entity"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_utils.js:0
+msgid "Not applied"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+msgid "Not available"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_utils.js:0
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.js:0
+msgid "Not available yet"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/patches/entity_overview.xml:0
+msgid "Not linked"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+msgid "Not linked to a company"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.js:0
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.js:0
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.js:0
+msgid "Not started"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.xml:0
+msgid "Nothing to show"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_utils.js:0
+msgid "Number"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/sidebar/azm_sidebar.xml:0
+msgid "One Group"
+msgstr ""
+
+#. module: azm_platform
+#: model:ir.module.module,summary:base.module_azm_platform
+msgid "One Group. Unified Systems. Stronger Tomorrow."
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.xml:0
+#: model_terms:ir.ui.view,arch_db:azm_platform.res_company_view_kanban_azm
+msgid "Open"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/patches/entity_overview.xml:0
+#: code:addons/azm_platform/static/src/operating_model/patches/home_dashboard.xml:0
+msgid "Open Financial Model"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/patches/entity_overview.xml:0
+#: code:addons/azm_platform/static/src/operating_model/patches/home_dashboard.xml:0
+msgid "Open Operating Model"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#. odoo-python
+#: code:addons/azm_platform/models/res_company.py:0
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.js:0
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.xml:0
+#: code:addons/azm_platform/static/src/entity/entity_header.js:0
+#: model:ir.model.fields,field_description:azm_platform.field_res_company__azm_open_task_count
+#: model_terms:ir.ui.view,arch_db:azm_platform.res_company_view_kanban_azm
+msgid "Open Tasks"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.js:0
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.js:0
+#: code:addons/azm_platform/static/src/operating_model/om_utils.js:0
+#: code:addons/azm_platform/static/src/operating_model/patches/home_dashboard.xml:0
+msgid "Open findings"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.js:0
+msgid "Open findings & gaps"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+msgid "Open list"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.xml:0
+msgid "Open the model"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/patches/entity_overview.xml:0
+#: code:addons/azm_platform/static/src/operating_model/patches/home_dashboard.js:0
+#: code:addons/azm_platform/static/src/operating_model/patches/home_dashboard.xml:0
+#: model:ir.actions.client,name:azm_platform.action_azm_om_dashboard
+msgid "Operating Model"
+msgstr ""
+
+#. module: azm_platform
+#: model:ir.model.fields,field_description:azm_platform.field_res_company__azm_om_entity_ids
+msgid "Operating Model Entities"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.xml:0
+#: code:addons/azm_platform/static/src/operating_model/patches/home_dashboard.js:0
+#: model:ir.actions.client,name:azm_platform.action_azm_om_hub
+#: model:ir.ui.menu,name:azm_platform.menu_om_dashboard
+msgid "Operating Models"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.xml:0
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.xml:0
+msgid "Operating model"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.js:0
+msgid "Operating models"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.js:0
+msgid "Organization"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-python
+#: code:addons/azm_platform/models/azm_dashboard.py:0
+#: model:ir.model.fields.selection,name:azm_platform.selection__res_company__azm_entity_type__other
+#: model:ir.model.fields.selection,name:azm_platform.selection__res_company__azm_sector__other
+msgid "Other"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.js:0
+msgid "Overall Completion"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/entity/entity_kanban.xml:0
+msgid "Overall Task Completion"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.js:0
+msgid "Overall completion"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.xml:0
+msgid "Overdue"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.xml:0
+msgid "Owner"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_utils.js:0
+msgid "Ownership, policy, segregation of duties, delegation"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/sidebar/azm_sidebar.xml:0
+msgid "PEOPLE. GOVERNANCE. IMPACT."
+msgstr ""
+
+#. module: azm_platform
+#: model_terms:ir.ui.view,arch_db:azm_platform.res_company_view_search_azm
+msgid "Parent Company"
+msgstr ""
+
+#. module: azm_platform
+#: model:ir.model.fields,field_description:azm_platform.field_res_company__azm_parent_id
+msgid "Parent Entity"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+msgid "Partially"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_utils.js:0
+#: code:addons/azm_platform/static/src/operating_model/om_utils.js:0
+msgid "Partially applied"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.js:0
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.xml:0
+msgid "People"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/entity/entity_overview.xml:0
+msgid "People by Department"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/entity/entity_overview.js:0
+msgid "Phone"
+msgstr ""
+
+#. module: azm_platform
+#: model:ir.ui.menu,name:azm_platform.menu_settings
+msgid "Platform Settings"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.xml:0
+#: model:ir.model.fields,field_description:azm_platform.field_res_company__azm_status
+msgid "Platform Status"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-python
+#: code:addons/azm_platform/models/azm_dashboard.py:0
+msgid "Please type a question first."
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.xml:0
+msgid "Prepared by"
+msgstr ""
+
+#. module: azm_platform
+#: model:ir.model.fields.selection,name:azm_platform.selection__res_company__azm_entity_type__office
+msgid "Private Office"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+msgid "Procurement"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.js:0
+#: code:addons/azm_platform/static/src/operating_model/om_utils.js:0
+#: model:ir.model.fields.selection,name:azm_platform.selection__azm_stage__azm_domain__procurement
+#: model_terms:ir.ui.view,arch_db:azm_platform.azm_finding_view_search_inherit_platform
+#: model_terms:ir.ui.view,arch_db:azm_platform.azm_question_view_search_inherit_platform
+msgid "Procurement Operations"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.js:0
+msgid "Procurement and financial assessments of every entity, in one list"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.js:0
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.js:0
+msgid "Procurement cycle"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.xml:0
+msgid "Procurement list (full view)"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.xml:0
+msgid "Procurement register (full view)"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.js:0
+msgid "Procurement risk findings"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.js:0
+msgid ""
+"Procurement risk findings and financial gaps of every entity, in one "
+"register"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/entity/entity_kanban.xml:0
+#: model:ir.model.fields,field_description:azm_platform.field_res_company__azm_progress
+msgid "Progress"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#. odoo-python
+#: code:addons/azm_platform/models/res_company.py:0
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.js:0
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.xml:0
+#: code:addons/azm_platform/static/src/entity/entity_header.js:0
+#: code:addons/azm_platform/static/src/entity/entity_overview.xml:0
+#: model:ir.model.fields,field_description:azm_platform.field_res_company__azm_project_count
+#: model:ir.ui.menu,name:azm_platform.menu_projects
+#: model_terms:ir.ui.view,arch_db:azm_platform.res_company_view_kanban_azm
+msgid "Projects"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.js:0
+msgid "Projects and tasks across the group"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+msgid "Purchase type · Path"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+msgid "Question Areas"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.js:0
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+#: model:ir.ui.menu,name:azm_platform.menu_om_questions
+msgid "Question Catalogue"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+msgid "Question areas"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/patches/home_dashboard.xml:0
+msgid "Question areas · questions"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+msgid "Question sections"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/om_utils.js:0
+msgid "Questions"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+msgid "Questions & Application"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.js:0
+msgid "Questions in catalogue"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.xml:0
+msgid "Quick Access"
+msgstr ""
+
+#. module: azm_platform
+#: model:ir.model.fields.selection,name:azm_platform.selection__res_company__azm_sector__real_estate
+msgid "Real Estate"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.xml:0
+#: code:addons/azm_platform/static/src/entity/entity_overview.xml:0
+msgid "Recent Activity"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.xml:0
+msgid "Reference"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_utils.js:0
+msgid "Request, stock, vendors, quotations, award, order, receipt"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+msgid "Requirement Catalogue"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.js:0
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/fin_utils.js:0
+msgid "Requirements"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.js:0
+msgid "Requirements by source"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+msgid "Requirements by status"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.js:0
+msgid "Requirements in the model"
+msgstr ""
+
+#. module: azm_platform
+#: model:ir.model.fields.selection,name:azm_platform.selection__res_company__azm_entity_type__residence
+msgid "Residence"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.js:0
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.js:0
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.js:0
+#: model:ir.actions.client,name:azm_platform.action_azm_om_register
+#: model:ir.ui.menu,name:azm_platform.menu_om_findings
+msgid "Risk Register"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+msgid "Risk register"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+msgid "Risk rules"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+msgid "Risks"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.xml:0
+msgid "Risks / gaps"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.js:0
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/om_utils.js:0
+#: code:addons/azm_platform/static/src/operating_model/patches/home_dashboard.xml:0
+msgid "Risks triggered"
+msgstr ""
+
+#. module: azm_platform
+#: model:ir.model.fields.selection,name:azm_platform.selection__res_company__azm_entity_type__school
+msgid "School"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.xml:0
+msgid "Scope"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.xml:0
+msgid "Score"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+msgid "Search a module…"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+msgid "Search a stage…"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.js:0
+msgid "Searchable from one place"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.xml:0
+msgid "Search…"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/entity/entity_header.xml:0
+#: code:addons/azm_platform/static/src/entity/entity_overview.js:0
+#: model:ir.model.fields,field_description:azm_platform.field_res_company__azm_sector
+msgid "Sector"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.js:0
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.js:0
+msgid "Selected company"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.xml:0
+msgid "Send"
+msgstr ""
+
+#. module: azm_platform
+#: model:ir.actions.act_window,name:azm_platform.action_azm_settings
+msgid "Settings"
+msgstr ""
+
+#. module: azm_platform
+#: model:ir.model.fields,help:azm_platform.field_res_company__azm_progress
+msgid "Share of closed tasks in the projects of this company."
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/entity/entity_overview.js:0
+#: model:ir.model.fields,field_description:azm_platform.field_res_company__azm_description
+msgid "Short Description"
+msgstr ""
+
+#. module: azm_platform
+#: model_terms:ir.ui.view,arch_db:azm_platform.res_company_view_form_inherit_azm
+msgid "Short description shown on the AZM entity page..."
+msgstr ""
+
+#. module: azm_platform
+#: model:ir.model.fields,field_description:azm_platform.field_res_company__azm_show_on_login
+msgid "Show on Login Page"
+msgstr ""
+
+#. module: azm_platform
+#: model:ir.model.fields,help:azm_platform.field_res_company__azm_name_alt
+msgid "Shown under the company name, e.g. the Arabic or English name."
+msgstr ""
+
+#. module: azm_platform
+#: model_terms:ir.ui.view,arch_db:azm_platform.login_layout
+msgid "Sign in to continue"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_utils.js:0
+msgid "Single choice"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+msgid "Sort"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.xml:0
+msgid "Stage / module"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+msgid "Stage application (operational stages × assessments)"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.xml:0
+msgid "State"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/entity/entity_header.xml:0
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.xml:0
+msgid "Status"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+msgid ""
+"Submit an assessment for review to turn triggered risks into tracked "
+"findings."
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.js:0
+msgid "Summarize overdue work"
+msgstr ""
+
+#. module: azm_platform
+#: model:ir.model.fields,field_description:azm_platform.field_res_company__azm_tagline
+msgid "Tagline"
+msgstr ""
+
+#. module: azm_platform
+#: model:ir.model.fields,field_description:azm_platform.field_res_company__azm_tagline_alt
+msgid "Tagline (other language)"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/entity/entity_header.js:0
+msgid "Task Completion"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.js:0
+#: model:ir.model.fields,field_description:azm_platform.field_res_company__azm_task_count
+#: model:ir.ui.menu,name:azm_platform.menu_tasks
+msgid "Tasks"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.xml:0
+msgid "Tasks assigned to you will appear here"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.js:0
+msgid "Teams"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/entity/entity_overview.xml:0
+msgid "Teams & Responsibilities"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-python
+#: code:addons/azm_platform/models/azm_dashboard.py:0
+msgid ""
+"The AI assistant is not configured yet. An administrator can add an "
+"Anthropic API key in Settings > AZM Platform."
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+msgid "The Operating Model is not available for your user"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-python
+#: code:addons/azm_platform/models/azm_dashboard.py:0
+msgid "The assistant could not answer right now (%s)."
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+msgid "The financial model is not available for your user"
+msgstr ""
+
+#. module: azm_platform
+#: model_terms:ir.ui.view,arch_db:azm_platform.res_config_settings_view_form
+msgid "The smart assistant on the home dashboard uses this key and model."
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.xml:0
+msgid "Thinking"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/sidebar/azm_sidebar.xml:0
+msgid "Together..."
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+msgid "Top Open Risks"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+msgid "Top gaps"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/patches/home_dashboard.xml:0
+msgid "Top open risks"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.js:0
+#: code:addons/azm_platform/static/src/entity/entity_kanban.xml:0
+msgid "Total Entities"
+msgstr ""
+
+#. module: azm_platform
+#: model:ir.model.fields.selection,name:azm_platform.selection__res_company__azm_sector__tourism
+msgid "Tourism & Hospitality"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.xml:0
+msgid "Towards Unified, Impactful Operating Models"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/sidebar/azm_sidebar.xml:0
+msgid "Towards a unified operating model for a greater impact"
+msgstr ""
+
+#. module: azm_platform
+#: model:ir.model.fields.selection,name:azm_platform.selection__res_company__azm_sector__training
+msgid "Training & Languages"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.js:0
+msgid "Treatment rate"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/entity/entity_header.xml:0
+#: code:addons/azm_platform/static/src/entity/entity_overview.js:0
+#: model_terms:ir.ui.view,arch_db:azm_platform.res_company_view_search_azm
+msgid "Type"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.xml:0
+msgid "Type your question..."
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/entity/entity_kanban.xml:0
+msgid "Types"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/patches/entity_overview.xml:0
+#: code:addons/azm_platform/static/src/operating_model/patches/home_dashboard.xml:0
+#: model:ir.actions.client,name:azm_platform.action_azm_fin_dashboard
+msgid "Unified Financial Model"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.js:0
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.js:0
+msgid "Unified financial model"
+msgstr ""
+
+#. module: azm_platform
+#: model:ir.model.fields.selection,name:azm_platform.selection__res_company__azm_entity_type__university
+msgid "University"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#. odoo-python
+#: code:addons/azm_platform/models/azm_dashboard.py:0
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.xml:0
+msgid "Updated"
+msgstr ""
+
+#. module: azm_platform
+#: model:res.groups,name:azm_platform.group_azm_user
+msgid "User"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.xml:0
+msgid "Value"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.xml:0
+msgid "Version"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.xml:0
+#: code:addons/azm_platform/static/src/entity/entity_overview.xml:0
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.xml:0
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+msgid "View all"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.xml:0
+msgid "View all tasks"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/entity/entity_header.xml:0
+#: code:addons/azm_platform/static/src/entity/entity_overview.js:0
+msgid "Website"
+msgstr ""
+
+#. module: azm_platform
+#: model_terms:ir.ui.view,arch_db:azm_platform.login_layout
+msgid "Welcome to"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.js:0
+msgid "Which entity needs attention?"
+msgstr ""
+
+#. module: azm_platform
+#: model:ir.model.fields,help:azm_platform.field_azm_finding__azm_domain
+#: model:ir.model.fields,help:azm_platform.field_azm_question__azm_domain
+#: model:ir.model.fields,help:azm_platform.field_azm_risk_rule__azm_domain
+#: model:ir.model.fields,help:azm_platform.field_azm_stage__azm_domain
+msgid ""
+"Which part of the operating model this question area belongs to (used by the"
+" AZM Platform cards and statistics)."
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.js:0
+msgid "Work to be delivered"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.js:0
+msgid "by %s risk rules on the answers"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-python
+#: code:addons/azm_platform/models/res_company.py:0
+msgid "company_id"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/fin_dashboard/fin_dashboard.js:0
+msgid "each one needs a reason and a review"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.js:0
+msgid "financial requirements to design"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/registers/registers.js:0
+msgid "partially applied requirements"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.js:0
+msgid "risks of the procurement cycle + financial gaps"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/entity/entity_overview.xml:0
+msgid "tasks"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_dashboard/om_dashboard.xml:0
+msgid "to"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.js:0
+msgid "weighted by assessments"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/om_hub/om_hub.js:0
+msgid "with at least one assessment"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/patches/home_dashboard.xml:0
+msgid "· v"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/operating_model/patches/home_dashboard.xml:0
+msgid "فجوة"
+msgstr ""
+
+#. module: azm_platform
+#: model:ir.ui.menu,name:azm_platform.menu_fin_dashboard_in_om
+msgid "لوحة النموذج المالي"
+msgstr ""
+
+#. module: azm_platform
+#: model:ir.model,name:azm_platform.model_azm_finding
+msgid "ملاحظة خطر AZM"
+msgstr ""
+
+#. module: azm_platform
+#: model:ir.ui.menu,name:azm_platform.menu_om_dashboard_in_om
+msgid "نماذج التشغيل"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.xml:0
+msgid "— AZM"
+msgstr ""
+
+#. module: azm_platform
+#. odoo-javascript
+#: code:addons/azm_platform/static/src/dashboard/azm_dashboard.xml:0
+msgid "“Governance today... a more sustainable future”"
+msgstr ""

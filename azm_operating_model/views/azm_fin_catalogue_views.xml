@@ -1,0 +1,427 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ============================================================ modules -->
+    <record id="azm_fin_module_view_list" model="ir.ui.view">
+        <field name="name">azm.fin.module.view.list</field>
+        <field name="model">azm.fin.module</field>
+        <field name="arch" type="xml">
+            <list string="موديولات النموذج المالي">
+                <field name="sequence" widget="handle"/>
+                <field name="full_code" string="الكود"/>
+                <field name="name"/>
+                <field name="topic_count"/>
+                <field name="requirement_count"/>
+                <field name="question_count"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="azm_fin_module_view_form" model="ir.ui.view">
+        <field name="name">azm.fin.module.view.form</field>
+        <field name="model">azm.fin.module</field>
+        <field name="arch" type="xml">
+            <form string="موديول مالي">
+                <header>
+                    <button name="action_reload_catalogue" type="object" string="تحديث الكتالوج من الملف"
+                            groups="azm_operating_model.azm_group_manager"
+                            confirm="هيتم تحديث الموديولات والموضوعات والمتطلبات والأسئلة من ملف الكتالوج. تكمل؟"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <field name="full_code" class="text-muted"/>
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="code"/>
+                            <field name="sequence"/>
+                        </group>
+                        <group>
+                            <field name="topic_count"/>
+                            <field name="requirement_count"/>
+                            <field name="question_count"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="المتطلبات" name="requirements">
+                            <field name="requirement_ids">
+                                <list>
+                                    <field name="code"/>
+                                    <field name="topic_id"/>
+                                    <field name="title"/>
+                                    <field name="question_count"/>
+                                    <field name="scope_code"/>
+                                    <field name="pack" optional="show"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="الموضوعات الفرعية" name="topics">
+                            <field name="topic_ids">
+                                <list>
+                                    <field name="code"/>
+                                    <field name="name"/>
+                                    <field name="requirement_count"/>
+                                    <field name="prompt_count"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="azm_fin_module_action" model="ir.actions.act_window">
+        <field name="name">موديولات النموذج المالي</field>
+        <field name="res_model">azm.fin.module</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- ============================================================ topics -->
+    <record id="azm_fin_topic_view_list" model="ir.ui.view">
+        <field name="name">azm.fin.topic.view.list</field>
+        <field name="model">azm.fin.topic</field>
+        <field name="arch" type="xml">
+            <list string="الموضوعات الفرعية">
+                <field name="code"/>
+                <field name="module_id"/>
+                <field name="name"/>
+                <field name="requirement_count"/>
+                <field name="prompt_count"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="azm_fin_topic_view_form" model="ir.ui.view">
+        <field name="name">azm.fin.topic.view.form</field>
+        <field name="model">azm.fin.topic</field>
+        <field name="arch" type="xml">
+            <form string="موضوع فرعي">
+                <sheet>
+                    <div class="oe_title">
+                        <field name="code" class="text-muted"/>
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group><field name="module_id"/><field name="sequence"/></group>
+                    <notebook>
+                        <page string="المتطلبات" name="requirements">
+                            <field name="requirement_ids">
+                                <list>
+                                    <field name="code"/>
+                                    <field name="title"/>
+                                    <field name="question_count"/>
+                                    <field name="scope_code"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="الأسئلة الافتتاحية (مسودة)" name="prompts">
+                            <field name="prompt_ids">
+                                <list>
+                                    <field name="axis"/>
+                                    <field name="axis_name"/>
+                                    <field name="stage"/>
+                                    <field name="question"/>
+                                    <field name="output"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="azm_fin_topic_view_search" model="ir.ui.view">
+        <field name="name">azm.fin.topic.view.search</field>
+        <field name="model">azm.fin.topic</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="module_id"/>
+                <filter name="with_requirements" string="لها متطلبات" domain="[('requirement_ids', '!=', False)]"/>
+                <group>
+                    <filter name="by_module" string="الموديول" context="{'group_by': 'module_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="azm_fin_topic_action" model="ir.actions.act_window">
+        <field name="name">الموضوعات الفرعية</field>
+        <field name="res_model">azm.fin.topic</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_by_module': 1}</field>
+    </record>
+
+    <!-- ============================================================ requirements -->
+    <record id="azm_fin_requirement_view_list" model="ir.ui.view">
+        <field name="name">azm.fin.requirement.view.list</field>
+        <field name="model">azm.fin.requirement</field>
+        <field name="arch" type="xml">
+            <list string="متطلبات النموذج المالي">
+                <field name="code"/>
+                <field name="req_id" optional="hide"/>
+                <field name="module_id"/>
+                <field name="topic_id" optional="show"/>
+                <field name="title"/>
+                <field name="question" optional="hide"/>
+                <field name="question_count"/>
+                <field name="response_type" optional="show"/>
+                <field name="scope_code"/>
+                <field name="pack" optional="hide"/>
+                <field name="owner" optional="hide"/>
+                <field name="profile" optional="hide"/>
+                <field name="source" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="azm_fin_requirement_view_form" model="ir.ui.view">
+        <field name="name">azm.fin.requirement.view.form</field>
+        <field name="model">azm.fin.requirement</field>
+        <field name="arch" type="xml">
+            <form string="متطلب مالي">
+                <sheet>
+                    <div class="oe_title">
+                        <span class="text-muted"><field name="code" class="oe_inline"/> · <field name="req_id" class="oe_inline"/></span>
+                        <h1><field name="title"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="module_id"/>
+                            <field name="topic_id"/>
+                            <field name="response_type"/>
+                            <field name="owner"/>
+                        </group>
+                        <group>
+                            <field name="scope_code"/>
+                            <field name="pack"/>
+                            <field name="profile"/>
+                            <field name="source"/>
+                            <field name="active" invisible="1"/>
+                        </group>
+                    </group>
+                    <group string="السؤال الرئيسي"><field name="question" nolabel="1" colspan="2"/></group>
+                    <field name="question_ids">
+                        <list>
+                            <field name="key"/>
+                            <field name="role"/>
+                            <field name="label"/>
+                            <field name="hint" optional="show"/>
+                            <field name="qtype"/>
+                            <field name="unit" optional="show"/>
+                            <field name="condition_text" optional="show"/>
+                            <field name="note_label" optional="show"/>
+                        </list>
+                    </field>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="azm_fin_requirement_view_search" model="ir.ui.view">
+        <field name="name">azm.fin.requirement.view.search</field>
+        <field name="model">azm.fin.requirement</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="title"/>
+                <field name="code"/>
+                <field name="req_id"/>
+                <field name="module_id"/>
+                <field name="topic_id"/>
+                <filter name="fin" string="مالية (FIN)" domain="[('source', '=', 'FIN')]"/>
+                <filter name="hrf" string="مالية الموارد البشرية (HRF)" domain="[('source', '=', 'HRF')]"/>
+                <separator/>
+                <filter name="all_entities" string="لكل الكيانات" domain="[('scope_code', '=', 'ALL')]"/>
+                <group>
+                    <filter name="by_module" string="الموديول" context="{'group_by': 'module_id'}"/>
+                    <filter name="by_topic" string="الموضوع الفرعي" context="{'group_by': 'topic_id'}"/>
+                    <filter name="by_type" string="نوع الرد" context="{'group_by': 'response_type'}"/>
+                    <filter name="by_pack" string="حزمة الانطباق" context="{'group_by': 'pack'}"/>
+                    <filter name="by_scope" string="نطاق الانطباق" context="{'group_by': 'scope_code'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="azm_fin_requirement_action" model="ir.actions.act_window">
+        <field name="name">متطلبات النموذج المالي</field>
+        <field name="res_model">azm.fin.requirement</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_by_module': 1}</field>
+    </record>
+
+    <!-- ============================================================ questions -->
+    <record id="azm_fin_question_view_list" model="ir.ui.view">
+        <field name="name">azm.fin.question.view.list</field>
+        <field name="model">azm.fin.question</field>
+        <field name="arch" type="xml">
+            <list string="أسئلة النموذج المالي">
+                <field name="code"/>
+                <field name="module_id" optional="hide"/>
+                <field name="requirement_id" optional="show"/>
+                <field name="role"/>
+                <field name="label"/>
+                <field name="hint" optional="show"/>
+                <field name="qtype"/>
+                <field name="unit" optional="hide"/>
+                <field name="condition_text" optional="show"/>
+                <field name="note_label" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="azm_fin_question_view_form" model="ir.ui.view">
+        <field name="name">azm.fin.question.view.form</field>
+        <field name="model">azm.fin.question</field>
+        <field name="arch" type="xml">
+            <form string="سؤال مالي">
+                <sheet>
+                    <div class="oe_title">
+                        <field name="code" class="text-muted"/>
+                        <h1><field name="label"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="requirement_id"/>
+                            <field name="topic_id"/>
+                            <field name="key"/>
+                            <field name="role"/>
+                            <field name="sequence"/>
+                        </group>
+                        <group>
+                            <field name="qtype"/>
+                            <field name="hint"/>
+                            <field name="unit" invisible="qtype != 'number'"/>
+                            <field name="note_label"/>
+                            <field name="condition_text"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="الاختيارات" name="options" invisible="qtype == 'number'">
+                            <field name="option_ids">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="name"/>
+                                    <field name="kind"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="أعمدة الجدول" name="columns" invisible="qtype != 'table'">
+                            <field name="columns_json"/>
+                        </page>
+                        <page string="شرط الظهور" name="condition">
+                            <field name="condition_json"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="azm_fin_question_view_search" model="ir.ui.view">
+        <field name="name">azm.fin.question.view.search</field>
+        <field name="model">azm.fin.question</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="label"/>
+                <field name="code"/>
+                <field name="requirement_id"/>
+                <field name="module_id"/>
+                <filter name="specific" string="أسئلة خاصة بالمتطلب" domain="[('role', 'in', ('main', 'follow'))]"/>
+                <filter name="unified" string="أسئلة الحالة الموحدة" domain="[('role', 'not in', ('main', 'follow'))]"/>
+                <separator/>
+                <filter name="conditional" string="لها شرط ظهور" domain="[('condition_json', '!=', False)]"/>
+                <group>
+                    <filter name="by_module" string="الموديول" context="{'group_by': 'module_id'}"/>
+                    <filter name="by_requirement" string="المتطلب" context="{'group_by': 'requirement_id'}"/>
+                    <filter name="by_type" string="شكل الإجابة" context="{'group_by': 'qtype'}"/>
+                    <filter name="by_role" string="الدور" context="{'group_by': 'role'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="azm_fin_question_action" model="ir.actions.act_window">
+        <field name="name">أسئلة النموذج المالي</field>
+        <field name="res_model">azm.fin.question</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_by_module': 1}</field>
+    </record>
+
+    <!-- ============================================================ opening questions -->
+    <record id="azm_fin_prompt_view_list" model="ir.ui.view">
+        <field name="name">azm.fin.prompt.view.list</field>
+        <field name="model">azm.fin.prompt</field>
+        <field name="arch" type="xml">
+            <list string="الأسئلة الافتتاحية المقترحة">
+                <field name="code"/>
+                <field name="module_id" optional="hide"/>
+                <field name="topic_id"/>
+                <field name="axis_name"/>
+                <field name="stage"/>
+                <field name="question"/>
+                <field name="output" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="azm_fin_prompt_view_search" model="ir.ui.view">
+        <field name="name">azm.fin.prompt.view.search</field>
+        <field name="model">azm.fin.prompt</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="question"/>
+                <field name="topic_id"/>
+                <field name="module_id"/>
+                <field name="axis_name"/>
+                <filter name="current" string="حصر الوضع الحالي" domain="[('stage', '=', 'current')]"/>
+                <filter name="design" string="تصميم لاحق" domain="[('stage', '=', 'design')]"/>
+                <group>
+                    <filter name="by_module" string="الموديول" context="{'group_by': 'module_id'}"/>
+                    <filter name="by_topic" string="الموضوع" context="{'group_by': 'topic_id'}"/>
+                    <filter name="by_axis" string="المحور" context="{'group_by': 'axis_name'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="azm_fin_prompt_action" model="ir.actions.act_window">
+        <field name="name">الأسئلة الافتتاحية المقترحة</field>
+        <field name="res_model">azm.fin.prompt</field>
+        <field name="view_mode">list</field>
+        <field name="context">{'search_default_by_module': 1}</field>
+    </record>
+
+    <!-- ============================================================ scopes -->
+    <record id="azm_fin_scope_view_list" model="ir.ui.view">
+        <field name="name">azm.fin.scope.view.list</field>
+        <field name="model">azm.fin.scope</field>
+        <field name="arch" type="xml">
+            <list string="نطاقات الانطباق" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="code"/>
+                <field name="name"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="azm_fin_scope_action" model="ir.actions.act_window">
+        <field name="name">أنشطة الكيانات (نطاقات الانطباق)</field>
+        <field name="res_model">azm.fin.scope</field>
+        <field name="view_mode">list</field>
+    </record>
+
+    <!-- Entity: activities that decide which financial requirements apply -->
+    <record id="azm_entity_view_list_inherit_fin" model="ir.ui.view">
+        <field name="name">azm.entity.view.list.inherit.fin</field>
+        <field name="model">azm.entity</field>
+        <field name="inherit_id" ref="azm_operating_model.azm_entity_view_list"/>
+        <field name="arch" type="xml">
+            <field name="assessment_count" position="before">
+                <field name="fin_scope_ids" widget="many2many_tags" string="أنشطة الكيان (المالي)"/>
+            </field>
+        </field>
+    </record>
+</odoo>

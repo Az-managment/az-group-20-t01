@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="azm_platform.EntityHeader">
+        <div t-if="this.record.resId" class="o_azm_entity_header">
+            <section class="o_azm_entity_hero">
+                <div class="o_azm_entity_identity">
+                    <div class="o_azm_entity_logo">
+                        <img t-if="this.logoUrl" t-att-src="this.logoUrl" alt="Logo"/>
+                        <i t-else="" class="oi" data-icon="account_balance" title="Logo"/>
+                    </div>
+                    <div class="o_azm_entity_names">
+                        <strong class="o_azm_entity_code" t-out="this.data.name"/>
+                        <span t-if="this.data.azm_name_alt" class="o_azm_entity_en" t-out="this.data.azm_name_alt"/>
+                        <h2 t-if="this.data.azm_parent_id" t-out="this.data.azm_parent_id.display_name"/>
+                    </div>
+                    <ul class="o_azm_entity_facts">
+                        <li t-if="this.typeLabel"><i class="oi" data-icon="account_balance" title="Type"/> <span t-out="this.typeLabel"/></li>
+                        <li t-if="this.data.country_id"><i class="oi" data-icon="location_on" title="Country"/> <span t-out="this.data.country_id.display_name"/></li>
+                        <li t-if="this.data.azm_sector"><i class="oi" data-icon="school" title="Sector"/> <span t-out="this.sectorLabel"/></li>
+                        <li t-if="this.data.website"><i class="oi" data-icon="public" title="Website"/> <a t-att-href="this.data.website" target="_blank" t-out="this.websiteHost"/></li>
+                    </ul>
+                </div>
+                <div class="o_azm_entity_cover" t-att-class="{'o_azm_has_cover': this.coverUrl}" t-att-style="this.coverUrl ? 'background-image: url(' + this.coverUrl + ')' : ''">
+                    <div class="o_azm_entity_cover_text">
+                        <strong t-if="this.data.azm_tagline" t-out="this.data.azm_tagline"/>
+                        <span t-if="this.data.azm_tagline_alt" t-out="this.data.azm_tagline_alt"/>
+                        <button t-if="this.canEdit" type="button" class="o_azm_btn_light" t-on-click="() => this.callAction('action_azm_edit_company')">
+                            <i class="oi" data-icon="edit" title="Edit"/> <span>Edit entity data</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="o_azm_kpis o_azm_entity_kpis">
+                <div class="o_azm_kpi">
+                    <span class="o_azm_kpi_text">
+                        <span class="o_azm_kpi_label">Entity Status</span>
+                        <span t-attf-class="o_azm_status o_azm_status_{{this.data.azm_status}}" t-out="this.statusLabel"/>
+                    </span>
+                    <span class="o_azm_icon_badge o_azm_tone_green"><i class="oi" data-icon="verified" title="Status"/></span>
+                </div>
+                <button type="button" t-foreach="this.cards" t-as="card" t-key="card.key"
+                        t-attf-class="o_azm_kpi {{this.canOpen(card.method) ? '' : 'o_azm_kpi_static'}}"
+                        t-on-click="() => this.onCard(card)">
+                    <span class="o_azm_kpi_text">
+                        <span class="o_azm_kpi_label" t-out="card.label"/>
+                        <strong class="o_azm_kpi_value" t-out="card.value"/>
+                    </span>
+                    <span t-attf-class="o_azm_icon_badge o_azm_tone_{{card.tone}}"><i class="oi" t-att-data-icon="card.icon" t-att-title="card.label"/></span>
+                </button>
+            </section>
+        </div>
+    </t>
+</templates>

@@ -1,0 +1,26 @@
+// AZM design tokens (SCSS variables only: this file produces no CSS on its own).
+$azm-navy: #0b1f45;
+$azm-navy-2: #0d2a5c;
+$azm-blue: #1d63e0;
+$azm-blue-2: #2f7bf5;
+$azm-orange: #f97316;
+$azm-ink: #0f2347;
+$azm-muted: #6b7a90;
+$azm-border: #e5eaf2;
+$azm-bg: #f4f7fb;
+$azm-card: #ffffff;
+$azm-radius: 14px;
+$azm-radius-sm: 10px;
+$azm-shadow: 0 1px 2px rgba(15, 35, 71, .04), 0 6px 18px rgba(15, 35, 71, .05);
+$azm-sidebar-width: 248px;
+$azm-sidebar-collapsed: 72px;
+
+$azm-tones: (
+    'blue': #2563eb,
+    'teal': #0d9488,
+    'purple': #7c3aed,
+    'orange': #f97316,
+    'green': #16a34a,
+    'indigo': #4f46e5,
+    'slate': #64748b,
+);
