@@ -308,3 +308,45 @@ class TestAzmFinWorkspaceQuestions(TransactionCase):
         self.assessment.with_context(azm_skip_lock=True).state = "approved"
         with self.assertRaises(UserError):
             self.assessment.workspace_answer_question(line.id, {"text": "بعد الاعتماد"})
+
+
+@tagged("post_install", "-at_install")
+class TestAzmFinOptionIntegrity(TransactionCase):
+    """Every question must offer the options that answer it — no more, no less,
+    and never another question's."""
+
+    def test_every_choice_question_has_options(self):
+        Question = self.env["azm.fin.question"]
+        self.assertFalse(
+            Question.search([("qtype", "in", ("select", "multi")), ("option_ids", "=", False)]),
+            "a choice question has no options")
+        self.assertFalse(
+            Question.search([("qtype", "=", "number"), ("option_ids", "!=", False)]),
+            "a number question carries options")
+
+    def test_table_questions_keep_their_escape_options(self):
+        """A table question still offers «لا يوجد» / «لا أعرف», otherwise the
+        answerer is forced to fill a grid that may not apply."""
+        tables = self.env["azm.fin.question"].search([("qtype", "=", "table")])
+        self.assertEqual(len(tables), 53)
+        self.assertFalse(tables.filtered(lambda q: not q.option_ids))
+
+    def test_no_option_is_shared_between_questions(self):
+        """Options are owned by one question; a shared row would let an answer
+        point at a question it does not belong to."""
+        self.env.cr.execute("""
+            SELECT count(*) FROM azm_fin_option WHERE question_id IS NULL
+        """)
+        self.assertEqual(self.env.cr.fetchone()[0], 0)
+
+    def test_only_the_standard_scales_repeat(self):
+        """The four standard scales repeat on every requirement by design.
+        Any other repeated set must be a deliberately shared vocabulary, never
+        a requirement-specific question wearing someone else's answers."""
+        questions = self.env["azm.fin.question"].search([("role", "in", ("state", "impl", "rule", "target"))])
+        by_role = {}
+        for question in questions:
+            names = tuple(question.option_ids.sorted("sequence").mapped("name"))
+            by_role.setdefault(question.role, set()).add(names)
+        for role, sets in by_role.items():
+            self.assertEqual(len(sets), 1, f"the {role} scale is not consistent")

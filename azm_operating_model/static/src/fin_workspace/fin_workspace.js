@@ -237,7 +237,12 @@ export class AzmFinWorkspace extends Component {
     pickQuestionOption(req, question, option) {
         if (question.qtype !== "multi") {
             const same = question.option_id === option.id;
-            this.answerQuestion(req, question, { option_id: same ? false : option.id });
+            const vals = { option_id: same ? false : option.id };
+            if (question.qtype === "table" && !same) {
+                // «لا يوجد» and the grid are mutually exclusive answers
+                vals.table = [];
+            }
+            this.answerQuestion(req, question, vals);
             return;
         }
         const ids = new Set(question.option_ids);
@@ -272,7 +277,7 @@ export class AzmFinWorkspace extends Component {
         const rows = this.questionRows(question);
         rows[rowIndex][colIndex] = ev.target.value;
         question.table = rows;
-        this.answerQuestion(req, question, { table: rows });
+        this.answerQuestion(req, question, { table: rows, option_id: false });
     }
 
     addQuestionRow(req, question) {

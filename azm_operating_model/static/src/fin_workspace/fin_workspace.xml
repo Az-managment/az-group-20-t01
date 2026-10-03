@@ -163,6 +163,15 @@
                                                         </table>
                                                         <button class="btn btn-link btn-sm p-0" t-if="!d.header.readonly"
                                                                 t-on-click="() => this.addQuestionRow(r, q)">+ صف</button>
+                                                        <!-- a table question still offers «لا يوجد» / «لا أعرف»,
+                                                             so nobody is forced to fill a grid that does not apply -->
+                                                        <div t-if="this.fallbackOptions(q).length" class="o_azm_chips">
+                                                            <t t-foreach="this.fallbackOptions(q)" t-as="opt" t-key="opt.id">
+                                                                <button t-attf-class="o_azm_chip o_azm_chip_soft {{this.isPicked(q, opt) ? 'o_azm_chip_on' : ''}}"
+                                                                        t-att-disabled="d.header.readonly"
+                                                                        t-on-click="() => this.pickQuestionOption(r, q, opt)" t-out="opt.name"/>
+                                                            </t>
+                                                        </div>
                                                     </div>
                                                 </t>
 
