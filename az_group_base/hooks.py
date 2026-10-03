@@ -115,10 +115,12 @@ def _create_branch_journals(env, root):
 
 
 def _grant_group_companies(env, root):
-    """Give the internal users access to the group, and default them to it.
+    """Give the internal users access to the group and to every branch under it.
 
-    Granting the parent is enough: a user allowed on a company is allowed on
-    its branches too, so the whole group follows from the root.
+    Each branch is granted explicitly. company_ids is the exact list the
+    company switcher offers and it does not follow parent_id: granting only
+    the root leaves every branch out of the switcher, so the users cannot
+    reach the branches at all and the whole multi-entity setup is unusable.
 
     The __system__ user is deliberately left alone. Once every module is
     loaded, account fires the chart template it guessed while l10n_eg was
@@ -130,14 +132,18 @@ def _grant_group_companies(env, root):
     Leaving __system__ on the database's main company keeps that load where it
     is harmless.
     """
+    companies = env['res.company'].search([('id', 'child_of', root.id)])
     users = env['res.users'].with_context(active_test=False).search([
         ('share', '=', False),
         ('id', '!=', SUPERUSER_ID),
     ])
     if not users:
         return
-    users.write({'company_ids': [Command.link(root.id)], 'company_id': root.id})
-    _logger.info("Granted %s to %s internal users", root.name, len(users))
+    users.write({
+        'company_ids': [Command.link(company.id) for company in companies],
+        'company_id': root.id,
+    })
+    _logger.info("Granted %s companies to %s internal users", len(companies), len(users))
 
 
 def _activate_arabic(env):
