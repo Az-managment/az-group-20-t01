@@ -1,4 +1,8 @@
+import contextlib
+from unittest.mock import Mock
+
 from odoo.exceptions import AccessError
+from odoo.http import request_var
 from odoo.tests import TransactionCase, new_test_user, tagged
 
 
@@ -86,8 +90,24 @@ class TestAzmAccess(TransactionCase):
         # prep_b is not a member of that company: the entity and its assessments disappear for them
         self.assertFalse(self.env["azm.entity"].with_user(self.prep_b).search([("id", "=", self.ent_b.id)]))
 
+    @contextlib.contextmanager
+    def _bound_request(self, **cookies):
+        """Bind a minimal request, which the theme is picked from.
+
+        ir.http.color_scheme runs while serving a request: web_enterprise reads
+        the color_scheme cookie and the preference of request.env.user from it,
+        so calling it from a bare TransactionCase raises "request not bound".
+        """
+        token = request_var.set(Mock(env=self.env, httprequest=Mock(cookies=cookies)))
+        try:
+            yield
+        finally:
+            request_var.reset(token)
+
     def test_light_theme(self):
         IrHttp = self.env["ir.http"]
-        self.assertEqual(IrHttp.color_scheme(), "light")
-        self.env["ir.config_parameter"].sudo().set_bool("azm.allow_dark_theme", True)
-        self.assertIn(IrHttp.color_scheme(), ("light", "dark"))   # back to Odoo's own choice
+        # A request asking for dark mode: AZM still serves its pages light.
+        with self._bound_request(color_scheme="dark"):
+            self.assertEqual(IrHttp.color_scheme(), "light")
+            self.env["ir.config_parameter"].sudo().set_bool("azm.allow_dark_theme", True)
+            self.assertEqual(IrHttp.color_scheme(), "dark")   # back to Odoo's own choice
