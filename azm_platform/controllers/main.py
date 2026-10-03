@@ -23,3 +23,21 @@ class AzmHome(Home):
         if request.db:
             self._azm_login_lang()
         return super().web_login(redirect=redirect, **kw)
+
+    @http.route('/azm/language', type='jsonrpc', auth='user', methods=['POST'])
+    def azm_set_language(self, lang):
+        """Put the current user, and the running session, on that language.
+
+        res.users.lang is writeable by its own user, but writing it is not
+        enough on its own: the session keeps the context it built when the user
+        logged in, and the language the pages and the assets are rendered in is
+        read from there. Written alone, the preference would only take effect
+        at the next login. The caller reloads once this returns.
+        """
+        if lang not in dict(request.env['res.lang'].sudo().get_installed()):
+            return False
+        request.env.user.write({'lang': lang})
+        # Assign the key: the session only notices a change through __setitem__,
+        # so mutating the context dictionary in place would never be persisted.
+        request.session['context'] = {**request.session.context, 'lang': lang}
+        return True

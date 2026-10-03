@@ -105,14 +105,40 @@ body.o_azm_mode.o_azm_sidebar_collapsed {
         .o_azm_sidebar_divider { height: 1px; margin: 10px 8px; background: rgba(255, 255, 255, .12); }
     }
     .o_azm_sidebar_footer {
-        display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2px;
-        padding: 18px 16px 22px;
+        display: flex; flex-direction: column; align-items: center; text-align: center;
+        padding: 14px 16px 18px;
         background:
             linear-gradient(180deg, rgba($azm-navy, 0), rgba(0, 0, 0, .25)),
             radial-gradient(120% 80% at 50% 120%, rgba($azm-orange, .25), rgba($azm-orange, 0) 60%);
-        strong { color: #fff; font-size: 16px; }
-        span { color: #e5ecf9; font-size: 13px; line-height: 1.4; margin-bottom: 8px; }
-        small { color: #c9d5ea; font-size: 12px; }
+    }
+    .o_azm_lang_switch {
+        display: inline-flex;
+        /*rtl:ignore*/
+        direction: ltr;
+        padding: 3px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, .08);
+        border: 1px solid rgba(255, 255, 255, .14);
+        button {
+            min-width: 46px;
+            padding: 5px 12px;
+            border: 0;
+            border-radius: 999px;
+            background: transparent;
+            color: #c9d5ea;
+            font-size: 13px;
+            font-weight: 600;
+            line-height: 1.2;
+            cursor: pointer;
+            transition: background .15s ease, color .15s ease;
+            &:hover { color: #fff; background: rgba(255, 255, 255, .08); }
+            &.active {
+                color: #fff;
+                background: linear-gradient(90deg, $azm-blue, $azm-blue-2);
+                cursor: default;
+            }
+            &:focus-visible { outline: 2px solid $azm-orange; outline-offset: 1px; }
+        }
     }
     &.o_collapsed {
         width: $azm-sidebar-collapsed;
