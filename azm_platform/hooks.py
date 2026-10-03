@@ -1,4 +1,3 @@
-import base64
 import logging
 import os
 
@@ -106,6 +105,13 @@ DEV_DOCUMENTS = {
     ],
 }
 
+# Who prepares the assessment of each entity. A preparer only sees their own
+# work, so this decides whose dashboard the operating model shows up on.
+ASSESSMENT_OWNERS = {
+    'az_group_base.company_future_univ': 'fue.azm',
+    'az_group_base.company_malvern': 'mce.staff',
+}
+
 
 def describe_entities(env):
     """Give each entity its type, sector and tagline.
@@ -148,6 +154,8 @@ def load_dev_entity_data(env):
         _ensure_employees(env, company, departments, Users, xml_id)
         _ensure_project(env, company, project_name, tasks)
         _ensure_documents(env, company, DEV_DOCUMENTS.get(xml_id, []))
+        _ensure_assessments(env, company)
+        _ensure_assessment_book(env, company)
     _logger.info("Filled %s entities with sample HR and project data", len(DEV_ENTITY_DATA))
 
 
@@ -229,9 +237,101 @@ def _ensure_documents(env, company, files):
         Document.create({
             'name': title,
             'type': 'binary',
-            'raw': base64.b64encode(f"{title}\n\n{summary}\n".encode()),
+            'raw': f"{title}\n\n{summary}\n".encode(),
             'mimetype': 'text/plain',
             'folder_id': folder.id,
             'company_id': company.id,
             'access_internal': 'view',
         })
+
+
+def _ensure_assessments(env, company):
+    """Fill one procurement and one financial assessment for the entity.
+
+    Both models ship their own deterministic demo filler, so the answers are
+    the module's own idea of a realistic mix of good and weak practice rather
+    than anything invented here. Without them every operating model KPI on the
+    entity page reads zero and the register pages are empty.
+    """
+    entity = env['azm.entity'].sudo().search([('company_id', '=', company.id)], limit=1)
+    if not entity:
+        return
+    # A preparer only ever sees the assessments they own, so an assessment
+    # created in the name of the system is invisible to the entity's own staff.
+    # Prefer somebody who works in this entity alone over a group-wide manager,
+    # who is on every entity and would otherwise own all of them.
+    owner = env['res.users']
+    login = ASSESSMENT_OWNERS.get(_company_xml_id(env, company))
+    if login:
+        owner = env['res.users'].with_context(active_test=False).search(
+            [('login', '=', login)], limit=1)
+    owner = owner or entity.user_ids.filtered(
+        lambda user: user.company_ids == company)[:1] or entity.user_ids[:1]
+    if 'azm.assessment' in env and not env['azm.assessment'].sudo().search_count(
+            [('entity_id', '=', entity.id)]):
+        from odoo.addons.azm_operating_model.models.azm_assessment import (
+            PURCHASE_KINDS, SCENARIOS,
+        )
+        assessment = env['azm.assessment'].sudo().with_company(company).create({
+            'entity_id': entity.id,
+            'purchase_kind': PURCHASE_KINDS[0][0],
+            'scenario': SCENARIOS[0][0],
+            'user_id': owner.id or env.uid,
+        })
+        assessment.action_fill_demo()
+    if 'azm.fin.assessment' in env and not env['azm.fin.assessment'].sudo().search_count(
+            [('entity_id', '=', entity.id)]):
+        financial = env['azm.fin.assessment'].sudo().with_company(company).create({
+            'entity_id': entity.id,
+            'user_id': owner.id or env.uid,
+        })
+        financial.action_fill_demo()
+
+
+def _company_xml_id(env, company):
+    """The az_group_base xml id of a company, or None when it has none."""
+    data = env['ir.model.data'].sudo().search([
+        ('model', '=', 'res.company'), ('res_id', '=', company.id),
+    ], limit=1)
+    return f"{data.module}.{data.name}" if data else None
+
+
+def _ensure_assessment_book(env, company):
+    """File the generated cycle book of the entity in its own workspace.
+
+    The operating model turns the answers into a book -- policy, procedure,
+    the flow, the authority matrix, the gaps and the candidate risks -- and
+    that book is the point of filling an assessment. Rendering it into the
+    entity's Documents folder is what makes it a document people can open and
+    share rather than a screen inside the app.
+    """
+    if 'documents.document' not in env or 'azm.assessment' not in env:
+        return
+    assessment = env['azm.assessment'].sudo().search([('company_id', '=', company.id)], limit=1)
+    report = env.ref('azm_operating_model.azm_assessment_report_book', raise_if_not_found=False)
+    if not assessment or not report:
+        return
+    title = f"{company.code or company.name} Operating Model Book"
+    Document = env['documents.document'].sudo().with_company(company)
+    if Document.search_count([
+        ('name', '=like', f"{title}%"), ('company_id', '=', company.id),
+    ]):
+        return
+    folder = Document.search([
+        ('type', '=', 'folder'), ('name', '=', company.name), ('company_id', '=', company.id),
+    ], limit=1)
+    try:
+        content, _content_type = report._render(report.report_name, assessment.ids)
+    except Exception:  # noqa: BLE001 - a missing pdf renderer must not fail the install
+        _logger.warning("Could not render the operating model book of %s", company.name, exc_info=True)
+        return
+    Document.create({
+        'name': f"{title}.pdf",
+        'type': 'binary',
+        'raw': content,
+        'mimetype': 'application/pdf',
+        'folder_id': folder.id if folder else False,
+        'company_id': company.id,
+        'access_internal': 'view',
+    })
+    _logger.info("Filed the operating model book of %s", company.name)

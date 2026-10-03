@@ -90,9 +90,12 @@ class TestEntityWiring(TransactionCase):
             if not company:
                 continue
             scoped = company.with_context(allowed_company_ids=[company.id])
-            self.assertEqual(
+            # The generated operating model book sits in the same folder, so
+            # the entity holds at least the files seeded by name.
+            self.assertGreaterEqual(
                 scoped.azm_document_count, len(files),
-                f"{company.name} reports {scoped.azm_document_count} files, expected {len(files)}",
+                f"{company.name} reports {scoped.azm_document_count} files,"
+                f" expected at least {len(files)}",
             )
             for title, _summary in files:
                 document = self.env['documents.document'].search([
@@ -121,3 +124,53 @@ class TestEntityWiring(TransactionCase):
             other, seen.mapped('company_id'),
             f"{user.login} can read files belonging to {other.name}",
         )
+
+    def test_every_entity_has_a_filled_assessment(self):
+        if os.environ.get('ODOO_STAGE') != 'dev':
+            self.skipTest("the entity sample data is only loaded on development builds")
+        for xml_id in DEV_ENTITY_DATA:
+            company = self.env.ref(xml_id, raise_if_not_found=False)
+            if not company:
+                continue
+            entity = self.env['azm.entity'].sudo().search(
+                [('company_id', '=', company.id)], limit=1)
+            self.assertTrue(entity, f"{company.name} has no entity")
+            self.assertTrue(entity.fin_scope_ids, f"{entity.name} has no financial scope")
+            assessment = self.env['azm.assessment'].sudo().search(
+                [('entity_id', '=', entity.id)], limit=1)
+            self.assertTrue(assessment, f"{entity.name} has no assessment")
+            self.assertTrue(
+                assessment.answer_ids.filtered('has_value'),
+                f"the assessment of {entity.name} is empty",
+            )
+            financial = self.env['azm.fin.assessment'].sudo().search(
+                [('entity_id', '=', entity.id)], limit=1)
+            self.assertTrue(financial, f"{entity.name} has no financial assessment")
+
+    def test_the_seeded_files_are_not_corrupt(self):
+        """Regression: documents.document.raw takes the bytes, datas takes base64.
+
+        Passing base64 to raw stored the encoding itself as the file content:
+        every seeded file looked right in the list, carried a plausible size,
+        and opened as garbage. A PDF that does not start with %PDF is the
+        cheapest way to catch that coming back.
+        """
+        if os.environ.get('ODOO_STAGE') != 'dev' or 'documents.document' not in self.env:
+            self.skipTest("the entity sample data is only loaded on development builds")
+        Document = self.env['documents.document'].sudo()
+        books = Document.search([('name', '=like', '% Operating Model Book.pdf')])
+        self.assertTrue(books, "no operating model book was filed")
+        for book in books:
+            self.assertTrue(
+                bytes(book.raw).startswith(b'%PDF'),
+                f"{book.name} is not a PDF: it holds {bytes(book.raw)[:12]!r}",
+            )
+        for xml_id, files in DEV_DOCUMENTS.items():
+            company = self.env.ref(xml_id, raise_if_not_found=False)
+            if not company:
+                continue
+            title, summary = files[0]
+            document = Document.search(
+                [('name', '=', title), ('company_id', '=', company.id)], limit=1)
+            self.assertTrue(document, f"{title} is missing")
+            self.assertEqual(bytes(document.raw).decode(), f"{title}\n\n{summary}\n")

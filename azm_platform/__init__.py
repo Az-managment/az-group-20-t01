@@ -12,6 +12,9 @@ def _azm_post_init(env):
     installs first there is no azm.entity to assign yet.
     """
     env['azm.entity']._azm_sync_companies()
+    # The entities are born here, so the operating model never got to give them
+    # their default financial scopes: its own hook ran before they existed.
+    env['azm.entity']._azm_fin_default_scopes()
     from odoo.addons.az_group_base.hooks import finish_dev_staff
     finish_dev_staff(env)
     from .hooks import describe_entities, load_dev_entity_data
