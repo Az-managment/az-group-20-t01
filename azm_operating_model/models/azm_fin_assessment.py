@@ -422,7 +422,7 @@ class AzmFinAnswer(models.Model):
         prof = PROFILES[req.profile]
         data.update({
             "title": req.title, "question": req.question, "profile": req.profile,
-            "profile_name": prof[0], "profile_en": prof[1],
+            "profile_name": prof[0], "profile_en": prof[1], "profile_hint": prof[2],
             "scope_code": req.scope_code, "scope_name": SCOPES.get(req.scope_code, ""),
             "source": req.source, "applicable": self.applicable, "done": self.is_done,
             "schema": req._schema(), "has_details": req.has_details,

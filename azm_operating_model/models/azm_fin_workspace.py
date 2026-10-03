@@ -60,6 +60,7 @@ class AzmFinAnswer(models.Model):
                 "role": question.role,
                 "qtype": question.qtype,
                 "unit": question.unit or "",
+                "response_type": question.response_type or "",
                 "help": question.help_text or "",
                 "text_label": question.text_label or "",
                 # [{label, options}] — a column that lists its choices renders

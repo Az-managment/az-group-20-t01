@@ -129,10 +129,16 @@
 
                                                 <t t-elif="q.qtype === 'table'">
                                                     <div class="o_azm_fin_schema o_azm_fin_tablewrap">
+                                                        <p t-if="q.response_type" class="o_azm_fin_caption">
+                                                            <b>جدول الإجابة</b> — <t t-out="q.response_type"/>
+                                                        </p>
                                                         <table class="table table-sm o_azm_fin_edit">
                                                             <thead>
                                                                 <tr>
-                                                                    <th t-foreach="q.columns" t-as="col" t-key="col_index" t-out="col.label"/>
+                                                                    <th t-foreach="q.columns" t-as="col" t-key="col_index"
+                                                                        t-att-title="col.options ? col.options.join(' · ') : false">
+                                                                        <t t-out="col.label"/><span t-if="col.options" class="o_azm_fin_haslist">▾</span>
+                                                                    </th>
                                                                     <th class="o_azm_fin_qtable_act"/>
                                                                 </tr>
                                                             </thead>
@@ -257,6 +263,12 @@
                                                 <span class="o_azm_muted" t-if="r.table.length"> (<t t-out="r.table.length"/> صف)</span>
                                             </button>
                                             <div t-if="this.state.openTables[r.answer_id]" class="o_azm_fin_schema">
+                                                <!-- say which template this grid is, so the columns
+                                                     explain themselves before anything is typed -->
+                                                <p class="o_azm_fin_caption">
+                                                    <b>جدول <t t-out="r.profile_name"/></b>
+                                                    <t t-if="r.profile_hint"> — <t t-out="r.profile_hint"/></t>
+                                                </p>
                                                 <t t-set="rows" t-value="this.rows(r)"/>
                                                 <div t-if="r.schema.shape === 'fields'" class="o_azm_fin_fields">
                                                     <t t-foreach="r.schema.columns" t-as="col" t-key="col_index">
@@ -281,7 +293,11 @@
                                                     <div class="o_azm_fin_tablewrap">
                                                         <table class="o_azm_table o_azm_fin_edit">
                                                             <thead><tr>
-                                                                <t t-foreach="r.schema.columns" t-as="col" t-key="col_index"><th t-out="col.label"/></t>
+                                                                <t t-foreach="r.schema.columns" t-as="col" t-key="col_index">
+                                                                    <th t-att-title="col.options ? col.options.join(' · ') : false">
+                                                                        <t t-out="col.label"/><span t-if="col.options" class="o_azm_fin_haslist">▾</span>
+                                                                    </th>
+                                                                </t>
                                                                 <th t-if="!d.header.readonly"/>
                                                             </tr></thead>
                                                             <tbody>
