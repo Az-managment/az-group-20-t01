@@ -460,3 +460,37 @@ class TestAzmFinOutputs(TransactionCase):
             html = assessment.workspace_output(line.module_id.code, tab, "model") or ""
             self.assertIn(line.code, html, f"{tab} does not show {line.code}")
             self.assertIn(token, html, f"{tab} does not show what was answered")
+
+    def test_only_genuinely_open_columns_are_free_text(self):
+        """Every grid column offers a list unless the cell holds something a
+        list cannot express: a name, a code, a field list, a threshold.
+
+        If a new column shows up here, it needs a vocabulary or an exemption —
+        it must not quietly become another box people fill five different ways.
+        """
+        OPEN = {
+            "العنصر",              # the item a reference list enumerates
+            "الكود إن وجد",         # a code
+            "القاعدة",              # the wording of the rule
+            "اسم التقرير/المؤشر",   # a report name
+            "الحقول/المعادلة",      # the fields a report is built from
+            "الحقول",
+            "حد التنبيه",           # a threshold value
+            "معرف منع التكرار",     # a technical key
+        }
+        free = set()
+        for requirement in self.env["azm.fin.requirement"].search([]):
+            for column in requirement._schema()["columns"]:
+                if column["type"] == "text":
+                    free.add(column["label"])
+        self.assertFalse(free - OPEN, f"columns with no list and no exemption: {sorted(free - OPEN)}")
+
+    def test_the_authority_grid_reuses_the_sheets_own_operations(self):
+        """«العملية» offers the نوع العملية list the sheet already gives on
+        FIN-004, rather than a parallel invention."""
+        columns = self.env["azm.fin.requirement"].search(
+            [("profile", "=", "A")], limit=1)._schema()["columns"]
+        operation = next(c for c in columns if c["label"] == "العملية")
+        self.assertEqual(operation["type"], "suggest")
+        for expected in ("قيد يومية", "طلب شراء", "سند صرف", "كشف رواتب"):
+            self.assertIn(expected, operation["suggestions"])
