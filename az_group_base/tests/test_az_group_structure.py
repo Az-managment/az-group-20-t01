@@ -1,6 +1,11 @@
 from odoo.tests import TransactionCase
 
-from odoo.addons.az_group_base.hooks import BRANCH_COMPANIES, JOURNAL_TEMPLATES, post_init_hook
+from odoo.addons.az_group_base.hooks import (
+    CHART_TEMPLATE,
+    ENTITY_COMPANIES,
+    JOURNAL_CODES,
+    post_init_hook,
+)
 
 
 class TestAzGroupStructure(TransactionCase):
@@ -8,13 +13,15 @@ class TestAzGroupStructure(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.root = cls.env.ref('az_group_base.company_az_group')
-        cls.branches = cls.env['res.company'].search([('parent_id', '=', cls.root.id)])
+        cls.entities = cls.env['res.company'].browse([
+            cls.env.ref(f'az_group_base.{xml_id}').id
+            for xml_id, *_rest in ENTITY_COMPANIES
+        ])
 
-    def _sale_journal(self, company):
+    def _journal(self, company, journal_type):
         return self.env['account.journal'].search([
             ('company_id', '=', company.id),
-            ('type', '=', 'sale'),
+            ('type', '=', journal_type),
         ], limit=1)
 
     def _post_invoice(self, company, partner):
@@ -24,7 +31,9 @@ class TestAzGroupStructure(TransactionCase):
         invoice = self.env['account.move'].with_company(company).create({
             'move_type': 'out_invoice',
             'partner_id': partner.id,
-            'journal_id': self._sale_journal(company).id,
+            'journal_id': self.env['account.journal'].search([
+                ('company_id', '=', company.id), ('type', '=', 'sale'),
+            ], limit=1).id,
             'invoice_date': '2026-01-01',
             'invoice_line_ids': [(0, 0, {
                 'name': "Tuition",
@@ -36,41 +45,54 @@ class TestAzGroupStructure(TransactionCase):
         invoice.action_post()
         return invoice
 
-    def test_every_branch_hangs_under_the_group(self):
-        self.assertEqual(len(self.branches), len(BRANCH_COMPANIES))
+    def test_every_entity_stands_on_its_own(self):
+        self.assertEqual(len(self.entities), len(ENTITY_COMPANIES))
         self.assertEqual(
-            sorted(self.branches.mapped('code')),
-            sorted(code for _xml_id, code, _name, _name_ar in BRANCH_COMPANIES),
+            sorted(self.entities.mapped('code')),
+            sorted(code for _xml_id, code, _name, _name_ar in ENTITY_COMPANIES),
         )
-        for branch in self.branches:
-            self.assertEqual(branch.parent_id, self.root)
-            self.assertEqual(branch.root_id, self.root)
+        for entity in self.entities:
+            self.assertFalse(entity.parent_id, f"{entity.name} must not hang under a parent")
+            self.assertEqual(entity.root_id, entity)
 
     def test_entity_code_and_arabic_name_are_set(self):
-        for _xml_id, code, name, name_ar in BRANCH_COMPANIES:
-            branch = self.branches.filtered(lambda company: company.code == code)
-            self.assertEqual(branch.name, name)
-            self.assertEqual(branch.name_ar, name_ar)
+        for _xml_id, code, name, name_ar in ENTITY_COMPANIES:
+            entity = self.entities.filtered(lambda company: company.code == code)
+            self.assertEqual(entity.name, name)
+            self.assertEqual(entity.name_ar, name_ar)
 
-    def test_branches_share_the_group_chart_of_accounts(self):
-        group_accounts = self.env['account.account'].with_company(self.root).search([])
-        self.assertTrue(group_accounts)
-        for branch in self.branches:
-            branch_accounts = self.env['account.account'].with_company(branch).search([])
-            self.assertTrue(group_accounts <= branch_accounts)
+    def test_each_entity_owns_its_chart_of_accounts(self):
+        """No entity reads the accounts of another one.
 
-    def test_each_branch_owns_its_journals(self):
-        for branch in self.branches:
-            journals = self.env['account.journal'].search([('company_id', '=', branch.id)])
-            self.assertEqual(len(journals), len(JOURNAL_TEMPLATES))
-            self.assertEqual(
-                sorted(journals.mapped('code')),
-                sorted(f"{branch.code}{suffix}" for _type, _label, suffix in JOURNAL_TEMPLATES),
-            )
+        Ownership is read from account.account.company_ids rather than from a
+        search run with_company: with_company only picks the default company of
+        the environment, it does not narrow the search, so an administrator
+        allowed on every entity would get the same accounts every time.
+        """
+        Account = self.env['account.account']
+        owned = {}
+        for entity in self.entities:
+            self.assertEqual(entity.chart_template, CHART_TEMPLATE)
+            accounts = Account.search([('company_ids', 'in', entity.id)])
+            self.assertTrue(accounts, f"{entity.name} has no accounts of its own")
+            owned[entity.id] = accounts
+        for entity in self.entities:
+            for other in self.entities - entity:
+                self.assertFalse(
+                    owned[entity.id] & owned[other.id],
+                    f"{entity.name} shares accounts with {other.name}",
+                )
 
-    def test_branch_invoice_sequences_are_independent(self):
+    def test_each_entity_codes_its_journals(self):
+        for entity in self.entities:
+            for journal_type, _chart_code, suffix, _name in JOURNAL_CODES:
+                journal = self._journal(entity, journal_type)
+                self.assertTrue(journal, f"{entity.name} has no {journal_type} journal")
+                self.assertEqual(journal.code, f"{entity.code}{suffix}")
+
+    def test_entity_invoice_sequences_are_independent(self):
         partner = self.env['res.partner'].create({'name': "Test Student", 'company_id': False})
-        first, second = self.branches[:2]
+        first, second = self.entities[:2]
         first_invoice = self._post_invoice(first, partner)
         second_invoice = self._post_invoice(second, partner)
         self.assertEqual(first_invoice.company_id, first)
@@ -79,31 +101,33 @@ class TestAzGroupStructure(TransactionCase):
         self.assertTrue(second_invoice.name.startswith(f"{second.code}IN"))
         self.assertNotEqual(first_invoice.name, second_invoice.name)
 
-    def test_the_group_runs_on_the_egyptian_chart(self):
-        self.assertEqual(self.root.chart_template, 'eg')
-        for branch in self.branches:
-            self.assertEqual(branch.chart_template, 'eg')
+    def test_the_group_company_is_gone(self):
+        """AZ Group is not a company: the entities are the whole group."""
+        self.assertFalse(self.env.ref('az_group_base.company_az_group', raise_if_not_found=False))
+        self.assertFalse(self.env['res.company'].search([('name', '=', "AZ Group")]))
 
     def test_the_main_company_is_left_alone(self):
         """The main company is what keeps account's late chart load harmless.
 
         account installs the chart it guessed while l10n_eg was loading on
         env.company, the default company of __system__, once every module is
-        loaded. Should that be the group, the load runs over the group's own
-        chart and deletes the accounting records of the group and its branches.
+        loaded. Should that be an entity, the load runs over that entity's own
+        chart and deletes its accounting records.
         """
         main = self.env.ref('base.main_company')
         self.assertTrue(main.active)
-        self.assertNotEqual(self.env.ref('base.user_root').company_id, self.root)
+        self.assertNotIn(self.env.ref('base.user_root').company_id, self.entities)
 
-    def test_internal_users_work_in_the_group(self):
+    def test_the_administrator_can_reach_every_entity(self):
         admin = self.env.ref('base.user_admin')
-        self.assertIn(self.root, admin.company_ids)
-        self.assertEqual(admin.company_id, self.root)
+        for entity in self.entities:
+            self.assertIn(entity, admin.company_ids)
 
     def test_post_init_hook_is_idempotent(self):
         companies_before = self.env['res.company'].search_count([])
         journals_before = self.env['account.journal'].search_count([])
+        accounts_before = self.env['account.account'].search_count([])
         post_init_hook(self.env)
         self.assertEqual(self.env['res.company'].search_count([]), companies_before)
         self.assertEqual(self.env['account.journal'].search_count([]), journals_before)
+        self.assertEqual(self.env['account.account'].search_count([]), accounts_before)
