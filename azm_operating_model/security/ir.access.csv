@@ -1,0 +1,62 @@
+id,name,model_id,group_id/id,operation,domain
+azm_entity_user,azm.entity user: assigned entities,azm.entity,azm_group_user,r,"[('user_ids', 'in', user.id)]"
+azm_entity_manager,azm.entity manager,azm.entity,azm_group_manager,crud,
+azm_entity_company,azm.entity company,azm.entity,,crud,"['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]"
+azm_stage_user,azm.stage user,azm.stage,azm_group_user,r,
+azm_stage_manager,azm.stage manager,azm.stage,azm_group_manager,crud,
+azm_question_user,azm.question user,azm.question,azm_group_user,r,
+azm_question_manager,azm.question manager,azm.question,azm_group_manager,crud,
+azm_option_user,azm.option user,azm.option,azm_group_user,r,
+azm_option_manager,azm.option manager,azm.option,azm_group_manager,crud,
+azm_risk_rule_user,azm.risk.rule user,azm.risk.rule,azm_group_user,r,
+azm_risk_rule_manager,azm.risk.rule manager,azm.risk.rule,azm_group_manager,crud,
+azm_assessment_user_read,azm.assessment user: own on assigned entities,azm.assessment,azm_group_user,r,"[('entity_id', 'access', 'read'), '|', ('user_id', '=', user.id), ('create_uid', '=', user.id)]"
+azm_assessment_user_write,azm.assessment user: own drafts,azm.assessment,azm_group_user,cu,"[('state', '=', 'draft'), ('entity_id', 'access', 'read'), ('user_id', '=', user.id)]"
+azm_assessment_reviewer_read,azm.assessment reviewer: own or to review,azm.assessment,azm_group_reviewer,r,"[('entity_id', 'access', 'read'), '|', ('user_id', '=', user.id), ('reviewer_id', '=', user.id)]"
+azm_assessment_reviewer,azm.assessment reviewer: draft / review,azm.assessment,azm_group_reviewer,cru,"[('state', 'in', ('draft', 'review')), ('entity_id', 'access', 'read'), '|', ('user_id', '=', user.id), ('reviewer_id', '=', user.id)]"
+azm_assessment_manager,azm.assessment manager,azm.assessment,azm_group_manager,crud,
+azm_assessment_company,azm.assessment company,azm.assessment,,crud,"[('company_id', 'in', company_ids)]"
+azm_answer_user_read,azm.answer user read,azm.answer,azm_group_user,r,"[('assessment_id', 'access', 'read')]"
+azm_answer_user_write,azm.answer user draft,azm.answer,azm_group_user,cu,"[('assessment_id.state', '=', 'draft'), ('assessment_id', 'access', 'write')]"
+azm_answer_manager,azm.answer manager,azm.answer,azm_group_manager,crud,
+azm_answer_company,azm.answer company,azm.answer,,crud,"[('company_id', 'in', company_ids)]"
+azm_finding_user,azm.finding user,azm.finding,azm_group_user,r,"[('assessment_id', 'access', 'read')]"
+azm_finding_reviewer,azm.finding reviewer,azm.finding,azm_group_reviewer,cru,"[('assessment_id', 'access', 'read')]"
+azm_finding_manager,azm.finding manager,azm.finding,azm_group_manager,crud,
+azm_finding_company,azm.finding company,azm.finding,,crud,"[('company_id', 'in', company_ids)]"
+azm_version_user,azm.assessment.version user,azm.assessment.version,azm_group_user,r,"[('assessment_id', 'access', 'read')]"
+azm_version_reviewer,azm.assessment.version reviewer,azm.assessment.version,azm_group_reviewer,c,"[('assessment_id', 'access', 'read')]"
+azm_version_manager,azm.assessment.version manager,azm.assessment.version,azm_group_manager,crud,
+azm_version_company,azm.assessment.version company,azm.assessment.version,,crud,"[('company_id', 'in', company_ids)]"
+azm_fin_module_user,azm.fin.module user,azm.fin.module,azm_group_user,r,
+azm_fin_module_manager,azm.fin.module manager,azm.fin.module,azm_group_manager,crud,
+azm_fin_scope_user,azm.fin.scope user,azm.fin.scope,azm_group_user,r,
+azm_fin_scope_manager,azm.fin.scope manager,azm.fin.scope,azm_group_manager,crud,
+azm_fin_requirement_user,azm.fin.requirement user,azm.fin.requirement,azm_group_user,r,
+azm_fin_requirement_manager,azm.fin.requirement manager,azm.fin.requirement,azm_group_manager,crud,
+azm_fin_assessment_user_read,azm.fin.assessment user: own on assigned entities,azm.fin.assessment,azm_group_user,r,"[('entity_id', 'access', 'read'), '|', ('user_id', '=', user.id), ('create_uid', '=', user.id)]"
+azm_fin_assessment_user_write,azm.fin.assessment user: own drafts,azm.fin.assessment,azm_group_user,cu,"[('state', '=', 'draft'), ('entity_id', 'access', 'read'), ('user_id', '=', user.id)]"
+azm_fin_assessment_reviewer_read,azm.fin.assessment reviewer: own or to review,azm.fin.assessment,azm_group_reviewer,r,"[('entity_id', 'access', 'read'), '|', ('user_id', '=', user.id), ('reviewer_id', '=', user.id)]"
+azm_fin_assessment_reviewer,azm.fin.assessment reviewer: draft / review,azm.fin.assessment,azm_group_reviewer,cru,"[('state', 'in', ('draft', 'review')), ('entity_id', 'access', 'read'), '|', ('user_id', '=', user.id), ('reviewer_id', '=', user.id)]"
+azm_fin_assessment_manager,azm.fin.assessment manager,azm.fin.assessment,azm_group_manager,crud,
+azm_fin_assessment_company,azm.fin.assessment company,azm.fin.assessment,,crud,"[('company_id', 'in', company_ids)]"
+azm_fin_answer_user_read,azm.fin.answer user read,azm.fin.answer,azm_group_user,r,"[('assessment_id', 'access', 'read')]"
+azm_fin_answer_user_write,azm.fin.answer user draft,azm.fin.answer,azm_group_user,cu,"[('assessment_id.state', '=', 'draft'), ('assessment_id', 'access', 'write')]"
+azm_fin_answer_manager,azm.fin.answer manager,azm.fin.answer,azm_group_manager,crud,
+azm_fin_answer_company,azm.fin.answer company,azm.fin.answer,,crud,"[('company_id', 'in', company_ids)]"
+azm_fin_version_user,azm.fin.version user,azm.fin.version,azm_group_user,r,"[('assessment_id', 'access', 'read')]"
+azm_fin_version_reviewer,azm.fin.version reviewer,azm.fin.version,azm_group_reviewer,c,"[('assessment_id', 'access', 'read')]"
+azm_fin_version_manager,azm.fin.version manager,azm.fin.version,azm_group_manager,crud,
+azm_fin_version_company,azm.fin.version company,azm.fin.version,,crud,"[('company_id', 'in', company_ids)]"
+azm_fin_topic_user,azm.fin.topic user,azm.fin.topic,azm_group_user,r,
+azm_fin_topic_manager,azm.fin.topic manager,azm.fin.topic,azm_group_manager,crud,
+azm_fin_prompt_user,azm.fin.prompt user,azm.fin.prompt,azm_group_user,r,
+azm_fin_prompt_manager,azm.fin.prompt manager,azm.fin.prompt,azm_group_manager,crud,
+azm_fin_question_user,azm.fin.question user,azm.fin.question,azm_group_user,r,
+azm_fin_question_manager,azm.fin.question manager,azm.fin.question,azm_group_manager,crud,
+azm_fin_option_user,azm.fin.option user,azm.fin.option,azm_group_user,r,
+azm_fin_option_manager,azm.fin.option manager,azm.fin.option,azm_group_manager,crud,
+azm_fin_qanswer_user_read,azm.fin.qanswer user read,azm.fin.qanswer,azm_group_user,r,"[('line_id', 'access', 'read')]"
+azm_fin_qanswer_user_write,azm.fin.qanswer user draft,azm.fin.qanswer,azm_group_user,cud,"[('line_id.assessment_id.state', '=', 'draft'), ('line_id', 'access', 'write')]"
+azm_fin_qanswer_manager,azm.fin.qanswer manager,azm.fin.qanswer,azm_group_manager,crud,
+azm_fin_qanswer_company,azm.fin.qanswer company,azm.fin.qanswer,,crud,"[('company_id', 'in', company_ids)]"

@@ -1,0 +1,424 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="azm_platform.OmDashboard">
+        <div class="o_action o_azm_dashboard o_azm_om">
+            <div class="o_azm_om_title">
+                <div>
+                    <h1>Operating Model</h1>
+                    <p>From answers to policy, procedure, authority and risk, per entity and per domain</p>
+                </div>
+                <div t-if="this.state.loaded and this.d.available" class="o_azm_om_title_actions">
+                    <button type="button" class="btn btn-light" t-on-click="() => this.openQuestions(false)">
+                        <i class="oi" data-icon="list_alt" title="Questions"/> Question Catalogue
+                    </button>
+                    <button type="button" class="btn btn-primary" t-on-click="() => this.newAssessment()">
+                        <i class="oi" data-icon="add" title="New"/> New Assessment
+                    </button>
+                </div>
+            </div>
+
+            <t t-call="azm_platform.ModelSwitch"/>
+
+            <div t-if="!this.state.loaded" class="o_azm_loading">
+                <i class="oi oi-spin" data-icon="progress_activity" title="Loading"/>
+            </div>
+
+            <div t-elif="!this.d.available" class="o_azm_card o_azm_empty">
+                <i class="oi" data-icon="lock" title="No access"/>
+                <strong>The Operating Model is not available for your user</strong>
+                <small>Ask an administrator for the “AZM Operating Model” access rights.</small>
+            </div>
+
+            <t t-else="">
+                <!-- ============================== Scope & filters -->
+                <section t-attf-class="o_azm_om_toolbar {{this.state.busy ? 'o_azm_om_busy' : ''}}">
+                    <div class="o_azm_om_tabs" role="tablist">
+                        <button type="button" t-foreach="this.domainTabs" t-as="tab" t-key="tab.key or 'all'"
+                                t-attf-class="o_azm_om_tab o_azm_tone_{{tab.tone}} {{this.state.domain === tab.key ? 'active' : ''}}"
+                                t-on-click="() => this.setDomain(tab.key)">
+                            <i class="oi" t-att-data-icon="tab.icon" t-att-title="tab.label"/>
+                            <span t-out="tab.label"/>
+                            <span class="o_azm_om_count" t-out="tab.count"/>
+                        </button>
+                    </div>
+                    <div class="o_azm_om_selects">
+                        <span t-if="this.state.companyId" class="o_azm_om_chip">
+                            <i class="oi" data-icon="business" title="Company"/>
+                            <t t-out="this.companyName"/>
+                            <button type="button" class="btn btn-link p-0" title="Clear" t-on-click="() => this.clearCompany()">
+                                <i class="oi" data-icon="close" title="Clear"/>
+                            </button>
+                        </span>
+                        <select class="form-select" t-on-change="this.onEntityChange" aria-label="Entity">
+                            <option value="" t-att-selected="!this.state.entityId">All entities</option>
+                            <option t-foreach="this.d.entity_options" t-as="opt" t-key="opt.id"
+                                    t-att-value="opt.id" t-att-selected="opt.id === this.state.entityId" t-out="opt.name"/>
+                        </select>
+                        <select class="form-select" t-on-change="this.onAssessmentChange" aria-label="Assessment">
+                            <option value="" t-att-selected="!this.state.assessmentId">All current assessments</option>
+                            <option t-foreach="this.d.assessment_options" t-as="opt" t-key="opt.id"
+                                    t-att-value="opt.id" t-att-selected="opt.id === this.state.assessmentId" t-out="opt.name"/>
+                        </select>
+                    </div>
+                </section>
+                <p class="o_azm_om_scope">
+                    <i class="oi" data-icon="filter_alt" title="Scope"/>
+                    <t t-out="this.scopeLabel"/>
+                    <t t-if="this.state.domain"> · <strong t-out="this.domainName"/></t>
+                </p>
+
+                <!-- ============================== KPIs -->
+                <section class="o_azm_kpis o_azm_om_kpis">
+                    <t t-foreach="this.kpis" t-as="kpi" t-key="kpi.key">
+                        <button type="button"
+                           t-attf-class="o_azm_kpi o_azm_om_kpi {{kpi.onClick ? '' : 'o_azm_kpi_static'}}"
+                           t-on-click="() => kpi.onClick and kpi.onClick()">
+                            <span class="o_azm_kpi_text">
+                                <span class="o_azm_kpi_label" t-out="kpi.label"/>
+                                <strong class="o_azm_kpi_value" t-out="kpi.value"/>
+                                <span t-if="kpi.meter !== undefined" t-attf-class="o_azm_progress o_azm_om_meter o_azm_tone_{{kpi.tone}}">
+                                    <span class="o_azm_progress_bar" t-attf-style="width: {{this.bar(kpi.meter)}}%"/>
+                                </span>
+                                <small t-if="kpi.sub" t-out="kpi.sub"/>
+                            </span>
+                            <span t-attf-class="o_azm_icon_badge o_azm_tone_{{kpi.tone}}">
+                                <i class="oi" t-att-data-icon="kpi.icon" t-att-title="kpi.label"/>
+                            </span>
+                        </button>
+                    </t>
+                </section>
+
+                <!-- ============================== Domains -->
+                <section class="o_azm_om_domains">
+                    <button type="button" t-foreach="this.domains" t-as="dom" t-key="dom.key"
+                            t-attf-class="o_azm_card o_azm_om_domain o_azm_tone_{{dom.tone}} {{this.state.domain === dom.key ? 'active' : ''}}"
+                            t-on-click="() => this.setDomain(this.state.domain === dom.key ? false : dom.key)">
+                        <header>
+                            <span t-attf-class="o_azm_icon_badge o_azm_tone_{{dom.tone}}">
+                                <i class="oi" t-att-data-icon="dom.icon" t-att-title="dom.label"/>
+                            </span>
+                            <span class="o_azm_om_domain_title">
+                                <strong t-out="dom.label"/>
+                                <small t-out="dom.hint"/>
+                            </span>
+                        </header>
+                        <div class="o_azm_om_codes">
+                            <span t-foreach="dom.codes" t-as="code" t-key="code" class="o_azm_om_code" t-out="code"/>
+                        </div>
+                        <dl class="o_azm_om_figures">
+                            <div><dt>Question areas</dt><dd t-out="dom.stages"/></div>
+                            <div><dt>Questions</dt><dd t-out="dom.questions"/></div>
+                            <div><dt>Risk rules</dt><dd t-out="dom.rules"/></div>
+                            <div><dt>Risks triggered</dt><dd t-out="dom.risks"/></div>
+                            <div><dt>Open findings</dt><dd t-att-class="{'text-danger': dom.findings_high}" t-out="dom.findings_open"/></div>
+                            <div><dt>High risks</dt><dd t-out="dom.findings_high"/></div>
+                        </dl>
+                        <div class="o_azm_om_meters">
+                            <div>
+                                <span class="o_azm_om_meter_label">Completion <b t-out="this.pct(dom.completion)"/></span>
+                                <span class="o_azm_progress"><span class="o_azm_progress_bar" t-attf-style="width: {{this.bar(dom.completion)}}%"/></span>
+                            </div>
+                            <div>
+                                <span class="o_azm_om_meter_label">Certainty <b t-out="this.pct(dom.certainty)"/></span>
+                                <span class="o_azm_progress o_azm_om_alt"><span class="o_azm_progress_bar" t-attf-style="width: {{this.bar(dom.certainty)}}%"/></span>
+                            </div>
+                        </div>
+                    </button>
+                </section>
+
+                <!-- ============================== Question areas (cards) -->
+                <section class="o_azm_card">
+                    <header class="o_azm_card_header o_azm_om_cards_head">
+                        <h3>
+                            Question Areas
+                            <small class="text-muted" t-out="'(' + this.stages.length + ')'"/>
+                        </h3>
+                        <div class="o_azm_om_cards_tools">
+                            <input type="search" class="form-control" placeholder="Search a stage…"
+                                   t-att-value="this.state.search" t-on-input="this.onSearch"/>
+                            <select class="form-select" t-on-change="this.onSort" aria-label="Sort">
+                                <option value="sequence">Cycle order</option>
+                                <option value="risks">Most risks first</option>
+                                <option value="completion">Least complete first</option>
+                                <option value="questions">Most questions first</option>
+                            </select>
+                        </div>
+                    </header>
+                    <p class="o_azm_om_hint">
+                        <t t-if="this.state.assessmentId">Click a card to answer that stage in the workspace.</t>
+                        <t t-else="">Click a card to see its questions. Pick one assessment above to answer directly from the cards.</t>
+                    </p>
+
+                    <div t-if="this.stages.length" class="o_azm_om_stage_grid">
+                        <article t-foreach="this.stages" t-as="stage" t-key="stage.id"
+                                 t-attf-class="o_azm_om_stage o_azm_tone_{{stage.tone}}">
+                            <button type="button" class="o_azm_om_stage_main" t-on-click="() => this.openStage(stage)">
+                                <header>
+                                    <span class="o_azm_om_stage_code" t-out="'PUR-' + stage.code"/>
+                                    <span class="o_azm_om_pill" t-out="stage.domainLabel"/>
+                                    <span t-if="stage.status" t-attf-class="o_azm_om_status o_azm_om_status_{{stage.status}}" t-out="stage.statusLabel"/>
+                                </header>
+                                <h4 t-out="stage.name"/>
+                                <p class="o_azm_om_flow">
+                                    <span t-out="stage.input"/>
+                                    <i class="oi" data-icon="arrow_forward" title="to"/>
+                                    <span t-out="stage.output"/>
+                                </p>
+                                <small class="o_azm_om_owner"><i class="oi" data-icon="person" title="Owner"/> <t t-out="stage.owner"/></small>
+
+                                <div class="o_azm_om_stage_stats">
+                                    <div><strong t-out="stage.questions"/><small>Questions</small></div>
+                                    <div><strong t-out="stage.rules"/><small>Risk rules</small></div>
+                                    <div t-att-class="{'o_azm_om_alert': stage.risks}"><strong t-out="stage.risks"/><small>Risks</small></div>
+                                    <div t-att-class="{'o_azm_om_alert': stage.findings_open}"><strong t-out="stage.findings_open"/><small>Open findings</small></div>
+                                </div>
+
+                                <div class="o_azm_om_meters">
+                                    <div>
+                                        <span class="o_azm_om_meter_label">
+                                            Completion <b t-out="this.pct(stage.completion)"/>
+                                            <small t-if="stage.visible"><t t-out="stage.answered"/>/<t t-out="stage.visible"/></small>
+                                        </span>
+                                        <span class="o_azm_progress"><span class="o_azm_progress_bar" t-attf-style="width: {{this.bar(stage.completion)}}%"/></span>
+                                    </div>
+                                    <div>
+                                        <span class="o_azm_om_meter_label">Certainty <b t-out="this.pct(stage.certainty)"/></span>
+                                        <span class="o_azm_progress o_azm_om_alt"><span class="o_azm_progress_bar" t-attf-style="width: {{this.bar(stage.certainty)}}%"/></span>
+                                    </div>
+                                </div>
+
+                                <div class="o_azm_om_composition">
+                                    <span class="o_azm_om_meter_label">Question sections</span>
+                                    <span class="o_azm_om_stack">
+                                        <t t-foreach="stage.groupBars" t-as="g" t-key="g.key">
+                                            <span t-if="g.count" t-attf-style="width: {{g.width}}%; background: {{g.color}};" t-att-title="g.count"/>
+                                        </t>
+                                    </span>
+                                    <span class="o_azm_om_chips">
+                                        <span t-foreach="stage.typeChips" t-as="chip" t-key="chip.key" class="o_azm_om_chip_sm">
+                                            <t t-out="chip.label"/> <b t-out="chip.count"/>
+                                        </span>
+                                        <span t-if="stage.common" class="o_azm_om_chip_sm">Common <b t-out="stage.common"/></span>
+                                    </span>
+                                </div>
+
+                                <div t-if="!stage.status and !stage.governance and stage.statusBars.length" class="o_azm_om_composition">
+                                    <span class="o_azm_om_meter_label">Application across assessments</span>
+                                    <span class="o_azm_om_stack">
+                                        <span t-foreach="stage.statusBars" t-as="s" t-key="s.key"
+                                              t-attf-style="width: {{s.width}}%; background: {{s.color}};" t-att-title="s.label + ': ' + s.count"/>
+                                    </span>
+                                </div>
+                            </button>
+                            <footer>
+                                <button type="button" class="btn btn-link" t-on-click="() => this.openQuestions(stage)">
+                                    <i class="oi" data-icon="list_alt" title="Questions"/> Questions
+                                </button>
+                                <button type="button" class="btn btn-link" t-on-click="() => this.openFindings({ stage })">
+                                    <i class="oi" data-icon="flag" title="Risks"/> Risk register
+                                </button>
+                                <button t-if="this.state.assessmentId" type="button" class="btn btn-link" t-on-click="() => this.openStage(stage)">
+                                    <i class="oi" data-icon="edit" title="Answer"/> Answer
+                                </button>
+                            </footer>
+                        </article>
+                    </div>
+                    <div t-else="" class="o_azm_empty"><small>No question area matches.</small></div>
+                </section>
+
+                <!-- ============================== Charts -->
+                <section class="o_azm_om_row_3">
+                    <div class="o_azm_card o_azm_donut_card">
+                        <header class="o_azm_card_header">
+                            <h3>Risk Register</h3>
+                            <a href="#" t-on-click.prevent="() => this.openFindings({})">View all</a>
+                        </header>
+                        <div class="o_azm_donut_layout">
+                            <AzmDonutChart data="this.d.charts.findings" size="160" thickness="24"
+                                           centerLabel="this.donutFindingsLabel" emptyLabel="this.donutEmpty"/>
+                            <ul class="o_azm_legend">
+                                <li t-foreach="this.d.charts.findings" t-as="item" t-key="item.id" t-att-class="item.count ? '' : 'o_azm_legend_off'">
+                                    <span class="o_azm_dot" t-attf-style="background: {{item.color}}"/>
+                                    <span class="flex-grow-1" t-out="item.name"/>
+                                    <span class="o_azm_legend_count" t-out="item.count"/>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="o_azm_card o_azm_donut_card">
+                        <header class="o_azm_card_header">
+                            <h3>Assessments by State</h3>
+                            <a href="#" t-on-click.prevent="() => this.openAssessments(this.state.entityId)">View all</a>
+                        </header>
+                        <div class="o_azm_donut_layout">
+                            <AzmDonutChart data="this.d.charts.assessments" size="160" thickness="24"
+                                           centerLabel="this.donutAssessmentsLabel" emptyLabel="this.donutEmpty"/>
+                            <ul class="o_azm_legend">
+                                <li t-foreach="this.d.charts.assessments" t-as="item" t-key="item.id" t-att-class="item.count ? '' : 'o_azm_legend_off'">
+                                    <span class="o_azm_dot" t-attf-style="background: {{item.color}}"/>
+                                    <span class="flex-grow-1" t-out="item.name"/>
+                                    <span class="o_azm_legend_count" t-out="item.count"/>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="o_azm_card">
+                        <header class="o_azm_card_header"><h3>Questions &amp; Application</h3></header>
+                        <div class="o_azm_om_bars">
+                            <span class="o_azm_om_meter_label">By answer type</span>
+                            <div t-foreach="this.typeRows" t-as="row" t-key="row.key" class="o_azm_om_bar_row">
+                                <span t-out="row.label"/>
+                                <span class="o_azm_om_bar"><span t-attf-style="width: {{row.width}}%"/></span>
+                                <b t-out="row.count"/>
+                            </div>
+                            <span class="o_azm_om_meter_label mt-2">By section</span>
+                            <div t-foreach="this.groupRows" t-as="row" t-key="row.key" class="o_azm_om_bar_row">
+                                <span t-out="row.label"/>
+                                <span class="o_azm_om_bar"><span t-attf-style="width: {{row.width}}%; background: {{row.color}}"/></span>
+                                <b t-out="row.count"/>
+                            </div>
+                            <span class="o_azm_om_meter_label mt-2">Stage application (operational stages × assessments)</span>
+                            <span class="o_azm_om_stack o_azm_om_stack_lg">
+                                <t t-foreach="this.statusLegend" t-as="s" t-key="s.key">
+                                    <span t-if="s.count" t-attf-style="width: {{100 * s.count / (this.statusTotal or 1)}}%; background: {{s.color}};" t-att-title="s.label + ': ' + s.count"/>
+                                </t>
+                            </span>
+                            <ul class="o_azm_legend o_azm_om_legend_inline">
+                                <li t-foreach="this.statusLegend" t-as="s" t-key="s.key">
+                                    <span class="o_azm_dot" t-attf-style="background: {{s.color}}"/>
+                                    <span t-out="s.label"/>
+                                    <span class="o_azm_legend_count" t-out="s.count"/>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ============================== Entities + top risks -->
+                <section class="o_azm_om_row_2">
+                    <div class="o_azm_card">
+                        <header class="o_azm_card_header">
+                            <h3>Entities</h3>
+                            <a href="#" t-on-click.prevent="() => this.openAssessments()">All assessments</a>
+                        </header>
+                        <div class="table-responsive">
+                            <table class="o_azm_table o_azm_om_table">
+                                <thead>
+                                    <tr>
+                                        <th>Entity</th>
+                                        <th>Status</th>
+                                        <th>Assessments</th>
+                                        <th>Completion</th>
+                                        <th>Certainty</th>
+                                        <th>Risks</th>
+                                        <th>Open findings</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr t-foreach="this.entities" t-as="entity" t-key="entity.id" t-on-click="() => this.openEntity(entity)">
+                                        <td>
+                                            <span class="o_azm_entity_cell">
+                                                <img t-if="entity.logoUrl" t-att-src="entity.logoUrl" alt=""/>
+                                                <span t-else="" class="o_azm_code_avatar" t-out="entity.code.slice(0, 3)"/>
+                                                <span>
+                                                    <strong t-out="entity.name"/>
+                                                    <small t-if="entity.company" t-out="entity.company.name"/>
+                                                    <small t-else="" class="text-warning">Not linked to a company</small>
+                                                </span>
+                                            </span>
+                                        </td>
+                                        <td><span t-attf-class="o_azm_status o_azm_status_{{entity.statusClass}}" t-out="entity.statusLabel"/></td>
+                                        <td><t t-out="entity.assessments"/> <small class="text-muted" t-if="entity.approved">(<t t-out="entity.approved"/> ✓)</small></td>
+                                        <td>
+                                            <span class="o_azm_mini_progress">
+                                                <span class="o_azm_progress"><span class="o_azm_progress_bar" t-attf-style="width: {{this.bar(entity.completion)}}%"/></span>
+                                                <span t-out="this.pct(entity.completion)"/>
+                                            </span>
+                                        </td>
+                                        <td t-out="this.pct(entity.certainty)"/>
+                                        <td t-out="entity.risks or '—'"/>
+                                        <td t-att-class="{'text-danger fw-bold': entity.findings_open}" t-out="entity.findings_open or '—'"/>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="o_azm_card">
+                        <header class="o_azm_card_header">
+                            <h3>Top Open Risks</h3>
+                            <a href="#" t-on-click.prevent="() => this.openFindings({ open: true })">View all</a>
+                        </header>
+                        <ul t-if="this.d.top_findings.length" class="o_azm_list o_azm_om_risks">
+                            <li t-foreach="this.d.top_findings" t-as="f" t-key="f.id" t-on-click="() => this.openFinding(f)">
+                                <span t-attf-class="o_azm_om_score {{f.score >= 15 ? 'o_high' : (f.score >= 8 ? 'o_mid' : (f.score ? 'o_low' : ''))}}"
+                                      t-att-title="f.score ? f.score : ''" t-out="f.score or '?'"/>
+                                <span class="flex-grow-1">
+                                    <strong t-out="f.fact"/>
+                                    <small><t t-out="f.entity"/> · <t t-out="f.stage"/> · <t t-out="f.state_label"/></small>
+                                    <small t-if="f.control" class="o_azm_om_control"><i class="oi" data-icon="security" title="Control"/> <t t-out="f.control"/></small>
+                                </span>
+                            </li>
+                        </ul>
+                        <div t-else="" class="o_azm_empty">
+                            <i class="oi" data-icon="verified" title="No risks"/>
+                            <strong>No open findings</strong>
+                            <small>Submit an assessment for review to turn triggered risks into tracked findings.</small>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ============================== Assessments -->
+                <section class="o_azm_card">
+                    <header class="o_azm_card_header">
+                        <h3>Current Assessments</h3>
+                        <a href="#" t-on-click.prevent="() => this.openAssessments(this.state.entityId)">Open list</a>
+                    </header>
+                    <div t-if="this.d.assessments.length" class="table-responsive">
+                        <table class="o_azm_table o_azm_om_table">
+                            <thead>
+                                <tr>
+                                    <th>Reference</th>
+                                    <th>Entity</th>
+                                    <th>Purchase type · Path</th>
+                                    <th>State</th>
+                                    <th>Version</th>
+                                    <th>Completion</th>
+                                    <th>Certainty</th>
+                                    <th>Risks</th>
+                                    <th>Open findings</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="this.d.assessments" t-as="row" t-key="row.id" t-on-click="() => this.openAssessment(row)">
+                                    <td><strong t-out="row.name"/> <span t-if="row.is_demo" class="o_azm_om_chip_sm">Demo</span></td>
+                                    <td t-out="row.entity"/>
+                                    <td><t t-out="row.kind"/> · <t t-out="row.scenario"/></td>
+                                    <td><span t-attf-class="o_azm_om_state o_azm_om_state_{{row.state}}" t-out="row.state_label"/></td>
+                                    <td t-out="'v' + row.version"/>
+                                    <td>
+                                        <span class="o_azm_mini_progress">
+                                            <span class="o_azm_progress"><span class="o_azm_progress_bar" t-attf-style="width: {{this.bar(row.completion)}}%"/></span>
+                                            <span t-out="this.pct(row.completion)"/>
+                                        </span>
+                                    </td>
+                                    <td t-out="this.pct(row.certainty)"/>
+                                    <td t-out="row.risks or '—'"/>
+                                    <td t-att-class="{'text-danger fw-bold': row.findings_open}" t-out="row.findings_open or '—'"/>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div t-else="" class="o_azm_empty">
+                        <i class="oi" data-icon="assignment" title="No assessments"/>
+                        <strong>No assessment yet</strong>
+                        <small>Create one per entity, purchase type and path, then answer the questions.</small>
+                        <button type="button" class="btn btn-primary btn-sm mt-2" t-on-click="() => this.newAssessment()">New Assessment</button>
+                    </div>
+                </section>
+            </t>
+        </div>
+    </t>
+
+</templates>

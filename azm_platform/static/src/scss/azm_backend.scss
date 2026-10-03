@@ -1,0 +1,743 @@
+// ============================================================================
+// AZM Platform — backend styles
+// ============================================================================
+
+// ---------------------------------------------------------------------------
+// Shell: sidebar + restyled navbar (only while the AZM app is open)
+// ---------------------------------------------------------------------------
+body.o_azm_mode {
+    /*rtl:ignore*/
+    padding-left: $azm-sidebar-width;
+    background: $azm-bg;
+    transition: padding .2s ease;
+    .o_main_navbar {
+        --NavBar-entry-color: #{$azm-ink};
+        --NavBar-entry-color--hover: #{$azm-blue};
+        --NavBar-entry-backgroundColor: #fff;
+        --NavBar-entry-backgroundColor--hover: #{rgba($azm-blue, .06)};
+        --NavBar-entry-backgroundColor--focus: #{rgba($azm-blue, .08)};
+        --NavBar-entry-backgroundColor--active: #{rgba($azm-blue, .1)};
+        --NavBar-brand-color: #{$azm-ink};
+        background: #fff;
+        border-bottom: 1px solid $azm-border;
+        color: $azm-ink;
+        .o_menu_sections { visibility: hidden; }
+        .o_menu_brand { font-weight: 700; }
+    }
+    .o_action_manager { background: $azm-bg; }
+    .o_control_panel { background: $azm-bg; }
+    .o_kanban_renderer { background: $azm-bg; }
+}
+body.o_azm_mode.o_azm_sidebar_collapsed {
+    /*rtl:ignore*/
+    padding-left: $azm-sidebar-collapsed;
+}
+
+// The client action root is also the action manager's .o_action, and the web
+// client styles it with `.o_web_client > .o_action_manager > .o_action`, which
+// forces display:flex and overflow:hidden. That outranks the single-class
+// rules of the pages below, so their content is clipped and the page cannot be
+// scrolled. Take the root back on a selector that outranks it.
+.o_web_client > .o_action_manager > .o_action.o_azm_dashboard {
+    display: block;
+    overflow: auto;
+}
+
+.o_azm_sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    /*rtl:ignore*/
+    left: 0;
+    width: $azm-sidebar-width;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    color: #dbe4f5;
+    background:
+        linear-gradient(180deg, rgba($azm-navy, 0) 60%, rgba($azm-navy, .9) 100%),
+        linear-gradient(180deg, $azm-navy 0%, $azm-navy-2 100%);
+    box-shadow: 2px 0 12px rgba(0, 0, 0, .12);
+    transition: width .2s ease;
+
+    .o_azm_sidebar_brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 16px 16px 12px;
+        .o_azm_logo_mark { width: 44px; height: 38px; flex: 0 0 auto; }
+        .o_azm_sidebar_brand_text {
+            display: flex; flex-direction: column; line-height: 1.1; flex: 1 1 auto; min-width: 0;
+            strong { color: #fff; font-size: 26px; letter-spacing: 1px; }
+            small { font-size: 8px; letter-spacing: .6px; color: #b7c4dc; white-space: nowrap; }
+        }
+        .o_azm_sidebar_toggle {
+            border: 0; background: transparent; color: #93a4c4; padding: 4px; border-radius: 6px;
+            &:hover { color: #fff; background: rgba(255, 255, 255, .08); }
+        }
+    }
+    .o_azm_sidebar_menu {
+        list-style: none;
+        margin: 0;
+        padding: 6px 10px;
+        overflow-y: auto;
+        flex: 1 1 auto;
+        a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 9px 12px;
+            margin: 2px 0;
+            border-radius: 10px;
+            color: #dbe4f5;
+            text-decoration: none;
+            font-size: 14px;
+            white-space: nowrap;
+            .oi { font-size: 20px; width: 22px; color: #c7d3ea; }
+            &:hover { background: rgba(255, 255, 255, .07); color: #fff; }
+            &.active {
+                background: linear-gradient(90deg, $azm-blue, $azm-blue-2);
+                color: #fff;
+                box-shadow: 0 6px 14px rgba($azm-blue, .35);
+                .oi { color: #fff; }
+            }
+        }
+        .o_azm_sidebar_divider { height: 1px; margin: 10px 8px; background: rgba(255, 255, 255, .12); }
+    }
+    .o_azm_sidebar_footer {
+        display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2px;
+        padding: 18px 16px 22px;
+        background:
+            linear-gradient(180deg, rgba($azm-navy, 0), rgba(0, 0, 0, .25)),
+            radial-gradient(120% 80% at 50% 120%, rgba($azm-orange, .25), rgba($azm-orange, 0) 60%);
+        strong { color: #fff; font-size: 16px; }
+        span { color: #e5ecf9; font-size: 13px; line-height: 1.4; margin-bottom: 8px; }
+        small { color: #c9d5ea; font-size: 12px; }
+    }
+    &.o_collapsed {
+        width: $azm-sidebar-collapsed;
+        .o_azm_sidebar_brand_text, .o_azm_sidebar_menu a span, .o_azm_sidebar_footer { display: none; }
+        .o_azm_sidebar_brand { flex-direction: column; padding: 14px 8px; }
+        .o_azm_sidebar_menu a { justify-content: center; padding: 10px 0; }
+    }
+}
+
+@media (max-width: 991.98px) {
+    body.o_azm_mode { /*rtl:ignore*/ padding-left: 0; }
+    .o_azm_sidebar { display: none; }
+    body.o_azm_mode .o_main_navbar .o_menu_sections { visibility: visible; }
+}
+
+// ---------------------------------------------------------------------------
+// Shared building blocks
+// ---------------------------------------------------------------------------
+@each $name, $color in $azm-tones {
+    .o_azm_tone_#{$name} { --azm-tone: #{$color}; --azm-tone-bg: #{rgba($color, .1)}; }
+}
+
+.o_azm_card {
+    background: $azm-card;
+    border: 1px solid $azm-border;
+    border-radius: $azm-radius;
+    box-shadow: $azm-shadow;
+    padding: 18px 20px;
+    min-width: 0;
+}
+.o_azm_card_header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+    h3 { margin: 0; font-size: 17px; font-weight: 700; color: $azm-ink; }
+    a { font-size: 13px; color: $azm-blue; text-decoration: none; }
+}
+.o_azm_icon_badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 46px;
+    height: 46px;
+    border-radius: 12px;
+    color: var(--azm-tone, #{$azm-blue});
+    background: var(--azm-tone-bg, #{rgba($azm-blue, .1)});
+    .oi { font-size: 24px; }
+    &.small { width: 34px; height: 34px; border-radius: 9px; .oi { font-size: 18px; } }
+}
+.o_azm_dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
+.o_azm_kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 14px;
+}
+.o_azm_kpi {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    text-align: start;
+    background: $azm-card;
+    border: 1px solid $azm-border;
+    border-radius: $azm-radius;
+    box-shadow: $azm-shadow;
+    padding: 16px 18px;
+    color: $azm-ink;
+    transition: transform .15s ease, box-shadow .15s ease;
+    &:is(button):not(.o_azm_kpi_static):hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(15, 35, 71, .1); }
+    .o_azm_kpi_text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+    .o_azm_kpi_label { font-size: 13px; font-weight: 600; color: $azm-ink; }
+    .o_azm_kpi_value { font-size: 26px; font-weight: 800; line-height: 1.1; color: $azm-ink; }
+    small { color: $azm-muted; font-size: 12px; }
+}
+.o_azm_status {
+    display: inline-block;
+    padding: 3px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    &.o_azm_status_active { color: #15803d; background: #dcfce7; }
+    &.o_azm_status_in_progress { color: #c2410c; background: #ffedd5; }
+    &.o_azm_status_not_started { color: #475569; background: #eef2f7; }
+}
+.o_azm_progress {
+    display: block;
+    height: 7px;
+    min-width: 60px;
+    border-radius: 99px;
+    background: #e8edf5;
+    overflow: hidden;
+    .o_azm_progress_bar {
+        display: block;
+        height: 100%;
+        border-radius: 99px;
+        background: linear-gradient(90deg, $azm-blue, $azm-blue-2);
+    }
+}
+.o_azm_mini_progress { display: flex; align-items: center; gap: 8px; .o_azm_progress { flex: 1 1 auto; } }
+.o_azm_list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    li {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 4px;
+        border-bottom: 1px solid #eef2f7;
+        cursor: pointer;
+        &:last-child { border-bottom: 0; }
+        &:hover { background: #f8fafd; }
+        strong { display: block; font-size: 14px; color: $azm-ink; font-weight: 600; }
+        small { display: block; font-size: 12px; color: $azm-muted; }
+    }
+}
+.o_azm_legend {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    flex: 1 1 auto;
+    li { display: flex; align-items: center; gap: 10px; padding: 4px 0; font-size: 13px; color: $azm-ink; }
+    .o_azm_legend_count { font-weight: 700; color: $azm-muted; }
+    .o_azm_legend_off { opacity: .45; }
+}
+.o_azm_donut_card { container-type: inline-size; }
+.o_azm_donut_layout {
+    display: flex; align-items: center; gap: 20px; justify-content: center;
+}
+@container (max-width: 440px) {
+    .o_azm_donut_layout { flex-direction: column; gap: 14px; }
+    .o_azm_donut_layout .o_azm_legend {
+        width: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 14px;
+        li { font-size: 12.5px; }
+    }
+}
+.o_azm_donut {
+    position: relative;
+    flex: 0 0 auto;
+    circle { transition: stroke-dasharray .4s ease; }
+    .o_azm_donut_muted { opacity: .35; }
+    .o_azm_donut_center {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        strong { font-size: 28px; font-weight: 800; color: $azm-ink; line-height: 1; }
+        span { font-size: 13px; color: $azm-muted; margin-top: 6px; max-width: 70%; }
+    }
+}
+.o_azm_empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 16px 8px;
+    color: $azm-muted;
+    > .oi { font-size: 44px; color: #b6c2d6; margin-bottom: 8px; }
+    strong { color: $azm-ink; }
+}
+.o_azm_btn_light {
+    display: inline-flex; align-items: center; gap: 6px;
+    border: 1px solid rgba(255, 255, 255, .7); border-radius: 10px;
+    background: rgba(255, 255, 255, .92); color: $azm-ink; padding: 7px 14px; font-weight: 600;
+    &:hover { background: #fff; }
+}
+
+// ---------------------------------------------------------------------------
+// Home dashboard
+// ---------------------------------------------------------------------------
+.o_azm_dashboard {
+    overflow: auto;
+    height: 100%;
+    padding: 18px 22px 30px;
+    background: $azm-bg;
+    color: $azm-ink;
+
+    .o_azm_page_title {
+        margin-bottom: 14px;
+        h1 { font-size: 26px; font-weight: 800; margin: 0; color: $azm-navy; }
+        p { margin: 2px 0 0; color: $azm-muted; }
+    }
+    .o_azm_loading { display: flex; justify-content: center; padding: 80px; font-size: 32px; color: $azm-blue; }
+    .o_azm_dash_grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 300px;
+        gap: 18px;
+        align-items: start;
+    }
+    .o_azm_dash_main { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+    .o_azm_dash_side { display: flex; flex-direction: column; gap: 16px; }
+
+    .o_azm_hero {
+        position: relative;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 20px;
+        min-height: 150px;
+        padding: 26px 30px;
+        border-radius: $azm-radius;
+        color: #fff;
+        overflow: hidden;
+        background:
+            radial-gradient(60% 120% at 85% 10%, rgba(80, 140, 255, .45), rgba(80, 140, 255, 0) 60%),
+            radial-gradient(40% 90% at 10% 100%, rgba($azm-orange, .25), rgba($azm-orange, 0) 70%),
+            linear-gradient(120deg, #0a1a3d 0%, #11336f 55%, #1b4c9b 100%);
+        box-shadow: $azm-shadow;
+        h2 { font-size: 26px; font-weight: 800; margin: 0 0 6px; color: #fff; }
+        p { margin: 0 0 16px; color: #d6e2fa; }
+        .o_azm_hero_pillars {
+            display: flex; flex-wrap: wrap; gap: 18px; list-style: none; margin: 0; padding: 0;
+            li { display: flex; align-items: center; gap: 6px; font-weight: 600; }
+        }
+        .o_azm_hero_quote {
+            margin: 0; padding: 0; max-width: 260px; text-align: end;
+            p { font-size: 18px; font-weight: 700; color: #fff; margin: 0; }
+            cite { color: #c5d4f3; font-style: normal; }
+        }
+    }
+
+    .o_azm_journey {
+        display: flex;
+        align-items: stretch;
+        gap: 4px;
+        .o_azm_phase {
+            position: relative;
+            flex: 1 1 0;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            gap: 6px;
+            padding: 30px 8px 14px;
+            margin-top: 14px;
+            border: 1px solid $azm-border;
+            border-radius: $azm-radius;
+            background: linear-gradient(180deg, var(--azm-tone-bg), #fff 70%);
+            box-shadow: $azm-shadow;
+            color: $azm-ink;
+            transition: transform .15s ease;
+            &:hover { transform: translateY(-2px); }
+            .o_azm_phase_num {
+                position: absolute; top: -14px;
+                width: 28px; height: 28px; border-radius: 50%;
+                display: flex; align-items: center; justify-content: center;
+                color: #fff; font-weight: 700; font-size: 14px;
+                background: var(--azm-tone); box-shadow: 0 0 0 4px #fff;
+            }
+            .o_azm_phase_icon { font-size: 32px; color: var(--azm-tone); }
+            strong { font-size: 14px; }
+            small { font-size: 11.5px; color: $azm-muted; line-height: 1.35; }
+            .o_azm_phase_value { font-size: 24px; font-weight: 800; color: var(--azm-tone); line-height: 1; }
+        }
+        .o_azm_phase_arrow { display: flex; align-items: center; color: #9aa8bf; padding-top: 14px; }
+    }
+
+    .o_azm_row_2 {
+        display: grid;
+        grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+        gap: 16px;
+        > .o_azm_card { overflow-x: auto; }
+    }
+    .o_azm_table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 13px;
+        th {
+            background: #f3f6fb; color: $azm-muted; font-weight: 600; padding: 8px 10px; white-space: nowrap;
+            &:first-child { border-start-start-radius: 8px; border-end-start-radius: 8px; }
+            &:last-child { border-start-end-radius: 8px; border-end-end-radius: 8px; }
+        }
+        td { padding: 8px 10px; border-bottom: 1px solid #eef2f7; vertical-align: middle; }
+        tbody tr { cursor: pointer; &:hover td { background: #f8fafd; } }
+    }
+    .o_azm_entity_cell {
+        display: flex; align-items: center; gap: 10px;
+        img { width: 28px; height: 28px; object-fit: contain; }
+        > span:last-child { min-width: 0; max-width: 190px; }
+        strong, small { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        strong { font-weight: 600; }
+        small { color: $azm-muted; }
+    }
+    .o_azm_code_avatar {
+        width: 28px; height: 28px; border-radius: 8px; flex: 0 0 auto;
+        display: inline-flex; align-items: center; justify-content: center;
+        font-size: 9px; font-weight: 800; color: $azm-blue; background: rgba($azm-blue, .1);
+    }
+
+    .o_azm_quick {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 10px;
+    }
+    .o_azm_quick_item {
+        display: flex; align-items: center; justify-content: center; gap: 10px;
+        padding: 14px 12px; border: 1px solid $azm-border; border-radius: 12px; background: #fff;
+        color: $azm-ink; font-weight: 600;
+        .oi { font-size: 24px; color: $azm-blue; }
+        &:hover { border-color: rgba($azm-blue, .4); background: rgba($azm-blue, .03); }
+    }
+
+    .o_azm_info_cards {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+    }
+    .o_azm_info_card {
+        text-align: start;
+        border: 1px solid $azm-border;
+        border-radius: $azm-radius;
+        background: #fff;
+        box-shadow: $azm-shadow;
+        padding: 0;
+        overflow: hidden;
+        color: $azm-ink;
+        header {
+            display: flex; align-items: center; gap: 12px; padding: 14px 16px;
+            background: var(--azm-tone-bg);
+            strong { display: block; font-size: 16px; color: var(--azm-tone); }
+            small { display: block; color: $azm-muted; }
+        }
+        ul { margin: 0; padding: 12px 16px 14px 34px; li { padding: 3px 0; font-size: 13px; } }
+    }
+
+    // Side column
+    .o_azm_assistant {
+        .o_azm_assistant_head {
+            display: flex; align-items: center; gap: 12px; margin-bottom: 12px;
+            .o_azm_sparkle { font-size: 34px; color: #7c3aed; }
+            strong { display: block; font-size: 17px; }
+            small { display: block; color: $azm-muted; }
+        }
+        .o_azm_assistant_input {
+            position: relative;
+            textarea {
+                width: 100%; resize: vertical; min-height: 84px;
+                border: 1px solid $azm-border; border-radius: 12px; padding: 10px 12px 34px;
+                font-size: 13px; color: $azm-ink; background: #fbfcfe;
+                &:focus { outline: none; border-color: rgba($azm-blue, .5); box-shadow: 0 0 0 3px rgba($azm-blue, .12); }
+            }
+            .o_azm_send {
+                position: absolute; bottom: 10px;
+                /*rtl:ignore*/
+                right: 10px;
+                width: 32px; height: 32px; border-radius: 8px; border: 0;
+                background: #5b6b86; color: #fff;
+                display: flex; align-items: center; justify-content: center;
+                &:hover { background: $azm-blue; }
+            }
+        }
+        .o_azm_answer {
+            margin-top: 10px; padding: 10px 12px; border-radius: 10px; font-size: 13px; white-space: pre-wrap;
+            background: rgba(#7c3aed, .06); border: 1px solid rgba(#7c3aed, .15);
+            &.o_azm_answer_warn { background: #fff7ed; border-color: #fed7aa; }
+        }
+        .o_azm_chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+        .o_azm_chip {
+            border: 1px solid $azm-border; background: #f6f8fc; color: $azm-ink;
+            border-radius: 9px; padding: 6px 10px; font-size: 12.5px;
+            &:hover { border-color: rgba($azm-blue, .4); color: $azm-blue; }
+        }
+    }
+    .o_azm_filters {
+        display: flex; gap: 8px; margin-bottom: 8px;
+        button {
+            flex: 1 1 0; border: 1px solid $azm-border; background: #fff; border-radius: 8px; padding: 5px 0; font-size: 12.5px;
+            &.active { background: rgba($azm-blue, .1); color: $azm-blue; border-color: rgba($azm-blue, .3); font-weight: 700; }
+            &.o_azm_f_high { color: #dc2626; }
+            &.o_azm_f_medium { color: #ea580c; }
+            &.o_azm_f_low { color: #0d9488; }
+        }
+    }
+    .o_azm_prio {
+        width: 8px; height: 30px; border-radius: 4px; flex: 0 0 auto; background: #cbd5e1;
+        &.o_azm_prio_high { background: #ef4444; }
+        &.o_azm_prio_medium { background: #f59e0b; }
+        &.o_azm_prio_low { background: #14b8a6; }
+    }
+}
+
+@media (max-width: 1399.98px) {
+    .o_azm_dashboard .o_azm_dash_grid { grid-template-columns: minmax(0, 1fr); }
+    .o_azm_dashboard .o_azm_dash_side { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+}
+@media (max-width: 1199.98px) {
+    .o_azm_dashboard .o_azm_journey { flex-wrap: wrap; .o_azm_phase { flex: 1 1 140px; } .o_azm_phase_arrow { display: none; } }
+    .o_azm_dashboard .o_azm_row_2, .o_azm_dashboard .o_azm_info_cards { grid-template-columns: minmax(0, 1fr); }
+}
+
+// ---------------------------------------------------------------------------
+// Entities kanban
+// ---------------------------------------------------------------------------
+.o_azm_entity_stats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(130px, 1fr)) repeat(2, minmax(220px, 1.6fr));
+    gap: 14px;
+    padding: 4px 16px 14px;
+    background: $azm-bg;
+}
+@media (max-width: 1399.98px) {
+    .o_azm_entity_stats { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+}
+.o_azm_entity_kanban .o_kanban_renderer, .o_kanban_renderer.o_azm_entity_kanban {
+    --KanbanRecord-width: 270px;
+    --KanbanRecord-margin-h: 8px;
+    --KanbanRecord-margin-v: 8px;
+}
+.o_kanban_record.o_azm_entity_card {
+    padding: 0;
+    border: 1px solid $azm-border;
+    border-radius: $azm-radius;
+    overflow: hidden;
+    box-shadow: $azm-shadow;
+    transition: transform .15s ease, box-shadow .15s ease;
+    &:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(15, 35, 71, .12); }
+
+    .o_azm_card_cover {
+        height: 112px;
+        margin: 10px 10px 0;
+        border-radius: 10px;
+        overflow: hidden;
+        img { width: 100%; height: 100%; object-fit: cover; }
+    }
+    .o_azm_card_cover_placeholder {
+        display: flex; align-items: center; justify-content: center; height: 100%;
+        background:
+            radial-gradient(60% 90% at 80% 0%, rgba(80, 140, 255, .55), rgba(80, 140, 255, 0) 60%),
+            linear-gradient(135deg, $azm-navy, #1b4c9b);
+        .oi { font-size: 46px; color: rgba(255, 255, 255, .85); }
+    }
+    .o_azm_card_body { padding: 12px 14px 6px; }
+    .o_azm_card_head { display: flex; align-items: flex-start; gap: 10px; }
+    .o_azm_card_names {
+        flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column;
+        .o_azm_card_title { font-size: 16px; font-weight: 800; color: $azm-ink; }
+        .o_azm_card_subtitle { font-size: 13.5px; color: $azm-muted; }
+    }
+    .o_azm_card_logo {
+        flex: 0 0 auto; width: 64px; height: 52px; display: flex; align-items: center; justify-content: center;
+        img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        .o_azm_card_code { font-weight: 800; font-size: 13px; color: $azm-blue; background: rgba($azm-blue, .08); padding: 6px 8px; border-radius: 8px; }
+    }
+    .o_azm_card_meta {
+        display: flex; align-items: center; gap: 14px; margin-top: 10px; font-size: 12.5px; color: $azm-muted;
+        > span { display: inline-flex; align-items: center; gap: 4px; }
+        .badge { font-size: 12px; padding: 5px 12px; border-radius: 8px; font-weight: 600; }
+        .badge.text-bg-success { color: #15803d !important; background: #dcfce7 !important; }
+        .badge.text-bg-warning { color: #c2410c !important; background: #ffedd5 !important; }
+        .badge.text-bg-muted, .badge:not([class*="text-bg-"]) { color: #475569 !important; background: #eef2f7 !important; }
+    }
+    .o_azm_card_figures {
+        display: flex; gap: 14px; margin-top: 10px; padding-top: 8px; border-top: 1px dashed $azm-border;
+        font-size: 12.5px; color: $azm-ink; font-weight: 600;
+        > span { display: inline-flex; align-items: center; gap: 4px; .oi { color: $azm-muted; font-size: 16px; } }
+    }
+    .o_azm_card_footer {
+        display: flex; align-items: center; gap: 10px; padding: 10px 14px 12px; margin-top: auto;
+        font-size: 12px; color: $azm-muted;
+        .o_azm_card_progress_label { white-space: nowrap; }
+        .o_azm_progress { height: 6px; }
+        .o_azm_card_progress_value { font-weight: 700; color: $azm-ink; min-width: 26px; text-align: center; }
+        .o_azm_card_open {
+            width: 30px; height: 30px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+            background: rgba($azm-blue, .08); color: $azm-blue;
+            &:hover { background: $azm-blue; color: #fff; }
+        }
+    }
+}
+
+// Domain & generic kanbans
+.o_azm_domain_kanban .o_kanban_record { border-radius: $azm-radius; }
+.o_azm_kanban .o_kanban_record { border-radius: 12px; }
+
+// ---------------------------------------------------------------------------
+// Entity form
+// ---------------------------------------------------------------------------
+.o_form_view .o_azm_entity_form, .o_azm_entity_form {
+    .o_form_sheet_bg { background: $azm-bg; }
+    .o_form_sheet {
+        max-width: none !important;
+        background: transparent;
+        border: 0;
+        box-shadow: none;
+        padding-top: 8px;
+    }
+    .o_notebook > .o_notebook_headers {
+        background: #fff;
+        border: 1px solid $azm-border;
+        border-radius: 12px 12px 0 0;
+        padding: 0 8px;
+        .nav-link { padding: 12px 14px; font-weight: 600; }
+    }
+    .o_notebook > .tab-content {
+        background: #fff;
+        border: 1px solid $azm-border;
+        border-top: 0;
+        border-radius: 0 0 12px 12px;
+        padding: 18px;
+    }
+    .o_azm_form_logo img { border-radius: 12px; border: 1px solid $azm-border; background: #fff; }
+}
+
+.o_azm_entity_header {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-bottom: 16px;
+}
+.o_azm_entity_hero {
+    display: grid;
+    grid-template-columns: minmax(320px, 0.9fr) minmax(0, 1.4fr);
+    min-height: 180px;
+    background: #fff;
+    border: 1px solid $azm-border;
+    border-radius: $azm-radius;
+    box-shadow: $azm-shadow;
+    overflow: hidden;
+}
+.o_azm_entity_identity {
+    padding: 18px 22px;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: 1fr auto;
+    gap: 6px 16px;
+    align-items: center;
+}
+.o_azm_entity_logo {
+    width: 96px; height: 80px; display: flex; align-items: center; justify-content: center;
+    img { max-width: 100%; max-height: 100%; object-fit: contain; }
+    > .oi { font-size: 44px; color: $azm-blue; background: rgba($azm-blue, .08); border-radius: 16px; padding: 14px; }
+}
+.o_azm_entity_names {
+    display: flex; flex-direction: column; min-width: 0;
+    .o_azm_entity_code { font-size: 26px; font-weight: 900; color: $azm-navy; line-height: 1; }
+    .o_azm_entity_en { font-size: 17px; font-weight: 600; color: #1e3a8a; }
+    h2 { font-size: 19px; margin: 2px 0 0; color: $azm-ink; font-weight: 600; }
+}
+.o_azm_entity_facts {
+    grid-column: 1 / -1;
+    display: flex; flex-wrap: wrap; gap: 8px 22px; list-style: none; margin: 8px 0 0; padding: 0;
+    font-size: 13px; color: $azm-ink;
+    li { display: flex; align-items: center; gap: 6px; .oi { color: $azm-muted; } }
+    a { color: $azm-blue; }
+}
+.o_azm_entity_cover {
+    position: relative;
+    background:
+        radial-gradient(60% 120% at 85% 10%, rgba(80, 140, 255, .45), rgba(80, 140, 255, 0) 60%),
+        linear-gradient(120deg, #0a1a3d 0%, #11336f 55%, #1b4c9b 100%);
+    background-size: cover;
+    background-position: center;
+    &.o_azm_has_cover::before {
+        content: "";
+        position: absolute; inset: 0;
+        background: linear-gradient(90deg, rgba(255, 255, 255, .9) 0%, rgba(255, 255, 255, 0) 22%, rgba(8, 27, 61, 0) 55%, rgba(8, 27, 61, .55) 100%);
+    }
+}
+.o_azm_entity_cover_text {
+    position: absolute;
+    top: 0; bottom: 0;
+    right: 0;
+    display: flex; flex-direction: column; justify-content: center; align-items: flex-end; gap: 4px;
+    padding: 18px 26px;
+    color: #fff;
+    text-align: end;
+    max-width: 60%;
+    > strong { font-size: 22px; line-height: 1.3; font-weight: 800; text-shadow: 0 2px 8px rgba(0, 0, 0, .35); }
+    > span { font-size: 15px; color: #e6eefc; margin-bottom: 10px; }
+}
+.o_azm_entity_kpis { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+@media (max-width: 1599.98px) { .o_azm_entity_kpis { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); } }
+@media (max-width: 1199.98px) {
+    .o_azm_entity_hero { grid-template-columns: minmax(0, 1fr); }
+    .o_azm_entity_cover { min-height: 160px; }
+    .o_azm_entity_kpis { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+}
+
+.o_azm_overview {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+    @media (max-width: 1199.98px) { grid-template-columns: minmax(0, 1fr); }
+    .o_azm_card { box-shadow: none; }
+}
+.o_azm_info_layout {
+    display: flex; gap: 16px; align-items: flex-start;
+    .o_azm_info_icon {
+        flex: 0 0 auto; width: 84px; height: 84px; border-radius: 14px;
+        display: flex; align-items: center; justify-content: center;
+        background: rgba($azm-blue, .07); color: $azm-blue;
+        .oi { font-size: 44px; }
+    }
+}
+.o_azm_info_list {
+    flex: 1 1 auto; margin: 0;
+    display: grid; grid-template-columns: max-content 1fr; gap: 0 14px;
+    dt { font-size: 12px; color: $azm-muted; font-weight: 500; padding: 8px 0; border-bottom: 1px solid #eef2f7; }
+    dd { margin: 0; min-width: 0; overflow-wrap: anywhere; font-size: 13.5px; color: $azm-ink; padding: 8px 0; border-bottom: 1px solid #eef2f7; }
+}
+.o_azm_steps {
+    list-style: none; margin: 0; padding: 0;
+    li {
+        display: flex; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid #eef2f7; font-size: 14px;
+        &:last-child { border-bottom: 0; }
+        &.o_done span:last-child { color: $azm-muted; text-decoration: line-through; }
+    }
+    .o_azm_check {
+        width: 20px; height: 20px; border-radius: 5px; border: 1.5px solid #9aa8bf;
+        display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
+        .oi { font-size: 16px; color: #fff; }
+    }
+    .o_done .o_azm_check { background: #16a34a; border-color: #16a34a; }
+}
+
+// Cards the current user has no rights to open: shown, but not clickable
+.o_azm_phase.o_azm_static, .o_azm_info_card.o_azm_static, .o_azm_kpi.o_azm_kpi_static {
+    cursor: default;
+    &:hover { transform: none !important; box-shadow: $azm-shadow !important; }
+}
