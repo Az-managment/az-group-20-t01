@@ -144,3 +144,70 @@ class TestAzmFinancialModel(TransactionCase):
             Assessment.with_user(self.preparer_b).create({"entity_id": unassigned.id})
         answers = self.env["azm.fin.answer"].with_user(self.preparer_b).search([("assessment_id", "in", ids)])
         self.assertEqual(answers.assessment_id, theirs)
+
+
+@tagged("post_install", "-at_install")
+class TestAzmFinRollup(TransactionCase):
+    """The roll-up azm.fin.answer must follow the standard questions, and must
+    not be writable behind their back."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        scope = cls.env["azm.fin.scope"].search([("code", "=", "EDU")])
+        cls.entity = cls.env["azm.entity"].create({
+            "code": "FRU", "name": "كيان التجميع", "fin_scope_ids": [(6, 0, scope.ids)]})
+        cls.assessment = cls.env["azm.fin.assessment"].create({"entity_id": cls.entity.id})
+        cls.line = cls.assessment.answer_ids.filtered(lambda a: a.code == "FIN-004")
+
+    def _line_for(self, role):
+        return self.line.qanswer_ids.filtered(lambda q: q.role == role)[:1]
+
+    def test_every_requirement_has_its_standard_questions(self):
+        roles = self.line.qanswer_ids.mapped("role")
+        for role in ("state", "impl", "rule", "target"):
+            self.assertIn(role, roles)
+
+    def test_the_roll_up_follows_the_questions(self):
+        state = self._line_for("state")
+        state.option_id = state.question_id.option_ids.filtered(
+            lambda o: o.name == "مطبق جزئيًا").id
+        state.text = "تغطية جزئية"
+        self.assertEqual(self.line.state, "partial")
+        self.assertEqual(self.line.current, "تغطية جزئية")
+
+        impl = self._line_for("impl")
+        impl.option_ids = [(6, 0, impl.question_id.option_ids.filtered(
+            lambda o: o.name in ("SAP", "Excel")).ids)]
+        self.assertEqual(self.line.impl, "SAP,Excel")
+
+        target = self._line_for("target")
+        target.option_id = target.question_id.option_ids.filtered(
+            lambda o: o.name == "تحسين").id
+        self.assertEqual(self.line.future_stance, "تحسين")
+
+    def test_an_unknown_answer_is_not_a_state(self):
+        state = self._line_for("state")
+        state.option_id = state.question_id.option_ids.filtered(
+            lambda o: o.name == "لا أعرف").id
+        self.assertFalse(self.line.state, "«لا أعرف» must not count as a state")
+
+    def test_na_is_declared_on_the_requirement(self):
+        """No question produces «لا ينطبق»; it is declared on the requirement."""
+        self.line.na_declared = True
+        self.assertEqual(self.line.state, "na")
+
+    def test_the_derived_fields_refuse_a_direct_write(self):
+        with self.assertRaises(UserError):
+            self.line.write({"state": "full"})
+        with self.assertRaises(UserError):
+            self.line.write({"impl": "يدوي أو ورقي"})
+
+    def test_the_workspace_still_writes_through_the_questions(self):
+        """The OWL workspace and action_fill_demo both go through here."""
+        self.line._workspace_write({"state": "full", "current": "مطبق بالكامل اليوم",
+                                    "impl": ["SAP"]})
+        self.assertEqual(self.line.state, "full")
+        self.assertEqual(self.line.impl, "SAP")
+        self.assertEqual(self._line_for("state").option_id.name, "مطبق بالكامل")
+        self.assertTrue(self.line.is_done)

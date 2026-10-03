@@ -36,7 +36,9 @@ STATES = [
     ("unavailable", "غير متاح حاليًا"),
     ("na", "لا ينطبق"),
 ]
-IMPLEMENTATIONS = ["نظام", "يدوي", "Excel", "مختلط"]
+# The وسيلة التنفيذ scale, taken from the spreadsheet. _workspace_write drops
+# any value not in this list silently, so it has to match the questionnaire.
+IMPLEMENTATIONS = ["النظام الحالي", "SAP", "Excel", "يدوي أو ورقي", "لا يوجد نظام"]
 
 
 class AzmFinModule(models.Model):
