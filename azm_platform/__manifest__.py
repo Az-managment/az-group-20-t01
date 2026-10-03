@@ -1,6 +1,6 @@
 {
     'name': 'AZM Enterprise Operating Model Platform',
-    'version': '20.0.1.2.0',
+    'version': '20.0.1.3.0',
     'summary': 'One Group. Unified Systems. Stronger Tomorrow.',
     'description': """
 AZM Enterprise Operating Model Platform
@@ -23,7 +23,7 @@ No data is duplicated: every figure is computed live from the source apps.
     'category': 'Services/AZM',
     'author': 'AZM Group',
     'license': 'LGPL-3',
-    'depends': ['mail', 'hr', 'project', 'web_hierarchy', 'auth_oauth', 'azm_operating_model'],
+    'depends': ['mail', 'hr', 'project', 'web_hierarchy', 'auth_oauth', 'web_enterprise', 'azm_operating_model'],
     'data': [
         'security/azm_security.xml',
         'views/res_company_views.xml',

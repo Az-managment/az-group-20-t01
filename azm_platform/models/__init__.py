@@ -7,3 +7,4 @@ from . import azm_om_dashboard
 from . import azm_fin_dashboard
 from . import azm_om_hub
 from . import azm_registers
+from . import res_users_settings
