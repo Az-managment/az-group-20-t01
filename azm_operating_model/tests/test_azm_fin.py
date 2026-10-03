@@ -536,3 +536,33 @@ class TestAzmFinOutputs(TransactionCase):
             html = assessment.workspace_output(False, tab, "model") or ""
             self.assertTrue(html.strip(), f"{tab} renders nothing")
             ET.fromstring(f"<root>{html}</root>")   # raises if the markup is broken
+
+    def test_each_output_renders_in_its_own_style(self):
+        """Only دورات العمل renders a step list and only الصلاحيات checks the
+        separation of duties; a policy rendered as a workflow would be the
+        wrong document even with the right requirements in it."""
+        from odoo.addons.azm_operating_model.models import fin_engine
+        assessment = self.env["azm.fin.assessment"].search([], limit=1)
+        if not assessment:
+            self.skipTest("no financial assessment in this database")
+        for profile in ("L", "C", "P", "W", "A", "R", "I"):
+            line = assessment.answer_ids.filtered(
+                lambda a: a.profile == profile and a.applicable)[:1]
+            if not line:
+                continue
+            columns = line.requirement_id._schema()["columns"]
+            row = [c["options"][0] if c["options"] else "قيمة" for c in columns]
+            line._workspace_write({"state": "full", "current": "قاعدة", "table": [row]})
+
+        for tab in fin_engine.TAB_PROFILES:
+            html = assessment.workspace_output(False, tab, "model") or ""
+            steps = "o_azm_steps" in html
+            self.assertEqual(steps, tab == "workflow",
+                             f"{tab} {'renders' if steps else 'does not render'} a step list")
+
+    def test_each_output_is_its_own_document(self):
+        """Two tabs sharing a document code would file two different outputs
+        under one reference."""
+        from odoo.addons.azm_operating_model.models import fin_engine
+        codes = [fin_engine.DOC_CODES[tab] for tab, _t in fin_engine.OUTPUT_TABS]
+        self.assertEqual(len(codes), len(set(codes)), f"duplicate document codes: {codes}")
