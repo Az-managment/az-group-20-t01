@@ -2,7 +2,7 @@ import os
 
 from odoo.tests import TransactionCase, new_test_user, tagged
 
-from odoo.addons.azm_platform.hooks import DEV_ENTITY_DATA, ENTITY_PROFILES
+from odoo.addons.azm_platform.hooks import DEV_DOCUMENTS, DEV_ENTITY_DATA, ENTITY_PROFILES
 
 
 @tagged('post_install', '-at_install')
@@ -72,4 +72,52 @@ class TestEntityWiring(TransactionCase):
             self.env['hr.employee'].with_user(user).search_count(
                 [('company_id', '=', company.id)]),
             "the card and the list behind it disagree",
+        )
+
+    def test_every_entity_has_its_own_files(self):
+        """Seeded documents have to be readable, not just present.
+
+        documents.document defaults access_internal to 'none', which hides a
+        document from every internal user: the files would exist and the
+        entity card would still report nothing.
+        """
+        if os.environ.get('ODOO_STAGE') != 'dev':
+            self.skipTest("the entity sample data is only loaded on development builds")
+        if 'documents.document' not in self.env:
+            self.skipTest("Documents is not installed")
+        for xml_id, files in DEV_DOCUMENTS.items():
+            company = self.env.ref(xml_id, raise_if_not_found=False)
+            if not company:
+                continue
+            scoped = company.with_context(allowed_company_ids=[company.id])
+            self.assertEqual(
+                scoped.azm_document_count, len(files),
+                f"{company.name} reports {scoped.azm_document_count} files, expected {len(files)}",
+            )
+            for title, _summary in files:
+                document = self.env['documents.document'].search([
+                    ('name', '=', title), ('company_id', '=', company.id),
+                ], limit=1)
+                self.assertTrue(document, f"{title} is missing from {company.name}")
+                self.assertNotEqual(
+                    document.access_internal, 'none',
+                    f"{title} is invisible to internal users",
+                )
+
+    def test_the_seeded_files_stay_inside_their_entity(self):
+        if os.environ.get('ODOO_STAGE') != 'dev' or 'documents.document' not in self.env:
+            self.skipTest("the entity sample data is only loaded on development builds")
+        user = self.env['res.users'].with_context(active_test=False).search(
+            [('login', '=', 'fue.staff')], limit=1)
+        if not user:
+            self.skipTest("the demo staff only exist on development builds")
+        own = user.company_ids[0]
+        other = next((c for c in self.entities if c != own), None)
+        self.assertTrue(other)
+        seen = self.env['documents.document'].with_user(user).with_context(
+            allowed_company_ids=[own.id]).search([('type', '!=', 'folder')])
+        self.assertTrue(seen, "the user sees none of their own files")
+        self.assertNotIn(
+            other, seen.mapped('company_id'),
+            f"{user.login} can read files belonging to {other.name}",
         )

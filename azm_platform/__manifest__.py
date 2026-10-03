@@ -1,6 +1,6 @@
 {
     'name': 'AZM Enterprise Operating Model Platform',
-    'version': '20.0.1.4.0',
+    'version': '20.0.1.5.0',
     'summary': 'One Group. Unified Systems. Stronger Tomorrow.',
     'description': """
 AZM Enterprise Operating Model Platform
@@ -10,7 +10,7 @@ A read-only cockpit over the data you already have in Odoo:
 * Entities = companies (res.company), with logo, country, cover and type
 * People and teams from Employees / Departments (hr)
 * Work and progress from Projects / Tasks (project)
-* Files from Documents (when installed) or attachments
+* Files from Documents, one workspace per entity
 * Home dashboard, entity pages, AZM sidebar, branded login, AI assistant
 * Operating models (from AZM Operating Model): procurement cycle and unified financial
   model as "files" with KPIs, unified Assessments and Risk Register pages, Home and
@@ -25,7 +25,8 @@ No data is duplicated: every figure is computed live from the source apps.
     'license': 'LGPL-3',
     'depends': [
         'az_group_base',
-        'mail', 'hr', 'project', 'web_hierarchy', 'auth_oauth', 'azm_operating_model',
+        'mail', 'hr', 'project', 'documents', 'web_hierarchy', 'auth_oauth',
+        'azm_operating_model',
     ],
     'data': [
         'security/azm_security.xml',
