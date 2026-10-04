@@ -1,0 +1,254 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="azm_platform.FinTree">
+    <div class="o_action o_azm_dashboard o_azm_om o_azm_fin_tree" dir="rtl">
+
+        <div class="o_azm_om_title">
+            <div>
+                <h1>شجرة النموذج المالي <small class="text-muted">Model tree</small></h1>
+                <p class="text-muted mb-0">النموذج › الموديول › الموضوع › المتطلب — ومستند كل متطلب بجواره.</p>
+            </div>
+            <div t-if="this.state.loaded and this.d.available" class="o_azm_om_selects">
+                <select class="form-select form-select-sm" t-on-change="(ev) => this.onEntityChange(ev)">
+                    <option t-foreach="this.d.entity_options" t-as="opt" t-key="opt.id"
+                            t-att-value="opt.id" t-att-selected="opt.id === this.d.company.id"
+                            t-out="opt.name"/>
+                </select>
+            </div>
+        </div>
+
+        <div t-if="!this.state.loaded" class="o_azm_loading"><i class="fa fa-circle-o-notch fa-spin"/></div>
+
+        <t t-elif="!this.d.available">
+            <div class="o_azm_card p-4 text-muted">النموذج المالي غير متاح لحسابك.</div>
+        </t>
+
+        <t t-else="">
+            <div t-attf-class="o_azm_banner o_azm_banner_{{this.banner.css}}" t-out="this.banner.text"/>
+
+            <section class="o_azm_kpis o_azm_om_kpis">
+                <t t-foreach="this.kpis" t-as="kpi" t-key="kpi.key">
+                    <div class="o_azm_kpi o_azm_om_kpi o_azm_kpi_static">
+                        <span class="o_azm_kpi_text">
+                            <span class="o_azm_kpi_label" t-out="kpi.label"/>
+                            <strong class="o_azm_kpi_value" t-out="kpi.value"/>
+                            <span t-if="kpi.meter !== undefined" t-attf-class="o_azm_progress o_azm_om_meter o_azm_tone_{{kpi.tone}}">
+                                <span class="o_azm_progress_bar" t-attf-style="width: {{kpi.meter or 0}}%"/>
+                            </span>
+                            <small t-if="kpi.sub" t-out="kpi.sub"/>
+                        </span>
+                        <span t-attf-class="o_azm_icon_badge o_azm_tone_{{kpi.tone}}">
+                            <i class="oi" t-att-data-icon="kpi.icon" t-att-title="kpi.label"/>
+                        </span>
+                    </div>
+                </t>
+            </section>
+
+            <div class="o_azm_tree_split">
+
+                <!-- ============================== the tree -->
+                <aside class="o_azm_card o_azm_tree_panel">
+                    <header class="o_azm_card_header">
+                        <h3>شجرة النموذج</h3>
+                        <span class="o_azm_tree_tools">
+                            <a href="#" t-on-click.prevent="() => this.expandAll()">فتح الكل</a>
+                            <a href="#" t-on-click.prevent="() => this.collapseAll()">طي الكل</a>
+                        </span>
+                    </header>
+                    <div class="o_azm_tree_search">
+                        <i class="oi" data-icon="search"/>
+                        <input type="text" class="form-control form-control-sm"
+                               placeholder="ابحث بالكود أو العنوان… مثل FIN.PUR.03"
+                               t-att-value="this.state.query"
+                               t-on-input="(ev) => this.state.query = ev.target.value"/>
+                    </div>
+
+                    <div class="o_azm_tree_scroll">
+                        <div t-if="!this.tree.length" class="text-muted p-3">لا نتائج.</div>
+
+                        <t t-foreach="this.tree" t-as="m" t-key="m.id">
+                            <div class="o_azm_tree_module">
+                                <button type="button" class="o_azm_tree_row o_azm_tree_l1"
+                                        t-on-click="() => this.toggle('m', m.id)">
+                                    <i t-attf-class="oi o_azm_tree_caret {{this.isOpen('m', m.id) ? 'o_azm_open' : ''}}"
+                                       data-icon="chevron_left"/>
+                                    <span class="o_azm_code" t-out="m.code"/>
+                                    <span class="o_azm_tree_name" t-out="m.name"/>
+                                    <span class="o_azm_tree_meta">
+                                        <span t-out="m.requirements"/>
+                                        <span t-if="m.gaps" class="o_azm_tree_gap" t-out="m.gaps"/>
+                                    </span>
+                                </button>
+
+                                <t t-if="this.isOpen('m', m.id)">
+                                    <t t-foreach="m.topics" t-as="t" t-key="t.id">
+                                        <button type="button" class="o_azm_tree_row o_azm_tree_l2"
+                                                t-on-click="() => this.toggle('t', t.id)">
+                                            <i t-attf-class="oi o_azm_tree_caret {{this.isOpen('t', t.id) ? 'o_azm_open' : ''}}"
+                                               data-icon="chevron_left"/>
+                                            <span class="o_azm_code o_azm_code_dim" t-out="t.code"/>
+                                            <span class="o_azm_tree_name" t-out="t.name"/>
+                                            <span class="o_azm_tree_meta" t-out="t.requirements"/>
+                                        </button>
+
+                                        <t t-if="this.isOpen('t', t.id)">
+                                            <button type="button" t-foreach="t.items" t-as="i" t-key="i.id"
+                                                    t-attf-class="o_azm_tree_row o_azm_tree_l3 {{this.state.selected === i.id ? 'o_azm_selected' : ''}}"
+                                                    t-on-click="() => this.select(i)">
+                                                <span t-attf-class="o_azm_dot o_azm_dot_{{i.status.css}}"
+                                                      t-att-title="i.status.label"/>
+                                                <span class="o_azm_code o_azm_code_dim" t-out="i.tree_ref"/>
+                                                <span class="o_azm_tree_name" t-out="i.title"/>
+                                            </button>
+                                        </t>
+                                    </t>
+                                </t>
+                            </div>
+                        </t>
+                    </div>
+                </aside>
+
+                <!-- ============================== the requirement -->
+                <section class="o_azm_card o_azm_tree_detail">
+                    <t t-if="this.state.loadingNode">
+                        <div class="o_azm_loading"><i class="fa fa-circle-o-notch fa-spin"/></div>
+                    </t>
+
+                    <t t-elif="!this.state.node">
+                        <div class="o_azm_tree_empty">
+                            <i class="oi" data-icon="account_tree"/>
+                            <h3>اختر متطلبًا من الشجرة</h3>
+                            <p class="text-muted">كل متطلب يعرض ما هو مطلوب، وماذا يحدث اليوم في هذا الكيان، ومستنده.</p>
+                            <button t-if="this.d.summary_doc" type="button" class="btn btn-sm btn-light"
+                                    t-on-click="() => this.openDoc(this.d.summary_doc, false)">
+                                <i class="oi me-1" data-icon="description"/>قراءة ملخص الكيان
+                            </button>
+                        </div>
+                    </t>
+
+                    <t t-else="">
+                        <t t-set="n" t-value="this.state.node"/>
+                        <header class="o_azm_card_header o_azm_tree_detail_head">
+                            <div>
+                                <span class="o_azm_code o_azm_code_big" t-out="n.tree_ref"/>
+                                <h3 t-out="n.title"/>
+                            </div>
+                            <span t-attf-class="o_azm_pill o_azm_pill_{{n.status.css}}" t-out="n.status.ar"/>
+                        </header>
+
+                        <div class="o_azm_tree_path">
+                            <t t-foreach="n.path" t-as="step" t-key="step_index">
+                                <span class="o_azm_tree_path_step">
+                                    <small t-out="step[0]"/>
+                                    <b t-out="step[1]"/>
+                                </span>
+                                <i t-if="!step_last" class="oi" data-icon="chevron_left"/>
+                            </t>
+                        </div>
+
+                        <div class="o_azm_tree_actions">
+                            <button type="button" class="btn btn-sm btn-primary"
+                                    t-on-click="() => this.openDoc(n.doc, false)">
+                                <i class="oi me-1" data-icon="description"/>قراءة المستند
+                            </button>
+                            <button type="button" class="btn btn-sm btn-light"
+                                    t-on-click="() => this.openDoc(n.doc, true)">
+                                <i class="oi me-1" data-icon="download"/>تنزيل
+                            </button>
+                            <button type="button" class="btn btn-sm btn-light"
+                                    t-on-click="() => this.openRequirement(n.id)">
+                                <i class="oi me-1" data-icon="open_in_new"/>فتح المتطلب
+                            </button>
+                        </div>
+
+                        <div class="o_azm_tree_facts">
+                            <div><small>الكيان</small><b t-out="n.company"/></div>
+                            <div><small>المالك المقترح</small><b t-out="n.owner or '—'"/></div>
+                            <div><small>نوع المتطلب</small><b t-out="n.profile"/></div>
+                            <div><small>نطاق الانطباق</small><b t-out="n.scope or '—'"/></div>
+                        </div>
+
+                        <div class="o_azm_tree_sec">
+                            <h4>ما المطلوب؟ <small>What is required</small></h4>
+                            <p t-out="n.question"/>
+                        </div>
+
+                        <div t-if="n.pending.length" class="o_azm_tree_sec">
+                            <h4>الأسئلة المطلوب الإجابة عنها <small>Questions to answer</small></h4>
+                            <ol class="o_azm_tree_questions">
+                                <li t-foreach="n.pending" t-as="q" t-key="q_index" t-out="q"/>
+                            </ol>
+                        </div>
+
+                        <div t-if="n.answers.length" class="o_azm_tree_sec">
+                            <h4>ماذا يحدث اليوم؟ <small>Today</small></h4>
+                            <table class="o_azm_tree_kv">
+                                <tr t-foreach="n.answers" t-as="a" t-key="a_index">
+                                    <th t-out="a.label"/>
+                                    <td t-attf-class="{{a.muted ? 'text-muted' : ''}}" t-out="a.value"/>
+                                </tr>
+                                <tr t-if="n.impl"><th>كيف يُنفَّذ</th><td t-out="n.impl"/></tr>
+                                <tr t-if="n.rule"><th>حالة السياسة أو القاعدة</th><td t-out="n.rule"/></tr>
+                            </table>
+                        </div>
+
+                        <div t-if="n.steps.length" class="o_azm_tree_sec">
+                            <t t-foreach="n.steps" t-as="s" t-key="s_index">
+                                <h4 t-out="s.label"/>
+                                <ol class="o_azm_tree_steps">
+                                    <li t-foreach="s['items']" t-as="step" t-key="step_index">
+                                        <b t-out="step.title"/>
+                                        <div t-if="step.detail" class="text-muted" t-out="step.detail"/>
+                                    </li>
+                                </ol>
+                            </t>
+                        </div>
+
+                        <div t-if="n.tables.length" class="o_azm_tree_sec">
+                            <t t-foreach="n.tables" t-as="tbl" t-key="tbl_index">
+                                <h4 t-out="tbl.label"/>
+                                <div class="o_azm_tree_grid_wrap">
+                                    <table class="o_azm_tree_grid">
+                                        <thead><tr><th t-foreach="tbl.columns" t-as="c" t-key="c_index" t-out="c"/></tr></thead>
+                                        <tbody>
+                                            <tr t-foreach="tbl.rows" t-as="row" t-key="row_index">
+                                                <td t-foreach="row" t-as="cell" t-key="cell_index" t-out="cell"/>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </t>
+                        </div>
+
+                        <div t-if="n.problems" class="o_azm_tree_sec">
+                            <h4>ما المشكلة؟ <small>Issues</small></h4>
+                            <p class="o_azm_box o_azm_box_warn" t-out="n.problems"/>
+                        </div>
+
+                        <div t-if="n.target or n.target_note" class="o_azm_tree_sec">
+                            <h4>إلى أين نريد الوصول؟ <small>Direction</small></h4>
+                            <p>
+                                <b t-if="n.target" t-out="n.target"/>
+                                <t t-if="n.target and n.target_note"> — </t>
+                                <t t-out="n.target_note"/>
+                            </p>
+                        </div>
+
+                        <div t-if="n.na_reason" class="o_azm_tree_sec">
+                            <h4>لماذا لا ينطبق؟ <small>Why not applicable</small></h4>
+                            <p t-out="n.na_reason"/>
+                        </div>
+
+                        <div t-if="n.missing.length" class="o_azm_tree_sec">
+                            <h4>ما زال ناقصًا <small>Still to answer</small></h4>
+                            <ul><li t-foreach="n.missing" t-as="m" t-key="m_index" t-out="m"/></ul>
+                        </div>
+                    </t>
+                </section>
+            </div>
+        </t>
+    </div>
+</t>
+
+</templates>

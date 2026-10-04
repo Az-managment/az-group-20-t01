@@ -1,0 +1,227 @@
+.o_azm_fin_tree {
+    .o_azm_tree_split {
+        display: grid;
+        grid-template-columns: minmax(280px, 380px) 1fr;
+        gap: 16px;
+        align-items: start;
+    }
+
+    // ---------------------------------------------------------------- the tree
+    .o_azm_tree_panel {
+        position: sticky;
+        top: 12px;
+        padding-bottom: 8px;
+    }
+    .o_azm_tree_tools {
+        display: flex;
+        gap: 12px;
+        font-size: 12px;
+    }
+    .o_azm_tree_search {
+        position: relative;
+        padding: 8px 12px 10px;
+        .oi {
+            position: absolute;
+            inset-inline-start: 22px;
+            top: 15px;
+            font-size: 14px;
+            color: $azm-muted;
+            pointer-events: none;
+        }
+        .form-control { padding-inline-start: 30px; }
+    }
+    .o_azm_tree_scroll {
+        max-height: 62vh;
+        overflow-y: auto;
+        padding: 0 6px 6px;
+    }
+    .o_azm_tree_module + .o_azm_tree_module { border-top: 1px solid $azm-border; }
+
+    .o_azm_tree_row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        width: 100%;
+        border: 0;
+        background: transparent;
+        text-align: start;
+        padding: 6px 8px;
+        border-radius: 6px;
+        font-size: 13px;
+        line-height: 1.35;
+        &:hover { background: rgba($azm-blue, .07); }
+    }
+    .o_azm_tree_l1 { font-weight: 600; }
+    .o_azm_tree_l2 { padding-inline-start: 22px; color: $azm-ink; }
+    .o_azm_tree_l3 { padding-inline-start: 42px; }
+    .o_azm_tree_l3.o_azm_selected {
+        background: rgba($azm-blue, .13);
+        box-shadow: inset 2px 0 0 $azm-blue;
+    }
+    .o_azm_tree_caret {
+        flex: 0 0 auto;
+        font-size: 11px;
+        color: $azm-muted;
+        transition: transform .15s ease;
+        &.o_azm_open { transform: rotate(-90deg); }
+    }
+    .o_azm_tree_name {
+        flex: 1 1 auto;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .o_azm_tree_meta {
+        flex: 0 0 auto;
+        display: flex;
+        gap: 4px;
+        font-size: 11px;
+        color: $azm-muted;
+    }
+    .o_azm_tree_gap {
+        background: rgba(#f59e0b, .16);
+        color: #b45309;
+        border-radius: 20px;
+        padding: 0 6px;
+        font-weight: 600;
+    }
+    .o_azm_dot {
+        flex: 0 0 auto;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #cbd5e1;
+        &.o_azm_dot_ok { background: #16a34a; }
+        &.o_azm_dot_warn { background: #f59e0b; }
+        &.o_azm_dot_bad { background: #64748b; }
+        &.o_azm_dot_muted { background: #e2e8f0; }
+    }
+
+    // ---------------------------------------------------------------- the requirement
+    .o_azm_tree_detail { padding-bottom: 18px; }
+    .o_azm_tree_detail_head {
+        align-items: flex-start;
+        h3 { margin: 2px 0 0; }
+    }
+    .o_azm_tree_path {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        border-bottom: 1px solid $azm-border;
+        font-size: 12px;
+        .oi { font-size: 10px; color: $azm-muted; }
+    }
+    .o_azm_tree_path_step {
+        display: flex;
+        flex-direction: column;
+        small { color: $azm-muted; font-size: 10px; }
+    }
+    .o_azm_tree_actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 12px 16px 0;
+    }
+    .o_azm_tree_facts {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 10px;
+        padding: 14px 16px;
+        > div { display: flex; flex-direction: column; }
+        small { color: $azm-muted; font-size: 11px; }
+    }
+    .o_azm_tree_sec {
+        padding: 6px 16px 14px;
+        h4 {
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            small { font-weight: 400; color: $azm-muted; margin-inline-start: 6px; }
+        }
+        p { margin-bottom: 6px; }
+    }
+    .o_azm_tree_kv {
+        width: 100%;
+        font-size: 13px;
+        th {
+            width: 34%;
+            vertical-align: top;
+            padding: 4px 0;
+            color: $azm-muted;
+            font-weight: 500;
+        }
+        td { padding: 4px 0; }
+    }
+    .o_azm_tree_questions, .o_azm_tree_steps {
+        margin: 0;
+        padding-inline-start: 18px;
+        font-size: 13px;
+        li { margin-bottom: 4px; }
+    }
+    .o_azm_tree_grid_wrap { overflow-x: auto; }
+    .o_azm_tree_grid {
+        width: 100%;
+        font-size: 12px;
+        border-collapse: collapse;
+        th, td { border: 1px solid $azm-border; padding: 4px 6px; }
+        th { background: rgba($azm-blue, .06); font-weight: 600; }
+    }
+    .o_azm_tree_empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 70px 20px;
+        text-align: center;
+        .oi { font-size: 40px; color: $azm-border; }
+        h3 { margin: 0; font-size: 15px; }
+    }
+
+    @media (max-width: 992px) {
+        .o_azm_tree_split { grid-template-columns: 1fr; }
+        .o_azm_tree_panel { position: static; }
+        .o_azm_tree_scroll { max-height: 44vh; }
+    }
+}
+
+// Pieces this page needs that the shared sheets do not define on their own.
+.o_azm_fin_tree {
+    .o_azm_code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: .92em;
+        font-weight: 600;
+        color: $azm-blue;
+        white-space: nowrap;
+    }
+    .o_azm_code_dim { color: $azm-muted; font-weight: 500; }
+    .o_azm_code_big { font-size: 13px; }
+
+    .o_azm_banner {
+        border-radius: 8px;
+        padding: 9px 14px;
+        margin: 0 0 14px;
+        font-size: 13px;
+        &.o_azm_banner_info { background: #eef3ff; color: #1c3f86; }
+        &.o_azm_banner_warn { background: #fff4e0; color: #8a4b00; }
+        &.o_azm_banner_ok { background: #e7f6ec; color: #17633a; }
+    }
+
+    // the report's status vocabulary (ok / warn / bad / muted), as pills on screen
+    .o_azm_pill {
+        font-weight: 600;
+        &.o_azm_pill_ok { background: #e7f6ec; color: #17633a; }
+        &.o_azm_pill_warn { background: #fff4e0; color: #8a4b00; }
+        &.o_azm_pill_bad { background: #eef1f5; color: #475569; }
+        &.o_azm_pill_muted { background: #f1f5f9; color: $azm-muted; }
+    }
+
+    .o_azm_box {
+        border-radius: 6px;
+        padding: 8px 12px;
+        font-size: 13px;
+        &.o_azm_box_warn { background: #fff4e0; color: #8a4b00; }
+    }
+}

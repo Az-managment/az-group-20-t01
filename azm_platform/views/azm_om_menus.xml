@@ -41,6 +41,15 @@
     <menuitem id="menu_fin_dashboard_in_om" name="لوحة النموذج المالي" parent="azm_operating_model.azm_fin_menu_root"
               action="action_azm_fin_dashboard" sequence="1"/>
 
+    <!-- The model as a tree: FIN › module › topic › requirement, with each document beside it -->
+    <record id="action_azm_fin_tree" model="ir.actions.client">
+        <field name="name">شجرة النموذج المالي</field>
+        <field name="tag">azm_fin_tree</field>
+    </record>
+    <menuitem id="menu_fin_tree_in_om" name="شجرة النموذج" parent="azm_operating_model.azm_fin_menu_root"
+              action="action_azm_fin_tree" sequence="2"
+              groups="azm_operating_model.azm_group_user"/>
+
     <!-- Same page from the Operating Model app itself -->
     <menuitem id="menu_om_dashboard_in_om" name="نماذج التشغيل" parent="azm_operating_model.azm_menu_root"
               action="action_azm_om_hub" sequence="1"/>

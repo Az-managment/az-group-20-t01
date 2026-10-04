@@ -2,3 +2,4 @@ from . import test_om_dashboard
 from . import test_entity_wiring
 from . import test_language_switch
 from . import test_documents
+from . import test_fin_tree
