@@ -94,12 +94,19 @@ body.o_azm_mode.o_azm_sidebar_collapsed {
             font-size: 14px;
             white-space: nowrap;
             .oi { font-size: 20px; width: 22px; color: #c7d3ea; }
+            // an entry drawn rather than set in the icon font sits on the same grid
+            // the drawing fills its viewBox edge to edge, so it is given the inset the
+            // icon font's glyphs already have — otherwise it sits heavier than its neighbours
+            .o_azm_tree_mark {
+                width: 22px; height: 22px; padding: 1px 2px;
+                box-sizing: border-box; flex: 0 0 auto; color: #c7d3ea;
+            }
             &:hover { background: rgba(255, 255, 255, .07); color: #fff; }
             &.active {
                 background: linear-gradient(90deg, $azm-blue, $azm-blue-2);
                 color: #fff;
                 box-shadow: 0 6px 14px rgba($azm-blue, .35);
-                .oi { color: #fff; }
+                .oi, .o_azm_tree_mark { color: #fff; }
             }
         }
         .o_azm_sidebar_divider { height: 1px; margin: 10px 8px; background: rgba(255, 255, 255, .12); }

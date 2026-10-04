@@ -3,12 +3,13 @@
 
 <t t-name="azm_platform.TreesHub">
     <div class="o_action o_azm_dashboard o_azm_om o_azm_trees" dir="rtl">
-        <div class="o_azm_om_title">
+        <div class="o_azm_om_title o_azm_trees_title">
+            <span class="o_azm_trees_title_mark"><t t-call="azm_platform.TreeMark"/></span>
             <div>
-                <h1>الأشجار <small class="text-muted">Trees</small></h1>
+                <h1>شجر <small class="text-muted">Trees</small></h1>
                 <p class="text-muted mb-0">
                     كل نموذج يمكن السير فيه فرعًا بفرع — اختر كيانًا لتفتح شجرته.
-                    <small class="d-block">Every model the group can walk branch by branch — pick an entity to open its own tree.</small>
+                    <small class="o_azm_en">Every model the group can walk branch by branch — pick an entity to open its own tree.</small>
                 </p>
             </div>
         </div>
@@ -23,8 +24,9 @@
         </div>
 
         <t t-else="">
-            <section class="o_azm_kpis o_azm_hub_kpis">
-                <div t-foreach="this.totals" t-as="kpi" t-key="kpi.key" class="o_azm_kpi o_azm_kpi_static">
+            <section class="o_azm_kpis o_azm_trees_kpis">
+                <div t-foreach="this.totals" t-as="kpi" t-key="kpi.key"
+                     t-attf-class="o_azm_kpi o_azm_kpi_static o_azm_tone_{{kpi.tone}}">
                     <span class="o_azm_kpi_text">
                         <span class="o_azm_kpi_label">
                             <t t-out="kpi.label"/>
@@ -34,17 +36,18 @@
                         <small t-out="kpi.sub"/>
                         <small class="o_azm_en" t-out="kpi.sub_en"/>
                     </span>
-                    <span t-attf-class="o_azm_icon_badge o_azm_tone_{{kpi.tone}}">
-                        <i class="oi" t-att-data-icon="kpi.icon" t-att-title="kpi.label"/>
+                    <span class="o_azm_icon_badge">
+                        <t t-if="kpi.mark" t-call="azm_platform.TreeMark"/>
+                        <i t-else="" class="oi" t-att-data-icon="kpi.icon" t-att-title="kpi.label"/>
                     </span>
                 </div>
             </section>
 
             <!-- one section per tree, one card per entity in it -->
             <section t-foreach="this.sections" t-as="s" t-key="s.key"
-                     t-attf-class="o_azm_trees_section o_azm_trees_{{s.key}}">
+                     t-attf-class="o_azm_trees_section o_azm_trees_{{s.key}} o_azm_tone_{{s.tone}}">
                 <header class="o_azm_trees_head">
-                    <span t-attf-class="o_azm_icon_badge o_azm_tone_{{s.tone}}">
+                    <span class="o_azm_icon_badge">
                         <i class="oi" t-att-data-icon="s.icon" t-att-title="s.name"/>
                     </span>
                     <span class="o_azm_trees_names">
@@ -63,43 +66,48 @@
                 </header>
 
                 <div class="o_azm_trees_grid">
-                    <article t-foreach="s.cards" t-as="c" t-key="c.company_id" role="button"
-                             t-attf-class="o_azm_tree_card o_azm_tone_{{s.tone}} o_azm_status_{{c.status}}"
-                             t-att-title="c.name"
-                             t-on-click="() => this.open(s, c)">
+                    <article t-foreach="s.cards" t-as="c" t-key="c.company_id" role="button" tabindex="0"
+                             t-attf-class="o_azm_tree_card o_azm_status_{{c.status}}"
+                             t-att-aria-label="c.name"
+                             t-on-click="() => this.open(s, c)"
+                             t-on-keydown="(ev) => this.onCardKey(ev, s, c)">
+                        <span t-attf-class="o_azm_tree_card_ribbon o_azm_ribbon_{{c.status}}">
+                            <t t-out="c.status_label"/>
+                            <em class="o_azm_en" t-out="c.status_en"/>
+                        </span>
+
                         <header>
                             <img t-if="c.logoUrl" t-att-src="c.logoUrl" t-att-alt="c.name"/>
                             <span t-else="" class="o_azm_tree_card_mono" t-out="c.initials"/>
-                            <span class="o_azm_tree_card_names">
-                                <strong t-out="c.name"/>
-                                <small>
-                                    <t t-out="c.status_label"/>
-                                    <em class="o_azm_en" t-out="c.status_en"/>
-                                </small>
-                            </span>
+                            <strong t-out="c.name"/>
                         </header>
 
-                        <div class="o_azm_tree_card_meter">
-                            <span t-attf-class="o_azm_progress o_azm_om_meter o_azm_tone_{{s.tone}}">
-                                <span class="o_azm_progress_bar" t-attf-style="width: {{this.bar(c.completion)}}%"/>
+                        <div class="o_azm_tree_card_body">
+                            <span class="o_azm_ring_wrap">
+                                <svg class="o_azm_ring" viewBox="0 0 40 40" aria-hidden="true">
+                                    <circle class="o_azm_ring_track" cx="20" cy="20" r="15.9155"/>
+                                    <circle t-if="c.completion" class="o_azm_ring_value" cx="20" cy="20" r="15.9155"
+                                            t-attf-stroke-dasharray="{{this.bar(c.completion)}} 100"/>
+                                </svg>
+                                <b class="o_azm_ring_label" t-out="this.pct(c.completion)"/>
                             </span>
-                            <b t-out="this.pct(c.completion)"/>
+
+                            <dl class="o_azm_tree_card_figures">
+                                <div t-foreach="c.figures" t-as="f" t-key="f.key"
+                                     t-attf-class="o_azm_chip {{f.tone and f.value ? 'o_azm_chip_warn' : ''}}">
+                                    <dt>
+                                        <t t-out="f.label"/>
+                                        <em class="o_azm_en" t-out="f.en"/>
+                                    </dt>
+                                    <dd t-out="f.value"/>
+                                </div>
+                            </dl>
                         </div>
 
-                        <dl class="o_azm_tree_card_figures">
-                            <div t-foreach="c.figures" t-as="f" t-key="f.key"
-                                 t-attf-class="{{f.tone and f.value ? 'o_azm_warn' : ''}}">
-                                <dt>
-                                    <t t-out="f.label"/>
-                                    <em class="o_azm_en" t-out="f.en"/>
-                                </dt>
-                                <dd t-out="f.value"/>
-                            </div>
-                        </dl>
-
                         <footer>
-                            <i class="oi" data-icon="account_tree" title="افتح الشجرة"/>
+                            <t t-call="azm_platform.TreeMark"/>
                             <span>افتح الشجرة <em class="o_azm_en">Open the tree</em></span>
+                            <i class="oi o_azm_tree_card_go" data-icon="chevron_left" title="Open"/>
                         </footer>
                     </article>
                 </div>

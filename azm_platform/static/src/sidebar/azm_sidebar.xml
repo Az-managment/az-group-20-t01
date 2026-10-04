@@ -23,7 +23,8 @@
                         <a href="#" t-att-class="{'active': this.state.activeMenuId === item.id}"
                            t-att-title="item.name" t-att-data-menu-xmlid="item.menu.xmlid"
                            t-on-click.prevent="() => this.onClick(item)">
-                            <i class="oi" t-att-data-icon="item.icon" t-att-title="item.name"/>
+                            <t t-if="item.mark" t-call="{{item.mark}}"/>
+                            <i t-else="" class="oi" t-att-data-icon="item.icon" t-att-title="item.name"/>
                             <span t-out="item.name"/>
                         </a>
                     </li>

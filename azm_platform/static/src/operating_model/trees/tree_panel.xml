@@ -8,18 +8,21 @@
 -->
 
 <t t-name="azm_platform.TreeHead">
-    <div class="o_azm_om_title">
-        <div>
-            <h1>
-                <t t-out="this.pageTitle"/>
-                <small class="text-muted" t-out="this.pageTitleEn"/>
-            </h1>
-            <p class="text-muted mb-0" t-out="this.pageSubtitle"/>
+    <div class="o_azm_om_title o_azm_tree_title">
+        <div class="o_azm_tree_title_group">
+            <span class="o_azm_tree_title_mark"><t t-call="azm_platform.TreeMark"/></span>
+            <div>
+                <h1>
+                    <t t-out="this.pageTitle"/>
+                    <small class="text-muted" t-out="this.pageTitleEn"/>
+                </h1>
+                <p class="text-muted mb-0" t-out="this.pageSubtitle"/>
+            </div>
         </div>
         <div t-if="this.state.loaded and this.d.available" class="o_azm_om_selects">
             <button type="button" class="btn btn-sm btn-light o_azm_tree_back"
                     t-on-click="() => this.openTrees()">
-                <i class="oi me-1" data-icon="account_tree"/>كل الأشجار
+                <t t-call="azm_platform.TreeMark"/>كل الشجر
             </button>
             <select t-foreach="this.selects" t-as="sel" t-key="sel.key"
                     class="form-select form-select-sm" t-att-title="sel.title"

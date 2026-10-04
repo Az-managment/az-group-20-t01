@@ -17,8 +17,13 @@ const ICONS = {
     "azm_platform.menu_projects": "rocket_launch",
     "azm_platform.menu_tasks": "task",
     "azm_platform.menu_documents": "description",
-    "azm_platform.menu_trees": "forest",
     "azm_platform.menu_settings": "settings",
+};
+
+// Entries whose icon is one of the group's own drawings rather than a glyph of the
+// icon font. The value is the template that draws it.
+const MARKS = {
+    "azm_platform.menu_trees": "azm_platform.TreeMark",
 };
 
 // A divider is drawn before these entries (mirrors the design's sections).
@@ -79,6 +84,7 @@ export class AzmSidebar extends Component {
             name: menu.name,
             menu,
             icon: ICONS[menu.xmlid] || "chevron_right",
+            mark: MARKS[menu.xmlid] || false,
             divider: SECTION_STARTS.has(menu.xmlid),
         }));
     }

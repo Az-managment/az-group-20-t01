@@ -32,7 +32,7 @@
 
                     <t t-elif="!this.state.node">
                         <div class="o_azm_tree_empty">
-                            <i class="oi" data-icon="account_tree"/>
+                            <t t-call="azm_platform.TreeMark"/>
                             <h3>اختر سؤالًا من الشجرة</h3>
                             <p class="text-muted">كل سؤال يعرض ما يُسأل عنه، وماذا أجاب هذا الكيان، والمخاطر المترتبة على إجابته.</p>
                             <button t-if="this.d.assessment" type="button" class="btn btn-sm btn-light"

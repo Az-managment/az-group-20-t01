@@ -61,8 +61,11 @@ The sidebar entry **Operating Models** opens a landing page where every operatin
 Each file shows its KPIs (assessments, completion, certainty / maturity, open findings / gaps, entities covered);
 clicking it opens the model page with all its data and statistics. Group KPIs and an entity × model table sit on top and below.
 
-## Trees
-The sidebar entry **الأشجار · Trees** opens a landing page of every model that can be walked
+## شجر · Trees
+The sidebar entry **شجر · Trees** — marked by the group's own tree, three tiers drawn from
+the same triangle as the AZM logo (`static/src/components/tree_mark.xml`, one SVG in
+`currentColor` that serves the dark sidebar, a tinted badge and a card footer at any size)
+— opens a landing page of every model that can be walked
 branch by branch, three levels deep. There is a section per model and a **card per entity**
 under it, carrying that entity's own figures; clicking a card opens *that entity's* tree:
 
@@ -83,7 +86,7 @@ that has not started still gets a card and a tree — it shows what the model as
 ## What it adds
 | Where | What |
 |---|---|
-| AZM sidebar | **Operating Model**, **Assessments**, **Risk Register**, **الأشجار · Trees**, **Question Catalogue** (managers) |
+| AZM sidebar | **Operating Model**, **Assessments**, **Risk Register**, **شجر · Trees**, **Question Catalogue** (managers) |
 | Unified financial model page | KPIs, application status, one card per financial module (FIN/HRF, templates, applicability, completion, maturity, gaps), charts, entities, top gaps, assessments |
 | Operating Model page | 8 KPIs, 3 domain cards (Governance / Procurement Operations / Financial), one card per question area (stage) with questions, risk rules, risks, findings, completion, certainty, question mix, application status; risk-register & assessment donuts; entities table; top open risks; current assessments |
 | AZM Home | "Operating Model" KPI tile, quick links and an Operating Model section (KPIs, domains, latest assessments, top risks) |

@@ -1,4 +1,23 @@
 .o_azm_tree_page {
+    // ---------------------------------------------------------------- the mark
+    .o_azm_tree_title { align-items: center; }
+    .o_azm_tree_title_group {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .o_azm_tree_title_mark .o_azm_tree_mark {
+        width: 38px;
+        height: 38px;
+        color: map-get($azm-tones, 'green');
+    }
+    .o_azm_tree_back {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        .o_azm_tree_mark { width: 14px; height: 14px; color: map-get($azm-tones, 'green'); }
+    }
+
     .o_azm_tree_split {
         display: grid;
         grid-template-columns: minmax(280px, 380px) 1fr;
@@ -179,6 +198,7 @@
         padding: 70px 20px;
         text-align: center;
         .oi { font-size: 40px; color: $azm-border; }
+        .o_azm_tree_mark { width: 54px; height: 54px; color: $azm-border; }
         h3 { margin: 0; font-size: 15px; }
     }
 
@@ -268,6 +288,9 @@
 // The group reads in two languages, so every label on the tree pages says both.
 // Arabic leads; the English follows in a smaller, quieter hand, isolated so the
 // bidi algorithm never drags its punctuation into the Arabic line above it.
+// The mark is a drawing, not a letter: no baseline descender under it.
+.o_azm_tree_mark { display: block; }
+
 .o_azm_en, .o_azm_kpi_en {
     display: block;
     font-style: normal;

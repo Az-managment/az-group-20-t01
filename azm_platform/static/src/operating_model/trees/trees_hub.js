@@ -73,7 +73,7 @@ export class AzmTreesHub extends Component {
     get totals() {
         const t = this.d.totals;
         return [
-            { key: "trees", label: "الأشجار", en: "Trees", value: t.trees, icon: "forest", tone: "indigo",
+            { key: "trees", label: "شجر", en: "Trees", value: t.trees, mark: true, tone: "green",
                 sub: `${t.units} فرعًا · ${t.leaves} ورقة`,
                 sub_en: `${t.units} branches · ${t.leaves} leaves` },
             { key: "entities", label: "الكيانات", en: "Entities", icon: "business", tone: "slate",
@@ -100,6 +100,14 @@ export class AzmTreesHub extends Component {
                 figures: c.figures.map((f) => ({ ...f, label: FIGURES[f.key][0], en: FIGURES[f.key][1] })),
             })),
         }));
+    }
+
+    /** A card is a button: the keyboard opens it the way the pointer does. */
+    onCardKey(ev, section, card) {
+        if (ev.key === "Enter" || ev.key === " ") {
+            ev.preventDefault();
+            this.open(section, card);
+        }
     }
 
     /** Open one entity's tree of one model — the card is the way in. */
