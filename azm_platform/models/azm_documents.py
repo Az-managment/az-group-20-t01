@@ -67,9 +67,9 @@ STATUS = {
     "open": ("لم تتم الإجابة بعد", "Not answered yet", "muted"),
 }
 
-KINDS = [("requirement", "متطلب · Requirement"), ("module", "مخرج موديول · Module output"),
-         ("summary", "ملخص الكيان · Entity summary")]
-TABS = [(k, f"{v[1]} · {v[2]}") for k, v in MODULE_OUTPUTS.items()]
+KINDS = [("requirement", "Requirement sheet"), ("module", "Module output"),
+         ("summary", "Entity summary")]
+TABS = [(k, v[2]) for k, v in MODULE_OUTPUTS.items()]
 BATCH = 20
 
 
@@ -154,29 +154,29 @@ class AzmDocPublication(models.Model):
     _order = "company_id, kind, module_sequence, tree_ref, tab, id"
     _rec_name = "name"
 
-    name = fields.Char("المستند", compute="_compute_name", store=True)
+    name = fields.Char("Document", compute="_compute_name", store=True)
     key = fields.Char(required=True, index=True)
-    company_id = fields.Many2one("res.company", "الكيان", required=True, ondelete="cascade", index=True)
-    kind = fields.Selection(KINDS, "النوع", required=True)
-    requirement_id = fields.Many2one("azm.fin.requirement", "المتطلب", ondelete="cascade", index=True)
-    tree_ref = fields.Char(related="requirement_id.tree_ref", store=True, string="مرجع الشجرة")
-    module_id = fields.Many2one("azm.fin.module", "الموديول", ondelete="cascade", index=True)
+    company_id = fields.Many2one("res.company", "Entity", required=True, ondelete="cascade", index=True)
+    kind = fields.Selection(KINDS, "Type", required=True)
+    requirement_id = fields.Many2one("azm.fin.requirement", "Requirement", ondelete="cascade", index=True)
+    tree_ref = fields.Char(related="requirement_id.tree_ref", store=True, string="Tree Reference")
+    module_id = fields.Many2one("azm.fin.module", "Module", ondelete="cascade", index=True)
     module_sequence = fields.Integer(related="module_id.sequence", store=True)
-    tab = fields.Selection(TABS, "المخرج")
-    document_id = fields.Many2one("documents.document", "المستند في Documents", ondelete="set null", readonly=True)
-    folder_id = fields.Many2one(related="document_id.folder_id", string="المجلد")
+    tab = fields.Selection(TABS, "Output")
+    document_id = fields.Many2one("documents.document", "File in Documents", ondelete="set null", readonly=True)
+    folder_id = fields.Many2one(related="document_id.folder_id", string="Folder")
     state = fields.Selection([
-        ("pending", "في الانتظار"),
-        ("done", "جاهز"),
-        ("empty", "لا يوجد محتوى"),
-        ("error", "خطأ"),
-    ], "الحالة", default="pending", required=True, readonly=True)
-    generated_on = fields.Datetime("تاريخ الإصدار", readonly=True)
-    assessment_id = fields.Many2one("azm.fin.assessment", "الإفادة المصدر", ondelete="set null", readonly=True)
+        ("pending", "Pending"),
+        ("done", "Ready"),
+        ("empty", "Nothing to show"),
+        ("error", "Error"),
+    ], "Status", default="pending", required=True, readonly=True)
+    generated_on = fields.Datetime("Generated On", readonly=True)
+    assessment_id = fields.Many2one("azm.fin.assessment", "Source Assessment", ondelete="set null", readonly=True)
     stamp = fields.Char(readonly=True, help="Fingerprint of the answers the document was built from.")
-    outdated = fields.Boolean("يحتاج تحديث", compute="_compute_outdated",
-                              help="الإجابات تغيرت بعد إصدار المستند؛ يُحدَّث تلقائيًا عند فتحه.")
-    error = fields.Text("الخطأ", readonly=True)
+    outdated = fields.Boolean("Needs Update", compute="_compute_outdated",
+                              help="The answers changed after the document was issued; it is rebuilt when opened.")
+    error = fields.Text("Error", readonly=True)
 
     _company_key_uniq = models.Constraint("UNIQUE(company_id, key)", "This document already exists for the company.")
 
@@ -605,7 +605,7 @@ class AzmDocPublication(models.Model):
 class AzmFinRequirement(models.Model):
     _inherit = "azm.fin.requirement"
 
-    azm_doc_ids = fields.One2many("azm.doc.publication", "requirement_id", string="المستندات")
+    azm_doc_ids = fields.One2many("azm.doc.publication", "requirement_id", string="Documents")
 
     def action_azm_publish_documents(self):
         """(Re)build this requirement's document for every company now."""
@@ -621,8 +621,8 @@ class AzmFinRequirement(models.Model):
 class AzmFinModule(models.Model):
     _inherit = "azm.fin.module"
 
-    azm_doc_ids = fields.One2many("azm.doc.publication", "module_id", string="المستندات")
-    azm_doc_count = fields.Integer("المستندات", compute="_compute_azm_doc_count")
+    azm_doc_ids = fields.One2many("azm.doc.publication", "module_id", string="Documents")
+    azm_doc_count = fields.Integer("Documents", compute="_compute_azm_doc_count")
 
     def _compute_azm_doc_count(self):
         """How many of this module's documents are published, for the entities the user works in."""
@@ -664,7 +664,7 @@ class AzmFinAnswer(models.Model):
 class AzmFinAssessment(models.Model):
     _inherit = "azm.fin.assessment"
 
-    azm_doc_count = fields.Integer("المستندات", compute="_compute_azm_doc_count")
+    azm_doc_count = fields.Integer("Documents", compute="_compute_azm_doc_count")
 
     def _compute_azm_doc_count(self):
         counts = dict(self.env["azm.doc.publication"].sudo()._read_group(

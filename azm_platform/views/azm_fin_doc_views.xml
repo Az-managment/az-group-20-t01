@@ -10,13 +10,13 @@
             <xpath expr="//div[@name='button_box']" position="inside">
                 <button name="action_azm_view_documents" type="object" class="oe_stat_button"
                         icon="picture_as_pdf">
-                    <field name="azm_doc_count" string="مستندات" widget="statinfo"/>
+                    <field name="azm_doc_count" string="Documents" widget="statinfo"/>
                 </button>
             </xpath>
             <xpath expr="//header/button[@name='action_open_workspace']" position="after">
-                <button name="action_azm_publish_documents" type="object" string="نشر المستندات"
+                <button name="action_azm_publish_documents" type="object" string="Publish Documents"
                         groups="azm_operating_model.azm_group_manager"
-                        confirm="هيتم إعادة بناء كل مستندات الكيان من الإجابات الحالية. تكمل؟"/>
+                        confirm="Every document of this entity will be rebuilt from the current answers. Continue?"/>
             </xpath>
         </field>
     </record>
@@ -29,9 +29,9 @@
         <field name="arch" type="xml">
             <xpath expr="//field[@name='is_done']" position="after">
                 <button name="action_azm_doc_read" type="object" icon="picture_as_pdf"
-                        title="ورقة المتطلب" invisible="not applicable"/>
+                        title="Requirement Sheet" invisible="not applicable"/>
                 <button name="action_azm_doc_download" type="object" icon="download"
-                        title="تنزيل ورقة المتطلب" invisible="not applicable"/>
+                        title="Download Requirement Sheet" invisible="not applicable"/>
             </xpath>
         </field>
     </record>
@@ -43,9 +43,9 @@
         <field name="arch" type="xml">
             <xpath expr="//sheet" position="before">
                 <header>
-                    <button name="action_azm_doc_read" type="object" string="ورقة المتطلب"
+                    <button name="action_azm_doc_read" type="object" string="Requirement Sheet"
                             class="btn-primary" icon="picture_as_pdf"/>
-                    <button name="action_azm_doc_download" type="object" string="تنزيل"
+                    <button name="action_azm_doc_download" type="object" string="Download"
                             icon="download"/>
                 </header>
             </xpath>
@@ -62,12 +62,12 @@
                 <div class="oe_button_box" name="button_box">
                     <button name="action_azm_view_documents" type="object" class="oe_stat_button"
                             icon="picture_as_pdf">
-                        <field name="azm_doc_count" string="مستندات" widget="statinfo"/>
+                        <field name="azm_doc_count" string="Documents" widget="statinfo"/>
                     </button>
                 </div>
             </xpath>
             <xpath expr="//notebook/page[@name='topics']" position="after">
-                <page string="المستندات" name="azm_documents">
+                <page string="Documents" name="azm_documents">
                     <field name="azm_doc_ids" readonly="1">
                         <list>
                             <field name="company_id"/>
@@ -81,9 +81,9 @@
                                    decoration-muted="state == 'empty'"/>
                             <field name="generated_on" optional="hide"/>
                             <button name="action_read" type="object" icon="picture_as_pdf"
-                                    title="فتح المستند" invisible="state == 'empty'"/>
+                                    title="Open" invisible="state == 'empty'"/>
                             <button name="action_download" type="object" icon="download"
-                                    title="تنزيل" invisible="state == 'empty'"/>
+                                    title="Download" invisible="state == 'empty'"/>
                         </list>
                     </field>
                 </page>
