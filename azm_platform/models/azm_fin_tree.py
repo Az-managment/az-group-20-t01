@@ -117,6 +117,31 @@ class AzmDashboard(models.AbstractModel):
             })
             for k in totals:
                 totals[k] += m_fig[k]
+        # how many documents of each family this entity has: how many policies, how
+        # many SOPs, how many authority maps … counted from what the tree offers,
+        # less the outputs the model found nothing to say in
+        published = self._tree_published(company, ("requirement", "module", "summary"))
+        families = [{
+            "tab": tab, "label": out[1], "en": out[2],
+            "offered": len(nodes),
+            # with no assessment behind them every module output is empty, and saying
+            # otherwise would promise documents that refuse to open
+            "empty": len(nodes) if not assessment else min(
+                published.get(("module", tab), {}).get("empty", 0), len(nodes)),
+            "ready": published.get(("module", tab), {}).get("done", 0),
+        } for tab, out in MODULE_OUTPUTS.items()]
+        families.append({
+            "tab": "requirement", "label": "أوراق المتطلبات", "en": "Requirement sheets",
+            "offered": totals["requirements"], "empty": 0,
+            "ready": published.get(("requirement", False), {}).get("done", 0),
+        })
+        families.append({
+            "tab": "summary", "label": "ملخص الكيان", "en": "Entity summary",
+            "offered": 1, "empty": 0,
+            "ready": published.get(("summary", False), {}).get("done", 0),
+        })
+        outputs = self._tree_outputs(families)
+
         totals["completion"] = _pct(totals["done"], totals["applicable"])
         totals["topics"] = sum(len(n["children"]) for n in nodes)
         totals["modules"] = len(nodes)
@@ -132,6 +157,7 @@ class AzmDashboard(models.AbstractModel):
             } if assessment else None,
             "summary_doc": {"kind": "summary", "label": "ملخص الكيان", "en": "Entity summary"},
             "totals": totals,
+            "outputs": outputs,
             "nodes": nodes,
         }
 

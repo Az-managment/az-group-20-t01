@@ -26,7 +26,7 @@
             </button>
             <button t-if="this.d.summary_doc and this.docsAvailable" type="button"
                     class="btn btn-sm btn-light" t-att-title="this.d.summary_doc.en"
-                    t-on-click="() => this.openDoc(this.d.summary_doc)">
+                    t-on-click="() => this.previewDoc(this.d.summary_doc)">
                 <i class="oi me-1" data-icon="description"/>
                 <t t-out="this.d.summary_doc.label"/>
             </button>
@@ -39,6 +39,67 @@
             </select>
         </div>
     </div>
+</t>
+
+<t t-name="azm_platform.TreeOutputs">
+    <!-- how many policies, how many SOPs, how many authority maps … each one a way in -->
+    <section t-if="this.d.outputs.families.length and this.docsAvailable" class="o_azm_tree_outputs">
+        <t t-foreach="this.d.outputs.families" t-as="f" t-key="f.tab">
+            <button type="button"
+                    t-attf-class="o_azm_output_tile {{this.state.family === f.tab ? 'o_azm_active' : ''}}"
+                    t-att-disabled="!this.outputsOpen(f)"
+                    t-attf-title="{{f.label}} · {{f.en}}"
+                    t-on-click="() => this.openOutputs(f)">
+                <b t-out="f.count"/>
+                <span>
+                    <t t-out="f.label"/>
+                    <em class="o_azm_en" t-out="f.en"/>
+                </span>
+            </button>
+        </t>
+    </section>
+</t>
+
+<t t-name="azm_platform.TreePreview">
+    <t t-set="p" t-value="this.state.preview"/>
+    <header class="o_azm_card_header o_azm_tree_preview_head">
+        <div>
+            <span class="o_azm_code o_azm_code_big">معاينة <small>Preview</small></span>
+            <h3 t-out="p.name"/>
+            <small t-if="p.folder" class="text-muted">
+                <i class="oi me-1" data-icon="folder"/><t t-out="p.folder"/>
+            </small>
+        </div>
+        <span class="o_azm_tree_preview_tools">
+            <button type="button" class="btn btn-sm btn-light" title="فتح في تبويب · Open in a tab"
+                    t-on-click="() => this.openDoc(p.doc, false)">
+                <i class="oi" data-icon="open_in_new"/>
+            </button>
+            <button type="button" class="btn btn-sm btn-light" title="تنزيل · Download"
+                    t-on-click="() => this.openDoc(p.doc, true)">
+                <i class="oi" data-icon="download"/>
+            </button>
+            <button type="button" class="btn btn-sm btn-light" title="إغلاق المعاينة · Close"
+                    t-on-click="() => this.closePreview()">
+                <i class="oi" data-icon="close"/>
+            </button>
+        </span>
+    </header>
+
+    <div t-if="p.loading" class="o_azm_loading">
+        <i class="oi oi-spin" data-icon="progress_activity" title="Loading"/>
+        <small class="d-block text-muted mt-2">يُبنى المستند لأول مرة…</small>
+    </div>
+    <div t-elif="p.error" class="o_azm_tree_sec">
+        <p class="o_azm_box o_azm_box_warn" t-out="p.error"/>
+    </div>
+    <t t-else="">
+        <iframe class="o_azm_tree_preview_frame" t-att-src="p.url" t-att-title="p.name"
+                sandbox="allow-same-origin allow-popups allow-downloads"/>
+        <div t-if="p.outdated" class="o_azm_tree_sec">
+            <p class="o_azm_box o_azm_box_warn">تغيّرت الإجابات بعد إصدار هذا المستند.</p>
+        </div>
+    </t>
 </t>
 
 <t t-name="azm_platform.TreeKpis">
@@ -111,10 +172,10 @@
                         </button>
                     </div>
 
-                    <div t-if="this.docsOpen(n.id)" class="o_azm_tree_docs">
-                        <span t-foreach="n.docs" t-as="d" t-key="d.tab" class="o_azm_doc_chip">
+                    <div t-if="this.docsOpen(n.id) and this.docsAvailable" class="o_azm_tree_docs">
+                        <span t-foreach="this.docsOf(n)" t-as="d" t-key="d.tab" class="o_azm_doc_chip">
                             <button type="button" class="o_azm_doc_open" t-att-title="d.en"
-                                    t-on-click="() => this.openDoc(d)">
+                                    t-on-click="() => this.previewDoc(d)">
                                 <i class="oi" data-icon="description"/>
                                 <t t-out="d.label"/>
                             </button>

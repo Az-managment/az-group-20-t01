@@ -35,6 +35,8 @@ export class AzmTreePage extends Component {
             node: null,        // its detail
             loadingNode: false,
             query: "",
+            preview: null,     // the document being read in place, if any
+            family: null,      // only this family of outputs is showing, if any
         });
         // the Trees page opens a card by handing us its entity
         const context = this.props.action.context || {};
@@ -85,6 +87,9 @@ export class AzmTreePage extends Component {
         this.state.loaded = false;
         this.state.selected = null;
         this.state.node = null;
+        this.state.preview = null;
+        this.state.family = null;
+        this.state.docs = {};
         this.state.data = await this.orm.call("azm.dashboard", this.constructor.dataMethod, [], {
             company_id: companyId,
             ...extra,
@@ -158,6 +163,7 @@ export class AzmTreePage extends Component {
     collapseAll() {
         this.state.open = {};
         this.state.docs = {};
+        this.state.family = null;
     }
 
     /** Whether the documents on offer would say what the page says. */
@@ -172,6 +178,7 @@ export class AzmTreePage extends Component {
 
     async select(item) {
         this.state.selected = item.id;
+        this.state.preview = null;
         this.state.loadingNode = true;
         try {
             this.state.node = await this.orm.call("azm.dashboard", this.constructor.nodeMethod, [], {
@@ -202,7 +209,7 @@ export class AzmTreePage extends Component {
      * has asked to read it.
      */
     async openDoc(doc, download = false) {
-        if (!doc) {
+        if (!doc || !this.docsAvailable) {
             return;
         }
         const action = await this.orm.call("azm.dashboard", "open_tree_document", [], {
@@ -213,6 +220,76 @@ export class AzmTreePage extends Component {
             download,
         });
         await this.action.doAction(action);
+    }
+
+    /** The outputs a branch shows: all of them, or just the family being looked for. */
+    docsOf(node) {
+        const family = this.state.family;
+        return family ? node.docs.filter((d) => d.tab === family) : node.docs;
+    }
+
+    /** A family of documents is a way in only if it hangs on the branches. */
+    outputsOpen(family) {
+        return !["requirement", "question"].includes(family.tab);
+    }
+
+    /**
+     * Follow a family: the entity-wide ones open straight away, and a branch output
+     * — policies, SOPs, authority … — unfolds every branch showing just that one,
+     * which is what "how many policies" is really asking to see.
+     */
+    openOutputs(family) {
+        if (!this.docsAvailable) {
+            return;
+        }
+        if (family.tab === "summary" || family.tab === "cycle") {
+            this.previewDoc({ kind: family.tab, label: family.label });
+            return;
+        }
+        if (!this.outputsOpen(family)) {
+            return;
+        }
+        const same = this.state.family === family.tab;
+        this.state.family = same ? null : family.tab;
+        this.state.docs = {};
+        if (!same) {
+            for (const node of this.nodes) {
+                this.state.docs[node.id] = true;
+            }
+        }
+    }
+
+    /**
+     * Read a node's document inside the tree, instead of sending the reader away to
+     * a new tab. The server builds it if nobody has opened it before, which is why
+     * the pane shows that it is working before it shows anything.
+     */
+    async previewDoc(doc) {
+        if (!doc || !this.docsAvailable) {
+            return;
+        }
+        this.state.preview = { doc, loading: true, error: "", name: doc.label || "" };
+        try {
+            const found = await this.orm.call("azm.dashboard", "preview_tree_document", [], {
+                kind: doc.kind,
+                node_id: doc.id || null,
+                tab: doc.tab || null,
+                company_id: this.d.company.id,
+            });
+            this.state.preview = { doc, loading: false, error: "", ...found };
+        } catch (error) {
+            // the document may be empty, or have failed to build: say so where the
+            // reader is looking rather than throwing them a dialog
+            this.state.preview = {
+                doc, loading: false, name: doc.label || "",
+                error: (error && error.data && error.data.message) || (error && error.message)
+                    || "تعذّر عرض هذا المستند.",
+            };
+        }
+    }
+
+    closePreview() {
+        this.state.preview = null;
     }
 
     /** Back to the page that lists every tree of every entity. */

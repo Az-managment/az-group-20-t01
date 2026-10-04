@@ -52,6 +52,17 @@ class TestFinTree(TransactionCase):
                              "every output of the module hangs on it in the tree")
         self.assertEqual(tree['summary_doc']['kind'], 'summary')
 
+        outputs = tree['outputs']
+        self.assertTrue(outputs['families'], "the page says how many of each it holds")
+        self.assertEqual(outputs['total'], sum(f['count'] for f in outputs['families']))
+        self.assertLessEqual(outputs['ready'], outputs['total'],
+                             "a document cannot be readier than it is offered")
+        by_tab = {f['tab']: f for f in outputs['families']}
+        self.assertEqual(by_tab['requirement']['count'], tree['totals']['requirements'])
+        self.assertEqual(by_tab['summary']['count'], 1)
+        for family in outputs['families']:
+            self.assertLessEqual(family['ready'], family['count'])
+
         branches = [t['id'] for m in tree['nodes'] for t in m['children']]
         self.assertEqual(len(branches), len(set(branches)),
                          "each branch has an id of its own, so folding one never folds another")
@@ -100,3 +111,18 @@ class TestFinTree(TransactionCase):
         node = self.D.with_user(self.insider).get_fin_tree_node(
             requirement_id=requirement.id, company_id=self.other.id)
         self.assertEqual(node['company'], self.company.name)
+
+    def test_an_entity_that_has_not_started_is_promised_nothing_empty(self):
+        """Every module output is empty until there are answers behind it, so the
+        count must not offer documents that would refuse to open."""
+        fresh = self.env['res.company'].create({'name': 'AZM Tree Unstarted'})
+        self.env.user.company_ids = [(4, fresh.id)]
+        tree = self.D.with_context(
+            allowed_company_ids=[self.env.company.id, fresh.id]).with_company(
+            fresh).get_fin_tree(company_id=fresh.id)
+        self.assertIsNone(tree['assessment'])
+        tabs = {f['tab'] for f in tree['outputs']['families']}
+        self.assertEqual(tabs, {'requirement', 'summary'},
+                         "only the sheets that really exist are counted")
+        self.assertEqual(tree['outputs']['total'],
+                         tree['totals']['requirements'] + 1)

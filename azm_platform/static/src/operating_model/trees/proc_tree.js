@@ -85,6 +85,9 @@ export class AzmProcTree extends AzmTreePage {
                 icon: "pie_chart", tone: "teal", meter: t.completion, sub: `${t.known} إجابة مؤكدة` },
             { key: "findings", label: "ملاحظات مفتوحة", en: "Open findings", value: t.findings,
                 icon: "warning", tone: "orange", sub: "نتجت عن الإجابات المسجّلة" },
+            { key: "documents", label: "المستندات", en: "Documents", value: this.d.outputs.total,
+                icon: "folder_copy", tone: "purple",
+                sub: `${this.d.outputs.ready} جاهزة · الباقي يُبنى عند أول فتح` },
         ];
     }
 

@@ -101,6 +101,16 @@ asks 396 questions of each entity, so pre-rendering all of them for every compan
 spend hundreds of megabytes on PDFs nobody asked for. A document already read is re-used,
 and rebuilt by itself once the answers behind it move.
 
+### Read where you picked, and see what is on file
+A document opens **inside the tree**: the tree keeps the left, the document takes the
+right, and closing the preview puts the node's own detail back. Opening it in a tab and
+downloading it are still a click away in the preview's header.
+
+Above the tree, a tile per family says how many of each this entity holds — 14 policies,
+10 SOPs, 8 authority maps — counted from what the tree offers less the outputs the model
+found nothing to say in. The tile is also the way to them: clicking it unfolds every
+branch showing just that family.
+
 A node's status is that entity's own answer and nothing else. On the procurement tree,
 visibility is decided by the engine that drives the answer workspace, so a question this
 entity is never asked reads as "لا يُسأل هنا" rather than as an unanswered hole. An entity

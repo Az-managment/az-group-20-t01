@@ -20,13 +20,19 @@
 
             <t t-call="azm_platform.TreeKpis"/>
 
+            <t t-call="azm_platform.TreeOutputs"/>
+
             <div class="o_azm_tree_split">
 
                 <t t-call="azm_platform.TreePanel"/>
 
                 <!-- ============================== the requirement -->
                 <section class="o_azm_card o_azm_tree_detail">
-                    <t t-if="this.state.loadingNode">
+                    <t t-if="this.state.preview">
+                        <t t-call="azm_platform.TreePreview"/>
+                    </t>
+
+                    <t t-elif="this.state.loadingNode">
                         <div class="o_azm_loading"><i class="oi oi-spin" data-icon="progress_activity" title="Loading"/></div>
                     </t>
 
@@ -36,7 +42,7 @@
                             <h3>اختر متطلبًا من الشجرة</h3>
                             <p class="text-muted">كل متطلب يعرض ما هو مطلوب، وماذا يحدث اليوم في هذا الكيان، ومستنده.</p>
                             <button t-if="this.d.summary_doc" type="button" class="btn btn-sm btn-light"
-                                    t-on-click="() => this.openDoc(this.d.summary_doc, false)">
+                                    t-on-click="() => this.previewDoc(this.d.summary_doc)">
                                 <i class="oi me-1" data-icon="description"/>قراءة ملخص الكيان
                             </button>
                         </div>
@@ -64,8 +70,8 @@
 
                         <div class="o_azm_tree_actions">
                             <button type="button" class="btn btn-sm btn-primary"
-                                    t-on-click="() => this.openDoc(n.doc, false)">
-                                <i class="oi me-1" data-icon="description"/>قراءة المستند
+                                    t-on-click="() => this.previewDoc(n.doc)">
+                                <i class="oi me-1" data-icon="description"/>معاينة المستند
                             </button>
                             <button type="button" class="btn btn-sm btn-light"
                                     t-on-click="() => this.openDoc(n.doc, true)">

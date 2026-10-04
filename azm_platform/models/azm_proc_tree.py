@@ -176,6 +176,28 @@ class AzmDashboard(models.AbstractModel):
             })
             for k in totals:
                 totals[k] += s_fig[k]
+        # how many policies, procedures, authority maps … this entity's cycle holds.
+        # Without an assessment the engine has nothing to write, so the outputs are
+        # counted as empty rather than promised and then found blank.
+        published = self._tree_published(company, ("question", "stage", "cycle"))
+        families = [{
+            "tab": tab, "label": PROC_OUTPUTS[tab][1], "en": PROC_OUTPUTS[tab][2],
+            "offered": len(nodes),
+            "empty": 0 if assessment else len(nodes),
+            "ready": published.get(("stage", tab), {}).get("done", 0),
+        } for tab in PROC_TAB_ORDER]
+        families.append({
+            "tab": "question", "label": "أوراق الأسئلة", "en": "Question sheets",
+            "offered": totals["questions"], "empty": 0,
+            "ready": published.get(("question", False), {}).get("done", 0),
+        })
+        families.append({
+            "tab": "cycle", "label": "ملخص الدورة", "en": "Cycle summary",
+            "offered": 1, "empty": 0 if assessment else 1,
+            "ready": published.get(("cycle", False), {}).get("done", 0),
+        })
+        outputs = self._tree_outputs(families)
+
         totals["stages"] = len(nodes)
         totals["groups"] = sum(len(n["children"]) for n in nodes)
         totals["completion"] = _pct(totals["answered"], totals["asked"])
@@ -199,6 +221,7 @@ class AzmDashboard(models.AbstractModel):
                 "from": source.name if source else "",
             },
             "totals": totals,
+            "outputs": outputs,
             "nodes": nodes,
         }
 

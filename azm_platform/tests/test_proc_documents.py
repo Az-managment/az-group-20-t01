@@ -124,6 +124,29 @@ class TestProcDocuments(TransactionCase):
         self.assertEqual(folder.access_internal, 'view')
         self.assertIn(self.stage.code, folder.name)
 
+    def test_a_document_can_be_read_without_leaving_the_tree(self):
+        """The preview hands the page what it needs to show the document in place."""
+        found = self.env['azm.dashboard'].with_company(self.company).preview_tree_document(
+            kind='question', node_id=self.question.id, company_id=self.company.id)
+        self.assertTrue(found['url'].startswith('/web/content/'))
+        self.assertIn(self.question.code, found['name'])
+        # _generate falls back to HTML when the PDF renderer is unavailable, and the
+        # preview shows whichever came out — so the test asks for either, not for luck
+        self.assertIn(found['mimetype'], ('application/pdf', 'text/html'))
+        self.assertIn(self.stage.code, found['folder'],
+                      "the preview says which shelf the document sits on")
+        self.assertFalse(found['outdated'])
+
+        pub = self.Pub.sudo()._get(self.company, 'question', question=self.question)
+        self.assertEqual(pub.state, 'done', "previewing builds it, like opening it does")
+
+    def test_the_preview_is_refused_the_same_way_the_opening_is(self):
+        from odoo.exceptions import UserError as _UserError
+        D = self.env['azm.dashboard'].with_company(self.company)
+        with self.assertRaises(_UserError):
+            D.preview_tree_document(kind='stage', node_id=self.stage.id,
+                                    company_id=self.company.id)   # no output named
+
     # ------------------------------------------------------------------ the boundary
     def test_a_document_of_another_entity_is_not_opened(self):
         """open_tree_document is reachable over RPC: asking for a company the user was

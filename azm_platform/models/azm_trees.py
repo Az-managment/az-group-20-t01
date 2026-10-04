@@ -70,12 +70,12 @@ class AzmDashboard(models.AbstractModel):
 
     # ------------------------------------------------------------------ documents
     @api.model
-    def open_tree_document(self, kind, node_id=None, tab=None, company_id=None, download=False):
-        """Open the document a tree node stands for, building it if it has never been read.
+    def _tree_publication(self, kind, node_id=None, tab=None, company_id=None):
+        """The document a tree node stands for, whoever is asking and for whatever.
 
         The tree offers every output the catalogue defines, whether or not a document
         has been published for it yet; this is where that offer is honoured. The entity
-        is clamped to the ones the user works in, and azm.doc.publication._open() checks
+        is clamped to the ones the user works in, and the caller's own _open() checks
         that the user may read the document before handing anything back.
         """
         # (model of the node, the argument _get() wants it under, the outputs it may ask
@@ -109,8 +109,71 @@ class AzmDashboard(models.AbstractModel):
                 raise UserError(_("That part of the model no longer exists."))
             record.check_access("read")   # the catalogue decides who may ask for it
             node[argument] = record
-        pub = env["azm.doc.publication"]._get(company, kind, tab=tab or None, **node)
+        return env["azm.doc.publication"]._get(company, kind, tab=tab or None, **node)
+
+    @api.model
+    def open_tree_document(self, kind, node_id=None, tab=None, company_id=None, download=False):
+        """Open (or download) the document a tree node stands for, building it if needed."""
+        pub = self._tree_publication(kind, node_id=node_id, tab=tab, company_id=company_id)
         return pub._open(download=download)
+
+    @api.model
+    def preview_tree_document(self, kind, node_id=None, tab=None, company_id=None):
+        """The same document, described so the tree can show it without leaving the page.
+
+        _open() is what builds it and checks who may read it; all this adds is the
+        name and the shelf it sits on, so the preview says what is being looked at.
+        """
+        pub = self._tree_publication(kind, node_id=node_id, tab=tab, company_id=company_id)
+        action = pub._open(download=False)
+        pub = pub.sudo()
+        document = pub.document_id
+        return {
+            "url": action["url"],
+            "name": pub.name,
+            "mimetype": document.mimetype or "",
+            "folder": document.folder_id.name or "",
+            "generated": str(pub.generated_on or ""),
+            "outdated": pub.outdated,
+        }
+
+    @api.model
+    def _tree_published(self, company, kinds):
+        """How many documents of each (kind, output) this entity already has built.
+
+        Only what is on disk: a document nobody has opened yet is not counted as
+        ready, and one the model found nothing to say in is counted as empty.
+        """
+        counts = {}
+        groups = self.env["azm.doc.publication"].sudo()._read_group(
+            [("company_id", "=", company.id), ("kind", "in", kinds)],
+            ["kind", "tab", "state"], ["__count"])
+        for kind, tab, state, count in groups:
+            row = counts.setdefault((kind, tab), {"done": 0, "empty": 0})
+            if state in row:
+                row[state] += count
+        return counts
+
+    @api.model
+    def _tree_outputs(self, families):
+        """The documents strip of a tree page: one entry per family, and the totals.
+
+        ``families`` is a list of {tab, label, en, offered, empty, ready}: how many
+        documents of that family the tree offers this entity, how many of them have
+        nothing to say, and how many are already built.
+        """
+        rows = []
+        for family in families:
+            count = max(family["offered"] - family["empty"], 0)
+            if not count:
+                continue
+            rows.append({**{k: family[k] for k in ("tab", "label", "en")},
+                         "count": count, "ready": min(family["ready"], count)})
+        return {
+            "families": rows,
+            "total": sum(r["count"] for r in rows),
+            "ready": sum(r["ready"] for r in rows),
+        }
 
     # ------------------------------------------------------------------ the page
     @api.model

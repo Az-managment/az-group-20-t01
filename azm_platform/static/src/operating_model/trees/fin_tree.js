@@ -42,6 +42,9 @@ export class AzmFinTree extends AzmTreePage {
                 icon: "pie_chart", tone: "teal", meter: t.completion, sub: `${t.done} متطلبًا مكتملًا` },
             { key: "gaps", label: "الفجوات", en: "Gaps", value: t.gaps, icon: "warning", tone: "orange",
                 sub: "مطبّق جزئيًا أو غير مطبّق" },
+            { key: "documents", label: "المستندات", en: "Documents", value: this.d.outputs.total,
+                icon: "folder_copy", tone: "purple",
+                sub: `${this.d.outputs.ready} جاهزة · الباقي يُبنى عند أول فتح` },
         ];
     }
 
