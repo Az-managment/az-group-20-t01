@@ -148,6 +148,23 @@ class TestProcDocuments(TransactionCase):
             D.preview_tree_document(kind='stage', node_id=self.stage.id,
                                     company_id=self.company.id)   # no output named
 
+    def test_a_document_whose_file_vanished_is_built_again(self):
+        """The filestore's collector has taken a file out from under a published
+        document before; the reader gets the document, not a broken link."""
+        import os
+        pub = self.Pub.sudo()._get(self.company, 'question', question=self.question)
+        pub._generate_safe()
+        self.assertEqual(pub.state, 'done')
+        attachment = pub.document_id.attachment_id
+        path = os.path.join(attachment._filestore(), attachment.store_fname)
+        os.remove(path)
+        self.assertTrue(pub._file_missing())
+
+        self.env['azm.dashboard'].with_company(self.company).open_tree_document(
+            kind='question', node_id=self.question.id, company_id=self.company.id)
+        pub.invalidate_recordset()
+        self.assertFalse(pub._file_missing(), "it was built again rather than served broken")
+
     # ------------------------------------------------------------------ the boundary
     def test_a_document_of_another_entity_is_not_opened(self):
         """open_tree_document is reachable over RPC: asking for a company the user was

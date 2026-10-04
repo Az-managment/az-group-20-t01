@@ -101,8 +101,15 @@
         <p class="o_azm_box o_azm_box_warn" t-out="p.error"/>
     </div>
     <t t-else="">
+        <!--
+            Chrome renders a PDF in an iframe with its own viewer, and that viewer needs
+            scripts: sandboxing the frame makes Chrome refuse the page outright. So the
+            sandbox is put only on the HTML a document falls back to when the PDF
+            renderer is unavailable — which is the only case that could run script in
+            the backend page anyway. A PDF is framed as it is.
+        -->
         <iframe class="o_azm_tree_preview_frame" t-att-src="p.url" t-att-title="p.name"
-                sandbox="allow-same-origin allow-popups allow-downloads"/>
+                t-att-sandbox="p.mimetype === 'text/html' ? 'allow-same-origin' : false"/>
         <div t-if="p.outdated" class="o_azm_tree_sec">
             <p class="o_azm_box o_azm_box_warn">تغيّرت الإجابات بعد إصدار هذا المستند.</p>
         </div>

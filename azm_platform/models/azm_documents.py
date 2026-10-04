@@ -20,6 +20,7 @@ they change, and the company is the only thing that decides who can see it
 import hashlib
 import json
 import logging
+import os
 from datetime import timedelta
 
 import pytz
@@ -440,6 +441,14 @@ class AzmDocPublication(models.Model):
             }
             document = pub.document_id
             if document:
+                if pub._file_missing() and document.attachment_id:
+                    # the old file is gone, and Odoo reads it to replace it: let go of
+                    # the dangling pointer first, or rebuilding fails on the very thing
+                    # it is meant to repair
+                    self.env.cr.execute(
+                        "UPDATE ir_attachment SET store_fname = NULL, db_datas = NULL, "
+                        "file_size = 0 WHERE id = %s", (document.attachment_id.id,))
+                    document.attachment_id.invalidate_recordset()
                 document.write({**vals, "active": True})
             else:
                 document = self.env["documents.document"].sudo().with_company(company).create({
@@ -462,7 +471,8 @@ class AzmDocPublication(models.Model):
         self.ensure_one()
         self.sudo(False).check_access("read")   # the company rules decide who sees what
         pub = self.sudo()
-        if pub.state != "done" or not pub.document_id or pub._current_stamp() != pub.stamp:
+        if (pub.state != "done" or not pub.document_id or pub._file_missing()
+                or pub._current_stamp() != pub.stamp):
             # _generate_safe, not _generate: a document built here is often the first of
             # its kind anyone has asked for, and a failure has to be recorded and retried
             # like any other instead of reaching the reader as a traceback
@@ -505,6 +515,22 @@ class AzmDocPublication(models.Model):
         """Why this document has nothing in it, in the words of its own model."""
         self.ensure_one()
         return _("No requirement of this module falls in this output for %s.", self.company_id.name)
+
+    def _file_missing(self):
+        """True when the document says it is ready but its file is not on disk.
+
+        It should not happen, and it has: the filestore's garbage collector cannot see
+        a file that no live transaction references yet, so one dropped out from under a
+        published document. Rather than hand the reader a broken link, the document is
+        simply built again — it is reproducible from the answers.
+        """
+        self.ensure_one()
+        attachment = self.document_id.attachment_id
+        if not attachment:
+            return True
+        if not attachment.store_fname:
+            return not attachment.db_datas
+        return not os.path.exists(os.path.join(attachment._filestore(), attachment.store_fname))
 
     def _is_empty(self, assessment):
         """True when the document would carry nothing: it is filed as empty, not built."""
