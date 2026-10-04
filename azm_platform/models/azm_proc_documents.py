@@ -49,10 +49,31 @@ PROC_OUTPUTS = {
 PROC_TAB_ORDER = [f"pur_{key}" for key, _title in engine.OUTPUT_TABS if f"pur_{key}" in PROC_OUTPUTS]
 PROC_TABS = [(k, f"{PROC_OUTPUTS[k][1]} · {PROC_OUTPUTS[k][2]}") for k in PROC_TAB_ORDER]
 
+# Which registry artifact type each output of the cycle is, and the stage it speaks from
+PROC_ARTIFACTS = {
+    "pur_book": ("MAN", "CS"),
+    "pur_policy": ("POL", "CS"),
+    "pur_procedure": ("PRO", "CS"),
+    "pur_workflow": ("WFL", "CS"),
+    "pur_authority": ("DOA", "CS"),
+    "pur_gaps": ("GAP", "GR"),
+    "pur_risks": ("RSK", "GR"),
+    "pur_controls": ("CTL", "TD"),
+    "pur_system": ("SRQ", "TD"),
+    "pur_kpi": ("KPI", "CA"),
+    "pur_coverage": ("RPT", "CS"),
+}
+PROC_KIND_ARTIFACTS = {
+    "question": ("REQ", "CS"),
+    "cycle": ("RPT", "CS"),
+    "cycle_book": ("MAN", "CS"),
+}
+
 PROC_KINDS = [
     ("question", "سؤال · Question"),
     ("stage", "مخرج مرحلة · Stage output"),
     ("cycle", "ملخص الدورة · Cycle summary"),
+    ("cycle_book", "كتاب الدورة · Cycle book"),
 ]
 PROC_KEYS = {k for k, _label in PROC_KINDS}
 
@@ -85,18 +106,83 @@ class AzmDocPublication(models.Model):
                 pub.name = f"{pub.question_id.code} · {pub.question_id.label}"
             elif pub.kind == "stage":
                 pub.name = f"PUR-{pub.stage_id.code} · {PROC_OUTPUTS[pub.tab][1]}" if pub.tab else False
-            else:
+            elif pub.kind == "cycle":
                 pub.name = "دورة المشتريات · ملخص الكيان"
+            else:
+                pub.name = "دورة المشتريات · الكتاب الكامل"
 
     # ---------------------------------------------------------------- lookup
+    # ---------------------------------------------------------------- coding
+    def _artifact(self):
+        self.ensure_one()
+        if self.kind not in PROC_KEYS:
+            return super()._artifact()
+        Artifact = self.env["azm.artifact"]
+        if self.kind == "question":
+            question = self.question_id
+            return Artifact._of(f"azm.question,{question.id}", "PUR", "REQ", name=question.label)
+        if self.kind == "stage":
+            atype = PROC_ARTIFACTS[self.tab][0]
+            return Artifact._of(f"azm.stage,{self.stage_id.id},{self.tab}", "PUR", atype,
+                                name=f"PUR-{self.stage_id.code} · {PROC_OUTPUTS[self.tab][1]}")
+        return Artifact._of(f"pur:{self.kind}", "PUR", PROC_KIND_ARTIFACTS[self.kind][0],
+                            name=self.name)
+
+    def _lifecycle(self):
+        self.ensure_one()
+        if self.kind not in PROC_KEYS:
+            return super()._lifecycle()
+        if self.kind == "stage":
+            return PROC_ARTIFACTS[self.tab][1]
+        return PROC_KIND_ARTIFACTS[self.kind][1]
+
+    @api.model
+    def _book_kinds(self):
+        return super()._book_kinds() | {"cycle_book"}
+
+    def _book_parts(self):
+        """The cycle bound in one volume: its summary, then every output of every stage."""
+        self.ensure_one()
+        if self.kind not in PROC_KEYS:
+            return super()._book_parts()
+        Pub = self.env["azm.doc.publication"].sudo()
+        company, assessment = self.company_id, self._assessment()
+        parts = [Pub._get(company, "cycle")]
+        if assessment:
+            for stage in self.env["azm.stage"].sudo().search([]):
+                for tab in PROC_TAB_ORDER:
+                    parts.append(Pub._get(company, "stage", stage=stage, tab=tab))
+        return parts
+
+    def _book_cover(self, parts, source):
+        self.ensure_one()
+        if self.kind not in PROC_KEYS:
+            return super()._book_cover(parts, source)
+        company = self.company_id
+        return {
+            "doc_type": ("كتاب دورة المشتريات", "Procurement cycle book"),
+            "code": "PUR-BOOK",
+            "title": f"دورة المشتريات — {company.name}",
+            "path": [("الدورة", "PUR", "دورة المشتريات"),
+                     ("الكتاب", "PUR-BOOK", "الكتاب الكامل")],
+            "glance": [
+                ("الكيان", "Entity", company.name),
+                ("المصدر", "Source", source),
+                ("عدد المستندات", "Documents", str(len(parts))),
+                ("تاريخ التجميع", "Bound on", fields.Date.to_string(fields.Date.today())),
+            ],
+            "summary_title": ("محتويات الكتاب", "Contents"),
+            "summary_label": "المستند",
+        }
+
     @api.model
     def _key(self, kind, requirement=None, module=None, tab=None, question=None, stage=None):
         if kind == "question":
             return f"qst:{question.id}"
         if kind == "stage":
             return f"stg:{stage.id}:{tab}"
-        if kind == "cycle":
-            return "cycle"
+        if kind in ("cycle", "cycle_book"):
+            return kind
         return super()._key(kind, requirement=requirement, module=module, tab=tab)
 
     @api.model
@@ -132,8 +218,9 @@ class AzmDocPublication(models.Model):
                 if f"stg:{stage.id}:{tab}" not in have:
                     vals.append({"company_id": company.id, "kind": "stage", "build": "on_open",
                                  "key": f"stg:{stage.id}:{tab}", "stage_id": stage.id, "tab": tab})
-        if "cycle" not in have:
-            vals.append({"company_id": company.id, "kind": "cycle", "key": "cycle", "build": "on_open"})
+        for kind in ("cycle", "cycle_book"):
+            if kind not in have:
+                vals.append({"company_id": company.id, "kind": kind, "key": kind, "build": "on_open"})
         Pub.create(vals)
         return Pub.search([("company_id", "=", company.id)])
 
@@ -167,7 +254,7 @@ class AzmDocPublication(models.Model):
     def _current_stamp(self):
         """Fingerprint of what the document shows, so it is rebuilt when the answers move."""
         self.ensure_one()
-        if self.kind not in PROC_KEYS:
+        if self.kind not in PROC_KEYS or self.kind in self._book_kinds():
             return super()._current_stamp()
         assessment = self._assessment()
         lines = self._lines(assessment) if assessment else self.env["azm.answer"]
@@ -179,6 +266,7 @@ class AzmDocPublication(models.Model):
             # gaps, risks, controls, system and KPIs are written from the risk rules as
             # well as the answers, so an edited rule has to age the output it feeds
             "rules": self._rules_stamp() if self.kind == "stage" else None,
+            "coding": [self._artifact().code, self._lifecycle()],
             "lines": {line.code: [line.is_visible, line.is_known, line._engine_value(), line.note or ""]
                       for line in lines},
         }
@@ -198,7 +286,7 @@ class AzmDocPublication(models.Model):
     # ---------------------------------------------------------------- filing
     def _folder_key(self):
         self.ensure_one()
-        if self.kind not in PROC_KEYS:
+        if self.kind not in PROC_KEYS or self.kind in self._book_kinds():
             return super()._folder_key()
         if self.kind == "question":
             stage = self.question_id.stage_id
@@ -209,7 +297,7 @@ class AzmDocPublication(models.Model):
 
     def _is_empty(self, assessment):
         self.ensure_one()
-        if self.kind not in PROC_KEYS:
+        if self.kind not in PROC_KEYS or self.kind in self._book_kinds():
             return super()._is_empty(assessment)
         # a stage output with no assessment behind it has nothing to say yet; a question
         # sheet always has something — at the very least, what is being asked
@@ -322,7 +410,9 @@ class AzmDocPublication(models.Model):
         if self.kind == "stage":
             stage = self.stage_id
             folder, arabic, english, code = PROC_OUTPUTS[self.tab]
-            body = assessment._render(_engine_tab(self.tab), stage) if assessment else ""
+            # the body prints the code the cover prints, not a shorthand of its own
+            body = assessment._render(_engine_tab(self.tab), stage,
+                                      doc_code=self._artifact().code) if assessment else ""
             return {
                 "doc_type": (arabic, english),
                 "code": f"{code}-{stage.code}",

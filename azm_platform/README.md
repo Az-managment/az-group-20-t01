@@ -101,6 +101,47 @@ asks 396 questions of each entity, so pre-rendering all of them for every compan
 spend hundreds of megabytes on PDFs nobody asked for. A document already read is re-used,
 and rebuilt by itself once the answers behind it move.
 
+### Coding — AZM Master Coding Registry v2.1
+Every document carries the registry's canonical identifier and nothing else inside it:
+
+```
+AZM-<DOMAIN>-<TYPE>-<SERIAL>        AZM-FIN-POL-000001
+```
+
+Identity holds no entity, no version and no lifecycle stage — those stand beside it, as
+the registry asks a controlled PDF to carry them: `AZM-FIN-POL-000001 · FUIE · v1 · CS`.
+One artifact is registered per node and output for the whole group (`azm.artifact`), so
+the nine entities holding the policy of FIN.GOV all print the same code and are told
+apart by scope. A serial is allocated once and never moves, so adding a module renumbers
+nothing. Requirements keep the IDs the registry already gave them (`AZM-FIN-REQ-000004`);
+they are not renumbered here. Modules carry their registry IDs too — taken from the file,
+not derived, because the registry orders INV before PUR and the catalogue does not.
+
+| Output | Type | Stage |
+|---|---|---|
+| policies / السياسات | POL | CS |
+| procedures, SOPs | PRO | CS |
+| workflow map | WFL | CS |
+| authority, DOA | DOA | CS |
+| reports & KPIs | RPT / KPI | CS / CA |
+| system requirements | SRQ | TD |
+| gaps | GAP | GR |
+| risks | RSK | GR |
+| controls | CTL | TD |
+| target direction | DEC | TD |
+| requirement / question sheet | REQ | CS |
+| entity & cycle summary | RPT | CS |
+| the bound book | MAN | CS |
+
+The lifecycle (CS → GR → TD → SF → IMP → UAT → GLA → CA) is a stage a document speaks
+from, never part of what it is called. A document filed under an older coding ages by
+itself and is rebuilt the next time it is read.
+
+### One book for all of it
+A button on each tree binds the entity's whole model into a single filed PDF: the
+summary first, then every branch output in tree order — 69 documents, one volume, with a
+contents page. It is built when asked for, like the rest.
+
 ### Read where you picked, and see what is on file
 A document opens **inside the tree**: the tree keeps the left, the document takes the
 right, and closing the preview puts the node's own detail back. Opening it in a tab and

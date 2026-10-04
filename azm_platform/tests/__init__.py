@@ -6,3 +6,4 @@ from . import test_fin_tree
 from . import test_proc_tree
 from . import test_trees_hub
 from . import test_proc_documents
+from . import test_coding

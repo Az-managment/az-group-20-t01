@@ -1,0 +1,163 @@
+"""The group's coding, taken from AZM Master Coding Registry v2.1.
+
+The registry is the authority on how anything the group produces is identified:
+
+    Canonical ID   AZM-<DOMAIN>-<TYPE>-<SERIAL>   — entity, system, version and
+                   lifecycle stage are *separate* from the identity, never part of it.
+    Tree           Model → Module → Sub-module → Process/Topic → Requirement.
+    Artifacts      0..N of every output type per process; store once, map many.
+    Lifecycle      CS → GR → TD → SF → IMP → UAT → GLA → CA.
+    Entities       one master artifact, with applicability per entity.
+    PDF            a controlled bilingual PDF carrying code, version, status and scope.
+
+So an artifact is registered once for the node it belongs to — the policy of FIN.GOV is
+AZM-FIN-POL-000001 for the whole group — and each entity's copy of it is the same
+artifact at a scope, not a document of its own. That is what azm.artifact holds, and
+what every document prints on its cover.
+"""
+from odoo import api, fields, models
+
+CANONICAL = "AZM-{domain}-{atype}-{serial:06d}"
+
+# The models the group codes for. HRF requirements are numbered inside FIN, exactly as
+# the registry numbers them (167 = 107 FIN + 60 HRF, all AZM-FIN-REQ-…).
+DOMAINS = [
+    ("FIN", "النموذج المالي الموحد", "Unified Financial Model"),
+    ("PUR", "دورة المشتريات", "Procurement Cycle"),
+]
+
+# Lifecycle / دورة الحياة — a stage an artifact is in, never part of its identity.
+LIFECYCLE = [
+    ("CS", "الوضع الحالي", "Current State"),
+    ("GR", "الفجوات والمخاطر", "Gap & Risk"),
+    ("TD", "التصميم المستهدف", "Target Design"),
+    ("SF", "ملاءمة الحل", "Solution Fit"),
+    ("IMP", "التنفيذ", "Implementation"),
+    ("UAT", "الاختبار والقبول", "User Acceptance Testing"),
+    ("GLA", "الإطلاق والتبني", "Go-Live & Adoption"),
+    ("CA", "الضمان المستمر", "Continuous Assurance"),
+]
+
+# Artifact Type Dictionary / قاموس أنواع المخرجات — the complete registry dictionary.
+ARTIFACT_TYPES = [
+    ("GOV", "حوكمة", "Governance"),
+    ("POL", "سياسة", "Policy"),
+    ("PRO", "إجراء", "Procedure"),
+    ("WFL", "مسار عمل", "Workflow"),
+    ("RACI", "مصفوفة أدوار ومسؤوليات", "RACI Matrix"),
+    ("DOA", "مصفوفة صلاحيات", "Delegation of Authority"),
+    ("CTL", "ضابط", "Control"),
+    ("BRL", "قاعدة أعمال", "Business Rule"),
+    ("FRM", "نموذج", "Form"),
+    ("KPI", "مؤشر أداء رئيسي", "Key Performance Indicator"),
+    ("KRI", "مؤشر مخاطر رئيسي", "Key Risk Indicator"),
+    ("DSH", "لوحة متابعة", "Dashboard"),
+    ("RPT", "تقرير", "Report"),
+    ("SRQ", "متطلب نظام", "System Requirement"),
+    ("UC", "حالة استخدام", "Use Case"),
+    ("EVD", "دليل", "Evidence"),
+    ("GAP", "فجوة", "Gap"),
+    ("RSK", "خطر", "Risk"),
+    ("DEC", "قرار", "Decision"),
+    ("FIT", "تقييم ملاءمة حل", "Solution Fit Assessment"),
+    ("IMP", "حزمة تنفيذ", "Implementation Work Package"),
+    ("CHG", "طلب تغيير", "Change Request"),
+    ("TST", "حالة اختبار", "Test Case"),
+    ("DEF", "عيب", "Defect"),
+    ("ACC", "قبول", "Acceptance"),
+    ("DEP", "نشر", "Deployment"),
+    ("TRG", "تدريب", "Training"),
+    ("ADP", "تبني", "Adoption Action"),
+    ("FND", "ملاحظة ضمان", "Assurance Finding"),
+    ("CAP", "إجراء تصحيحي", "Corrective Action"),
+    ("MAN", "دليل تشغيلي / مجموعة", "Manual / Collection"),
+    # The registry has no type for a requirement itself; it numbers them AZM-FIN-REQ-…,
+    # so REQ is carried here as the type those canonical IDs already use.
+    ("REQ", "متطلب", "Requirement"),
+]
+TYPE_LABELS = {code: (arabic, english) for code, arabic, english in ARTIFACT_TYPES}
+LIFECYCLE_LABELS = {code: (arabic, english) for code, arabic, english in LIFECYCLE}
+
+# Canonical module IDs, as the registry assigns them. They are *not* derivable from our
+# own ordering — the registry puts INV before PUR and we do not — so they are taken from
+# the file rather than computed.
+MODULE_IDS = {
+    "GOV": "AZM-FIN-MOD-000001", "GLD": "AZM-FIN-MOD-000002", "BUD": "AZM-FIN-MOD-000003",
+    "REV": "AZM-FIN-MOD-000004", "INV": "AZM-FIN-MOD-000005", "PUR": "AZM-FIN-MOD-000006",
+    "TRY": "AZM-FIN-MOD-000007", "ADV": "AZM-FIN-MOD-000008", "AST": "AZM-FIN-MOD-000009",
+    "PAY": "AZM-FIN-MOD-000010", "PRJ": "AZM-FIN-MOD-000011", "CON": "AZM-FIN-MOD-000012",
+    "REA": "AZM-FIN-MOD-000013", "FND": "AZM-FIN-MOD-000014", "TAX": "AZM-FIN-MOD-000015",
+    "CLS": "AZM-FIN-MOD-000016", "ICO": "AZM-FIN-MOD-000017", "RPT": "AZM-FIN-MOD-000018",
+    "DAT": "AZM-FIN-MOD-000019",
+}
+
+
+class AzmArtifact(models.Model):
+    """One master artifact of the group, registered once and mapped to many entities.
+
+    The registry's first rule is that identity carries no entity, no version and no
+    lifecycle stage. So the policy of a module is one artifact with one code, and the
+    nine entities that have a copy of it share that code; what differs between them is
+    scope, which the document prints beside the code rather than inside it.
+    """
+    _name = "azm.artifact"
+    _description = "AZM master artifact"
+    _order = "domain, atype, serial"
+    _rec_name = "code"
+
+    code = fields.Char("الكود المعتمد", required=True, index=True, readonly=True)
+    ref = fields.Char("مرجع العقدة", required=True, index=True, readonly=True,
+                      help="ما يُرقَّم: عقدة في الشجرة ومخرجها، أو مستند على مستوى النموذج.")
+    domain = fields.Selection([(d, f"{ar} · {en}") for d, ar, en in DOMAINS],
+                              "النموذج", required=True, readonly=True)
+    atype = fields.Selection([(c, f"{ar} · {en}") for c, ar, en in ARTIFACT_TYPES],
+                             "نوع المخرج", required=True, readonly=True)
+    serial = fields.Integer("المسلسل", required=True, readonly=True)
+    node_name = fields.Char("اسم العقدة", readonly=True)
+
+    _code_uniq = models.Constraint("UNIQUE(code)", "هذا الكود مسجل بالفعل.")
+    _ref_uniq = models.Constraint("UNIQUE(ref)", "هذه العقدة لها كود مسجل بالفعل.")
+
+    @api.model
+    def _of(self, ref, domain, atype, name="", code=None):
+        """The artifact registered under ``ref``, numbered the first time it is seen.
+
+        The serial is allocated once and then never moves: the registry keeps approved
+        history immutable, so adding a module must not renumber the ones after it. A
+        ``code`` that the registry already assigned — every requirement has one — is
+        taken as given rather than allocated again.
+        """
+        Artifact = self.sudo()
+        found = Artifact.search([("ref", "=", ref)], limit=1)
+        if found:
+            return found
+        if code:
+            serial = int(code.rsplit("-", 1)[-1]) if code.rsplit("-", 1)[-1].isdigit() else 0
+        else:
+            # The next serial of this domain and type. Two documents built at the same
+            # moment must not be given the same number, and MAX() cannot be read FOR
+            # UPDATE, so the counter for this (domain, type) is locked for the
+            # transaction instead — the lock is released on commit or rollback.
+            self.env.cr.execute("SELECT pg_advisory_xact_lock(hashtext(%s))",
+                                (f"azm.artifact:{domain}:{atype}",))
+            self.env.cr.execute(
+                "SELECT COALESCE(MAX(serial), 0) FROM azm_artifact "
+                "WHERE domain = %s AND atype = %s", (domain, atype))
+            serial = self.env.cr.fetchone()[0] + 1
+            code = CANONICAL.format(domain=domain, atype=atype, serial=serial)
+        return Artifact.create({
+            "code": code, "ref": ref, "domain": domain, "atype": atype,
+            "serial": serial, "node_name": name,
+        })
+
+
+class AzmFinModule(models.Model):
+    _inherit = "azm.fin.module"
+
+    azm_code = fields.Char("الكود المعتمد", compute="_compute_azm_code", store=True,
+                           help="المعرّف المعتمد في سجل الترميز الرئيسي.")
+
+    @api.depends("code")
+    def _compute_azm_code(self):
+        for module in self:
+            module.azm_code = MODULE_IDS.get(module.code or "", False)

@@ -67,7 +67,8 @@ class TestProcDocuments(TransactionCase):
         policy = self.Pub.sudo()._get(self.company, 'stage', stage=self.stage, tab='pur_policy')
         payload = policy._azm_payload()
         self.assertTrue(payload['html'], "the engine writes the body of an output; the document wraps it")
-        self.assertEqual(payload['code'], f"PR-POL-{self.stage.code}")
+        self.assertTrue(payload['code'].startswith('AZM-PUR-POL-'),
+                        "an output is coded the way the registry codes it")
 
     def test_a_document_is_built_the_first_time_it_is_opened(self):
         pub = self.Pub.sudo()._get(self.company, 'question', question=self.question)

@@ -10,7 +10,8 @@ and the risks the catalogue watches on it.
 from odoo import api, models
 
 from odoo.addons.azm_operating_model.models import engine
-from odoo.addons.azm_platform.models.azm_proc_documents import PROC_OUTPUTS, PROC_TAB_ORDER
+from odoo.addons.azm_platform.models.azm_proc_documents import (
+    PROC_ARTIFACTS, PROC_OUTPUTS, PROC_TAB_ORDER)
 
 OPEN_FINDING_STATES = ("candidate", "confirmed", "treatment")
 
@@ -101,7 +102,8 @@ class AzmDashboard(models.AbstractModel):
         # published, so a stage shows all of its outputs from the first visit; the
         # document is resolved — and built, if this is the first time — when opened.
         outputs = [{"kind": "stage", "tab": tab,
-                    "label": PROC_OUTPUTS[tab][1], "en": PROC_OUTPUTS[tab][2]}
+                    "label": PROC_OUTPUTS[tab][1], "en": PROC_OUTPUTS[tab][2],
+                    "atype": PROC_ARTIFACTS[tab][0], "stage": PROC_ARTIFACTS[tab][1]}
                    for tab in PROC_TAB_ORDER]
 
         nodes = []
@@ -216,6 +218,7 @@ class AzmDashboard(models.AbstractModel):
             } if assessment else None,
             "assessment_options": [{"id": a.id, "name": f"{a.name} · v{a.version}"} for a in assessments],
             "summary_doc": {"kind": "cycle", "label": "ملخص الدورة", "en": "Cycle summary"},
+            "book_doc": {"kind": "cycle_book", "label": "الكتاب الكامل", "en": "Full book"},
             "documents": {
                 "match": bool(assessment) and assessment == source,
                 "from": source.name if source else "",
@@ -296,7 +299,7 @@ class AzmDashboard(models.AbstractModel):
             "status": self._proc_status(state),
             "path": [
                 ("الدورة", "دورة المشتريات"),
-                ("المرحلة", f"{stage.code} · {stage.name}"),
+                ("المرحلة", f"PUR-{stage.code} · {stage.name}"),
                 ("المجموعة", engine.GROUP_TITLES.get(question.group or "0", "")),
                 ("السؤال", question.code or question.key),
             ],

@@ -41,7 +41,7 @@ TAB_PROFILES = {
     "reports": ("R",),
     "integration": ("I",),
 }
-DOC_CODES = {"book": "CS-FIN", "rules": "CS-POL", "workflow": "CS-WF", "authority": "CS-AUTH",
+DOC_CODES = {"book": "CS-FIN", "rules": "CS-POL", "workflow": "CS-SOP", "authority": "CS-AUTH",
              "reports": "CS-RPT", "integration": "CS-INT", "gaps": "CS-GAP", "future": "CS-TOM",
              "na": "CS-NA", "coverage": "CS-COV"}
 # who creates / reviews / approves: a person in two of them is a segregation-of-duties warning

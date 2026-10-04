@@ -154,7 +154,14 @@
                 </div>
 
                 <div class="article azm_doc" dir="rtl" t-att-data-oe-model="doc._name" t-att-data-oe-id="doc.id">
-                    <div class="azm_doc_type"><t t-out="p['doc_type'][0]"/> · <t t-out="p['doc_type'][1]"/></div>
+                    <div class="azm_doc_type">
+                        <t t-out="p['doc_type'][0]"/> · <t t-out="p['doc_type'][1]"/>
+                        <span class="azm_doc_scope">
+                            <t t-out="p['azm_type'][0]"/> · <t t-out="p['scope']"/>
+                            <t t-if="p['version']"> · v<t t-out="p['version']"/></t>
+                            · <t t-out="p['stage']"/>
+                        </span>
+                    </div>
                     <h1><span class="azm_code azm_code_big" t-out="p['code']"/> <t t-out="p['title']"/></h1>
 
                     <t t-set="path" t-value="p['path']"/>

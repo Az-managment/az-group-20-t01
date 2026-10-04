@@ -340,6 +340,12 @@ class AzmFinRequirement(models.Model):
     active = fields.Boolean(default=True)
 
     _code_uniq = models.Constraint("UNIQUE(code)", "كود المتطلب لازم يكون فريد.")
+    # tree_ref is what the tree, the breadcrumb, the PDF cover and the filed document
+    # all name a requirement by, and it is computed from sibling rank — so inserting or
+    # reordering a requirement could quietly give two of them the same name. It cannot
+    # now: the database refuses it instead of filing two documents under one name.
+    _tree_ref_uniq = models.Constraint(
+        "UNIQUE(tree_ref)", "مرجع الشجرة مكرر؛ لا يمكن أن يحمل متطلبان نفس المرجع.")
 
     @api.depends("topic_id.code", "module_id.code", "sequence")
     def _compute_tree_ref(self):

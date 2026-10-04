@@ -28,6 +28,8 @@ from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
 from odoo.addons.azm_operating_model.models import fin_engine
+
+from .azm_coding import LIFECYCLE_LABELS, TYPE_LABELS
 from odoo.addons.azm_operating_model.models.azm_fin_catalogue import PROFILES, SCOPES
 
 _logger = logging.getLogger(__name__)
@@ -69,8 +71,26 @@ STATUS = {
     "open": ("لم تتم الإجابة بعد", "Not answered yet", "muted"),
 }
 
+# Which registry artifact type each output of the financial model is, and which
+# lifecycle stage it speaks from. Identity is the type; the stage is said beside it.
+FIN_ARTIFACTS = {
+    "rules": ("POL", "CS"),
+    "workflow": ("PRO", "CS"),
+    "authority": ("DOA", "CS"),
+    "reports": ("RPT", "CS"),
+    "integration": ("SRQ", "TD"),
+    "gaps": ("GAP", "GR"),
+    "future": ("DEC", "TD"),
+}
+# … and the documents that are not an output of a module
+FIN_KIND_ARTIFACTS = {
+    "requirement": ("REQ", "CS"),
+    "summary": ("RPT", "CS"),
+    "book": ("MAN", "CS"),
+}
+
 KINDS = [("requirement", "متطلب · Requirement"), ("module", "مخرج موديول · Module output"),
-         ("summary", "ملخص الكيان · Entity summary")]
+         ("summary", "ملخص الكيان · Entity summary"), ("book", "كتاب النموذج · Model book")]
 TABS = [(k, f"{v[1]} · {v[2]}") for k, v in MODULE_OUTPUTS.items()]
 BATCH = 20
 # Minutes to wait before each retry of a document that failed to render. A failure is
@@ -207,11 +227,14 @@ class AzmDocPublication(models.Model):
     def _compute_name(self):
         for pub in self:
             if pub.kind == "requirement":
-                pub.name = f"{pub.requirement_id.tree_ref} · {pub.requirement_id.title}"
+                req = pub.requirement_id
+                pub.name = f"{req.tree_ref or req.code} · {req.title}"
             elif pub.kind == "module":
                 pub.name = f"FIN.{pub.module_id.code} · {MODULE_OUTPUTS[pub.tab][1]}" if pub.tab else False
             elif pub.kind == "summary":
                 pub.name = "النموذج المالي الموحد · ملخص الكيان"
+            elif pub.kind == "book":
+                pub.name = "النموذج المالي الموحد · الكتاب الكامل"
 
     @api.depends("state", "stamp")
     def _compute_outdated(self):
@@ -225,7 +248,7 @@ class AzmDocPublication(models.Model):
             return f"req:{requirement.id}"
         if kind == "module":
             return f"mod:{module.id}:{tab}"
-        return "summary"
+        return kind   # summary, book — one of each per company
 
     @api.model
     def _get(self, company, kind, requirement=None, module=None, tab=None):
@@ -259,6 +282,9 @@ class AzmDocPublication(models.Model):
                                  "module_id": module.id, "tab": tab})
         if "summary" not in have:
             vals.append({"company_id": company.id, "kind": "summary", "key": "summary"})
+        if "book" not in have:
+            # bound from every other document of the model, so it is built when asked for
+            vals.append({"company_id": company.id, "kind": "book", "key": "book", "build": "on_open"})
         Pub.create(vals)
         return Pub.search([("company_id", "=", company.id)])
 
@@ -352,6 +378,10 @@ class AzmDocPublication(models.Model):
     def _current_stamp(self):
         """Fingerprint of what the document shows: the source assessment and the answers it is built from."""
         self.ensure_one()
+        if self.kind in self._book_kinds():
+            # a book is exactly its parts: it ages when any one of them would
+            parts = json.dumps([part._current_stamp() for part in self._book_parts()])
+            return hashlib.md5(parts.encode()).hexdigest()
         assessment = self._assessment()
         lines = self._lines(assessment) if assessment else self.env["azm.fin.answer"]
         req, module = self.requirement_id, self.module_id
@@ -359,6 +389,9 @@ class AzmDocPublication(models.Model):
             "assessment": [assessment.id, assessment.version, assessment.state, assessment.is_demo,
                            str(assessment.approved_date or "")] if assessment else None,
             "catalogue": [req.tree_ref, req.title, req.question, req.owner, module.code, module.name],
+            # the code a document prints is part of what it says, so a document filed
+            # under an older coding ages by itself and is rebuilt when next read
+            "coding": [self._artifact().code, self._lifecycle()],
             "lines": {line.code: [line.applicable, line._snapshot()] for line in lines},
         }
         return hashlib.md5(json.dumps(data, sort_keys=True, ensure_ascii=False, default=str).encode()).hexdigest()
@@ -394,11 +427,13 @@ class AzmDocPublication(models.Model):
                            **pub._source_vals(assessment)})
                 continue
             content, fmt = self.env["ir.actions.report"].sudo().with_company(company)._render_qweb_pdf(
-                report, res_ids=pub.ids)
+                report, res_ids=pub._report_ids())
             pdf = fmt == "pdf"
             folder = self.env["azm.doc.folder"]._folder(company, *pub._folder_key())
             vals = {
-                "name": f"{pub.name}.{'pdf' if pdf else 'html'}",
+                # a question is coded PUR-GOV/model, and a slash is a path separator to
+                # every browser that downloads the file: it is filed with a dash
+                "name": f"{pub.name}.{'pdf' if pdf else 'html'}".replace("/", "-"),
                 "raw": content,
                 "mimetype": "application/pdf" if pdf else "text/html",
                 "folder_id": folder.id,
@@ -474,7 +509,63 @@ class AzmDocPublication(models.Model):
     def _is_empty(self, assessment):
         """True when the document would carry nothing: it is filed as empty, not built."""
         self.ensure_one()
+        if self.kind in self._book_kinds():
+            return len(self._book_parts()) <= 1   # nothing but the entity's own summary
         return self.kind == "module" and not self._module_items(assessment)
+
+    # ---------------------------------------------------------------- coding
+    def _artifact(self):
+        """The master artifact this document is a copy of, per the coding registry.
+
+        One artifact per node and output for the whole group: the nine entities that
+        hold the policy of FIN.GOV all print AZM-FIN-POL-000001 on it, and what tells
+        their copies apart is the scope beside the code, never the code itself.
+        """
+        self.ensure_one()
+        Artifact = self.env["azm.artifact"]
+        if self.kind == "requirement":
+            req = self.requirement_id
+            # the registry already numbered every requirement; it is not renumbered here
+            return Artifact._of(f"azm.fin.requirement,{req.id}", "FIN", "REQ",
+                                name=req.title, code=req.req_id or None)
+        if self.kind == "module":
+            atype = FIN_ARTIFACTS[self.tab][0]
+            return Artifact._of(f"azm.fin.module,{self.module_id.id},{self.tab}", "FIN", atype,
+                                name=f"FIN.{self.module_id.code} · {MODULE_OUTPUTS[self.tab][1]}")
+        atype = FIN_KIND_ARTIFACTS[self.kind][0]
+        return Artifact._of(f"fin:{self.kind}", "FIN", atype, name=self.name)
+
+    def _lifecycle(self):
+        """Which stage of CS → GR → TD → … this document speaks from."""
+        self.ensure_one()
+        if self.kind == "module":
+            return FIN_ARTIFACTS[self.tab][1]
+        return FIN_KIND_ARTIFACTS[self.kind][1]
+
+    @api.model
+    def _book_kinds(self):
+        """The kinds that are bound from other documents rather than printed alone."""
+        return {"book"}
+
+    def _report_ids(self):
+        """The documents the report prints for this one: itself, or a book's parts."""
+        self.ensure_one()
+        if self.kind in self._book_kinds():
+            return [self.id] + [part.id for part in self._book_parts()]
+        return self.ids
+
+    def _book_parts(self):
+        """Every document this book binds, in the order the tree walks them."""
+        self.ensure_one()
+        Pub = self.env["azm.doc.publication"].sudo()
+        company, assessment = self.company_id, self._assessment()
+        parts = [Pub._get(company, "summary")]
+        for module in self.env["azm.fin.module"].sudo().search([]):
+            for tab in MODULE_OUTPUTS:
+                part = Pub._get(company, "module", module=module, tab=tab)
+                if not part._is_empty(assessment):
+                    parts.append(part)
+        return parts
 
     def _source_vals(self, assessment):
         """Which field records the assessment a document was built from."""
@@ -484,6 +575,8 @@ class AzmDocPublication(models.Model):
     def _folder_key(self):
         """(folder key, sub-folder) the document is filed under, for azm.doc.folder._folder()."""
         self.ensure_one()
+        if self.kind in self._book_kinds():
+            return "RPT", None
         if self.kind == "requirement":
             module = self.requirement_id.module_id
             return "FIN", (module.code, f"FIN.{module.code} · {module.name}")
@@ -580,6 +673,26 @@ class AzmDocPublication(models.Model):
                 lambda q: q.role in ("main", "follow")).mapped("label")
         return data
 
+    def _book_cover(self, parts, source):
+        """The front of a book: what it is, for whom, and how much of it there is."""
+        self.ensure_one()
+        company = self.company_id
+        return {
+            "doc_type": ("كتاب النموذج المالي الموحد", "Unified financial model book"),
+            "code": "FIN-BOOK",
+            "title": f"النموذج المالي الموحد — {company.name}",
+            "path": [("النموذج", "FIN", "النموذج المالي الموحد"),
+                     ("الكتاب", "FIN-BOOK", "الكتاب الكامل")],
+            "glance": [
+                ("الكيان", "Entity", company.name),
+                ("المصدر", "Source", source),
+                ("عدد المستندات", "Documents", str(len(parts))),
+                ("تاريخ التجميع", "Bound on", fields.Date.to_string(fields.Date.today())),
+            ],
+            "summary_title": ("محتويات الكتاب", "Contents"),
+            "summary_label": "المستند",
+        }
+
     def _azm_payload_extra(self, assessment, source):
         """What a kind added by another model puts in the payload. Overridden there."""
         self.ensure_one()
@@ -623,7 +736,14 @@ class AzmDocPublication(models.Model):
             "summary_columns": [("منطبق", "applicable"), ("مكتمل", "done"), ("مطبّق", "full"),
                                 ("جزئيًا", "partial"), ("غير مطبّق", "unavailable")],
         }
-        if pub.kind not in ("requirement", "module", "summary"):
+        if pub.kind in pub._book_kinds():
+            parts = pub._book_parts()
+            payload.update(pub._book_cover(parts, source))
+            payload["summary"] = [{"code": part._azm_payload()["code"], "name": part.name}
+                                  for part in parts]
+            payload["summary_columns"] = []
+            payload["single"] = False
+        elif pub.kind not in ("requirement", "module", "summary"):
             payload.update(pub._azm_payload_extra(assessment, source))
         elif pub.kind == "requirement":
             req = pub.requirement_id
@@ -692,8 +812,26 @@ class AzmDocPublication(models.Model):
                 "summary": rows,
                 "single": False,
             })
-        payload["verify"] = f"{payload['code']} / {payload['entity_code'] or company.id}" + (
-            f" / v{assessment.version}" if assessment else "")
+        # The registry asks every controlled PDF to carry a code, a version, a status
+        # and a scope. The code identifies the master artifact — the same for every
+        # entity — so the entity is the scope beside it, never part of it.
+        artifact = pub._artifact()
+        stage = pub._lifecycle()
+        payload.update({
+            "code": artifact.code,
+            "azm_type": TYPE_LABELS.get(artifact.atype, ("", "")),
+            "status": LIFECYCLE_LABELS.get(stage, ("", "")),
+            "stage": stage,
+            "scope": company.name,
+            "version": assessment.version if assessment else 0,
+            "tree_ref": payload["code"],   # how the tree names it, kept for the reader
+        })
+        payload["verify"] = " · ".join(x for x in (
+            artifact.code,
+            payload["entity_code"] or company.name,
+            f"v{assessment.version}" if assessment else "",
+            stage,
+        ) if x)
         # module outputs group their requirements under their topic: model › module › topic › requirement
         groups = []
         for item in payload["items"]:
@@ -701,7 +839,13 @@ class AzmDocPublication(models.Model):
                 groups.append({"code": item["topic_code"], "name": item["topic"], "items": []})
             groups[-1]["items"].append(item)
         payload["groups"] = groups
-        glance = payload["glance"]
+        # the canonical code is the identity; the tree reference is how a reader finds
+        # it again in the tree, so both are on the page
+        glance = payload["glance"] + [
+            ("مرجع الشجرة", "Tree reference", payload["tree_ref"]),
+            ("المرحلة", "Lifecycle", f"{payload['stage']} · {payload['status'][1]}"),
+        ]
+        payload["glance"] = glance
         payload["glance_rows"] = [glance[i:i + 2] for i in range(0, len(glance), 2)]
         return payload
 

@@ -89,6 +89,8 @@ class AzmDashboard(models.AbstractModel):
             "stage": ("azm.stage", "stage", PROC_OUTPUTS),
             "summary": (None, None, None),
             "cycle": (None, None, None),
+            "book": (None, None, None),
+            "cycle_book": (None, None, None),
         }
         if kind not in NODES:
             raise UserError(_("There is no document of this kind."))

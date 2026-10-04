@@ -130,6 +130,16 @@ def source_tag(stage, keys):
     return f'<details class="o_azm_source"><summary>{_e(label)}</summary>{_e(codes)}</details>'
 
 
+def doc_code(stage, default):
+    """The code printed inside an output.
+
+    A published document carries the code its cover carries — the caller passes it in —
+    so one PDF never names itself two different things. The workspace, which previews an
+    output that has not been published, keeps the catalogue's own shorthand.
+    """
+    return _e(stage.get("doc_code") or f"{default}-{stage['code']}")
+
+
 def stage_header(stage):
     return (
         f'<div class="o_azm_stage_head"><span class="o_azm_code">PUR-{_e(stage["code"])}</span>'
@@ -199,7 +209,7 @@ def render_policy(stage, questions, answers):
     ]
     if stage["governance"]:
         sections = [("حوكمة الدورة", clauses(specific))]
-    html = [stage_header(stage), f'<div class="o_azm_doc_code">CS-POL-{_e(stage["code"])}</div>']
+    html = [stage_header(stage), f'<div class="o_azm_doc_code">{doc_code(stage, "CS-POL")}</div>']
     n = 0
     for title, lines in sections:
         if not lines:
@@ -258,7 +268,7 @@ def render_procedure(stage, questions, answers):
     steps.append(("التوثيق والإبلاغ", doc))
     vis = visible_questions(stage, questions, answers)
     rules = [sentence(q, answers) for q in vis if not q.get("is_common") and sentence(q, answers)]
-    html = [stage_header(stage), f'<div class="o_azm_doc_code">CS-SOP-{_e(stage["code"])}</div><ol class="o_azm_steps">']
+    html = [stage_header(stage), f'<div class="o_azm_doc_code">{doc_code(stage, "CS-SOP")}</div><ol class="o_azm_steps">']
     for title, body in steps:
         html.append(f"<li><b>{_e(title)}</b><p>{_e(body)}</p></li>")
     html.append("</ol>")
@@ -344,7 +354,7 @@ def render_workflow(stage, questions, answers):
     svg.append(_arrow(120, dy + 40, 120, dy + 100))
     svg.append(_svg_box(20, dy + 100, 210, 56, route("reject_route"), "وجهة الرفض", dashed=True))
     svg.append("</svg>")
-    html = [stage_header(stage), f'<div class="o_azm_doc_code">CS-WF-{_e(stage["code"])}</div>', "".join(svg)]
+    html = [stage_header(stage), f'<div class="o_azm_doc_code">{doc_code(stage, "CS-WF")}</div>', "".join(svg)]
     if known(a.get("boundary")) and a.get("boundary") in OUTSIDE:
         html.append(note(f"جزء من الخطوة يتم خارج النظام عبر: {v('channel')}. تسجيل النتيجة: {v('record')}.", "warn"))
     return "".join(html)
@@ -425,7 +435,7 @@ RACI_COLS = [("owner", "ينفذ"), ("reviewer", "يراجع"), ("approver", "ي
 def render_authority(stage, questions, answers):
     vis = visible_questions(stage, questions, answers)
     roles = [q for q in vis if q.get("is_role") and known(answers.get(q["key"]))]
-    html = [stage_header(stage), f'<div class="o_azm_doc_code">CS-AUTH-{_e(stage["code"])}</div>']
+    html = [stage_header(stage), f'<div class="o_azm_doc_code">{doc_code(stage, "CS-AUTH")}</div>']
     if not roles:
         return "".join(html) + note("لا توجد أدوار محددة بعد.")
     html.append('<div class="o_azm_cards">')

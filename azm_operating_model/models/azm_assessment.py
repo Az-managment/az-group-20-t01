@@ -155,11 +155,15 @@ class AzmAssessment(models.Model):
             rec.output_html = rec._render("book") if rec.id else False
             rec.output_map_html = rec._render("workflow") if rec.id else False
 
-    def _render(self, tab, stage=False):
+    def _render(self, tab, stage=False, doc_code=None):
+        """Render one output. ``doc_code`` is the code the published document carries,
+        so the body of a PDF names itself the way its cover does."""
         self.ensure_one()
         rules = self._rules()
         if stage:
             sdict, qdicts, answers, _ = self._stage_payload(stage)
+            if doc_code:
+                sdict = {**sdict, "doc_code": doc_code}
             body = engine.render_stage(tab, sdict, qdicts, answers, rules)
         else:
             data = []

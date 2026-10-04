@@ -12,7 +12,8 @@ levels of nodes and a status on each leaf — so one page component draws them a
 from odoo import api, models
 
 from odoo.addons.azm_operating_model.models.azm_fin_catalogue import PROFILES, SCOPES
-from odoo.addons.azm_platform.models.azm_documents import MODULE_OUTPUTS, STATUS
+from odoo.addons.azm_platform.models.azm_documents import (
+    FIN_ARTIFACTS, MODULE_OUTPUTS, STATUS)
 
 
 def _pct(part, whole):
@@ -50,7 +51,9 @@ class AzmDashboard(models.AbstractModel):
         # catalogue, not from the documents already published, so a module shows all
         # of its outputs from the first visit; the document itself is resolved — and
         # built, if this is the first time — when somebody opens it.
-        outputs = [{"kind": "module", "tab": tab, "label": out[1], "en": out[2]}
+        Artifact = env["azm.artifact"]
+        outputs = [{"kind": "module", "tab": tab, "label": out[1], "en": out[2],
+                    "atype": FIN_ARTIFACTS[tab][0], "stage": FIN_ARTIFACTS[tab][1]}
                    for tab, out in MODULE_OUTPUTS.items()]
 
         nodes = []
@@ -156,6 +159,7 @@ class AzmDashboard(models.AbstractModel):
                 "state": assessment.state, "is_demo": assessment.is_demo,
             } if assessment else None,
             "summary_doc": {"kind": "summary", "label": "ملخص الكيان", "en": "Entity summary"},
+            "book_doc": {"kind": "book", "label": "الكتاب الكامل", "en": "Full book"},
             "totals": totals,
             "outputs": outputs,
             "nodes": nodes,

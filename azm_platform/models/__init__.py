@@ -7,6 +7,8 @@ from . import azm_om_dashboard
 from . import azm_fin_dashboard
 from . import azm_om_hub
 from . import azm_registers
+# the group's coding, from the Master Coding Registry
+from . import azm_coding
 # documents: one per requirement / module output, in each entity's Documents folders
 from . import azm_documents
 from . import azm_proc_documents

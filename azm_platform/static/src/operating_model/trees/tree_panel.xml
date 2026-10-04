@@ -30,6 +30,13 @@
                 <i class="oi me-1" data-icon="description"/>
                 <t t-out="this.d.summary_doc.label"/>
             </button>
+            <button t-if="this.d.book_doc and this.docsAvailable" type="button"
+                    class="btn btn-sm btn-primary o_azm_tree_book"
+                    t-attf-title="{{this.d.book_doc.en}} — كل مستندات هذا الكيان في مجلد واحد"
+                    t-on-click="() => this.previewDoc(this.d.book_doc)">
+                <i class="oi me-1" data-icon="menu_book"/>
+                <t t-out="this.d.book_doc.label"/>
+            </button>
             <select t-foreach="this.selects" t-as="sel" t-key="sel.key"
                     class="form-select form-select-sm" t-att-title="sel.title"
                     t-on-change="(ev) => this.onSelectChange(sel.key, ev)">
@@ -174,9 +181,10 @@
 
                     <div t-if="this.docsOpen(n.id) and this.docsAvailable" class="o_azm_tree_docs">
                         <span t-foreach="this.docsOf(n)" t-as="d" t-key="d.tab" class="o_azm_doc_chip">
-                            <button type="button" class="o_azm_doc_open" t-att-title="d.en"
+                            <button type="button" class="o_azm_doc_open"
+                                    t-attf-title="{{d.en}} · {{d.atype}} · {{d.stage}}"
                                     t-on-click="() => this.previewDoc(d)">
-                                <i class="oi" data-icon="description"/>
+                                <span class="o_azm_doc_type" t-out="d.atype"/>
                                 <t t-out="d.label"/>
                             </button>
                             <button type="button" class="o_azm_doc_get" title="تنزيل · Download"

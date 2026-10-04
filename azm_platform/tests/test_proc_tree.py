@@ -113,7 +113,8 @@ class TestProcTree(TransactionCase):
         self.assertIn(rule.code, [r['code'] for r in node['risks']],
                       "the risks the catalogue watches on this question are shown with it")
         self.assertEqual([s[1] for s in node['path']][1],
-                         f"{rule.question_id.stage_id.code} · {rule.question_id.stage_id.name}")
+                         f"PUR-{rule.question_id.stage_id.code} · {rule.question_id.stage_id.name}",
+                         "the breadcrumb names the stage the way every other place does")
 
     def test_an_entity_outside_the_switcher_is_not_read(self):
         """Asking for a company the user was never given falls back to one they work in."""
