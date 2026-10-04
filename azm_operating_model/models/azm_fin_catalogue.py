@@ -381,11 +381,13 @@ class AzmFinQuestion(models.Model):
     _name = "azm.fin.question"
     _description = "سؤال النموذج المالي الموحد"
     _order = "module_sequence, requirement_id, sequence, id"
-    _rec_names_search = ("label", "code")
+    _rec_names_search = ("label", "code", "tree_ref")
 
     code = fields.Char("كود السؤال", required=True, index=True)
     key = fields.Char("المفتاح", required=True, help="Q001، Q002 … داخل المتطلب؛ يستخدم في شروط الظهور.")
     requirement_id = fields.Many2one("azm.fin.requirement", "المتطلب", required=True, ondelete="cascade", index=True)
+    tree_ref = fields.Char(related="requirement_id.tree_ref", store=True, index=True, string="مرجع الشجرة",
+                           help="كود المتطلب/المستند الذي ينتمي إليه السؤال، مثل FIN.PUR.01.01.")
     module_id = fields.Many2one(related="requirement_id.module_id", store=True, string="الموديول")
     module_sequence = fields.Integer(related="requirement_id.module_sequence", store=True)
     topic_id = fields.Many2one(related="requirement_id.topic_id", store=True, string="الموضوع الفرعي")

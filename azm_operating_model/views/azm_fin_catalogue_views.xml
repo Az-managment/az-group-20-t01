@@ -260,6 +260,7 @@
         <field name="model">azm.fin.question</field>
         <field name="arch" type="xml">
             <list string="أسئلة النموذج المالي">
+                <field name="tree_ref"/>
                 <field name="key"/>
                 <field name="module_id" optional="hide"/>
                 <field name="topic_id" optional="hide"/>
@@ -330,6 +331,7 @@
         <field name="arch" type="xml">
             <search>
                 <field name="label"/>
+                <field name="tree_ref"/>
                 <field name="code"/>
                 <field name="requirement_id"/>
                 <field name="module_id"/>
