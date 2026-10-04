@@ -28,9 +28,10 @@ class TestProcDocuments(TransactionCase):
         mine = pubs.filtered(lambda p: p.kind in ('question', 'stage', 'cycle'))
         self.assertEqual(len(mine.filtered(lambda p: p.kind == 'question')),
                          self.env['azm.question'].search_count([]))
-        self.assertEqual(len(mine.filtered(lambda p: p.kind == 'stage')),
-                         self.env['azm.stage'].search_count([]) * len(PROC_TAB_ORDER),
-                         "every stage carries every output the engine writes")
+        self.assertEqual(
+            len(mine.filtered(lambda p: p.kind == 'stage')),
+            sum(len(stage._azm_outputs()) for stage in self.env['azm.stage'].search([])),
+            "every stage carries every output it can have — a governance stage has no procedure")
         self.assertEqual(len(mine.filtered(lambda p: p.kind == 'cycle')), 1)
         self.assertEqual(set(mine.mapped('build')), {'on_open'},
                          "the cycle's documents are built when first read, not all at once")

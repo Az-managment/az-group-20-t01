@@ -101,10 +101,15 @@ class AzmDashboard(models.AbstractModel):
         # them. The list comes from the catalogue, not from the documents already
         # published, so a stage shows all of its outputs from the first visit; the
         # document is resolved — and built, if this is the first time — when opened.
-        outputs = [{"kind": "stage", "tab": tab,
-                    "label": PROC_OUTPUTS[tab][1], "en": PROC_OUTPUTS[tab][2],
-                    "atype": PROC_ARTIFACTS[tab][0], "stage": PROC_ARTIFACTS[tab][1]}
-                   for tab in PROC_TAB_ORDER]
+        empty = self._tree_known_empty(company, "stage")
+
+        def stage_outputs(stage):
+            """What this entity actually has here — a governance stage has no procedure,
+            and an output its answers put nothing in is not offered."""
+            return [{"kind": "stage", "id": stage.id, "tab": tab,
+                     "label": PROC_OUTPUTS[tab][1], "en": PROC_OUTPUTS[tab][2],
+                     "atype": PROC_ARTIFACTS[tab][0], "stage": PROC_ARTIFACTS[tab][1]}
+                    for tab in stage._azm_outputs() if (stage.id, tab) not in empty]
 
         nodes = []
         totals = {"questions": 0, "asked": 0, "answered": 0, "known": 0, "findings": 0}
@@ -169,7 +174,7 @@ class AzmDashboard(models.AbstractModel):
                 "name": stage.name,
                 "domain": stage.azm_domain,
                 "governance": stage.is_governance,
-                "docs": [{**out, "id": stage.id} for out in outputs],
+                "docs": stage_outputs(stage),
                 "children": groups,
                 "meta": s_fig["asked"] or s_fig["questions"],
                 "gaps": s_fig["findings"],
@@ -182,10 +187,16 @@ class AzmDashboard(models.AbstractModel):
         # Without an assessment the engine has nothing to write, so the outputs are
         # counted as empty rather than promised and then found blank.
         published = self._tree_published(company, ("question", "stage", "cycle"))
+        # counted the same way the chips are offered, so the tile and the branches
+        # never disagree about how many there are
+        offered = {tab: 0 for tab in PROC_TAB_ORDER}
+        for node in nodes:
+            for doc in node["docs"]:
+                offered[doc["tab"]] += 1
         families = [{
             "tab": tab, "label": PROC_OUTPUTS[tab][1], "en": PROC_OUTPUTS[tab][2],
-            "offered": len(nodes),
-            "empty": 0 if assessment else len(nodes),
+            "offered": offered[tab],
+            "empty": 0 if assessment else offered[tab],
             "ready": published.get(("stage", tab), {}).get("done", 0),
         } for tab in PROC_TAB_ORDER]
         families.append({

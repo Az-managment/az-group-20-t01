@@ -52,9 +52,15 @@ class AzmDashboard(models.AbstractModel):
         # of its outputs from the first visit; the document itself is resolved — and
         # built, if this is the first time — when somebody opens it.
         Artifact = env["azm.artifact"]
-        outputs = [{"kind": "module", "tab": tab, "label": out[1], "en": out[2],
-                    "atype": FIN_ARTIFACTS[tab][0], "stage": FIN_ARTIFACTS[tab][1]}
-                   for tab, out in MODULE_OUTPUTS.items()]
+        empty = self._tree_known_empty(company, "module")
+
+        def module_outputs(module):
+            """What this entity actually has here: an output the module can have, and
+            that its own answers put something in."""
+            return [{"kind": "module", "id": module.id, "tab": tab,
+                     "label": MODULE_OUTPUTS[tab][1], "en": MODULE_OUTPUTS[tab][2],
+                     "atype": FIN_ARTIFACTS[tab][0], "stage": FIN_ARTIFACTS[tab][1]}
+                    for tab in module._azm_outputs() if (module.id, tab) not in empty]
 
         nodes = []
         totals = {"requirements": 0, "applicable": 0, "done": 0, "gaps": 0}
@@ -111,7 +117,7 @@ class AzmDashboard(models.AbstractModel):
                 "id": module.id,
                 "code": f"FIN.{module.code}",
                 "name": module.name,
-                "docs": [{**out, "id": module.id} for out in outputs],
+                "docs": module_outputs(module),
                 "children": topics,
                 "meta": m_fig["requirements"],
                 "gaps": m_fig["gaps"],
@@ -124,13 +130,17 @@ class AzmDashboard(models.AbstractModel):
         # many SOPs, how many authority maps … counted from what the tree offers,
         # less the outputs the model found nothing to say in
         published = self._tree_published(company, ("requirement", "module", "summary"))
+        # counted the same way the chips are offered: an output this entity actually
+        # has, so the tile and the branches never disagree about how many there are
+        offered = {tab: 0 for tab in MODULE_OUTPUTS}
+        for node in nodes:
+            for doc in node["docs"]:
+                offered[doc["tab"]] += 1
         families = [{
             "tab": tab, "label": out[1], "en": out[2],
-            "offered": len(nodes),
-            # with no assessment behind them every module output is empty, and saying
-            # otherwise would promise documents that refuse to open
-            "empty": len(nodes) if not assessment else min(
-                published.get(("module", tab), {}).get("empty", 0), len(nodes)),
+            "offered": offered[tab],
+            # with no assessment behind them no module output has anything in it
+            "empty": offered[tab] if not assessment else 0,
             "ready": published.get(("module", tab), {}).get("done", 0),
         } for tab, out in MODULE_OUTPUTS.items()]
         families.append({

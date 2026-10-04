@@ -164,7 +164,8 @@ class AzmArtifact(models.Model):
         takes the next serial rather than displacing anyone.
         """
         from .azm_documents import FIN_ARTIFACTS, FIN_KIND_ARTIFACTS, MODULE_OUTPUTS
-        from .azm_proc_documents import PROC_ARTIFACTS, PROC_KIND_ARTIFACTS, PROC_TAB_ORDER
+        from .azm_proc_documents import (
+            PROC_ARTIFACTS, PROC_KIND_ARTIFACTS, PROC_OUTPUTS, PROC_TAB_ORDER)
         if reset:
             self.sudo().search([]).unlink()
 
@@ -175,9 +176,11 @@ class AzmArtifact(models.Model):
         # outputs, then every requirement under the ID the registry already gave it
         modules = env["azm.fin.module"].sudo().search([])
         for module in modules.sorted(lambda m: (m.azm_code or "ZZZ", m.sequence, m.id)):
-            for tab, out in MODULE_OUTPUTS.items():
+            # only the outputs this module can ever fill: an output a module has no
+            # requirements for is not an artifact, so it takes no number
+            for tab in module._azm_outputs():
                 plan.append((f"azm.fin.module,{module.id},{tab}", "FIN", FIN_ARTIFACTS[tab][0],
-                             f"FIN.{module.code} · {out[1]}", None))
+                             f"FIN.{module.code} · {MODULE_OUTPUTS[tab][1]}", None))
         for req in env["azm.fin.requirement"].sudo().search([], order="tree_ref, id"):
             plan.append((f"azm.fin.requirement,{req.id}", "FIN", "REQ", req.title, req.req_id or None))
         for kind, (atype, _stage) in FIN_KIND_ARTIFACTS.items():
@@ -186,9 +189,10 @@ class AzmArtifact(models.Model):
 
         # the cycle: its stages in order, each with its outputs, then every question
         for stage in env["azm.stage"].sudo().search([]):
-            for tab in PROC_TAB_ORDER:
+            # likewise: an output a stage cannot have is not an artifact
+            for tab in stage._azm_outputs():
                 plan.append((f"azm.stage,{stage.id},{tab}", "PUR", PROC_ARTIFACTS[tab][0],
-                             f"PUR-{stage.code}", None))
+                             f"PUR-{stage.code} · {PROC_OUTPUTS[tab][1]}", None))
         for question in env["azm.question"].sudo().search([], order="stage_sequence, sequence, id"):
             plan.append((f"azm.question,{question.id}", "PUR", "REQ", question.label, None))
         for kind, (atype, _stage) in PROC_KIND_ARTIFACTS.items():

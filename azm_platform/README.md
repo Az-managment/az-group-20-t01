@@ -114,6 +114,13 @@ One artifact is registered per node and output for the whole group (`azm.artifac
 the nine entities holding the policy of FIN.GOV all print the same code and are told
 apart by scope.
 
+Only what exists is numbered. A module with no requirement of a kind has no document
+of that kind — FIN.GOV holds no procedure — so it takes no serial, is not offered on the
+tree and is not counted; the first procedure is the first module that has one. The same
+holds for the cycle: the engine does not write governance as an operating procedure, so
+a governance stage has neither procedure nor workflow. And a document is offered to an
+entity only if that entity's own answers put something in it.
+
 Serials follow **the model, not the reader**: the whole catalogue is numbered in its own
 order — modules by the canonical ID the registry gave them, then their outputs, then the
 leaves, then the documents belonging to the model as a whole. So `AZM-FIN-POL-000001` is

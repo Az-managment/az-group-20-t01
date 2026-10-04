@@ -58,18 +58,21 @@ class TestProcTree(TransactionCase):
                          "every question hangs somewhere on the tree, exactly once")
         self.assertEqual(tree['totals']['questions'], seen)
         self.assertEqual(tree['totals']['stages'], len(tree['nodes']))
-        for stage in tree['nodes']:
-            self.assertEqual([d['tab'] for d in stage['docs']], PROC_TAB_ORDER,
-                             "every output of the stage hangs on it in the tree")
+        for node in tree['nodes']:
+            record = self.env['azm.stage'].browse(node['id'])
+            self.assertEqual([d['tab'] for d in node['docs']], record._azm_outputs(),
+                             "every output the stage can have hangs on it in the tree")
         self.assertEqual(tree['summary_doc']['kind'], 'cycle')
 
         outputs = tree['outputs']
         self.assertEqual(outputs['total'], sum(f['count'] for f in outputs['families']))
         by_tab = {f['tab']: f for f in outputs['families']}
         self.assertEqual(by_tab['question']['count'], tree['totals']['questions'])
+        stages = self.env['azm.stage'].browse([n['id'] for n in tree['nodes']])
         for tab in PROC_TAB_ORDER:
-            self.assertEqual(by_tab[tab]['count'], len(tree['nodes']),
-                             "every stage offers every output while there is an assessment")
+            self.assertEqual(by_tab[tab]['count'],
+                             sum(1 for s in stages if tab in s._azm_outputs()),
+                             "a stage is counted for an output only if it can have one")
 
         branches = [g['id'] for s in tree['nodes'] for g in s['children']]
         self.assertEqual(len(branches), len(set(branches)),

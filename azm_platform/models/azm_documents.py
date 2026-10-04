@@ -277,7 +277,7 @@ class AzmDocPublication(models.Model):
                 vals.append({"company_id": company.id, "kind": "requirement", "key": f"req:{req.id}",
                              "requirement_id": req.id, "module_id": req.module_id.id})
         for module in self.env["azm.fin.module"].sudo().search([]):
-            for tab in MODULE_OUTPUTS:
+            for tab in module._azm_outputs():
                 if f"mod:{module.id}:{tab}" not in have:
                     vals.append({"company_id": company.id, "kind": "module", "key": f"mod:{module.id}:{tab}",
                                  "module_id": module.id, "tab": tab})
@@ -287,7 +287,31 @@ class AzmDocPublication(models.Model):
             # bound from every other document of the model, so it is built when asked for
             vals.append({"company_id": company.id, "kind": "book", "key": "book", "build": "on_open"})
         Pub.create(vals)
+        self._drop_impossible(company)
         return Pub.search([("company_id", "=", company.id)])
+
+    @api.model
+    def _drop_impossible(self, company):
+        """Retire documents for outputs their node cannot have.
+
+        A module with no requirement of a kind has no document of that kind. Such
+        documents were filed before the catalogue was asked what it could actually
+        produce, and they linger as empty files that are counted and offered. Their
+        record goes and the file in Documents is archived rather than deleted, so
+        nothing a person may have linked to disappears under them.
+        """
+        Pub = self.sudo()
+        stale = Pub.browse()
+        for pub in Pub.search([("company_id", "=", company.id), ("kind", "=", "module")]):
+            if pub.tab not in pub.module_id._azm_outputs():
+                stale |= pub
+        for pub in Pub.search([("company_id", "=", company.id), ("kind", "=", "stage")]):
+            if pub.tab not in pub.stage_id._azm_outputs():
+                stale |= pub
+        if stale:
+            stale.document_id.filtered("active").write({"active": False})
+            stale.unlink()
+        return stale
 
     @api.model
     def _due_domain(self, now=None):
@@ -604,7 +628,7 @@ class AzmDocPublication(models.Model):
         company, assessment = self.company_id, self._assessment()
         parts = [Pub._get(company, "summary")]
         for module in self.env["azm.fin.module"].sudo().search([]):
-            for tab in MODULE_OUTPUTS:
+            for tab in module._azm_outputs():
                 part = Pub._get(company, "module", module=module, tab=tab)
                 if not part._is_empty(assessment):
                     parts.append(part)
@@ -891,6 +915,25 @@ class AzmDocPublication(models.Model):
         payload["glance"] = glance
         payload["glance_rows"] = [glance[i:i + 2] for i in range(0, len(glance), 2)]
         return payload
+
+
+class AzmFinModule(models.Model):
+    _inherit = "azm.fin.module"
+
+    def _azm_outputs(self):
+        """The outputs this module can ever have, whatever any entity answers.
+
+        A module with no requirement of a kind has nothing to say in that output for
+        anybody: FIN.GOV holds no procedure, so there is no procedure of FIN.GOV to
+        number, to offer on the tree, or to count. Gaps and target direction are not
+        filtered that way — any requirement can turn into either — so a module with
+        requirements at all can have both.
+        """
+        self.ensure_one()
+        profiles = set(self.requirement_ids.mapped("profile"))
+        return [tab for tab in MODULE_OUTPUTS
+                if profiles and (tab not in fin_engine.TAB_PROFILES
+                                 or profiles & set(fin_engine.TAB_PROFILES[tab]))]
 
 
 class AzmFinRequirement(models.Model):

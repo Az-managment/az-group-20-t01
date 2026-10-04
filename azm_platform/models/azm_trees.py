@@ -157,6 +157,21 @@ class AzmDashboard(models.AbstractModel):
         return counts
 
     @api.model
+    def _tree_known_empty(self, company, kind):
+        """{(node id, output)} this entity's model found nothing to say in.
+
+        Whether a module can have an output at all is a question for the catalogue;
+        whether *this* entity has one is a question for its answers, and the document
+        already knows — it was filed as empty. Those are not offered: a chip that opens
+        on "there is nothing here" is worse than no chip.
+        """
+        field = "module_id" if kind == "module" else "stage_id"
+        pubs = self.env["azm.doc.publication"].sudo().search_read(
+            [("company_id", "=", company.id), ("kind", "=", kind), ("state", "=", "empty")],
+            [field, "tab"])
+        return {(row[field][0], row["tab"]) for row in pubs if row[field] and row["tab"]}
+
+    @api.model
     def _tree_outputs(self, families):
         """The documents strip of a tree page: one entry per family, and the totals.
 

@@ -46,10 +46,10 @@ class TestFinTree(TransactionCase):
         self.assertEqual(seen, self.env['azm.fin.requirement'].search_count([]),
                          "every requirement hangs somewhere on the tree, exactly once")
         self.assertEqual(tree['totals']['requirements'], seen)
-        from odoo.addons.azm_platform.models.azm_documents import MODULE_OUTPUTS
-        for module in tree['nodes']:
-            self.assertEqual([d['tab'] for d in module['docs']], list(MODULE_OUTPUTS),
-                             "every output of the module hangs on it in the tree")
+        for node in tree['nodes']:
+            record = self.env['azm.fin.module'].browse(node['id'])
+            self.assertEqual([d['tab'] for d in node['docs']], record._azm_outputs(),
+                             "every output the module can have hangs on it in the tree")
         self.assertEqual(tree['summary_doc']['kind'], 'summary')
 
         outputs = tree['outputs']

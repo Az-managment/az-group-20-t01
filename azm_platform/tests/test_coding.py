@@ -79,14 +79,18 @@ class TestCoding(TransactionCase):
         A._register_all()
         modules = self.env['azm.fin.module'].search([]).sorted(
             lambda m: (m.azm_code or 'ZZZ', m.id))
-        for atype in ('POL', 'PRO', 'DOA', 'SRQ', 'GAP', 'DEC'):
+        tabs = {'POL': 'rules', 'PRO': 'workflow', 'DOA': 'authority',
+                'SRQ': 'integration', 'GAP': 'gaps', 'DEC': 'future'}
+        for atype, tab in tabs.items():
+            expected = next(m for m in modules if tab in m._azm_outputs())
             first = A.search([('domain', '=', 'FIN'), ('atype', '=', atype), ('serial', '=', 1)])
-            self.assertIn(f"FIN.{modules[0].code}", first.node_name,
-                          f"AZM-FIN-{atype}-000001 belongs to the first module")
+            self.assertIn(f"FIN.{expected.code}", first.node_name,
+                          f"AZM-FIN-{atype}-000001 belongs to the first module that has one")
         # and they follow the registry's order of modules, which is not ours: it puts
         # INV (MOD-000005) before PUR (MOD-000006) and the catalogue sequence does not
+        with_policy = [m for m in modules if 'rules' in m._azm_outputs()]
         fifth = A.search([('domain', '=', 'FIN'), ('atype', '=', 'POL'), ('serial', '=', 5)])
-        self.assertIn(f"FIN.{modules[4].code}", fifth.node_name)
+        self.assertIn(f"FIN.{with_policy[4].code}", fifth.node_name)
 
     def test_every_code_is_well_formed_unique_and_dense(self):
         import re
@@ -166,3 +170,70 @@ class TestCoding(TransactionCase):
         pub._generate_safe()
         self.assertNotIn('/', pub.document_id.name,
                          "a slash in a file name is a path separator to whoever downloads it")
+
+    # ------------------------------------------------------------------ what exists
+    def test_only_an_output_that_can_exist_is_numbered(self):
+        """A module with no requirement of a kind has no document of that kind, so it
+        takes no number: the first procedure is the first module that has procedures."""
+        from odoo.addons.azm_platform.models.azm_documents import MODULE_OUTPUTS
+        A = self.env['azm.artifact'].sudo()
+        A._register_all()
+        for module in self.env['azm.fin.module'].search([]):
+            can = module._azm_outputs()
+            self.assertTrue(set(can) <= set(MODULE_OUTPUTS))
+            for tab in MODULE_OUTPUTS:
+                numbered = bool(A.search_count([('ref', '=', f"azm.fin.module,{module.id},{tab}")]))
+                self.assertEqual(numbered, tab in can,
+                                 f"FIN.{module.code}/{tab}: numbered={numbered}, can have={tab in can}")
+
+    def test_a_governance_stage_has_no_procedure_and_no_workflow(self):
+        """The engine says so itself: governance is not written as an operating
+        procedure, and the cycle is drawn whole rather than per governance stage."""
+        from odoo.addons.azm_platform.models.azm_proc_documents import (
+            GOVERNANCE_HAS_NO, PROC_TAB_ORDER)
+        A = self.env['azm.artifact'].sudo()
+        A._register_all()
+        governance = self.env['azm.stage'].search([('is_governance', '=', True)], limit=1)
+        self.assertTrue(governance, "the cycle has a governance stage")
+        self.assertEqual(set(governance._azm_outputs()), set(PROC_TAB_ORDER) - GOVERNANCE_HAS_NO)
+        for tab in GOVERNANCE_HAS_NO:
+            self.assertFalse(A.search_count([('ref', '=', f"azm.stage,{governance.id},{tab}")]),
+                             f"PUR-{governance.code} has no {tab} to number")
+
+    def test_the_tree_offers_only_the_outputs_that_exist(self):
+        D = self.env['azm.dashboard'].with_company(self.company)
+        tree = D.get_fin_tree(company_id=self.company.id)
+        for node in tree['nodes']:
+            module = self.env['azm.fin.module'].browse(node['id'])
+            self.assertEqual([d['tab'] for d in node['docs']], module._azm_outputs())
+        proc = D.get_proc_tree(company_id=self.company.id)
+        for node in proc['nodes']:
+            stage = self.env['azm.stage'].browse(node['id'])
+            self.assertEqual([d['tab'] for d in node['docs']], stage._azm_outputs())
+
+    def test_the_tree_offers_only_what_this_entity_has(self):
+        """An output the catalogue allows but this entity's answers put nothing in is
+        not offered: a chip that opens on "there is nothing here" is worse than none."""
+        D = self.env['azm.dashboard'].with_company(self.company)
+        empty = D._tree_known_empty(self.company, 'module')
+        tree = D.get_fin_tree(company_id=self.company.id)
+        for node in tree['nodes']:
+            module = self.env['azm.fin.module'].browse(node['id'])
+            self.assertEqual(
+                [d['tab'] for d in node['docs']],
+                [t for t in module._azm_outputs() if (module.id, t) not in empty])
+
+    def test_the_count_says_what_the_branches_show(self):
+        """The tile and the chips are the same documents counted once."""
+        D = self.env['azm.dashboard'].with_company(self.company)
+        for tree in (D.get_fin_tree(company_id=self.company.id),
+                     D.get_proc_tree(company_id=self.company.id)):
+            from collections import Counter
+            on_branches = Counter()
+            for node in tree['nodes']:
+                for doc in node['docs']:
+                    on_branches[doc['tab']] += 1
+            for family in tree['outputs']['families']:
+                if family['tab'] in on_branches:
+                    self.assertEqual(family['count'], on_branches[family['tab']],
+                                     f"{family['tab']}: the tile and the branches disagree")

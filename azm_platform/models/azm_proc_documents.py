@@ -69,6 +69,11 @@ PROC_KIND_ARTIFACTS = {
     "cycle_book": ("MAN", "CS"),
 }
 
+# Outputs a governance stage does not have: the engine says so itself — governance is
+# not written as an operating procedure, and the cycle is drawn whole rather than per
+# governance stage. So there is no procedure of PUR-GOV to number, offer or count.
+GOVERNANCE_HAS_NO = {"pur_procedure", "pur_workflow"}
+
 PROC_KINDS = [
     ("question", "سؤال · Question"),
     ("stage", "مخرج مرحلة · Stage output"),
@@ -160,7 +165,7 @@ class AzmDocPublication(models.Model):
         parts = [Pub._get(company, "cycle")]
         if assessment:
             for stage in self.env["azm.stage"].sudo().search([]):
-                for tab in PROC_TAB_ORDER:
+                for tab in stage._azm_outputs():
                     parts.append(Pub._get(company, "stage", stage=stage, tab=tab))
         return parts
 
@@ -224,7 +229,7 @@ class AzmDocPublication(models.Model):
                              "key": f"qst:{question.id}", "question_id": question.id,
                              "stage_id": question.stage_id.id})
         for stage in self.env["azm.stage"].sudo().search([]):
-            for tab in PROC_TAB_ORDER:
+            for tab in stage._azm_outputs():
                 if f"stg:{stage.id}:{tab}" not in have:
                     vals.append({"company_id": company.id, "kind": "stage", "build": "on_open",
                                  "key": f"stg:{stage.id}:{tab}", "stage_id": stage.id, "tab": tab})
@@ -486,3 +491,12 @@ class AzmStage(models.Model):
     _inherit = "azm.stage"
 
     azm_doc_ids = fields.One2many("azm.doc.publication", "stage_id", string="المستندات")
+
+    def _azm_outputs(self):
+        """The outputs this stage can ever have, whatever any entity answers."""
+        self.ensure_one()
+        if not self.question_ids:
+            return []
+        if self.is_governance:
+            return [tab for tab in PROC_TAB_ORDER if tab not in GOVERNANCE_HAS_NO]
+        return list(PROC_TAB_ORDER)
