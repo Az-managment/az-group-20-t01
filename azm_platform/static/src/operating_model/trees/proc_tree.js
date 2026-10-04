@@ -58,6 +58,22 @@ export class AzmProcTree extends AzmTreePage {
         await super.onSelectChange(key, ev);
     }
 
+    /** The documents are built from one assessment; another one on screen must not
+     *  be handed documents that answer differently. */
+    get docsAvailable() {
+        return !!(this.d.documents && this.d.documents.match);
+    }
+
+    get docsNote() {
+        if (this.docsAvailable) {
+            return "";
+        }
+        const from = this.d.documents && this.d.documents.from;
+        return from
+            ? `المستندات تُبنى من ${from} — اخترها لعرضها.`
+            : "لا توجد إفادة تُبنى منها مستندات هذا الكيان بعد.";
+    }
+
     get kpis() {
         const t = this.d.totals;
         return [

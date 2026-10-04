@@ -46,6 +46,12 @@ class TestFinTree(TransactionCase):
         self.assertEqual(seen, self.env['azm.fin.requirement'].search_count([]),
                          "every requirement hangs somewhere on the tree, exactly once")
         self.assertEqual(tree['totals']['requirements'], seen)
+        from odoo.addons.azm_platform.models.azm_documents import MODULE_OUTPUTS
+        for module in tree['nodes']:
+            self.assertEqual([d['tab'] for d in module['docs']], list(MODULE_OUTPUTS),
+                             "every output of the module hangs on it in the tree")
+        self.assertEqual(tree['summary_doc']['kind'], 'summary')
+
         branches = [t['id'] for m in tree['nodes'] for t in m['children']]
         self.assertEqual(len(branches), len(set(branches)),
                          "each branch has an id of its own, so folding one never folds another")
@@ -78,7 +84,10 @@ class TestFinTree(TransactionCase):
             # the page shows one line where the document has a code and a name; both are on it
             self.assertIn(name or code, step[1])
             self.assertIn(code or name, step[1])
-        self.assertEqual(node['doc']['id'], pub.id)
+        # the page names the node, not the publication: the document is resolved — and
+        # built, if nobody has read it yet — when it is opened
+        self.assertEqual(node['doc'], {'kind': 'requirement', 'id': requirement.id})
+        self.assertEqual(pub.requirement_id, requirement)
 
     def test_an_entity_outside_the_switcher_is_not_read(self):
         """Asking for a company the user was never given falls back to one they work in."""

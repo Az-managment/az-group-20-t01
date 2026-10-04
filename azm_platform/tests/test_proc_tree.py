@@ -50,11 +50,19 @@ class TestProcTree(TransactionCase):
                 for item in group['items']:
                     self.assertTrue(item['code'].startswith(f"PUR-{stage['code'][4:]}/"))
                     self.assertIn(item['status']['key'], ('answered', 'unsure', 'open', 'hidden'))
+                    self.assertEqual(item['doc'], {'kind': 'question', 'id': item['id']},
+                                     "every leaf names the document it stands for")
                     seen += 1
         self.assertEqual(seen, self.env['azm.question'].search_count([]),
                          "every question hangs somewhere on the tree, exactly once")
         self.assertEqual(tree['totals']['questions'], seen)
         self.assertEqual(tree['totals']['stages'], len(tree['nodes']))
+        from odoo.addons.azm_platform.models.azm_proc_documents import PROC_TAB_ORDER
+        for stage in tree['nodes']:
+            self.assertEqual([d['tab'] for d in stage['docs']], PROC_TAB_ORDER,
+                             "every output of the stage hangs on it in the tree")
+        self.assertEqual(tree['summary_doc']['kind'], 'cycle')
+
         branches = [g['id'] for s in tree['nodes'] for g in s['children']]
         self.assertEqual(len(branches), len(set(branches)),
                          "each branch has an id of its own, so folding one never folds another")

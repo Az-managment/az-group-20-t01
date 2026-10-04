@@ -78,6 +78,29 @@ Both trees are the same page with a different leaf: walking, searching, folding 
 picker live in one component (`static/src/operating_model/trees/tree_base.js`) and one set of
 templates, so a third model costs a section on the landing page and a detail panel.
 
+### Every output hangs on the tree
+A branch carries all of its outputs, a leaf carries its own sheet, and the tree carries
+the entity's summary — all of them real documents, filed in the Documents app:
+
+| On the tree | Documents |
+|---|---|
+| a financial module | 7 outputs: policies, SOPs, authority, reports & KPIs, integration, gaps, target direction |
+| a procurement stage | 11 outputs: current state, policy, procedure, workflow map, authority, gaps, risks, controls, system requirements, KPIs, coverage |
+| a leaf | its own requirement sheet / question sheet |
+| the tree itself | the entity summary / the cycle summary |
+
+They are one kind of object: the same record (`azm.doc.publication`), the same report, the
+same per-company folder tree. An output whose body its own engine writes (a policy, a
+procedure, a workflow drawing) hands the report that prose; everything around it — cover,
+path, status banner, at-a-glance table, controlled-copy footer — is identical to a
+requirement sheet's.
+
+The tree offers every output the catalogue defines, published or not. The document is
+resolved when somebody opens it, and **built then if nobody has read it yet**: the cycle
+asks 396 questions of each entity, so pre-rendering all of them for every company would
+spend hundreds of megabytes on PDFs nobody asked for. A document already read is re-used,
+and rebuilt by itself once the answers behind it move.
+
 A node's status is that entity's own answer and nothing else. On the procurement tree,
 visibility is decided by the engine that drives the answer workspace, so a question this
 entity is never asked reads as "لا يُسأل هنا" rather than as an unanswered hole. An entity

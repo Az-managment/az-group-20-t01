@@ -171,7 +171,12 @@
                         </tr>
                     </table>
 
-                    <t t-if="p['single']">
+                    <t t-if="p['html']">
+                        <!-- an output written by its own engine: the body is already prose,
+                             the page around it is the same as every other document -->
+                        <div class="azm_output" t-out="p['html']"/>
+                    </t>
+                    <t t-elif="p['single']">
                         <t t-foreach="p['items']" t-as="it">
                             <t t-set="single" t-value="True"/>
                             <t t-call="azm_platform.report_azm_document_item"/>
@@ -190,22 +195,22 @@
                     </t>
 
                     <t t-if="p['summary']">
-                        <h2 class="azm_h2">حالة الموديولات <small>Modules at a glance</small></h2>
+                        <h2 class="azm_h2">
+                            <t t-out="p['summary_title'][0]"/> <small t-out="p['summary_title'][1]"/>
+                        </h2>
                         <table class="azm_grid">
                             <thead>
                                 <tr>
-                                    <th>الموديول</th><th>منطبق</th><th>مكتمل</th>
-                                    <th>مطبّق</th><th>جزئيًا</th><th>غير مطبّق</th>
+                                    <th t-out="p['summary_label']"/>
+                                    <th t-foreach="p['summary_columns']" t-as="col"
+                                        t-out="col[0]"/>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr t-foreach="p['summary']" t-as="row">
                                     <td><span class="azm_code" t-out="row['code']"/> <t t-out="row['name']"/></td>
-                                    <td t-out="row['applicable']"/>
-                                    <td t-out="row['done']"/>
-                                    <td t-out="row['full']"/>
-                                    <td t-out="row['partial']"/>
-                                    <td t-out="row['unavailable']"/>
+                                    <td t-foreach="p['summary_columns']" t-as="col"
+                                        t-out="row[col[1]]"/>
                                 </tr>
                             </tbody>
                         </table>

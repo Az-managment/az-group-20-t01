@@ -30,6 +30,7 @@ export class AzmTreePage extends Component {
             loaded: false,
             data: null,
             open: {},          // "n-3" / "c-12" → expanded
+            docs: {},          // branch id → its outputs are showing
             selected: null,    // leaf id
             node: null,        // its detail
             loadingNode: false,
@@ -156,6 +157,17 @@ export class AzmTreePage extends Component {
 
     collapseAll() {
         this.state.open = {};
+        this.state.docs = {};
+    }
+
+    /** Whether the documents on offer would say what the page says. */
+    get docsAvailable() {
+        return true;
+    }
+
+    /** Why they are not on offer, when they are not. */
+    get docsNote() {
+        return "";
     }
 
     async select(item) {
@@ -170,6 +182,37 @@ export class AzmTreePage extends Component {
         } finally {
             this.state.loadingNode = false;
         }
+    }
+
+    /** The outputs of a branch — policy, procedure, authority, KPIs … — folded away
+     *  until asked for, so the tree stays a tree. */
+    docsOpen(id) {
+        return !!this.state.docs[id];
+    }
+
+    toggleDocs(id) {
+        this.state.docs[id] = !this.state.docs[id];
+    }
+
+    /**
+     * Open (or download) the document a node stands for.
+     *
+     * The tree offers every output the catalogue defines, published or not; the
+     * server resolves the document and builds it if this is the first time anyone
+     * has asked to read it.
+     */
+    async openDoc(doc, download = false) {
+        if (!doc) {
+            return;
+        }
+        const action = await this.orm.call("azm.dashboard", "open_tree_document", [], {
+            kind: doc.kind,
+            node_id: doc.id || null,
+            tab: doc.tab || null,
+            company_id: this.d.company.id,
+            download,
+        });
+        await this.action.doAction(action);
     }
 
     /** Back to the page that lists every tree of every entity. */

@@ -45,6 +45,7 @@ FOLDERS = {
     "GAP": (9, "الفجوات والنموذج المستهدف", "Gaps & Target Design", False),
     "RPT": (10, "تقارير الإدارة", "Management Reports", False),
     "MAN": (11, "الأدلة التشغيلية", "Manuals", True),
+    "PUR": (12, "دورة المشتريات", "Procurement Cycle", False),
 }
 
 # module output tab -> (folder, arabic, english, document code)
@@ -98,16 +99,19 @@ class AzmDocFolder(models.Model):
     _path_uniq = models.Constraint("UNIQUE(company_id, path)", "This folder is already registered for the company.")
 
     @api.model
-    def _folder(self, company, key="ROOT", module=None):
-        """The folder of ``company`` for ``key`` (and ``module``), created on first use."""
+    def _folder(self, company, key="ROOT", sub=None):
+        """The folder of ``company`` for ``key``, created on first use.
+
+        ``sub`` is an optional (code, name) pair for a folder inside it — one per
+        module of the financial model, one per stage of the cycle."""
         company = company.sudo()
         root = self._ensure(company, "ROOT", company.name, False, upload=False)
         if key == "ROOT":
             return root
         folder = self._ensure(company, key, _folder_name(key), root, upload=FOLDERS[key][3])
-        if module:
-            folder = self._ensure(company, f"{key}/{module.code}", f"FIN.{module.code} · {module.name}", folder,
-                                  upload=False)
+        if sub:
+            code, name = sub
+            folder = self._ensure(company, f"{key}/{code}", name, folder, upload=False)
         return folder
 
     @api.model
@@ -144,11 +148,14 @@ class AzmDocFolder(models.Model):
     def _ensure_all(self, companies=None):
         companies = companies or self.env["res.company"].sudo().search([])
         modules = self.env["azm.fin.module"].sudo().search([])
+        stages = self.env["azm.stage"].sudo().search([])
         for company in companies:
             for key in FOLDERS:
                 self._folder(company, key)
             for module in modules:
-                self._folder(company, "FIN", module)
+                self._folder(company, "FIN", (module.code, f"FIN.{module.code} · {module.name}"))
+            for stage in stages:
+                self._folder(company, "PUR", (stage.code, f"PUR-{stage.code} · {stage.name}"))
         return True
 
 
@@ -181,6 +188,12 @@ class AzmDocPublication(models.Model):
     stamp = fields.Char(readonly=True, help="Fingerprint of the answers the document was built from.")
     outdated = fields.Boolean("يحتاج تحديث", compute="_compute_outdated",
                               help="الإجابات تغيرت بعد إصدار المستند؛ يُحدَّث تلقائيًا عند فتحه.")
+    build = fields.Selection([
+        ("queued", "يُبنى مع الدفعة"),
+        ("on_open", "يُبنى عند أول فتح"),
+    ], "طريقة الإصدار", default="queued", required=True, readonly=True,
+        help="المستندات الكثيرة العدد تُبنى عند أول فتح بدل إصدارها كلها مقدمًا، "
+             "فلا يشغل القرص إلا ما يُقرأ فعلًا.")
     error = fields.Text("الخطأ", readonly=True)
     attempts = fields.Integer("محاولات الإصدار", readonly=True, default=0,
                               help="عدد المحاولات الفاشلة المتتالية. يُصفَّر عند نجاح الإصدار.")
@@ -197,7 +210,7 @@ class AzmDocPublication(models.Model):
                 pub.name = f"{pub.requirement_id.tree_ref} · {pub.requirement_id.title}"
             elif pub.kind == "module":
                 pub.name = f"FIN.{pub.module_id.code} · {MODULE_OUTPUTS[pub.tab][1]}" if pub.tab else False
-            else:
+            elif pub.kind == "summary":
                 pub.name = "النموذج المالي الموحد · ملخص الكيان"
 
     @api.depends("state", "stamp")
@@ -256,6 +269,7 @@ class AzmDocPublication(models.Model):
         existed carries no retry_after and is due at once)."""
         now = now or fields.Datetime.now()
         return [
+            ("build", "=", "queued"),
             "|",
                 ("state", "=", "pending"),
             "&", ("state", "=", "error"),
@@ -270,7 +284,7 @@ class AzmDocPublication(models.Model):
         self.env["azm.doc.folder"]._ensure_all(companies)
         queued = self.sudo()
         for company in companies:
-            pubs = self._ensure_company(company)
+            pubs = self._ensure_company(company).filtered(lambda p: p.build == "queued")
             if not force:
                 pubs = pubs.filtered(lambda p: p.state != "done" or p._current_stamp() != p.stamp)
             pubs.write({"state": "pending", "error": False, "attempts": 0, "retry_after": False})
@@ -372,20 +386,17 @@ class AzmDocPublication(models.Model):
             company = pub.company_id
             assessment = pub._assessment()
             stamp = pub._current_stamp()
-            if pub.kind == "module" and not pub._module_items(assessment):
+            if pub._is_empty(assessment):
                 if pub.document_id:
                     pub.document_id.active = False
                 pub.write({"state": "empty", "generated_on": fields.Datetime.now(), "stamp": stamp,
-                           "assessment_id": assessment.id, "error": False, "attempts": 0,
-                           "retry_after": False})
+                           "error": False, "attempts": 0, "retry_after": False,
+                           **pub._source_vals(assessment)})
                 continue
             content, fmt = self.env["ir.actions.report"].sudo().with_company(company)._render_qweb_pdf(
                 report, res_ids=pub.ids)
             pdf = fmt == "pdf"
-            folder_key = ("FIN" if pub.kind == "requirement" else
-                          MODULE_OUTPUTS[pub.tab][0] if pub.kind == "module" else "RPT")
-            folder = self.env["azm.doc.folder"]._folder(
-                company, folder_key, pub.requirement_id.module_id if pub.kind == "requirement" else None)
+            folder = self.env["azm.doc.folder"]._folder(company, *pub._folder_key())
             vals = {
                 "name": f"{pub.name}.{'pdf' if pdf else 'html'}",
                 "raw": content,
@@ -400,8 +411,8 @@ class AzmDocPublication(models.Model):
                     **vals, "type": "binary", "company_id": company.id, "access_internal": "view",
                 })
             pub.write({"document_id": document.id, "state": "done", "generated_on": fields.Datetime.now(),
-                       "stamp": stamp, "assessment_id": assessment.id, "error": False, "attempts": 0,
-                       "retry_after": False})
+                       "stamp": stamp, "error": False, "attempts": 0, "retry_after": False,
+                       **pub._source_vals(assessment)})
         return True
 
     # ---------------------------------------------------------------- user actions
@@ -417,9 +428,14 @@ class AzmDocPublication(models.Model):
         self.sudo(False).check_access("read")   # the company rules decide who sees what
         pub = self.sudo()
         if pub.state != "done" or not pub.document_id or pub._current_stamp() != pub.stamp:
-            pub._generate()
+            # _generate_safe, not _generate: a document built here is often the first of
+            # its kind anyone has asked for, and a failure has to be recorded and retried
+            # like any other instead of reaching the reader as a traceback
+            pub._generate_safe()
+        if pub.state == "error":
+            raise UserError(_("The document could not be produced: %s", pub.error or ""))
         if pub.state == "empty":
-            raise UserError(_("No requirement of this module falls in this output for %s.", pub.company_id.name))
+            raise UserError(pub._empty_message())
         attachment = pub.document_id.attachment_id
         if not attachment:
             raise UserError(_("The document could not be produced. Try again or ask an administrator."))
@@ -449,6 +465,31 @@ class AzmDocPublication(models.Model):
         return {"type": "ir.actions.client", "tag": "display_notification",
                 "params": {"type": "success", "message": _("Document updated."),
                            "next": {"type": "ir.actions.client", "tag": "soft_reload"}}}
+
+    def _empty_message(self):
+        """Why this document has nothing in it, in the words of its own model."""
+        self.ensure_one()
+        return _("No requirement of this module falls in this output for %s.", self.company_id.name)
+
+    def _is_empty(self, assessment):
+        """True when the document would carry nothing: it is filed as empty, not built."""
+        self.ensure_one()
+        return self.kind == "module" and not self._module_items(assessment)
+
+    def _source_vals(self, assessment):
+        """Which field records the assessment a document was built from."""
+        self.ensure_one()
+        return {"assessment_id": assessment.id}
+
+    def _folder_key(self):
+        """(folder key, sub-folder) the document is filed under, for azm.doc.folder._folder()."""
+        self.ensure_one()
+        if self.kind == "requirement":
+            module = self.requirement_id.module_id
+            return "FIN", (module.code, f"FIN.{module.code} · {module.name}")
+        if self.kind == "module":
+            return MODULE_OUTPUTS[self.tab][0], None
+        return "RPT", None
 
     # ---------------------------------------------------------------- report payload
     def _module_items(self, assessment):
@@ -539,6 +580,11 @@ class AzmDocPublication(models.Model):
                 lambda q: q.role in ("main", "follow")).mapped("label")
         return data
 
+    def _azm_payload_extra(self, assessment, source):
+        """What a kind added by another model puts in the payload. Overridden there."""
+        self.ensure_one()
+        return {}
+
     def _azm_payload(self):
         """Everything the report template shows, as plain values."""
         self.ensure_one()
@@ -568,8 +614,18 @@ class AzmDocPublication(models.Model):
             "generated": now.strftime("%Y-%m-%d %H:%M"),
             "items": [],
             "summary": [],
+            # an output whose body is written by its own engine (a policy, a procedure,
+            # a workflow drawing) hands the report ready-made HTML instead of items;
+            # everything around it — cover, path, glance, banner, footer — is the same
+            "html": False,
+            "summary_title": ("حالة الموديولات", "Modules at a glance"),
+            "summary_label": "الموديول",
+            "summary_columns": [("منطبق", "applicable"), ("مكتمل", "done"), ("مطبّق", "full"),
+                                ("جزئيًا", "partial"), ("غير مطبّق", "unavailable")],
         }
-        if pub.kind == "requirement":
+        if pub.kind not in ("requirement", "module", "summary"):
+            payload.update(pub._azm_payload_extra(assessment, source))
+        elif pub.kind == "requirement":
             req = pub.requirement_id
             line = pub._lines(assessment)[:1] if assessment else None
             item = self._item(req, line)

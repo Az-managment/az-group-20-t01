@@ -9,7 +9,11 @@ This file holds what every tree shares — which entity a tree is read for — a
 landing page: a section per model, a card per entity under it, each card opening that
 entity's tree.
 """
-from odoo import api, models
+from odoo import _, api, models
+from odoo.exceptions import UserError
+
+from .azm_documents import MODULE_OUTPUTS
+from .azm_proc_documents import PROC_OUTPUTS
 
 # The models that can be walked as a tree, in the order the page shows them.
 TREES = [
@@ -63,6 +67,50 @@ class AzmDashboard(models.AbstractModel):
             "completion": row["completion"] if row else None,
             "figures": figures,
         }
+
+    # ------------------------------------------------------------------ documents
+    @api.model
+    def open_tree_document(self, kind, node_id=None, tab=None, company_id=None, download=False):
+        """Open the document a tree node stands for, building it if it has never been read.
+
+        The tree offers every output the catalogue defines, whether or not a document
+        has been published for it yet; this is where that offer is honoured. The entity
+        is clamped to the ones the user works in, and azm.doc.publication._open() checks
+        that the user may read the document before handing anything back.
+        """
+        # (model of the node, the argument _get() wants it under, the outputs it may ask
+        # for). A kind, a node and a tab that do not belong together never reach _get():
+        # this method is callable over RPC, and an unknown kind used to resolve quietly
+        # to the entity summary while a mismatched tab filed a document in the wrong place.
+        NODES = {
+            "requirement": ("azm.fin.requirement", "requirement", None),
+            "module": ("azm.fin.module", "module", MODULE_OUTPUTS),
+            "question": ("azm.question", "question", None),
+            "stage": ("azm.stage", "stage", PROC_OUTPUTS),
+            "summary": (None, None, None),
+            "cycle": (None, None, None),
+        }
+        if kind not in NODES:
+            raise UserError(_("There is no document of this kind."))
+        model, argument, outputs = NODES[kind]
+        if (tab or None) is not None and (outputs is None or tab not in outputs):
+            raise UserError(_("This document has no output called %s.", tab))
+        if outputs and not tab:
+            raise UserError(_("Which output of this node do you want to read?"))
+
+        company = self._tree_company(company_id)
+        if not company:
+            raise UserError(_("You do not work in any entity, so there is no document to open."))
+        env = self._env_all_companies()
+        node = {}
+        if model:
+            record = env[model].browse(node_id).exists()
+            if not record:
+                raise UserError(_("That part of the model no longer exists."))
+            record.check_access("read")   # the catalogue decides who may ask for it
+            node[argument] = record
+        pub = env["azm.doc.publication"]._get(company, kind, tab=tab or None, **node)
+        return pub._open(download=download)
 
     # ------------------------------------------------------------------ the page
     @api.model

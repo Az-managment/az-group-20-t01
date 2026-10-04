@@ -24,6 +24,12 @@
                     t-on-click="() => this.openTrees()">
                 <t t-call="azm_platform.TreeMark"/>كل الشجر
             </button>
+            <button t-if="this.d.summary_doc and this.docsAvailable" type="button"
+                    class="btn btn-sm btn-light" t-att-title="this.d.summary_doc.en"
+                    t-on-click="() => this.openDoc(this.d.summary_doc)">
+                <i class="oi me-1" data-icon="description"/>
+                <t t-out="this.d.summary_doc.label"/>
+            </button>
             <select t-foreach="this.selects" t-as="sel" t-key="sel.key"
                     class="form-select form-select-sm" t-att-title="sel.title"
                     t-on-change="(ev) => this.onSelectChange(sel.key, ev)">
@@ -67,6 +73,10 @@
                 <a href="#" t-on-click.prevent="() => this.collapseAll()">طي الكل</a>
             </span>
         </header>
+        <div t-if="this.docsNote" class="o_azm_tree_docs_note">
+            <i class="oi" data-icon="info"/>
+            <t t-out="this.docsNote"/>
+        </div>
         <div class="o_azm_tree_search">
             <i class="oi" data-icon="search"/>
             <input type="text" class="form-control form-control-sm"
@@ -80,17 +90,40 @@
 
             <t t-foreach="this.tree" t-as="n" t-key="n.id">
                 <div class="o_azm_tree_module">
-                    <button type="button" class="o_azm_tree_row o_azm_tree_l1"
-                            t-on-click="() => this.toggle('n', n.id)">
-                        <i t-attf-class="oi o_azm_tree_caret {{this.isOpen('n', n.id) ? 'o_azm_open' : ''}}"
-                           data-icon="chevron_left"/>
-                        <span class="o_azm_code" t-out="n.code"/>
-                        <span class="o_azm_tree_name" t-out="n.name"/>
-                        <span class="o_azm_tree_meta">
-                            <span t-out="n.meta"/>
-                            <span t-if="n.gaps" class="o_azm_tree_gap" t-out="n.gaps"/>
+                    <div class="o_azm_tree_branch">
+                        <button type="button" class="o_azm_tree_row o_azm_tree_l1"
+                                t-on-click="() => this.toggle('n', n.id)">
+                            <i t-attf-class="oi o_azm_tree_caret {{this.isOpen('n', n.id) ? 'o_azm_open' : ''}}"
+                               data-icon="chevron_left"/>
+                            <span class="o_azm_code" t-out="n.code"/>
+                            <span class="o_azm_tree_name" t-out="n.name"/>
+                            <span class="o_azm_tree_meta">
+                                <span t-out="n.meta"/>
+                                <span t-if="n.gaps" class="o_azm_tree_gap" t-out="n.gaps"/>
+                            </span>
+                        </button>
+                        <button t-if="n.docs.length and this.docsAvailable" type="button"
+                                t-attf-class="o_azm_tree_docs_btn {{this.docsOpen(n.id) ? 'o_azm_open' : ''}}"
+                                t-attf-title="المخرجات ({{n.docs.length}}) · Outputs"
+                                t-on-click="() => this.toggleDocs(n.id)">
+                            <i class="oi" data-icon="description"/>
+                            <span t-out="n.docs.length"/>
+                        </button>
+                    </div>
+
+                    <div t-if="this.docsOpen(n.id)" class="o_azm_tree_docs">
+                        <span t-foreach="n.docs" t-as="d" t-key="d.tab" class="o_azm_doc_chip">
+                            <button type="button" class="o_azm_doc_open" t-att-title="d.en"
+                                    t-on-click="() => this.openDoc(d)">
+                                <i class="oi" data-icon="description"/>
+                                <t t-out="d.label"/>
+                            </button>
+                            <button type="button" class="o_azm_doc_get" title="تنزيل · Download"
+                                    t-on-click="() => this.openDoc(d, true)">
+                                <i class="oi" data-icon="download"/>
+                            </button>
                         </span>
-                    </button>
+                    </div>
 
                     <t t-if="this.isOpen('n', n.id)">
                         <t t-foreach="n.children" t-as="c" t-key="c.id">

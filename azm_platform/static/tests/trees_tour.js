@@ -13,6 +13,10 @@ registry.category("web_tour.tours").add("azm_trees_tour", {
 
         // the financial tree, opened on the entity whose card was clicked
         { trigger: ".o_azm_tree_financial .o_azm_tree_panel .o_azm_tree_l1" },
+        // every output of a branch hangs on it: fold them open, then away again
+        { trigger: ".o_azm_tree_financial .o_azm_tree_branch:first-child .o_azm_tree_docs_btn", run: "click" },
+        { trigger: ".o_azm_tree_financial .o_azm_tree_docs .o_azm_doc_chip .o_azm_doc_open" },
+        { trigger: ".o_azm_tree_financial .o_azm_tree_docs_btn.o_azm_open", run: "click" },
         { trigger: ".o_azm_tree_financial .o_azm_tree_l1:first-child", run: "click" },
         { trigger: ".o_azm_tree_financial .o_azm_tree_l2:first-of-type", run: "click" },
         { trigger: ".o_azm_tree_financial .o_azm_tree_l3", run: "click" },
@@ -22,6 +26,8 @@ registry.category("web_tour.tours").add("azm_trees_tour", {
         { trigger: ".o_azm_tree_financial .o_azm_tree_back", run: "click" },
         { trigger: ".o_azm_trees .o_azm_trees_procurement .o_azm_tree_card:first-child", run: "click" },
         { trigger: ".o_azm_tree_procurement .o_azm_tree_panel .o_azm_tree_l1" },
+        { trigger: ".o_azm_tree_procurement .o_azm_tree_branch:first-child .o_azm_tree_docs_btn", run: "click" },
+        { trigger: ".o_azm_tree_procurement .o_azm_tree_docs .o_azm_doc_chip .o_azm_doc_open" },
         { trigger: ".o_azm_tree_procurement .o_azm_tree_l1:first-child", run: "click" },
         { trigger: ".o_azm_tree_procurement .o_azm_tree_l2:first-of-type", run: "click" },
         { trigger: ".o_azm_tree_procurement .o_azm_tree_l3", run: "click" },

@@ -35,9 +35,10 @@
                             <t t-call="azm_platform.TreeMark"/>
                             <h3>اختر سؤالًا من الشجرة</h3>
                             <p class="text-muted">كل سؤال يعرض ما يُسأل عنه، وماذا أجاب هذا الكيان، والمخاطر المترتبة على إجابته.</p>
-                            <button t-if="this.d.assessment" type="button" class="btn btn-sm btn-light"
-                                    t-on-click="() => this.openAssessment()">
-                                <i class="oi me-1" data-icon="assignment"/>فتح الإفادة
+                            <button t-if="this.d.summary_doc and this.docsAvailable" type="button"
+                                    class="btn btn-sm btn-light"
+                                    t-on-click="() => this.openDoc(this.d.summary_doc, false)">
+                                <i class="oi me-1" data-icon="description"/>قراءة ملخص الدورة
                             </button>
                         </div>
                     </t>
@@ -63,7 +64,15 @@
                         </div>
 
                         <div class="o_azm_tree_actions">
-                            <button t-if="n.assessment" type="button" class="btn btn-sm btn-primary"
+                            <button t-if="this.docsAvailable" type="button" class="btn btn-sm btn-primary"
+                                    t-on-click="() => this.openDoc(n.doc, false)">
+                                <i class="oi me-1" data-icon="description"/>قراءة المستند
+                            </button>
+                            <button t-if="this.docsAvailable" type="button" class="btn btn-sm btn-light"
+                                    t-on-click="() => this.openDoc(n.doc, true)">
+                                <i class="oi me-1" data-icon="download"/>تنزيل
+                            </button>
+                            <button t-if="n.assessment" type="button" class="btn btn-sm btn-light"
                                     t-on-click="() => this.openAssessment()">
                                 <i class="oi me-1" data-icon="assignment"/>فتح الإفادة
                             </button>

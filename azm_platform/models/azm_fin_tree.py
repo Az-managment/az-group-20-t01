@@ -12,7 +12,7 @@ levels of nodes and a status on each leaf — so one page component draws them a
 from odoo import api, models
 
 from odoo.addons.azm_operating_model.models.azm_fin_catalogue import PROFILES, SCOPES
-from odoo.addons.azm_platform.models.azm_documents import STATUS
+from odoo.addons.azm_platform.models.azm_documents import MODULE_OUTPUTS, STATUS
 
 
 def _pct(part, whole):
@@ -40,17 +40,18 @@ class AzmDashboard(models.AbstractModel):
         env = self._env_all_companies()
 
         Pub = env["azm.doc.publication"]
-        summary = Pub._get(company, "summary")
-        assessment = summary.sudo()._assessment()
+        assessment = Pub._get(company, "summary").sudo()._assessment()
         # the entity's answers, by requirement, so a node knows its own state
         lines = {}
         if assessment:
             for line in assessment.sudo().answer_ids:
                 lines[line.requirement_id.id] = line
-        # the document of each requirement, so a node can be opened and read
-        docs = {}
-        for pub in Pub.sudo().search([("company_id", "=", company.id), ("kind", "=", "requirement")]):
-            docs[pub.requirement_id.id] = {"id": pub.id, "state": pub.state}
+        # Every output of the model hangs on its node. The list comes from the
+        # catalogue, not from the documents already published, so a module shows all
+        # of its outputs from the first visit; the document itself is resolved — and
+        # built, if this is the first time — when somebody opens it.
+        outputs = [{"kind": "module", "tab": tab, "label": out[1], "en": out[2]}
+                   for tab, out in MODULE_OUTPUTS.items()]
 
         nodes = []
         totals = {"requirements": 0, "applicable": 0, "done": 0, "gaps": 0}
@@ -72,7 +73,7 @@ class AzmDashboard(models.AbstractModel):
                     "scope": SCOPES.get(req.scope_code, ""),
                     "questions": len(req.question_ids),
                     "status": self._fin_tree_status(state),
-                    "doc": docs.get(req.id),
+                    "doc": {"kind": "requirement", "id": req.id},
                 }
                 topic = req.topic_id
                 # a module's untitled requirements make a group of their own: keyed by
@@ -107,6 +108,7 @@ class AzmDashboard(models.AbstractModel):
                 "id": module.id,
                 "code": f"FIN.{module.code}",
                 "name": module.name,
+                "docs": [{**out, "id": module.id} for out in outputs],
                 "children": topics,
                 "meta": m_fig["requirements"],
                 "gaps": m_fig["gaps"],
@@ -128,7 +130,7 @@ class AzmDashboard(models.AbstractModel):
                 "id": assessment.id, "name": assessment.name, "version": assessment.version,
                 "state": assessment.state, "is_demo": assessment.is_demo,
             } if assessment else None,
-            "summary_doc": {"id": summary.id, "state": summary.state},
+            "summary_doc": {"kind": "summary", "label": "ملخص الكيان", "en": "Entity summary"},
             "totals": totals,
             "nodes": nodes,
         }
@@ -153,7 +155,7 @@ class AzmDashboard(models.AbstractModel):
             "path": [(label, " · ".join(x for x in (code, name) if x)) for label, code, name in item["path"]],
             "id": requirement.id,
             "company": company.name,
-            "doc": {"id": pub.id, "state": pub.state},
+            "doc": {"kind": "requirement", "id": requirement.id},
             "available": True,
         })
         return item

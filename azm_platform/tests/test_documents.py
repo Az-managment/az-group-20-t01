@@ -50,7 +50,7 @@ class TestOperatingModelDocuments(TransactionCase):
         self.assertEqual(root.name, self.company.name)
         fin = Folder._folder(self.company, 'FIN')
         self.assertEqual(fin.folder_id, root)
-        pur = Folder._folder(self.company, 'FIN', self.pur)
+        pur = Folder._folder(self.company, 'FIN', (self.pur.code, f'FIN.{self.pur.code} · {self.pur.name}'))
         self.assertEqual(pur.folder_id, fin)
         self.assertEqual(Folder._folder(self.company, 'SOP').folder_id, root)
         for folder in (root, fin, pur):
@@ -62,7 +62,8 @@ class TestOperatingModelDocuments(TransactionCase):
         self.assertEqual(pub.state, 'done')
         self.assertTrue(pub.document_id.name.startswith(self.requirement.tree_ref))
         self.assertEqual(pub.document_id.company_id, self.company)
-        self.assertEqual(pub.document_id.folder_id, self.env['azm.doc.folder']._folder(self.company, 'FIN', self.pur))
+        self.assertEqual(pub.document_id.folder_id, self.env['azm.doc.folder']._folder(
+            self.company, 'FIN', (self.pur.code, f'FIN.{self.pur.code} · {self.pur.name}')))
         self.assertEqual(pub.assessment_id, self.assessment)
         self.assertFalse(pub.outdated)
         # model › module › topic › requirement, then the questions

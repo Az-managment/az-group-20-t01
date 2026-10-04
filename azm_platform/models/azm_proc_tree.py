@@ -10,6 +10,7 @@ and the risks the catalogue watches on it.
 from odoo import api, models
 
 from odoo.addons.azm_operating_model.models import engine
+from odoo.addons.azm_platform.models.azm_proc_documents import PROC_OUTPUTS, PROC_TAB_ORDER
 
 OPEN_FINDING_STATES = ("candidate", "confirmed", "treatment")
 
@@ -79,6 +80,10 @@ class AzmDashboard(models.AbstractModel):
 
         assessments, entity = self._proc_assessments(company)
         assessment = self._proc_pick(assessments, assessment_id)
+        # the documents of an entity are built from one assessment — the approved one,
+        # else the newest. Looking at a different one is allowed, but then the documents
+        # would say something else, so the tree stops offering them rather than lie.
+        source = self._proc_pick(assessments)
 
         # findings already raised on this assessment, placed on the question they came from
         by_question = {}
@@ -90,6 +95,14 @@ class AzmDashboard(models.AbstractModel):
                 qid = rule_question.get(finding.code)
                 if qid:
                     by_question[qid] = by_question.get(qid, 0) + 1
+
+        # Every output of the cycle hangs on its stage, in the order the engine lists
+        # them. The list comes from the catalogue, not from the documents already
+        # published, so a stage shows all of its outputs from the first visit; the
+        # document is resolved — and built, if this is the first time — when opened.
+        outputs = [{"kind": "stage", "tab": tab,
+                    "label": PROC_OUTPUTS[tab][1], "en": PROC_OUTPUTS[tab][2]}
+                   for tab in PROC_TAB_ORDER]
 
         nodes = []
         totals = {"questions": 0, "asked": 0, "answered": 0, "known": 0, "findings": 0}
@@ -122,6 +135,7 @@ class AzmDashboard(models.AbstractModel):
                     "title": q.label,
                     "status": self._proc_status(state),
                     "flag": risks,
+                    "doc": {"kind": "question", "id": q.id},
                 }
                 key = q.group or "0"
                 if key not in seen:
@@ -153,6 +167,7 @@ class AzmDashboard(models.AbstractModel):
                 "name": stage.name,
                 "domain": stage.azm_domain,
                 "governance": stage.is_governance,
+                "docs": [{**out, "id": stage.id} for out in outputs],
                 "children": groups,
                 "meta": s_fig["asked"] or s_fig["questions"],
                 "gaps": s_fig["findings"],
@@ -178,6 +193,11 @@ class AzmDashboard(models.AbstractModel):
                 "is_demo": assessment.is_demo, "entity": entity.name,
             } if assessment else None,
             "assessment_options": [{"id": a.id, "name": f"{a.name} · v{a.version}"} for a in assessments],
+            "summary_doc": {"kind": "cycle", "label": "ملخص الدورة", "en": "Cycle summary"},
+            "documents": {
+                "match": bool(assessment) and assessment == source,
+                "from": source.name if source else "",
+            },
             "totals": totals,
             "nodes": nodes,
         }
@@ -249,6 +269,7 @@ class AzmDashboard(models.AbstractModel):
             "code": question.code,
             "title": question.label,
             "company": company.name,
+            "doc": {"kind": "question", "id": question.id},
             "status": self._proc_status(state),
             "path": [
                 ("الدورة", "دورة المشتريات"),

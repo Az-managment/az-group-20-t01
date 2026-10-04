@@ -65,19 +65,6 @@ export class AzmFinTree extends AzmTreePage {
             en: "Draft — built from the entity's assessment, evidence not yet checked." };
     }
 
-    /** Read or download the requirement's document, or the entity summary. */
-    async openDoc(doc, download = false) {
-        if (!doc) {
-            return;
-        }
-        const action = await this.orm.call(
-            "azm.doc.publication",
-            download ? "action_download" : "action_read",
-            [[doc.id]]
-        );
-        await this.action.doAction(action);
-    }
-
     openRequirement(id) {
         this.action.doAction({
             type: "ir.actions.act_window",
