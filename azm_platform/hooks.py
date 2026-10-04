@@ -371,9 +371,18 @@ def _ensure_assessment_book(env, company):
         ('type', '=', 'folder'), ('name', '=', company.name), ('company_id', '=', company.id),
     ], limit=1)
     try:
-        content, _content_type = report._render(report.report_name, assessment.ids)
+        # force_report_rendering: a build installed with --test-enable renders reports as
+        # HTML (ir_actions_report._pre_render_qweb_pdf falls back), and the book was filed
+        # as a .pdf holding "<!DOCTYPE html>".
+        content, content_type = report.with_context(force_report_rendering=True)._render(
+            report.report_name, assessment.ids)
     except Exception:  # noqa: BLE001 - a missing pdf renderer must not fail the install
         _logger.warning("Could not render the operating model book of %s", company.name, exc_info=True)
+        return
+    if content_type != 'pdf':
+        # better no book than one that opens as garbage
+        _logger.warning("The operating model book of %s rendered as %s, not a PDF; not filing it.",
+                        company.name, content_type)
         return
     Document.create({
         'name': f"{title}.pdf",

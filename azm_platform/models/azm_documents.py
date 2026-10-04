@@ -334,8 +334,8 @@ class AzmDocPublication(models.Model):
                 pub.write({"state": "empty", "generated_on": fields.Datetime.now(), "stamp": stamp,
                            "assessment_id": assessment.id, "error": False})
                 continue
-            content, fmt = self.env["ir.actions.report"].sudo().with_company(company)._render_qweb_pdf(
-                report, res_ids=pub.ids)
+            content, fmt = self.env["ir.actions.report"].sudo().with_company(company).with_context(
+                force_report_rendering=True)._render_qweb_pdf(report, res_ids=pub.ids)
             pdf = fmt == "pdf"
             folder_key = ("FIN" if pub.kind == "requirement" else
                           MODULE_OUTPUTS[pub.tab][0] if pub.kind == "module" else "RPT")
