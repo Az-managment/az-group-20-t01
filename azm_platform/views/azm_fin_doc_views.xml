@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- The assessment: how many documents it produced, and a way to republish them. -->
+    <record id="azm_fin_assessment_view_form_docs" model="ir.ui.view">
+        <field name="name">azm.fin.assessment.view.form.azm.documents</field>
+        <field name="model">azm.fin.assessment</field>
+        <field name="inherit_id" ref="azm_operating_model.azm_fin_assessment_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_azm_view_documents" type="object" class="oe_stat_button"
+                        icon="picture_as_pdf">
+                    <field name="azm_doc_count" string="مستندات" widget="statinfo"/>
+                </button>
+            </xpath>
+            <xpath expr="//header/button[@name='action_open_workspace']" position="after">
+                <button name="action_azm_publish_documents" type="object" string="نشر المستندات"
+                        groups="azm_operating_model.azm_group_manager"
+                        confirm="هيتم إعادة بناء كل مستندات الكيان من الإجابات الحالية. تكمل؟"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Each requirement line opens its own sheet, where it is answered. -->
+    <record id="azm_fin_answer_view_list_docs" model="ir.ui.view">
+        <field name="name">azm.fin.answer.view.list.azm.documents</field>
+        <field name="model">azm.fin.answer</field>
+        <field name="inherit_id" ref="azm_operating_model.azm_fin_answer_view_list"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='is_done']" position="after">
+                <button name="action_azm_doc_read" type="object" icon="picture_as_pdf"
+                        title="ورقة المتطلب" invisible="not applicable"/>
+                <button name="action_azm_doc_download" type="object" icon="download"
+                        title="تنزيل ورقة المتطلب" invisible="not applicable"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="azm_fin_answer_view_form_docs" model="ir.ui.view">
+        <field name="name">azm.fin.answer.view.form.azm.documents</field>
+        <field name="model">azm.fin.answer</field>
+        <field name="inherit_id" ref="azm_operating_model.azm_fin_answer_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="before">
+                <header>
+                    <button name="action_azm_doc_read" type="object" string="ورقة المتطلب"
+                            class="btn-primary" icon="picture_as_pdf"/>
+                    <button name="action_azm_doc_download" type="object" string="تنزيل"
+                            icon="download"/>
+                </header>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- A module reaches the documents it produced. -->
+    <record id="azm_fin_module_view_form_docs" model="ir.ui.view">
+        <field name="name">azm.fin.module.view.form.azm.documents</field>
+        <field name="model">azm.fin.module</field>
+        <field name="inherit_id" ref="azm_operating_model.azm_fin_module_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/div[hasclass('oe_title')]" position="before">
+                <div class="oe_button_box" name="button_box">
+                    <button name="action_azm_view_documents" type="object" class="oe_stat_button"
+                            icon="picture_as_pdf">
+                        <field name="azm_doc_count" string="مستندات" widget="statinfo"/>
+                    </button>
+                </div>
+            </xpath>
+            <xpath expr="//notebook/page[@name='topics']" position="after">
+                <page string="المستندات" name="azm_documents">
+                    <field name="azm_doc_ids" readonly="1">
+                        <list>
+                            <field name="company_id"/>
+                            <field name="name"/>
+                            <field name="kind"/>
+                            <field name="tab" optional="show"/>
+                            <field name="state" widget="badge"
+                                   decoration-success="state == 'done'"
+                                   decoration-warning="state == 'pending'"
+                                   decoration-danger="state == 'error'"
+                                   decoration-muted="state == 'empty'"/>
+                            <field name="generated_on" optional="hide"/>
+                            <button name="action_read" type="object" icon="picture_as_pdf"
+                                    title="فتح المستند" invisible="state == 'empty'"/>
+                            <button name="action_download" type="object" icon="download"
+                                    title="تنزيل" invisible="state == 'empty'"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

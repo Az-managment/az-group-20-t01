@@ -618,6 +618,33 @@ class AzmFinRequirement(models.Model):
                            "next": {"type": "ir.actions.client", "tag": "soft_reload"}}}
 
 
+class AzmFinModule(models.Model):
+    _inherit = "azm.fin.module"
+
+    azm_doc_ids = fields.One2many("azm.doc.publication", "module_id", string="المستندات")
+    azm_doc_count = fields.Integer("المستندات", compute="_compute_azm_doc_count")
+
+    def _compute_azm_doc_count(self):
+        """How many of this module's documents are published, for the entities the user works in."""
+        # not "done": a pending document renders the moment it is opened, so counting
+        # only the rendered ones would read 0 until the job catches up. "empty" ones
+        # have nothing to show and are the only ones left out.
+        counts = dict(self.env["azm.doc.publication"].sudo()._read_group(
+            [("module_id", "in", self.ids), ("state", "!=", "empty"),
+             ("company_id", "in", self.env.companies.ids)], ["module_id"], ["__count"]))
+        for rec in self:
+            rec.azm_doc_count = counts.get(rec, 0)
+
+    def action_azm_view_documents(self):
+        """The documents this module produced, every entity the user works in."""
+        self.ensure_one()
+        action = self.env["ir.actions.act_window"]._for_xml_id("azm_platform.action_azm_doc_publication")
+        action["name"] = f"FIN.{self.code} · {self.name}"
+        action["domain"] = [("module_id", "=", self.id)]
+        action["context"] = {"search_default_by_company": 1}
+        return action
+
+
 class AzmFinAnswer(models.Model):
     _inherit = "azm.fin.answer"
 
@@ -641,7 +668,8 @@ class AzmFinAssessment(models.Model):
 
     def _compute_azm_doc_count(self):
         counts = dict(self.env["azm.doc.publication"].sudo()._read_group(
-            [("company_id", "in", self.company_id.ids), ("state", "=", "done")], ["company_id"], ["__count"]))
+            [("company_id", "in", self.company_id.ids), ("state", "!=", "empty")],
+            ["company_id"], ["__count"]))
         for rec in self:
             rec.azm_doc_count = counts.get(rec.company_id, 0)
 
@@ -678,3 +706,32 @@ class ResCompany(models.Model):
         companies = super().create(vals_list)
         self.env["azm.doc.folder"]._ensure_all(companies)
         return companies
+
+
+class AzmDashboard(models.AbstractModel):
+    _inherit = "azm.dashboard"
+
+    @api.model
+    def get_company_overview(self, company_id):
+        """Pin the entity's cycle book on its page.
+
+        The Latest Documents card shows the six most recently written files, and the
+        published requirement sheets bury the book the moment they start landing."""
+        payload = super().get_company_overview(company_id)
+        if payload:
+            payload["book"] = self._azm_assessment_book(company_id)
+        return payload
+
+    @api.model
+    def _azm_assessment_book(self, company_id):
+        if "documents.document" not in self.env:
+            return None
+        Document = self.env["documents.document"]
+        if not Document.has_access("read"):
+            return None
+        book = Document.search(
+            [("company_id", "=", company_id), ("name", "=like", "% Operating Model Book.pdf")],
+            limit=1, order="write_date desc")
+        if not book:
+            return None
+        return {"id": book.id, "model": "documents.document", "name": book.name}

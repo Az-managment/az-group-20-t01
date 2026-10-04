@@ -18,11 +18,11 @@
                 <field name="outdated" optional="show" widget="boolean_toggle" readonly="1"/>
                 <field name="generated_on" optional="show"/>
                 <field name="folder_id" optional="hide"/>
-                <button name="action_read" type="object" icon="fa-file-pdf-o" title="فتح المستند"
+                <button name="action_read" type="object" icon="picture_as_pdf" title="فتح المستند"
                         invisible="state == 'empty'"/>
-                <button name="action_download" type="object" icon="fa-download" title="تنزيل"
+                <button name="action_download" type="object" icon="download" title="تنزيل"
                         invisible="state == 'empty'"/>
-                <button name="action_refresh" type="object" icon="fa-refresh" title="تحديث"/>
+                <button name="action_refresh" type="object" icon="refresh" title="تحديث"/>
             </list>
         </field>
     </record>

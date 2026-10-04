@@ -41,6 +41,7 @@ No data is duplicated: every figure is computed live from the source apps.
         'views/azm_doc_views.xml',
         'report/azm_document_reports.xml',
         'report/azm_document_templates.xml',
+        'views/azm_fin_doc_views.xml',
     ],
     'assets': {
         'web.assets_backend': [
