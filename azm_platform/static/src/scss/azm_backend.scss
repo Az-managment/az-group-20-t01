@@ -258,20 +258,6 @@ body.o_azm_mode.o_azm_sidebar_collapsed {
         small { display: block; font-size: 12px; color: $azm-muted; }
     }
 }
-.o_azm_list_pinned {
-    background: #f4f8fd;
-    border-radius: 8px;
-}
-.o_azm_list_tag {
-    flex: 0 0 auto;
-    padding: 1px 8px;
-    border-radius: 20px;
-    background: #e7eefb;
-    color: $azm-blue;
-    font-size: 11px;
-    font-weight: 600;
-}
-
 .o_azm_legend {
     list-style: none;
     margin: 0;

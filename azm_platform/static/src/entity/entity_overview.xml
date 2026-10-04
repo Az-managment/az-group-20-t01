@@ -45,13 +45,7 @@
                     <h3>Latest Documents</h3>
                     <a t-if="this.canOpen('action_azm_documents')" href="#" t-on-click.prevent="() => this.open('action_azm_documents')">View all</a>
                 </header>
-                <ul t-if="this.state.data.book or this.documents.length" class="o_azm_list">
-                    <li t-if="this.state.data.book" class="o_azm_list_pinned"
-                        t-on-click="() => this.openRecord(this.state.data.book.model, this.state.data.book.id)">
-                        <span class="o_azm_icon_badge o_azm_tone_blue small"><i class="oi" data-icon="picture_as_pdf" title="Document"/></span>
-                        <strong class="flex-grow-1" t-out="this.state.data.book.name"/>
-                        <span class="o_azm_list_tag">Operating model</span>
-                    </li>
+                <ul t-if="this.documents.length" class="o_azm_list">
                     <li t-foreach="this.documents" t-as="doc" t-key="doc.id" t-on-click="() => this.openRecord(doc.model, doc.id)">
                         <span class="o_azm_icon_badge o_azm_tone_blue small"><i class="oi" t-att-data-icon="doc.icon" title="Document"/></span>
                         <strong class="flex-grow-1" t-out="doc.name"/>

@@ -1,28 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-
+    <!-- ============================================================ published documents -->
     <record id="azm_doc_publication_view_list" model="ir.ui.view">
         <field name="name">azm.doc.publication.view.list</field>
         <field name="model">azm.doc.publication</field>
         <field name="arch" type="xml">
-            <list string="Documents" create="false" delete="false">
-                <field name="tree_ref" optional="show"/>
+            <list string="المستندات" create="0" delete="0" decoration-muted="state == 'empty'"
+                  decoration-danger="state == 'error'">
                 <field name="name"/>
-                <field name="company_id" optional="show" groups="base.group_multi_company"/>
+                <field name="company_id" optional="show"/>
+                <field name="module_id" optional="show"/>
                 <field name="kind" optional="hide"/>
-                <field name="module_id" optional="hide"/>
-                <field name="tab" optional="hide"/>
-                <field name="state" widget="badge"
-                       decoration-success="state == 'done'" decoration-warning="state == 'pending'"
-                       decoration-danger="state == 'error'" decoration-muted="state == 'empty'"/>
-                <field name="outdated" optional="show" widget="boolean_toggle" readonly="1"/>
-                <field name="generated_on" optional="show"/>
                 <field name="folder_id" optional="hide"/>
-                <button name="action_read" type="object" icon="picture_as_pdf" title="Open"
+                <field name="state" widget="badge" decoration-success="state == 'done'"
+                       decoration-info="state == 'pending'" decoration-danger="state == 'error'"/>
+                <field name="generated_on" optional="show"/>
+                <button name="action_read" type="object" icon="description" title="قراءة · Read"
                         invisible="state == 'empty'"/>
-                <button name="action_download" type="object" icon="download" title="Download"
+                <button name="action_download" type="object" icon="download" title="تنزيل · Download"
                         invisible="state == 'empty'"/>
-                <button name="action_refresh" type="object" icon="refresh" title="Refresh"/>
+                <button name="action_open_folder" type="object" icon="folder_open" title="فتح في Documents"
+                        invisible="state != 'done'"/>
             </list>
         </field>
     </record>
@@ -31,43 +29,37 @@
         <field name="name">azm.doc.publication.view.form</field>
         <field name="model">azm.doc.publication</field>
         <field name="arch" type="xml">
-            <form string="Document" create="false">
+            <form string="مستند" create="0" delete="0">
                 <header>
-                    <button name="action_read" type="object" string="Open Document" class="btn-primary"
+                    <button name="action_read" type="object" string="قراءة المستند" class="btn-primary"
+                            icon="description" invisible="state == 'empty'"/>
+                    <button name="action_download" type="object" string="تنزيل" icon="download"
                             invisible="state == 'empty'"/>
-                    <button name="action_download" type="object" string="Download"/>
-                    <button name="action_refresh" type="object" string="Refresh"/>
-                    <button name="action_open_folder" type="object" string="Folder"
-                            invisible="not document_id"/>
+                    <button name="action_open_folder" type="object" string="فتح في Documents" icon="folder_open"
+                            invisible="state != 'done'"/>
+                    <button name="action_refresh" type="object" string="تحديث الآن" icon="refresh"/>
                     <field name="state" widget="statusbar" statusbar_visible="pending,done"/>
                 </header>
                 <sheet>
                     <div class="oe_title">
-                        <h1><field name="name" readonly="1"/></h1>
-                    </div>
-                    <div class="alert alert-warning" role="alert" invisible="not outdated">
-                        The answers changed after this document was issued; it is rebuilt when opened.
+                        <field name="kind" class="text-muted"/>
+                        <h1><field name="name"/></h1>
                     </div>
                     <group>
                         <group>
                             <field name="company_id"/>
-                            <field name="kind"/>
-                            <field name="tree_ref"/>
+                            <field name="module_id"/>
                             <field name="requirement_id" invisible="kind != 'requirement'"/>
-                            <field name="module_id" invisible="kind == 'summary'"/>
                             <field name="tab" invisible="kind != 'module'"/>
                         </group>
                         <group>
+                            <field name="folder_id"/>
                             <field name="assessment_id"/>
                             <field name="generated_on"/>
                             <field name="outdated"/>
-                            <field name="document_id"/>
-                            <field name="folder_id"/>
                         </group>
                     </group>
-                    <group string="Error" invisible="state != 'error'">
-                        <field name="error" nolabel="1" readonly="1"/>
-                    </group>
+                    <field name="error" invisible="state != 'error'" readonly="1"/>
                 </sheet>
             </form>
         </field>
@@ -77,47 +69,115 @@
         <field name="name">azm.doc.publication.view.search</field>
         <field name="model">azm.doc.publication</field>
         <field name="arch" type="xml">
-            <search string="Documents">
-                <field name="name" string="Document"
-                       filter_domain="['|', ('name', 'ilike', self), ('tree_ref', 'ilike', self)]"/>
-                <field name="requirement_id"/>
+            <search>
+                <field name="name"/>
+                <field name="tree_ref"/>
+                <field name="company_id"/>
                 <field name="module_id"/>
-                <field name="company_id" groups="base.group_multi_company"/>
-                <filter name="done" string="Ready" domain="[('state', '=', 'done')]"/>
-                <filter name="pending" string="Pending" domain="[('state', '=', 'pending')]"/>
-                <filter name="error" string="Error" domain="[('state', '=', 'error')]"/>
+                <filter name="requirements" string="أوراق المتطلبات" domain="[('kind', '=', 'requirement')]"/>
+                <filter name="outputs" string="مخرجات الموديولات" domain="[('kind', '=', 'module')]"/>
                 <separator/>
-                <filter name="requirements" string="Requirement Sheets" domain="[('kind', '=', 'requirement')]"/>
-                <filter name="modules" string="Module Outputs" domain="[('kind', '=', 'module')]"/>
-                <separator/>
-                <filter name="by_kind" string="Type" context="{'group_by': 'kind'}"/>
-                <filter name="by_module" string="Module" context="{'group_by': 'module_id'}"/>
-                <filter name="by_company" string="Entity" context="{'group_by': 'company_id'}"/>
-                <filter name="by_state" string="Status" context="{'group_by': 'state'}"/>
+                <filter name="ready" string="جاهز" domain="[('state', '=', 'done')]"/>
+                <filter name="pending" string="في الانتظار" domain="[('state', '=', 'pending')]"/>
+                <filter name="errors" string="أخطاء" domain="[('state', '=', 'error')]"/>
+                <group>
+                    <filter name="by_company" string="الكيان" context="{'group_by': 'company_id'}"/>
+                    <filter name="by_kind" string="النوع" context="{'group_by': 'kind'}"/>
+                    <filter name="by_module" string="الموديول" context="{'group_by': 'module_id'}"/>
+                    <filter name="by_state" string="الحالة" context="{'group_by': 'state'}"/>
+                </group>
             </search>
         </field>
     </record>
 
     <record id="action_azm_doc_publication" model="ir.actions.act_window">
-        <field name="name">Model Documents</field>
+        <field name="name">المستندات · Documents</field>
         <field name="res_model">azm.doc.publication</field>
         <field name="view_mode">list,form</field>
-        <field name="search_view_id" ref="azm_doc_publication_view_search"/>
-        <field name="context">{'search_default_by_kind': 1}</field>
+        <field name="domain">[('state', '!=', 'empty')]</field>
+        <field name="context">{'search_default_by_company': 1, 'search_default_by_module': 1}</field>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">No documents published yet</p>
-            <p>Documents are built from the entity's own answers and filed in its Documents folders.</p>
+            <p class="o_view_nocontent_smiling_face">لا توجد مستندات بعد</p>
+            <p>افتح إفادة مالية واضغط «نشر المستندات» لإنشاء ورقة لكل متطلب في مجلدات الكيان.</p>
         </field>
     </record>
 
-    <menuitem id="menu_azm_doc_publication" name="Model Documents"
-              parent="azm_operating_model.azm_fin_menu_root"
-              action="action_azm_doc_publication" sequence="20"
-              groups="azm_operating_model.azm_group_user"/>
+    <menuitem id="menu_azm_doc_publication" name="المستندات" parent="azm_operating_model.azm_fin_menu_root"
+              action="action_azm_doc_publication" sequence="30"/>
 
-    <menuitem id="menu_azm_doc_publication_platform" name="Model Documents"
-              parent="azm_platform.menu_root"
-              action="action_azm_doc_publication" sequence="25"
-              groups="azm_operating_model.azm_group_user"/>
+    <!-- ============================================================ requirement -->
+    <record id="azm_fin_requirement_view_form_docs" model="ir.ui.view">
+        <field name="name">azm.fin.requirement.view.form.docs</field>
+        <field name="model">azm.fin.requirement</field>
+        <field name="inherit_id" ref="azm_operating_model.azm_fin_requirement_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="before">
+                <header>
+                    <button name="action_azm_publish_documents" type="object" string="تحديث المستندات لكل الكيانات"
+                            icon="refresh" groups="azm_operating_model.azm_group_manager"/>
+                </header>
+            </xpath>
+            <xpath expr="//field[@name='question_ids']" position="after">
+                <separator string="المستندات · Documents"/>
+                <field name="azm_doc_ids" readonly="1" nolabel="1">
+                    <list create="0" delete="0">
+                        <field name="company_id"/>
+                        <field name="state" widget="badge" decoration-success="state == 'done'"
+                               decoration-info="state == 'pending'" decoration-danger="state == 'error'"/>
+                        <field name="generated_on"/>
+                        <button name="action_read" type="object" string="قراءة" icon="description"/>
+                        <button name="action_download" type="object" string="تنزيل" icon="download"/>
+                        <button name="action_open_folder" type="object" icon="folder_open" title="فتح في Documents"
+                                invisible="state != 'done'"/>
+                    </list>
+                </field>
+            </xpath>
+        </field>
+    </record>
 
+    <!-- ============================================================ answer lines / gap register -->
+    <record id="azm_fin_answer_view_list_docs" model="ir.ui.view">
+        <field name="name">azm.fin.answer.view.list.docs</field>
+        <field name="model">azm.fin.answer</field>
+        <field name="inherit_id" ref="azm_operating_model.azm_fin_answer_view_list"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='is_done']" position="after">
+                <button name="action_azm_doc_read" type="object" icon="description" title="قراءة المستند"/>
+                <button name="action_azm_doc_download" type="object" icon="download" title="تنزيل المستند"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="azm_fin_answer_view_form_docs" model="ir.ui.view">
+        <field name="name">azm.fin.answer.view.form.docs</field>
+        <field name="model">azm.fin.answer</field>
+        <field name="inherit_id" ref="azm_operating_model.azm_fin_answer_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="before">
+                <header>
+                    <button name="action_azm_doc_read" type="object" string="قراءة المستند" class="btn-primary"
+                            icon="description"/>
+                    <button name="action_azm_doc_download" type="object" string="تنزيل" icon="download"/>
+                </header>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- ============================================================ assessment -->
+    <record id="azm_fin_assessment_view_form_docs" model="ir.ui.view">
+        <field name="name">azm.fin.assessment.view.form.docs</field>
+        <field name="model">azm.fin.assessment</field>
+        <field name="inherit_id" ref="azm_operating_model.azm_fin_assessment_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header/field[@name='state']" position="before">
+                <button name="action_azm_publish_documents" type="object" string="نشر المستندات"
+                        icon="upload_file" groups="azm_operating_model.azm_group_reviewer"/>
+            </xpath>
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_azm_view_documents" type="object" class="oe_stat_button" icon="description">
+                    <field name="azm_doc_count" string="مستند" widget="statinfo"/>
+                </button>
+            </xpath>
+        </field>
+    </record>
 </odoo>

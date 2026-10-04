@@ -67,9 +67,9 @@ STATUS = {
     "open": ("لم تتم الإجابة بعد", "Not answered yet", "muted"),
 }
 
-KINDS = [("requirement", "Requirement sheet"), ("module", "Module output"),
-         ("summary", "Entity summary")]
-TABS = [(k, v[2]) for k, v in MODULE_OUTPUTS.items()]
+KINDS = [("requirement", "متطلب · Requirement"), ("module", "مخرج موديول · Module output"),
+         ("summary", "ملخص الكيان · Entity summary")]
+TABS = [(k, f"{v[1]} · {v[2]}") for k, v in MODULE_OUTPUTS.items()]
 BATCH = 20
 
 
@@ -154,29 +154,29 @@ class AzmDocPublication(models.Model):
     _order = "company_id, kind, module_sequence, tree_ref, tab, id"
     _rec_name = "name"
 
-    name = fields.Char("Document", compute="_compute_name", store=True)
+    name = fields.Char("المستند", compute="_compute_name", store=True)
     key = fields.Char(required=True, index=True)
-    company_id = fields.Many2one("res.company", "Entity", required=True, ondelete="cascade", index=True)
-    kind = fields.Selection(KINDS, "Type", required=True)
-    requirement_id = fields.Many2one("azm.fin.requirement", "Requirement", ondelete="cascade", index=True)
-    tree_ref = fields.Char(related="requirement_id.tree_ref", store=True, string="Tree Reference")
-    module_id = fields.Many2one("azm.fin.module", "Module", ondelete="cascade", index=True)
+    company_id = fields.Many2one("res.company", "الكيان", required=True, ondelete="cascade", index=True)
+    kind = fields.Selection(KINDS, "النوع", required=True)
+    requirement_id = fields.Many2one("azm.fin.requirement", "المتطلب", ondelete="cascade", index=True)
+    tree_ref = fields.Char(related="requirement_id.tree_ref", store=True, string="مرجع الشجرة")
+    module_id = fields.Many2one("azm.fin.module", "الموديول", ondelete="cascade", index=True)
     module_sequence = fields.Integer(related="module_id.sequence", store=True)
-    tab = fields.Selection(TABS, "Output")
-    document_id = fields.Many2one("documents.document", "File in Documents", ondelete="set null", readonly=True)
-    folder_id = fields.Many2one(related="document_id.folder_id", string="Folder")
+    tab = fields.Selection(TABS, "المخرج")
+    document_id = fields.Many2one("documents.document", "المستند في Documents", ondelete="set null", readonly=True)
+    folder_id = fields.Many2one(related="document_id.folder_id", string="المجلد")
     state = fields.Selection([
-        ("pending", "Pending"),
-        ("done", "Ready"),
-        ("empty", "Nothing to show"),
-        ("error", "Error"),
-    ], "Status", default="pending", required=True, readonly=True)
-    generated_on = fields.Datetime("Generated On", readonly=True)
-    assessment_id = fields.Many2one("azm.fin.assessment", "Source Assessment", ondelete="set null", readonly=True)
+        ("pending", "في الانتظار"),
+        ("done", "جاهز"),
+        ("empty", "لا يوجد محتوى"),
+        ("error", "خطأ"),
+    ], "الحالة", default="pending", required=True, readonly=True)
+    generated_on = fields.Datetime("تاريخ الإصدار", readonly=True)
+    assessment_id = fields.Many2one("azm.fin.assessment", "الإفادة المصدر", ondelete="set null", readonly=True)
     stamp = fields.Char(readonly=True, help="Fingerprint of the answers the document was built from.")
-    outdated = fields.Boolean("Needs Update", compute="_compute_outdated",
-                              help="The answers changed after the document was issued; it is rebuilt when opened.")
-    error = fields.Text("Error", readonly=True)
+    outdated = fields.Boolean("يحتاج تحديث", compute="_compute_outdated",
+                              help="الإجابات تغيرت بعد إصدار المستند؛ يُحدَّث تلقائيًا عند فتحه.")
+    error = fields.Text("الخطأ", readonly=True)
 
     _company_key_uniq = models.Constraint("UNIQUE(company_id, key)", "This document already exists for the company.")
 
@@ -191,6 +191,7 @@ class AzmDocPublication(models.Model):
             else:
                 pub.name = "النموذج المالي الموحد · ملخص الكيان"
 
+    @api.depends("state", "stamp")
     def _compute_outdated(self):
         for pub in self:
             pub.outdated = pub.state == "done" and pub.sudo()._current_stamp() != pub.stamp
@@ -334,8 +335,8 @@ class AzmDocPublication(models.Model):
                 pub.write({"state": "empty", "generated_on": fields.Datetime.now(), "stamp": stamp,
                            "assessment_id": assessment.id, "error": False})
                 continue
-            content, fmt = self.env["ir.actions.report"].sudo().with_company(company).with_context(
-                force_report_rendering=True)._render_qweb_pdf(report, res_ids=pub.ids)
+            content, fmt = self.env["ir.actions.report"].sudo().with_company(company)._render_qweb_pdf(
+                report, res_ids=pub.ids)
             pdf = fmt == "pdf"
             folder_key = ("FIN" if pub.kind == "requirement" else
                           MODULE_OUTPUTS[pub.tab][0] if pub.kind == "module" else "RPT")
@@ -605,7 +606,7 @@ class AzmDocPublication(models.Model):
 class AzmFinRequirement(models.Model):
     _inherit = "azm.fin.requirement"
 
-    azm_doc_ids = fields.One2many("azm.doc.publication", "requirement_id", string="Documents")
+    azm_doc_ids = fields.One2many("azm.doc.publication", "requirement_id", string="المستندات")
 
     def action_azm_publish_documents(self):
         """(Re)build this requirement's document for every company now."""
@@ -616,33 +617,6 @@ class AzmFinRequirement(models.Model):
         return {"type": "ir.actions.client", "tag": "display_notification",
                 "params": {"type": "success", "message": _("Documents updated for every entity."),
                            "next": {"type": "ir.actions.client", "tag": "soft_reload"}}}
-
-
-class AzmFinModule(models.Model):
-    _inherit = "azm.fin.module"
-
-    azm_doc_ids = fields.One2many("azm.doc.publication", "module_id", string="Documents")
-    azm_doc_count = fields.Integer("Documents", compute="_compute_azm_doc_count")
-
-    def _compute_azm_doc_count(self):
-        """How many of this module's documents are published, for the entities the user works in."""
-        # not "done": a pending document renders the moment it is opened, so counting
-        # only the rendered ones would read 0 until the job catches up. "empty" ones
-        # have nothing to show and are the only ones left out.
-        counts = dict(self.env["azm.doc.publication"].sudo()._read_group(
-            [("module_id", "in", self.ids), ("state", "!=", "empty"),
-             ("company_id", "in", self.env.companies.ids)], ["module_id"], ["__count"]))
-        for rec in self:
-            rec.azm_doc_count = counts.get(rec, 0)
-
-    def action_azm_view_documents(self):
-        """The documents this module produced, every entity the user works in."""
-        self.ensure_one()
-        action = self.env["ir.actions.act_window"]._for_xml_id("azm_platform.action_azm_doc_publication")
-        action["name"] = f"FIN.{self.code} · {self.name}"
-        action["domain"] = [("module_id", "=", self.id)]
-        action["context"] = {"search_default_by_company": 1}
-        return action
 
 
 class AzmFinAnswer(models.Model):
@@ -664,12 +638,11 @@ class AzmFinAnswer(models.Model):
 class AzmFinAssessment(models.Model):
     _inherit = "azm.fin.assessment"
 
-    azm_doc_count = fields.Integer("Documents", compute="_compute_azm_doc_count")
+    azm_doc_count = fields.Integer("المستندات", compute="_compute_azm_doc_count")
 
     def _compute_azm_doc_count(self):
         counts = dict(self.env["azm.doc.publication"].sudo()._read_group(
-            [("company_id", "in", self.company_id.ids), ("state", "!=", "empty")],
-            ["company_id"], ["__count"]))
+            [("company_id", "in", self.company_id.ids), ("state", "=", "done")], ["company_id"], ["__count"]))
         for rec in self:
             rec.azm_doc_count = counts.get(rec.company_id, 0)
 
@@ -706,32 +679,3 @@ class ResCompany(models.Model):
         companies = super().create(vals_list)
         self.env["azm.doc.folder"]._ensure_all(companies)
         return companies
-
-
-class AzmDashboard(models.AbstractModel):
-    _inherit = "azm.dashboard"
-
-    @api.model
-    def get_company_overview(self, company_id):
-        """Pin the entity's cycle book on its page.
-
-        The Latest Documents card shows the six most recently written files, and the
-        published requirement sheets bury the book the moment they start landing."""
-        payload = super().get_company_overview(company_id)
-        if payload:
-            payload["book"] = self._azm_assessment_book(company_id)
-        return payload
-
-    @api.model
-    def _azm_assessment_book(self, company_id):
-        if "documents.document" not in self.env:
-            return None
-        Document = self.env["documents.document"]
-        if not Document.has_access("read"):
-            return None
-        book = Document.search(
-            [("company_id", "=", company_id), ("name", "=like", "% Operating Model Book.pdf")],
-            limit=1, order="write_date desc")
-        if not book:
-            return None
-        return {"id": book.id, "model": "documents.document", "name": book.name}

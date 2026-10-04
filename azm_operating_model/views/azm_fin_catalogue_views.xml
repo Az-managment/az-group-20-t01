@@ -160,7 +160,8 @@
         <field name="model">azm.fin.requirement</field>
         <field name="arch" type="xml">
             <list string="متطلبات النموذج المالي">
-                <field name="code"/>
+                <field name="tree_ref"/>
+                <field name="code" optional="show"/>
                 <field name="req_id" optional="hide"/>
                 <field name="module_id"/>
                 <field name="topic_id" optional="show"/>
@@ -184,7 +185,7 @@
             <form string="متطلب مالي">
                 <sheet>
                     <div class="oe_title">
-                        <span class="text-muted"><field name="code" class="oe_inline"/> · <field name="req_id" class="oe_inline"/></span>
+                        <span class="text-muted"><field name="tree_ref" class="oe_inline fw-bold"/> · <field name="req_id" class="oe_inline"/> · <field name="code" class="oe_inline"/></span>
                         <h1><field name="title"/></h1>
                     </div>
                     <group>
@@ -226,6 +227,7 @@
         <field name="arch" type="xml">
             <search>
                 <field name="title"/>
+                <field name="tree_ref"/>
                 <field name="code"/>
                 <field name="req_id"/>
                 <field name="module_id"/>
@@ -249,7 +251,7 @@
         <field name="name">متطلبات النموذج المالي</field>
         <field name="res_model">azm.fin.requirement</field>
         <field name="view_mode">list,form</field>
-        <field name="context">{'search_default_by_module': 1}</field>
+        <field name="context">{'search_default_by_module': 1, 'search_default_by_topic': 1}</field>
     </record>
 
     <!-- ============================================================ questions -->
@@ -258,9 +260,11 @@
         <field name="model">azm.fin.question</field>
         <field name="arch" type="xml">
             <list string="أسئلة النموذج المالي">
-                <field name="code"/>
+                <field name="key"/>
                 <field name="module_id" optional="hide"/>
-                <field name="requirement_id" optional="show"/>
+                <field name="topic_id" optional="hide"/>
+                <field name="requirement_id" optional="hide"/>
+                <field name="code" optional="hide"/>
                 <field name="role"/>
                 <field name="label"/>
                 <field name="hint" optional="show"/>
@@ -335,6 +339,7 @@
                 <filter name="conditional" string="لها شرط ظهور" domain="[('condition_json', '!=', False)]"/>
                 <group>
                     <filter name="by_module" string="الموديول" context="{'group_by': 'module_id'}"/>
+                    <filter name="by_topic" string="الموضوع الفرعي" context="{'group_by': 'topic_id'}"/>
                     <filter name="by_requirement" string="المتطلب" context="{'group_by': 'requirement_id'}"/>
                     <filter name="by_type" string="شكل الإجابة" context="{'group_by': 'qtype'}"/>
                     <filter name="by_role" string="الدور" context="{'group_by': 'role'}"/>
@@ -347,7 +352,7 @@
         <field name="name">أسئلة النموذج المالي</field>
         <field name="res_model">azm.fin.question</field>
         <field name="view_mode">list,form</field>
-        <field name="context">{'search_default_by_module': 1}</field>
+        <field name="context">{'search_default_by_module': 1, 'search_default_by_topic': 1, 'search_default_by_requirement': 1}</field>
     </record>
 
     <!-- ============================================================ opening questions -->
