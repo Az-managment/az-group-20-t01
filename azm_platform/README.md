@@ -61,10 +61,29 @@ The sidebar entry **Operating Models** opens a landing page where every operatin
 Each file shows its KPIs (assessments, completion, certainty / maturity, open findings / gaps, entities covered);
 clicking it opens the model page with all its data and statistics. Group KPIs and an entity × model table sit on top and below.
 
+## Trees
+The sidebar entry **الأشجار · Trees** opens a landing page of every model that can be walked
+branch by branch, three levels deep. There is a section per model and a **card per entity**
+under it, carrying that entity's own figures; clicking a card opens *that entity's* tree:
+
+| Tree | Levels | A leaf shows |
+|---|---|---|
+| Unified financial model | module › topic › requirement | what is required, what happens in this entity today, and its filed document (read / download) |
+| Procurement cycle | stage › group › question | what is asked, the answer this entity gave, the sentence the book will print from it, and the risks the catalogue watches on that answer |
+
+Both trees are the same page with a different leaf: walking, searching, folding and the entity
+picker live in one component (`static/src/operating_model/trees/tree_base.js`) and one set of
+templates, so a third model costs a section on the landing page and a detail panel.
+
+A node's status is that entity's own answer and nothing else. On the procurement tree,
+visibility is decided by the engine that drives the answer workspace, so a question this
+entity is never asked reads as "لا يُسأل هنا" rather than as an unanswered hole. An entity
+that has not started still gets a card and a tree — it shows what the model asks of it.
+
 ## What it adds
 | Where | What |
 |---|---|
-| AZM sidebar | **Operating Model**, **Assessments**, **Risk Register**, **Question Catalogue** (managers) |
+| AZM sidebar | **Operating Model**, **Assessments**, **Risk Register**, **الأشجار · Trees**, **Question Catalogue** (managers) |
 | Unified financial model page | KPIs, application status, one card per financial module (FIN/HRF, templates, applicability, completion, maturity, gaps), charts, entities, top gaps, assessments |
 | Operating Model page | 8 KPIs, 3 domain cards (Governance / Procurement Operations / Financial), one card per question area (stage) with questions, risk rules, risks, findings, completion, certainty, question mix, application status; risk-register & assessment donuts; entities table; top open risks; current assessments |
 | AZM Home | "Operating Model" KPI tile, quick links and an Operating Model section (KPIs, domains, latest assessments, top risks) |

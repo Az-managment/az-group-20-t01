@@ -17,6 +17,7 @@ const ICONS = {
     "azm_platform.menu_projects": "rocket_launch",
     "azm_platform.menu_tasks": "task",
     "azm_platform.menu_documents": "description",
+    "azm_platform.menu_trees": "forest",
     "azm_platform.menu_settings": "settings",
 };
 

@@ -9,4 +9,7 @@ from . import azm_om_hub
 from . import azm_registers
 # documents: one per requirement / module output, in each entity's Documents folders
 from . import azm_documents
+# the models read as trees: one page each, one landing page for all of them
+from . import azm_trees
 from . import azm_fin_tree
+from . import azm_proc_tree

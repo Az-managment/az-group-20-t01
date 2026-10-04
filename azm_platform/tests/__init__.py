@@ -3,3 +3,5 @@ from . import test_entity_wiring
 from . import test_language_switch
 from . import test_documents
 from . import test_fin_tree
+from . import test_proc_tree
+from . import test_trees_hub

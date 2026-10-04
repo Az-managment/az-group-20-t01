@@ -30,7 +30,7 @@
               action="action_azm_om_register" sequence="7"
               groups="azm_operating_model.azm_group_user"/>
     <menuitem id="menu_om_questions" name="Question Catalogue" parent="azm_platform.menu_root"
-              action="azm_operating_model.azm_question_action" sequence="8"
+              action="azm_operating_model.azm_question_action" sequence="9"
               groups="azm_operating_model.azm_group_manager"/>
 
     <!-- Unified financial model -->
@@ -41,13 +41,31 @@
     <menuitem id="menu_fin_dashboard_in_om" name="لوحة النموذج المالي" parent="azm_operating_model.azm_fin_menu_root"
               action="action_azm_fin_dashboard" sequence="1"/>
 
-    <!-- The model as a tree: FIN › module › topic › requirement, with each document beside it -->
+    <!-- =================================================================== Trees
+         Every model that can be walked branch by branch. The landing page lists them
+         with a card per entity; the cards open the tree of that entity and that model. -->
+    <record id="action_azm_trees" model="ir.actions.client">
+        <field name="name">الأشجار · Trees</field>
+        <field name="tag">azm_trees</field>
+    </record>
+
+    <!-- FIN › module › topic › requirement, with each document beside it -->
     <record id="action_azm_fin_tree" model="ir.actions.client">
         <field name="name">شجرة النموذج المالي</field>
         <field name="tag">azm_fin_tree</field>
     </record>
-    <menuitem id="menu_fin_tree_in_om" name="شجرة النموذج" parent="azm_operating_model.azm_fin_menu_root"
-              action="action_azm_fin_tree" sequence="2"
+
+    <!-- PUR › stage › group › question, with each answer and its risks beside it -->
+    <record id="action_azm_proc_tree" model="ir.actions.client">
+        <field name="name">شجرة دورة المشتريات</field>
+        <field name="tag">azm_proc_tree</field>
+    </record>
+
+    <menuitem id="menu_trees" name="الأشجار · Trees" parent="azm_platform.menu_root"
+              action="action_azm_trees" sequence="8"
+              groups="azm_operating_model.azm_group_user"/>
+    <menuitem id="menu_trees_in_om" name="الأشجار" parent="azm_operating_model.azm_menu_root"
+              action="action_azm_trees" sequence="25"
               groups="azm_operating_model.azm_group_user"/>
 
     <!-- Same page from the Operating Model app itself -->

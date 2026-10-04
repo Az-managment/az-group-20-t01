@@ -1,0 +1,179 @@
+import { Component, onWillStart, proxy, useProps } from "@odoo/owl";
+import { useService } from "@web/core/utils/hooks";
+import { standardActionServiceProps } from "@web/webclient/actions/action_plugin";
+import { pct } from "../om_utils";
+
+/**
+ * AZM Platform · the shell every tree page shares.
+ *
+ * A tree is a model read from its catalogue down to its leaf — three levels, the same
+ * three everywhere — with one entity's own answers hung on it. What changes between
+ * the financial model and the procurement cycle is what a leaf *is*, so only the
+ * detail panel is written twice; walking, searching, folding and picking the entity
+ * live here, and the tree panel itself is one template (azm_platform.TreePanel).
+ *
+ * A subclass gives its template, the two model methods and the name of the argument
+ * that carries a leaf's id.
+ */
+export class AzmTreePage extends Component {
+    static dataMethod = "";   // azm.dashboard method returning the whole tree
+    static nodeMethod = "";   // ... and the one returning a single leaf
+    static nodeArg = "id";    // what that method calls the leaf's id
+
+    props = useProps(standardActionServiceProps);
+
+    setup() {
+        this.orm = useService("orm");
+        this.action = useService("action");
+        this.pct = pct;
+        this.state = proxy({
+            loaded: false,
+            data: null,
+            open: {},          // "n-3" / "c-12" → expanded
+            selected: null,    // leaf id
+            node: null,        // its detail
+            loadingNode: false,
+            query: "",
+        });
+        // the Trees page opens a card by handing us its entity
+        const context = this.props.action.context || {};
+        onWillStart(async () => {
+            await this.load(context.azm_company_id || null);
+        });
+    }
+
+    /** Extra arguments a subclass sends with every call (an assessment, a filter…). */
+    get extra() {
+        return {};
+    }
+
+    /** What the header says. A subclass names its own model. */
+    get pageTitle() {
+        return "";
+    }
+    get pageTitleEn() {
+        return "";
+    }
+    get pageSubtitle() {
+        return "";
+    }
+    get panelTitle() {
+        return "الشجرة";
+    }
+    get searchHint() {
+        return "ابحث بالكود أو العنوان…";
+    }
+
+    /** The selects in the header. Which entity the tree is read for is always one. */
+    get selects() {
+        return [{
+            key: "company",
+            title: "الكيان",
+            value: this.d.company.id,
+            options: this.d.entity_options,
+        }];
+    }
+
+    async onSelectChange(key, ev) {
+        if (key === "company") {
+            await this.load(parseInt(ev.target.value, 10));
+        }
+    }
+
+    async load(companyId = null, extra = {}) {
+        this.state.loaded = false;
+        this.state.selected = null;
+        this.state.node = null;
+        this.state.data = await this.orm.call("azm.dashboard", this.constructor.dataMethod, [], {
+            company_id: companyId,
+            ...extra,
+        });
+        this.state.loaded = true;
+        // open the first node so the page never greets anyone with a wall of closed rows
+        const first = this.nodes[0];
+        if (first) {
+            this.state.open[`n-${first.id}`] = true;
+        }
+    }
+
+    get d() {
+        return this.state.data;
+    }
+
+    get nodes() {
+        return (this.d && this.d.nodes) || [];
+    }
+
+    /** The tree, narrowed to what the search box matches (code, title or branch name). */
+    get tree() {
+        const q = this.state.query.trim().toLowerCase();
+        if (!q) {
+            return this.nodes;
+        }
+        const hit = (text) => (text || "").toLowerCase().includes(q);
+        return this.nodes
+            .map((n) => {
+                const children = n.children
+                    .map((c) => {
+                        const items = c.items.filter(
+                            (i) => hit(i.code) || hit(i.title) || hit(c.name) || hit(c.code)
+                        );
+                        return items.length ? { ...c, items } : null;
+                    })
+                    .filter(Boolean);
+                const match = hit(n.code) || hit(n.name);
+                if (match && !children.length) {
+                    return n;
+                }
+                return children.length ? { ...n, children } : null;
+            })
+            .filter(Boolean);
+    }
+
+    get searching() {
+        return !!this.state.query.trim();
+    }
+
+    isOpen(kind, id) {
+        return this.searching || !!this.state.open[`${kind}-${id}`];
+    }
+
+    toggle(kind, id) {
+        if (this.searching) {
+            return;
+        }
+        this.state.open[`${kind}-${id}`] = !this.state.open[`${kind}-${id}`];
+    }
+
+    expandAll() {
+        for (const n of this.nodes) {
+            this.state.open[`n-${n.id}`] = true;
+            for (const c of n.children) {
+                this.state.open[`c-${c.id}`] = true;
+            }
+        }
+    }
+
+    collapseAll() {
+        this.state.open = {};
+    }
+
+    async select(item) {
+        this.state.selected = item.id;
+        this.state.loadingNode = true;
+        try {
+            this.state.node = await this.orm.call("azm.dashboard", this.constructor.nodeMethod, [], {
+                [this.constructor.nodeArg]: item.id,
+                company_id: this.d.company.id,
+                ...this.extra,
+            });
+        } finally {
+            this.state.loadingNode = false;
+        }
+    }
+
+    /** Back to the page that lists every tree of every entity. */
+    openTrees() {
+        this.action.doAction("azm_platform.action_azm_trees");
+    }
+}

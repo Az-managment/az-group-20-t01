@@ -28,17 +28,17 @@ class TestFinTree(TransactionCase):
         tree = self._tree()
         self.assertTrue(tree['available'])
         self.assertEqual(tree['company']['id'], self.company.id)
-        self.assertTrue(tree['modules'], "the tree carries every module that has requirements")
+        self.assertTrue(tree['nodes'], "the tree carries every module that has requirements")
 
         seen = 0
-        for module in tree['modules']:
+        for module in tree['nodes']:
             self.assertTrue(module['code'].startswith('FIN.'))
-            self.assertTrue(module['topics'], f"{module['code']} has no topic")
-            for topic in module['topics']:
+            self.assertTrue(module['children'], f"{module['code']} has no topic")
+            for topic in module['children']:
                 self.assertTrue(topic['items'], f"{topic['code']} has no requirement")
                 for item in topic['items']:
                     # the leaf's code sits under its topic, which sits under its module
-                    self.assertTrue(item['tree_ref'].startswith(f"{topic['code']}."))
+                    self.assertTrue(item['code'].startswith(f"{topic['code']}."))
                     self.assertTrue(topic['code'].startswith(f"{module['code']}."))
                     self.assertIn(item['status']['key'],
                                   ('full', 'partial', 'unavailable', 'unknown', 'na', 'open'))
@@ -46,6 +46,9 @@ class TestFinTree(TransactionCase):
         self.assertEqual(seen, self.env['azm.fin.requirement'].search_count([]),
                          "every requirement hangs somewhere on the tree, exactly once")
         self.assertEqual(tree['totals']['requirements'], seen)
+        branches = [t['id'] for m in tree['nodes'] for t in m['children']]
+        self.assertEqual(len(branches), len(set(branches)),
+                         "each branch has an id of its own, so folding one never folds another")
 
     def test_a_node_follows_the_entity_answers(self):
         requirement = self.env['azm.fin.requirement'].search([], limit=1)
@@ -53,8 +56,8 @@ class TestFinTree(TransactionCase):
         line.write({'na': True, 'reason': 'تجربة'})
 
         def status_of(tree):
-            for module in tree['modules']:
-                for topic in module['topics']:
+            for module in tree['nodes']:
+                for topic in module['children']:
                     for item in topic['items']:
                         if item['id'] == requirement.id:
                             return item['status']['key']
@@ -68,8 +71,13 @@ class TestFinTree(TransactionCase):
         requirement = self.env['azm.fin.requirement'].search([('topic_id', '!=', False)], limit=1)
         node = self.D.get_fin_tree_node(requirement_id=requirement.id, company_id=self.company.id)
         pub = self.env['azm.doc.publication']._get(self.company, 'requirement', requirement=requirement)
-        self.assertEqual([s[1] for s in node['path']], [s[1] for s in pub._azm_payload()['path']],
+        doc_path = pub._azm_payload()['path']
+        self.assertEqual([step[0] for step in node['path']], [step[0] for step in doc_path],
                          "the page and the filed document place the requirement identically")
+        for step, (_label, code, name) in zip(node['path'], doc_path):
+            # the page shows one line where the document has a code and a name; both are on it
+            self.assertIn(name or code, step[1])
+            self.assertIn(code or name, step[1])
         self.assertEqual(node['doc']['id'], pub.id)
 
     def test_an_entity_outside_the_switcher_is_not_read(self):

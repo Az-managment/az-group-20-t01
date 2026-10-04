@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="azm_platform.TreesHub">
+    <div class="o_action o_azm_dashboard o_azm_om o_azm_trees" dir="rtl">
+        <div class="o_azm_om_title">
+            <div>
+                <h1>الأشجار <small class="text-muted">Trees</small></h1>
+                <p class="text-muted mb-0">
+                    كل نموذج يمكن السير فيه فرعًا بفرع — اختر كيانًا لتفتح شجرته.
+                    <small class="d-block">Every model the group can walk branch by branch — pick an entity to open its own tree.</small>
+                </p>
+            </div>
+        </div>
+
+        <div t-if="!this.state.loaded" class="o_azm_loading">
+            <i class="oi oi-spin" data-icon="progress_activity" title="Loading"/>
+        </div>
+        <div t-elif="!this.d.available" class="o_azm_card o_azm_empty">
+            <i class="oi" data-icon="lock" title="No access"/>
+            <strong>لا يتوفّر أي نموذج لحسابك</strong>
+            <small>No model is available for your user — اطلب من المسؤول صلاحيات «نموذج التشغيل AZM».</small>
+        </div>
+
+        <t t-else="">
+            <section class="o_azm_kpis o_azm_hub_kpis">
+                <div t-foreach="this.totals" t-as="kpi" t-key="kpi.key" class="o_azm_kpi o_azm_kpi_static">
+                    <span class="o_azm_kpi_text">
+                        <span class="o_azm_kpi_label">
+                            <t t-out="kpi.label"/>
+                            <em class="o_azm_kpi_en" t-out="kpi.en"/>
+                        </span>
+                        <strong class="o_azm_kpi_value" t-out="kpi.value"/>
+                        <small t-out="kpi.sub"/>
+                        <small class="o_azm_en" t-out="kpi.sub_en"/>
+                    </span>
+                    <span t-attf-class="o_azm_icon_badge o_azm_tone_{{kpi.tone}}">
+                        <i class="oi" t-att-data-icon="kpi.icon" t-att-title="kpi.label"/>
+                    </span>
+                </div>
+            </section>
+
+            <!-- one section per tree, one card per entity in it -->
+            <section t-foreach="this.sections" t-as="s" t-key="s.key"
+                     t-attf-class="o_azm_trees_section o_azm_trees_{{s.key}}">
+                <header class="o_azm_trees_head">
+                    <span t-attf-class="o_azm_icon_badge o_azm_tone_{{s.tone}}">
+                        <i class="oi" t-att-data-icon="s.icon" t-att-title="s.name"/>
+                    </span>
+                    <span class="o_azm_trees_names">
+                        <strong>
+                            <t t-out="s.name"/>
+                            <em class="o_azm_en" t-out="s.en"/>
+                        </strong>
+                        <small t-out="s.desc"/>
+                        <small class="o_azm_en" t-out="s.desc_en"/>
+                    </span>
+                    <span class="o_azm_trees_structure">
+                        <b t-out="s.structure"/>
+                        <small t-out="s.path"/>
+                        <small class="o_azm_en" t-out="s.path_en"/>
+                    </span>
+                </header>
+
+                <div class="o_azm_trees_grid">
+                    <article t-foreach="s.cards" t-as="c" t-key="c.company_id" role="button"
+                             t-attf-class="o_azm_tree_card o_azm_tone_{{s.tone}} o_azm_status_{{c.status}}"
+                             t-att-title="c.name"
+                             t-on-click="() => this.open(s, c)">
+                        <header>
+                            <img t-if="c.logoUrl" t-att-src="c.logoUrl" t-att-alt="c.name"/>
+                            <span t-else="" class="o_azm_tree_card_mono" t-out="c.initials"/>
+                            <span class="o_azm_tree_card_names">
+                                <strong t-out="c.name"/>
+                                <small>
+                                    <t t-out="c.status_label"/>
+                                    <em class="o_azm_en" t-out="c.status_en"/>
+                                </small>
+                            </span>
+                        </header>
+
+                        <div class="o_azm_tree_card_meter">
+                            <span t-attf-class="o_azm_progress o_azm_om_meter o_azm_tone_{{s.tone}}">
+                                <span class="o_azm_progress_bar" t-attf-style="width: {{this.bar(c.completion)}}%"/>
+                            </span>
+                            <b t-out="this.pct(c.completion)"/>
+                        </div>
+
+                        <dl class="o_azm_tree_card_figures">
+                            <div t-foreach="c.figures" t-as="f" t-key="f.key"
+                                 t-attf-class="{{f.tone and f.value ? 'o_azm_warn' : ''}}">
+                                <dt>
+                                    <t t-out="f.label"/>
+                                    <em class="o_azm_en" t-out="f.en"/>
+                                </dt>
+                                <dd t-out="f.value"/>
+                            </div>
+                        </dl>
+
+                        <footer>
+                            <i class="oi" data-icon="account_tree" title="افتح الشجرة"/>
+                            <span>افتح الشجرة <em class="o_azm_en">Open the tree</em></span>
+                        </footer>
+                    </article>
+                </div>
+            </section>
+        </t>
+    </div>
+</t>
+
+</templates>
