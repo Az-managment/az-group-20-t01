@@ -1,3 +1,7 @@
+from unittest.mock import patch
+
+from odoo import fields
+from odoo.addons.azm_platform.models.azm_documents import RETRY_BACKOFF
 from odoo.exceptions import AccessError
 from odoo.tests import TransactionCase, new_test_user, tagged
 
@@ -88,6 +92,43 @@ class TestOperatingModelDocuments(TransactionCase):
         self.assertEqual(pub.state, 'done')
         self.assertEqual(pub._azm_payload()['items'][0]['status']['key'], 'na')
         self.assertFalse(pub.outdated)
+
+    def test_failed_documents_retry_then_give_up(self):
+        """A failure is retried on a widening backoff, and stops asking after the last one."""
+        pub = self.Pub._get(self.company, 'requirement', requirement=self.requirement)
+        boom = patch.object(type(pub), '_generate', side_effect=RuntimeError('renderer down'))
+
+        with boom:
+            for attempt, delay in enumerate(RETRY_BACKOFF, start=1):
+                pub.write({'attempts': attempt - 1, 'retry_after': False})
+                pub._generate_safe()
+                self.assertEqual(pub.state, 'error')
+                self.assertEqual(pub.attempts, attempt)
+                self.assertTrue(pub.retry_after, "a document with retries left asks to come back")
+                minutes = (pub.retry_after - fields.Datetime.now()).total_seconds() / 60
+                self.assertAlmostEqual(minutes, delay, delta=1, msg=f"attempt {attempt} waits {delay} min")
+                # it is not due yet, so the queue leaves it alone
+                self.assertNotIn(pub, self.Pub.search(self.Pub._due_domain()))
+                # once the backoff has elapsed the queue picks it up again
+                self.assertIn(pub, self.Pub.search(self.Pub._due_domain(pub.retry_after)))
+
+            # one failure past the last backoff: it stops asking
+            pub._generate_safe()
+            self.assertEqual(pub.attempts, len(RETRY_BACKOFF) + 1)
+            self.assertFalse(pub.retry_after)
+            self.assertNotIn(pub, self.Pub.search(self.Pub._due_domain(fields.Datetime.now())))
+
+        # a human pressing Refresh hands the budget back, and a render clears the slate
+        pub.action_refresh()
+        self.assertEqual(pub.state, 'done')
+        self.assertEqual(pub.attempts, 0)
+        self.assertFalse(pub.retry_after)
+        self.assertFalse(pub.error)
+
+    def test_a_failure_from_before_the_backoff_existed_is_due_at_once(self):
+        pub = self.Pub._get(self.company, 'requirement', requirement=self.requirement)
+        pub.write({'state': 'error', 'error': 'old', 'attempts': 0, 'retry_after': False})
+        self.assertIn(pub, self.Pub.search(self.Pub._due_domain()))
 
     def test_other_entities_cannot_read(self):
         pub = self.Pub._get(self.company, 'requirement', requirement=self.requirement)

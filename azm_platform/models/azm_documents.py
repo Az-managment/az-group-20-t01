@@ -20,6 +20,7 @@ they change, and the company is the only thing that decides who can see it
 import hashlib
 import json
 import logging
+from datetime import timedelta
 
 import pytz
 
@@ -71,6 +72,10 @@ KINDS = [("requirement", "متطلب · Requirement"), ("module", "مخرج مو
          ("summary", "ملخص الكيان · Entity summary")]
 TABS = [(k, f"{v[1]} · {v[2]}") for k, v in MODULE_OUTPUTS.items()]
 BATCH = 20
+# Minutes to wait before each retry of a document that failed to render. A failure is
+# usually transient (a registry reload mid-flight, a lock, a renderer hiccup), so the
+# first retry comes quickly; after the last one the document stays in error for a human.
+RETRY_BACKOFF = (5, 15, 60, 240, 720)
 
 
 def _folder_name(key):
@@ -177,6 +182,10 @@ class AzmDocPublication(models.Model):
     outdated = fields.Boolean("يحتاج تحديث", compute="_compute_outdated",
                               help="الإجابات تغيرت بعد إصدار المستند؛ يُحدَّث تلقائيًا عند فتحه.")
     error = fields.Text("الخطأ", readonly=True)
+    attempts = fields.Integer("محاولات الإصدار", readonly=True, default=0,
+                              help="عدد المحاولات الفاشلة المتتالية. يُصفَّر عند نجاح الإصدار.")
+    retry_after = fields.Datetime("إعادة المحاولة بعد", readonly=True,
+                                  help="موعد إعادة المحاولة تلقائيًا بعد فشل الإصدار.")
 
     _company_key_uniq = models.Constraint("UNIQUE(company_id, key)", "This document already exists for the company.")
 
@@ -241,6 +250,20 @@ class AzmDocPublication(models.Model):
         return Pub.search([("company_id", "=", company.id)])
 
     @api.model
+    def _due_domain(self, now=None):
+        """Documents the queue may pick up: the pending ones, and the failed ones whose
+        backoff has elapsed and that have retries left (a failure from before this field
+        existed carries no retry_after and is due at once)."""
+        now = now or fields.Datetime.now()
+        return [
+            "|",
+                ("state", "=", "pending"),
+            "&", ("state", "=", "error"),
+            "&", ("attempts", "<=", len(RETRY_BACKOFF)),
+            "|", ("retry_after", "=", False), ("retry_after", "<=", now),
+        ]
+
+    @api.model
     def _enqueue(self, companies=None, force=False):
         """Queue the documents of ``companies`` (all by default); only the outdated ones unless ``force``."""
         companies = companies or self.env["res.company"].sudo().search([])
@@ -250,27 +273,40 @@ class AzmDocPublication(models.Model):
             pubs = self._ensure_company(company)
             if not force:
                 pubs = pubs.filtered(lambda p: p.state != "done" or p._current_stamp() != p.stamp)
-            pubs.write({"state": "pending", "error": False})
+            pubs.write({"state": "pending", "error": False, "attempts": 0, "retry_after": False})
             queued |= pubs
         if queued:
             self._trigger_cron()
         return queued
 
     @api.model
-    def _trigger_cron(self):
+    def _trigger_cron(self, at=None):
         cron = self.env.ref("azm_platform.ir_cron_azm_documents", raise_if_not_found=False)
         if cron:
-            cron.sudo()._trigger()
+            cron.sudo()._trigger(at)
 
     @api.model
     def _cron_process(self, limit=BATCH):
-        pubs = self.sudo().search([("state", "=", "pending")], limit=limit,
+        pubs = self.sudo().search(self._due_domain(), limit=limit,
                                   order="company_id, kind desc, module_sequence, tree_ref, id")
         for pub in pubs:
             pub._generate_safe()
-        if self.sudo().search_count([("state", "=", "pending")]):
-            self._trigger_cron()
+        self._schedule_next()
         return True
+
+    @api.model
+    def _schedule_next(self):
+        """Keep the queue moving: straight away while work is ready, otherwise at the moment
+        the next failed document is due again — never a tight loop over documents in backoff."""
+        now = fields.Datetime.now()
+        if self.sudo().search_count(self._due_domain(now), limit=1):
+            self._trigger_cron()
+            return
+        waiting = self.sudo().search(
+            [("state", "=", "error"), ("attempts", "<=", len(RETRY_BACKOFF)), ("retry_after", ">", now)],
+            order="retry_after", limit=1)
+        if waiting:
+            self._trigger_cron(at=waiting.retry_after)
 
     # ---------------------------------------------------------------- sources
     def _entity(self):
@@ -320,8 +356,15 @@ class AzmDocPublication(models.Model):
                 with self.env.cr.savepoint():
                     pub._generate()
             except Exception as error:  # noqa: BLE001 - one bad document must not stop the queue
-                _logger.warning("Could not publish %s for %s", pub.name, pub.company_id.name, exc_info=True)
-                pub.write({"state": "error", "error": str(error)[:2000]})
+                attempts = pub.attempts + 1
+                delay = RETRY_BACKOFF[attempts - 1] if attempts <= len(RETRY_BACKOFF) else None
+                _logger.warning("Could not publish %s for %s (attempt %s/%s, %s)", pub.name,
+                                pub.company_id.name, attempts, len(RETRY_BACKOFF) + 1,
+                                f"retrying in {delay} min" if delay else "giving up", exc_info=True)
+                pub.write({
+                    "state": "error", "error": str(error)[:2000], "attempts": attempts,
+                    "retry_after": fields.Datetime.now() + timedelta(minutes=delay) if delay else False,
+                })
 
     def _generate(self):
         report = "azm_platform.action_report_azm_document"
@@ -333,7 +376,8 @@ class AzmDocPublication(models.Model):
                 if pub.document_id:
                     pub.document_id.active = False
                 pub.write({"state": "empty", "generated_on": fields.Datetime.now(), "stamp": stamp,
-                           "assessment_id": assessment.id, "error": False})
+                           "assessment_id": assessment.id, "error": False, "attempts": 0,
+                           "retry_after": False})
                 continue
             content, fmt = self.env["ir.actions.report"].sudo().with_company(company)._render_qweb_pdf(
                 report, res_ids=pub.ids)
@@ -356,7 +400,8 @@ class AzmDocPublication(models.Model):
                     **vals, "type": "binary", "company_id": company.id, "access_internal": "view",
                 })
             pub.write({"document_id": document.id, "state": "done", "generated_on": fields.Datetime.now(),
-                       "stamp": stamp, "assessment_id": assessment.id, "error": False})
+                       "stamp": stamp, "assessment_id": assessment.id, "error": False, "attempts": 0,
+                       "retry_after": False})
         return True
 
     # ---------------------------------------------------------------- user actions
@@ -398,7 +443,9 @@ class AzmDocPublication(models.Model):
 
     def action_refresh(self):
         self.sudo(False).check_access("read")
-        self.sudo()._generate_safe()
+        pub = self.sudo()
+        pub.write({"attempts": 0, "retry_after": False})   # an explicit retry starts the budget over
+        pub._generate_safe()
         return {"type": "ir.actions.client", "tag": "display_notification",
                 "params": {"type": "success", "message": _("Document updated."),
                            "next": {"type": "ir.actions.client", "tag": "soft_reload"}}}

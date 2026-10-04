@@ -15,6 +15,8 @@
                 <field name="state" widget="badge" decoration-success="state == 'done'"
                        decoration-info="state == 'pending'" decoration-danger="state == 'error'"/>
                 <field name="generated_on" optional="show"/>
+                <field name="retry_after" optional="hide"/>
+                <field name="attempts" optional="hide"/>
                 <button name="action_read" type="object" icon="description" title="قراءة · Read"
                         invisible="state == 'empty'"/>
                 <button name="action_download" type="object" icon="download" title="تنزيل · Download"
@@ -59,7 +61,19 @@
                             <field name="outdated"/>
                         </group>
                     </group>
-                    <field name="error" invisible="state != 'error'" readonly="1"/>
+                    <group string="الخطأ · Error" invisible="state != 'error'">
+                        <field name="error" nolabel="1" readonly="1"/>
+                        <label for="attempts"/>
+                        <div>
+                            <field name="attempts" class="oe_inline" readonly="1"/>
+                            <span invisible="not retry_after">
+                                — إعادة المحاولة تلقائيًا في <field name="retry_after" class="oe_inline" readonly="1"/>
+                            </span>
+                            <span class="text-muted" invisible="retry_after">
+                                — انتهت المحاولات التلقائية؛ استخدم «تحديث الآن».
+                            </span>
+                        </div>
+                    </group>
                 </sheet>
             </form>
         </field>
@@ -80,6 +94,10 @@
                 <filter name="ready" string="جاهز" domain="[('state', '=', 'done')]"/>
                 <filter name="pending" string="في الانتظار" domain="[('state', '=', 'pending')]"/>
                 <filter name="errors" string="أخطاء" domain="[('state', '=', 'error')]"/>
+                <filter name="retrying" string="في انتظار إعادة المحاولة"
+                        domain="[('state', '=', 'error'), ('retry_after', '!=', False)]"/>
+                <filter name="gave_up" string="توقفت المحاولات"
+                        domain="[('state', '=', 'error'), ('retry_after', '=', False)]"/>
                 <group>
                     <filter name="by_company" string="الكيان" context="{'group_by': 'company_id'}"/>
                     <filter name="by_kind" string="النوع" context="{'group_by': 'kind'}"/>
