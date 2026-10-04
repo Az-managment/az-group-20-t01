@@ -69,6 +69,67 @@ class TestCoding(TransactionCase):
         self.assertEqual(mine, theirs)
         self.assertEqual(mine.code, theirs.code)
 
+    def test_the_serials_follow_the_model_not_the_reader(self):
+        """The first module's policy is POL-000001, whichever document was opened first.
+
+        A serial allocated on first sight follows whoever happened to read a document,
+        so the policy of whatever module was opened first would be number one.
+        """
+        A = self.env['azm.artifact'].sudo()
+        A._register_all()
+        modules = self.env['azm.fin.module'].search([]).sorted(
+            lambda m: (m.azm_code or 'ZZZ', m.id))
+        for atype in ('POL', 'PRO', 'DOA', 'SRQ', 'GAP', 'DEC'):
+            first = A.search([('domain', '=', 'FIN'), ('atype', '=', atype), ('serial', '=', 1)])
+            self.assertIn(f"FIN.{modules[0].code}", first.node_name,
+                          f"AZM-FIN-{atype}-000001 belongs to the first module")
+        # and they follow the registry's order of modules, which is not ours: it puts
+        # INV (MOD-000005) before PUR (MOD-000006) and the catalogue sequence does not
+        fifth = A.search([('domain', '=', 'FIN'), ('atype', '=', 'POL'), ('serial', '=', 5)])
+        self.assertIn(f"FIN.{modules[4].code}", fifth.node_name)
+
+    def test_every_code_is_well_formed_unique_and_dense(self):
+        import re
+        from collections import Counter, defaultdict
+        A = self.env['azm.artifact'].sudo()
+        A._register_all()
+        arts = A.search([])
+        self.assertTrue(arts)
+        for art in arts:
+            self.assertRegex(art.code, r"^AZM-(FIN|PUR)-[A-Z]{2,4}-\d{6}$")
+            self.assertEqual(art.code, f"AZM-{art.domain}-{art.atype}-{art.serial:06d}",
+                             "a code says exactly what its own fields say")
+        for field in ('code', 'ref'):
+            dupes = [k for k, n in Counter(arts.mapped(field)).items() if n > 1]
+            self.assertFalse(dupes, f"duplicate {field}: {dupes[:3]}")
+        by = defaultdict(list)
+        for art in arts:
+            by[(art.domain, art.atype)].append(art.serial)
+        for key, serials in by.items():
+            self.assertEqual(sorted(serials), list(range(1, len(serials) + 1)),
+                             f"{key} is numbered 1..N with no gaps")
+
+    def test_a_requirement_is_numbered_as_the_registry_numbered_it(self):
+        A = self.env['azm.artifact'].sudo()
+        A._register_all()
+        for req in self.env['azm.fin.requirement'].search([], limit=40):
+            art = A.search([('ref', '=', f"azm.fin.requirement,{req.id}")], limit=1)
+            self.assertEqual(art.code, req.req_id)
+
+    def test_the_tree_reference_points_at_the_tree(self):
+        """The identity is the canonical code; the tree reference is how to find the
+        node again — not the shorthand the output used to be coded by."""
+        module = self.env['azm.fin.module'].search([], limit=1)
+        stage = self.env['azm.stage'].search([], limit=1)
+        cases = [
+            (self.Pub._get(self.company, 'module', module=module, tab='rules'), f"FIN.{module.code}"),
+            (self.Pub._get(self.company, 'summary'), 'FIN'),
+            (self.Pub._get(self.company, 'stage', stage=stage, tab='pur_policy'), f"PUR-{stage.code}"),
+            (self.Pub._get(self.company, 'cycle'), 'PUR'),
+        ]
+        for pub, expected in cases:
+            self.assertEqual(pub._azm_payload()['tree_ref'], expected)
+
     def test_a_serial_is_allocated_once_and_never_moves(self):
         module = self.env['azm.fin.module'].search([], limit=1)
         pub = self.Pub._get(self.company, 'module', module=module, tab='rules')

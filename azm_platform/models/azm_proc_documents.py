@@ -128,6 +128,16 @@ class AzmDocPublication(models.Model):
         return Artifact._of(f"pur:{self.kind}", "PUR", PROC_KIND_ARTIFACTS[self.kind][0],
                             name=self.name)
 
+    def _tree_ref(self):
+        self.ensure_one()
+        if self.kind not in PROC_KEYS:
+            return super()._tree_ref()
+        if self.kind == "question":
+            return self.question_id.code or "PUR"
+        if self.kind == "stage":
+            return f"PUR-{self.stage_id.code}"
+        return "PUR"
+
     def _lifecycle(self):
         self.ensure_one()
         if self.kind not in PROC_KEYS:

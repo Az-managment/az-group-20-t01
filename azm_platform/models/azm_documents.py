@@ -309,6 +309,9 @@ class AzmDocPublication(models.Model):
         """Queue the documents of ``companies`` (all by default); only the outdated ones unless ``force``."""
         companies = companies or self.env["res.company"].sudo().search([])
         self.env["azm.doc.folder"]._ensure_all(companies)
+        # number anything the catalogue has gained, in the catalogue's order, before a
+        # document that happens to be read first can take a serial out of turn
+        self.env["azm.artifact"]._register_all()
         queued = self.sudo()
         for company in companies:
             pubs = self._ensure_company(company).filtered(lambda p: p.build == "queued")
@@ -560,6 +563,20 @@ class AzmDocPublication(models.Model):
                                 name=f"FIN.{self.module_id.code} · {MODULE_OUTPUTS[self.tab][1]}")
         atype = FIN_KIND_ARTIFACTS[self.kind][0]
         return Artifact._of(f"fin:{self.kind}", "FIN", atype, name=self.name)
+
+    def _tree_ref(self):
+        """Where to find this document's node in the tree.
+
+        The canonical code is the identity; this is how a reader gets back to the thing
+        the document is about. It names the node — not the pre-registry shorthand the
+        output used to be coded by, which no longer identifies anything.
+        """
+        self.ensure_one()
+        if self.kind == "requirement":
+            return self.requirement_id.tree_ref or self.requirement_id.code or "FIN"
+        if self.kind == "module":
+            return f"FIN.{self.module_id.code}"
+        return "FIN"
 
     def _lifecycle(self):
         """Which stage of CS → GR → TD → … this document speaks from."""
@@ -850,7 +867,7 @@ class AzmDocPublication(models.Model):
             "stage": stage,
             "scope": company.name,
             "version": assessment.version if assessment else 0,
-            "tree_ref": payload["code"],   # how the tree names it, kept for the reader
+            "tree_ref": pub._tree_ref(),   # how the tree names it, for the reader
         })
         payload["verify"] = " · ".join(x for x in (
             artifact.code,

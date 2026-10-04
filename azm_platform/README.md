@@ -112,8 +112,14 @@ Identity holds no entity, no version and no lifecycle stage — those stand besi
 the registry asks a controlled PDF to carry them: `AZM-FIN-POL-000001 · FUIE · v1 · CS`.
 One artifact is registered per node and output for the whole group (`azm.artifact`), so
 the nine entities holding the policy of FIN.GOV all print the same code and are told
-apart by scope. A serial is allocated once and never moves, so adding a module renumbers
-nothing. Requirements keep the IDs the registry already gave them (`AZM-FIN-REQ-000004`);
+apart by scope.
+
+Serials follow **the model, not the reader**: the whole catalogue is numbered in its own
+order — modules by the canonical ID the registry gave them, then their outputs, then the
+leaves, then the documents belonging to the model as a whole. So `AZM-FIN-POL-000001` is
+the policy of FIN.GOV whichever document anyone happened to open first, and the fifth is
+FIN.INV's because the registry orders INV before PUR. Once numbered an artifact never
+moves; a module added later takes the next serial rather than displacing anyone. Requirements keep the IDs the registry already gave them (`AZM-FIN-REQ-000004`);
 they are not renumbered here. Modules carry their registry IDs too — taken from the file,
 not derived, because the registry orders INV before PUR and the catalogue does not.
 

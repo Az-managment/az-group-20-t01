@@ -151,6 +151,55 @@ class AzmArtifact(models.Model):
         })
 
 
+    @api.model
+    def _register_all(self, reset=False):
+        """Number every artifact of the group, in the order the registry puts them.
+
+        A serial allocated the first time somebody happens to open a document follows
+        the reader, not the model: the policy of whichever module was read first would
+        be POL-000001. So the whole catalogue is walked in its own order — modules by
+        the canonical ID the registry gave them, then their outputs, then the leaves,
+        then the documents that belong to the model as a whole — and each artifact is
+        numbered where it falls. Once numbered it never moves; a module added later
+        takes the next serial rather than displacing anyone.
+        """
+        from .azm_documents import FIN_ARTIFACTS, FIN_KIND_ARTIFACTS, MODULE_OUTPUTS
+        from .azm_proc_documents import PROC_ARTIFACTS, PROC_KIND_ARTIFACTS, PROC_TAB_ORDER
+        if reset:
+            self.sudo().search([]).unlink()
+
+        env = self.env
+        plan = []   # (ref, domain, atype, name, code)
+
+        # the financial model: its modules in the registry's own order, each with its
+        # outputs, then every requirement under the ID the registry already gave it
+        modules = env["azm.fin.module"].sudo().search([])
+        for module in modules.sorted(lambda m: (m.azm_code or "ZZZ", m.sequence, m.id)):
+            for tab, out in MODULE_OUTPUTS.items():
+                plan.append((f"azm.fin.module,{module.id},{tab}", "FIN", FIN_ARTIFACTS[tab][0],
+                             f"FIN.{module.code} · {out[1]}", None))
+        for req in env["azm.fin.requirement"].sudo().search([], order="tree_ref, id"):
+            plan.append((f"azm.fin.requirement,{req.id}", "FIN", "REQ", req.title, req.req_id or None))
+        for kind, (atype, _stage) in FIN_KIND_ARTIFACTS.items():
+            if kind != "requirement":
+                plan.append((f"fin:{kind}", "FIN", atype, kind, None))
+
+        # the cycle: its stages in order, each with its outputs, then every question
+        for stage in env["azm.stage"].sudo().search([]):
+            for tab in PROC_TAB_ORDER:
+                plan.append((f"azm.stage,{stage.id},{tab}", "PUR", PROC_ARTIFACTS[tab][0],
+                             f"PUR-{stage.code}", None))
+        for question in env["azm.question"].sudo().search([], order="stage_sequence, sequence, id"):
+            plan.append((f"azm.question,{question.id}", "PUR", "REQ", question.label, None))
+        for kind, (atype, _stage) in PROC_KIND_ARTIFACTS.items():
+            if kind != "question":
+                plan.append((f"pur:{kind}", "PUR", atype, kind, None))
+
+        for ref, domain, atype, name, code in plan:
+            self._of(ref, domain, atype, name=name, code=code)
+        return len(plan)
+
+
 class AzmFinModule(models.Model):
     _inherit = "azm.fin.module"
 
