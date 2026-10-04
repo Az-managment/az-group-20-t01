@@ -604,6 +604,7 @@ class AzmFinAnswer(models.Model):
         prof = PROFILES[req.profile]
         return {
             "answer_id": self.id, "code": req.code, "req_id": req.req_id or "", "title": req.title,
+            "tree_ref": req.tree_ref or "",
             "question": req.question, "profile": req.profile, "profile_name": prof[0],
             "scope_code": req.scope_code, "scope_name": SCOPES.get(req.scope_code, ""), "source": req.source,
             "pack": req.pack or "", "owner": req.owner or "", "response_type": req.response_type or "",

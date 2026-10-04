@@ -313,10 +313,14 @@ class AzmFinRequirement(models.Model):
     _name = "azm.fin.requirement"
     _description = "متطلب النموذج المالي الموحد"
     _order = "module_sequence, topic_sequence, sequence, id"
-    _rec_names_search = ("title", "code", "req_id", "question")
+    _rec_names_search = ("title", "code", "req_id", "tree_ref", "question")
 
     code = fields.Char("الكود", required=True, index=True, help="الكود السابق (V3) مثل FIN-004 أو HRF-050.")
     req_id = fields.Char("Requirement ID", index=True)
+    tree_ref = fields.Char(
+        "مرجع الشجرة", compute="_compute_tree_ref", store=True, index=True,
+        help="مكان المتطلب في الشجرة: الموضوع ثم ترتيب المتطلب فيه، مثل FIN.PUR.03.01. "
+             "مرجع للتصفح يتغير مع إصدار النموذج؛ الهوية الثابتة هي Requirement ID.")
     module_id = fields.Many2one("azm.fin.module", "الموديول", required=True, ondelete="cascade", index=True)
     module_sequence = fields.Integer(related="module_id.sequence", store=True, string="ترتيب الموديول")
     topic_id = fields.Many2one("azm.fin.topic", "الموضوع الفرعي", ondelete="set null", index=True)
@@ -337,6 +341,24 @@ class AzmFinRequirement(models.Model):
 
     _code_uniq = models.Constraint("UNIQUE(code)", "كود المتطلب لازم يكون فريد.")
 
+    @api.depends("topic_id.code", "module_id.code", "sequence")
+    def _compute_tree_ref(self):
+        """Model › module › topic › requirement: FIN.PUR.03.02 is the 2nd requirement of topic FIN.PUR.03.
+
+        Numbered inside the topic (archived ones included, so a retired requirement never shifts the others)."""
+        siblings = self.with_context(active_test=False).search(
+            [("topic_id", "in", self.topic_id.ids)], order="sequence, id") if self.topic_id else self.browse()
+        rank = {}
+        for req in siblings:
+            rank.setdefault(req.topic_id.id, []).append(req.id)
+        for req in self:
+            if req.topic_id.code and req.id in rank.get(req.topic_id.id, []):
+                req.tree_ref = f"{req.topic_id.code}.{rank[req.topic_id.id].index(req.id) + 1:02d}"
+            elif req.module_id.code:
+                req.tree_ref = f"FIN.{req.module_id.code}.R{req.sequence:02d}"
+            else:
+                req.tree_ref = False
+
     @api.depends("code")
     def _compute_source(self):
         for req in self:
@@ -348,10 +370,11 @@ class AzmFinRequirement(models.Model):
         for req in self:
             req.question_count = counts.get(req, 0)
 
-    @api.depends("code", "title")
+    @api.depends("tree_ref", "code", "title")
     def _compute_display_name(self):
         for req in self:
-            req.display_name = f"[{req.code}] {req.title}" if req.code else req.title
+            ref = req.tree_ref or req.code
+            req.display_name = f"{ref} · {req.title}" if ref else req.title
 
 
 class AzmFinQuestion(models.Model):
