@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="azm_doc_publication_view_list" model="ir.ui.view">
+        <field name="name">azm.doc.publication.view.list</field>
+        <field name="model">azm.doc.publication</field>
+        <field name="arch" type="xml">
+            <list string="المستندات" create="false" delete="false">
+                <field name="tree_ref" optional="show"/>
+                <field name="name"/>
+                <field name="company_id" optional="show" groups="base.group_multi_company"/>
+                <field name="kind" optional="hide"/>
+                <field name="module_id" optional="hide"/>
+                <field name="tab" optional="hide"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'done'" decoration-warning="state == 'pending'"
+                       decoration-danger="state == 'error'" decoration-muted="state == 'empty'"/>
+                <field name="outdated" optional="show" widget="boolean_toggle" readonly="1"/>
+                <field name="generated_on" optional="show"/>
+                <field name="folder_id" optional="hide"/>
+                <button name="action_read" type="object" icon="fa-file-pdf-o" title="فتح المستند"
+                        invisible="state == 'empty'"/>
+                <button name="action_download" type="object" icon="fa-download" title="تنزيل"
+                        invisible="state == 'empty'"/>
+                <button name="action_refresh" type="object" icon="fa-refresh" title="تحديث"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="azm_doc_publication_view_form" model="ir.ui.view">
+        <field name="name">azm.doc.publication.view.form</field>
+        <field name="model">azm.doc.publication</field>
+        <field name="arch" type="xml">
+            <form string="المستند" create="false">
+                <header>
+                    <button name="action_read" type="object" string="فتح المستند" class="btn-primary"
+                            invisible="state == 'empty'"/>
+                    <button name="action_download" type="object" string="تنزيل"/>
+                    <button name="action_refresh" type="object" string="تحديث"/>
+                    <button name="action_open_folder" type="object" string="المجلد"
+                            invisible="not document_id"/>
+                    <field name="state" widget="statusbar" statusbar_visible="pending,done"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <div class="alert alert-warning" role="alert" invisible="not outdated">
+                        الإجابات تغيّرت بعد إصدار هذا المستند؛ سيُحدَّث تلقائيًا عند فتحه.
+                    </div>
+                    <group>
+                        <group>
+                            <field name="company_id"/>
+                            <field name="kind"/>
+                            <field name="tree_ref"/>
+                            <field name="requirement_id" invisible="kind != 'requirement'"/>
+                            <field name="module_id" invisible="kind == 'summary'"/>
+                            <field name="tab" invisible="kind != 'module'"/>
+                        </group>
+                        <group>
+                            <field name="assessment_id"/>
+                            <field name="generated_on"/>
+                            <field name="outdated"/>
+                            <field name="document_id"/>
+                            <field name="folder_id"/>
+                        </group>
+                    </group>
+                    <group string="الخطأ" invisible="state != 'error'">
+                        <field name="error" nolabel="1" readonly="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="azm_doc_publication_view_search" model="ir.ui.view">
+        <field name="name">azm.doc.publication.view.search</field>
+        <field name="model">azm.doc.publication</field>
+        <field name="arch" type="xml">
+            <search string="المستندات">
+                <field name="name" string="المستند"
+                       filter_domain="['|', ('name', 'ilike', self), ('tree_ref', 'ilike', self)]"/>
+                <field name="requirement_id"/>
+                <field name="module_id"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <filter name="done" string="جاهز" domain="[('state', '=', 'done')]"/>
+                <filter name="pending" string="في الانتظار" domain="[('state', '=', 'pending')]"/>
+                <filter name="error" string="خطأ" domain="[('state', '=', 'error')]"/>
+                <separator/>
+                <filter name="requirements" string="أوراق المتطلبات" domain="[('kind', '=', 'requirement')]"/>
+                <filter name="modules" string="مخرجات الموديولات" domain="[('kind', '=', 'module')]"/>
+                <separator/>
+                <filter name="by_kind" string="النوع" context="{'group_by': 'kind'}"/>
+                <filter name="by_module" string="الموديول" context="{'group_by': 'module_id'}"/>
+                <filter name="by_company" string="الكيان" context="{'group_by': 'company_id'}"/>
+                <filter name="by_state" string="الحالة" context="{'group_by': 'state'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_azm_doc_publication" model="ir.actions.act_window">
+        <field name="name">مستندات نموذج التشغيل</field>
+        <field name="res_model">azm.doc.publication</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="azm_doc_publication_view_search"/>
+        <field name="context">{'search_default_by_kind': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">لا توجد مستندات منشورة بعد</p>
+            <p>تُبنى المستندات من إجابات الكيان، وتُحفظ في مجلدات Documents الخاصة به.</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_azm_doc_publication" name="مستندات النموذج"
+              parent="azm_operating_model.azm_fin_menu_root"
+              action="action_azm_doc_publication" sequence="20"
+              groups="azm_operating_model.azm_group_user"/>
+
+</odoo>

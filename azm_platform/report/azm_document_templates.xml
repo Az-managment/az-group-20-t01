@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- One requirement, rendered the same way wherever it appears:
+         on its own sheet, or under its topic inside a module output. -->
+    <template id="azm_document_item">
+        <div class="o_azm_doc_item">
+            <div class="o_azm_doc_item_head">
+                <span class="o_azm_doc_ref" t-out="item['tree_ref']"/>
+                <span class="o_azm_doc_item_title" t-out="item['title']"/>
+                <span t-attf-class="o_azm_doc_badge o_azm_doc_{{item['status']['css']}}"
+                      t-out="item['status']['ar']"/>
+            </div>
+
+            <p t-if="item['question']" class="o_azm_doc_question" t-out="item['question']"/>
+
+            <div class="o_azm_doc_meta">
+                <span t-if="item['owner']">المالك المقترح: <b t-out="item['owner']"/></span>
+                <span t-if="item['profile']">النوع: <b t-out="item['profile']"/></span>
+                <span t-if="item['scope']">نطاق الانطباق: <b t-out="item['scope']"/></span>
+                <span t-if="item['ids']" class="o_azm_doc_ids" t-out="item['ids']"/>
+            </div>
+
+            <p t-if="item['na_reason']" class="o_azm_doc_note o_azm_doc_note_muted" t-out="item['na_reason']"/>
+
+            <!-- plain question / answer pairs -->
+            <table t-if="item['answers']" class="o_azm_doc_answers">
+                <tbody>
+                    <tr t-foreach="item['answers']" t-as="answer">
+                        <th t-out="answer['label']"/>
+                        <td t-attf-class="#{answer['muted'] and 'o_azm_doc_muted' or ''}"
+                            t-out="answer['value']"/>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- answers given as a sequence of steps -->
+            <div t-foreach="item['steps']" t-as="step" class="o_azm_doc_block">
+                <h5 t-out="step['label']"/>
+                <ol class="o_azm_doc_steps">
+                    <li t-foreach="step['items']" t-as="line">
+                        <span class="o_azm_doc_step_title" t-out="line['title']"/>
+                        <span t-if="line['detail']" class="o_azm_doc_step_detail" t-out="line['detail']"/>
+                    </li>
+                </ol>
+            </div>
+
+            <!-- answers given as a table -->
+            <div t-foreach="item['tables']" t-as="table" class="o_azm_doc_block">
+                <h5 t-out="table['label']"/>
+                <table class="o_azm_doc_table">
+                    <thead>
+                        <tr>
+                            <th t-foreach="table['columns']" t-as="column" t-out="column"/>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr t-foreach="table['rows']" t-as="row">
+                            <td t-foreach="row" t-as="cell" t-out="cell"/>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <table t-if="item['impl'] or item['rule'] or item['target'] or item['problems'] or item['target_note']"
+                   class="o_azm_doc_answers">
+                <tbody>
+                    <tr t-if="item['impl']">
+                        <th>كيف يُطبَّق اليوم</th>
+                        <td t-out="item['impl']"/>
+                    </tr>
+                    <tr t-if="item['rule']">
+                        <th>القاعدة المعمول بها</th>
+                        <td t-out="item['rule']"/>
+                    </tr>
+                    <tr t-if="item['problems']">
+                        <th>المشكلات القائمة</th>
+                        <td t-out="item['problems']"/>
+                    </tr>
+                    <tr t-if="item['target']">
+                        <th>التوجه المستهدف</th>
+                        <td t-out="item['target']"/>
+                    </tr>
+                    <tr t-if="item['target_note']">
+                        <th>ملاحظة على المستهدف</th>
+                        <td t-out="item['target_note']"/>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div t-if="item['pending']" class="o_azm_doc_note o_azm_doc_note_info">
+                <b>ما زال مطلوبًا الإجابة عليه:</b>
+                <ul>
+                    <li t-foreach="item['pending']" t-as="label" t-out="label"/>
+                </ul>
+            </div>
+
+            <div t-if="item['missing'] and not item['pending']" class="o_azm_doc_note o_azm_doc_note_warn">
+                <b>نواقص:</b>
+                <ul>
+                    <li t-foreach="item['missing']" t-as="label" t-out="label"/>
+                </ul>
+            </div>
+        </div>
+    </template>
+
+    <template id="azm_document_report">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-set="d" t-value="doc._azm_payload()"/>
+                <t t-call="web.internal_layout">
+                    <div class="page o_azm_doc" dir="rtl">
+
+                        <div class="o_azm_doc_head">
+                            <div class="o_azm_doc_kind">
+                                <span t-out="d['doc_type'][0]"/>
+                                <span class="o_azm_doc_en" t-out="d['doc_type'][1]"/>
+                            </div>
+                            <h1 t-out="d['title']"/>
+                            <div class="o_azm_doc_sub">
+                                <span class="o_azm_doc_ref" t-out="d['code']"/>
+                                <span t-out="d['company']"/>
+                            </div>
+                        </div>
+
+                        <div t-attf-class="o_azm_doc_banner o_azm_doc_{{d['banner']['css']}}"
+                             t-out="d['banner']['text']"/>
+
+                        <!-- model › module › topic › requirement -->
+                        <div t-if="d['path']" class="o_azm_doc_path">
+                            <t t-foreach="d['path']" t-as="step">
+                                <span t-if="step[1] or step[2]" class="o_azm_doc_path_step">
+                                    <span class="o_azm_doc_path_label" t-out="step[0]"/>
+                                    <span t-if="step[1]" class="o_azm_doc_ref" t-out="step[1]"/>
+                                    <span t-out="step[2]"/>
+                                </span>
+                            </t>
+                        </div>
+
+                        <table class="o_azm_doc_glance">
+                            <tbody>
+                                <tr t-foreach="d['glance_rows']" t-as="row">
+                                    <t t-foreach="row" t-as="cell">
+                                        <th>
+                                            <span t-out="cell[0]"/>
+                                            <span class="o_azm_doc_en" t-out="cell[1]"/>
+                                        </th>
+                                        <td t-out="cell[2]"/>
+                                    </t>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <!-- entity summary: one line per module -->
+                        <table t-if="d['summary']" class="o_azm_doc_table o_azm_doc_summary">
+                            <thead>
+                                <tr>
+                                    <th>الموديول</th>
+                                    <th>تنطبق</th>
+                                    <th>مُجابة</th>
+                                    <th>مطبّق</th>
+                                    <th>جزئي</th>
+                                    <th>غير مطبّق</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="d['summary']" t-as="row">
+                                    <td>
+                                        <span class="o_azm_doc_ref" t-out="row['code']"/>
+                                        <span t-out="row['name']"/>
+                                    </td>
+                                    <td t-out="row['applicable']"/>
+                                    <td t-out="row['done']"/>
+                                    <td t-out="row['full']"/>
+                                    <td t-out="row['partial']"/>
+                                    <td t-out="row['unavailable']"/>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <!-- a single requirement sheet: no topic headings -->
+                        <t t-if="d['single']">
+                            <t t-foreach="d['items']" t-as="item">
+                                <t t-call="azm_platform.azm_document_item"/>
+                            </t>
+                        </t>
+
+                        <!-- a module output: requirements grouped under their topic -->
+                        <t t-else="">
+                            <div t-foreach="d['groups']" t-as="group" class="o_azm_doc_group">
+                                <h3 class="o_azm_doc_group_head">
+                                    <span t-if="group['code']" class="o_azm_doc_ref" t-out="group['code']"/>
+                                    <span t-out="group['name']"/>
+                                </h3>
+                                <t t-foreach="group['items']" t-as="item">
+                                    <t t-call="azm_platform.azm_document_item"/>
+                                </t>
+                            </div>
+                        </t>
+
+                        <p t-if="not d['items'] and not d['summary']" class="o_azm_doc_empty">
+                            لا يوجد محتوى لهذا المخرج في هذا الكيان.
+                        </p>
+
+                        <div class="o_azm_doc_foot">
+                            <span t-out="d['verify']"/>
+                            <span t-out="d['generated']"/>
+                        </div>
+
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+</odoo>
