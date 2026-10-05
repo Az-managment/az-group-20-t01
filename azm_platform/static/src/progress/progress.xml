@@ -106,7 +106,12 @@
                                 <i class="oi" t-att-data-icon="row.icon" t-att-title="row.label"/>
                             </span>
                             <div class="o_azm_model_main">
-                                <b t-out="row.label"/>
+                                <b>
+                                    <t t-out="row.label"/>
+                                    <!-- an entity holds one per kind and scenario, so
+                                         two rows of the same model are told apart -->
+                                    <span class="o_azm_ref" t-out="row.ref"/>
+                                </b>
                                 <small>
                                     يُعدّها <t t-out="row.preparer"/>
                                     <t t-if="row.reviewer"> · يراجعها <t t-out="row.reviewer"/></t>

@@ -16,6 +16,8 @@ from . import azm_coding
 # documents: one per requirement / module output, in each entity's Documents folders
 from . import azm_documents
 from . import azm_proc_documents
+# accepting the answers publishes what they produce
+from . import azm_publish_on_approval
 # all of one kind bound as one volume: the policy manual, the procedure manual…
 from . import azm_type_book
 # the models read as trees: one page each, one landing page for all of them

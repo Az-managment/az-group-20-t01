@@ -66,11 +66,12 @@ class AzmDashboard(models.AbstractModel):
                                   ("state", "!=", "archived")],
                                  order="version desc, id desc")
             found.mapped("progress")   # one compute for the whole page
-            seen = set()
+            # Every live one, not the newest per entity. An entity holds a procurement
+            # assessment per kind and scenario — أصناف/عاجل is not a newer version of
+            # أصناف/قياسي — and keeping one hid the others: an approved assessment
+            # disappeared behind a draft of a different kind. Superseded versions are
+            # already out, because action_new_version archives them.
             for assessment in found:
-                if assessment.entity_id.id in seen:
-                    continue   # the latest of each entity, which the order above gives
-                seen.add(assessment.entity_id.id)
                 if spec["key"] == "financial":
                     total, answered = assessment.question_count, assessment.answered_count
                 else:
@@ -99,6 +100,7 @@ class AzmDashboard(models.AbstractModel):
                      entity=assessment.entity_id.name)
                 rows.append({
                     "id": assessment.id,
+                    "ref": assessment.name,
                     "res_model": spec["model"],
                     "key": spec["key"],
                     "label": spec["label"],
@@ -125,7 +127,7 @@ class AzmDashboard(models.AbstractModel):
                         key=lambda p: (-p["left"], p["name"]))
         return {
             "available": True,
-            "rows": sorted(rows, key=lambda r: (r["entity"], r["key"])),
+            "rows": sorted(rows, key=lambda r: (r["entity"], r["key"], r["ref"])),
             "people": ranked,
             "totals": {
                 "entities": len(entities),

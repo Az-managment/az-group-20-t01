@@ -117,6 +117,14 @@ cockpit, the entity list, the group structure and the model dashboards — figur
 other people's work that they cannot act on — and a technical menu holding the question
 catalogue beside them. Each role now gets the pages its job needs and no more.
 
+Accepting the answers **publishes what they produce**. A document is built from the
+answers and rebuilt whenever they change, which the queue notices within the hour —
+right while the work is being done, wrong at the moment it is signed off. So acceptance
+sets the queue going: the entity's policies, procedures, authority matrices and books
+are built and filed into its Documents folders in the moment after, and the assessment
+says so in its own chatter. Queued rather than built in the click: an entity holds some
+two hundred and fifty documents and each one is a PDF.
+
 **التقدّم · Progress** is the administrator's page, and deliberately not مساحتي:
 somebody tracking the work does not want their own work, they want everybody's. Who
 prepares each model for each entity, who reviews it, where it stands, how much is

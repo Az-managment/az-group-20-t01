@@ -35,6 +35,13 @@
         b { font-size: 12.5px; }
         small { font-size: 11px; color: $azm-muted; }
     }
+    .o_azm_ref {
+        margin-inline-start: 7px;
+        font-weight: 400;
+        font-size: 10.5px;
+        color: $azm-muted;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
     .o_azm_model_meter {
         display: flex;
         align-items: center;

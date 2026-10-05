@@ -340,6 +340,45 @@ class TestMyWork(TransactionCase):
         row = next(r for r in out['work']['models'] if r['key'] == 'procurement')
         self.assertEqual(row['standing']['state'], 'approved')
 
+    def test_accepting_the_answers_publishes_what_they_produce(self):
+        """The documents are built from the answers and rebuilt when those change, which
+        the cron notices within the hour. That is right while the work is being done and
+        wrong at the moment it is signed off: what the reviewer accepted should be on the
+        shelf and in the entity's Documents folders, not an hour later.
+
+        The queue is told to go rather than waited for — an entity holds some two hundred
+        and fifty documents and each is a PDF render, which is not something to do inside
+        the click that accepted them.
+        """
+        from unittest.mock import patch
+        self.assessment.sudo().action_fill_demo()
+        D = self.env['azm.dashboard']
+        D.with_user(self.answerer).with_company(self.company).submit_my_work(
+            'azm.assessment', self.assessment.id)
+
+        Pub = self.env['azm.doc.publication']
+        with patch.object(type(Pub), '_enqueue', autospec=True) as enqueue:
+            enqueue.return_value = Pub
+            D.with_user(self.reviewer).with_company(self.company).accept_my_review(
+                'azm.assessment', self.assessment.id)
+        self.assertTrue(enqueue.called, 'accepting publishes what the answers produce')
+        self.assertEqual(enqueue.call_args[0][1], self.company,
+                         'for the entity whose answers were accepted')
+        self.assertEqual(self.assessment.state, 'approved')
+        self.assertIn('Documents', self.assessment.message_ids[:1].body or '',
+                      'and it is said on the assessment itself')
+
+    def test_sending_for_review_does_not_publish_anything(self):
+        """Only what was accepted is published; work still under review is not."""
+        from unittest.mock import patch
+        self.assessment.sudo().action_fill_demo()
+        Pub = self.env['azm.doc.publication']
+        with patch.object(type(Pub), '_enqueue', autospec=True) as enqueue:
+            enqueue.return_value = Pub
+            self.env['azm.dashboard'].with_user(self.answerer).with_company(
+                self.company).submit_my_work('azm.assessment', self.assessment.id)
+        self.assertFalse(enqueue.called)
+
     def test_the_reviewer_can_send_it_back_instead(self):
         self.assessment.with_user(self.answerer).action_fill_demo()
         D = self.env['azm.dashboard']
@@ -420,6 +459,38 @@ class TestMyWork(TransactionCase):
         self.assertIn('reviews', people[self.reviewer.name]['roles'])
         self.assertEqual(people[self.answerer.name]['parts'], 1,
                          'counted per person, over the parts actually theirs')
+
+    def test_tracking_shows_every_live_assessment_of_an_entity(self):
+        """An entity holds a procurement assessment per kind and scenario.
+
+        أصناف/عاجل is not a newer version of أصناف/قياسي, and keeping one per entity hid
+        the others — an approved assessment disappeared behind a draft of a different
+        kind, so the page reported nothing approved the moment after somebody approved
+        something. Superseded *versions* are a different thing and are already out,
+        because action_new_version archives them.
+        """
+        other = self.env['azm.assessment'].with_user(self.answerer).with_company(
+            self.company).create({'entity_id': self.entity.id, 'purchase_kind': 'goods',
+                                  'scenario': 'standard', 'user_id': self.answerer.id})
+        page = self.env['azm.dashboard'].with_company(self.company).get_progress()
+        mine = [r for r in page['rows']
+                if r['entity'] == self.entity.name and r['key'] == 'procurement']
+        self.assertEqual({r['id'] for r in mine}, {self.assessment.id, other.id},
+                         'both of them, not whichever came back first')
+        self.assertEqual({r['ref'] for r in mine},
+                         {self.assessment.name, other.name},
+                         'each named, so two rows of the same model are told apart')
+
+        # and an approved one does not vanish behind a draft of another kind
+        self.assessment.sudo().action_fill_demo()
+        self.assessment.sudo()._workflow().state = 'review'
+        self.env['azm.dashboard'].with_user(self.reviewer).with_company(
+            self.company).accept_my_review('azm.assessment', self.assessment.id)
+        page = self.env['azm.dashboard'].with_company(self.company).get_progress()
+        approved = [r for r in page['rows'] if r['id'] == self.assessment.id]
+        self.assertEqual(len(approved), 1)
+        self.assertEqual(approved[0]['state'], 'approved')
+        self.assertGreaterEqual(page['totals']['approved'], 1)
 
     # ------------------------------------------------------------------ landing
     def test_an_answerer_starts_on_their_own_page(self):
