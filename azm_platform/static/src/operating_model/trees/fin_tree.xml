@@ -29,7 +29,7 @@
                 <!-- ============================== the requirement -->
                 <section class="o_azm_card o_azm_tree_detail">
                     <t t-if="this.state.preview">
-                        <t t-call="azm_platform.TreePreview"/>
+                        <t t-call="azm_platform.DocPreview"/>
                     </t>
 
                     <t t-elif="this.state.loadingNode">

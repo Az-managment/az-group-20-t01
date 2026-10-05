@@ -1,4 +1,5 @@
 import { Component, onWillStart, proxy, useProps } from "@odoo/owl";
+import { closeDocument, openDocument, previewDocument } from "@azm_platform/components/doc_preview";
 import { KeepLast } from "@web/core/utils/concurrency";
 import { useService } from "@web/core/utils/hooks";
 import { standardActionServiceProps } from "@web/webclient/actions/action_plugin";
@@ -228,27 +229,6 @@ export class AzmTreePage extends Component {
         this.state.docs[id] = !this.state.docs[id];
     }
 
-    /**
-     * Open (or download) the document a node stands for.
-     *
-     * The tree offers every output the catalogue defines, published or not; the
-     * server resolves the document and builds it if this is the first time anyone
-     * has asked to read it.
-     */
-    async openDoc(doc, download = false) {
-        if (!doc || !this.docsAvailable) {
-            return;
-        }
-        const action = await this.orm.call("azm.dashboard", "open_tree_document", [], {
-            kind: doc.kind,
-            node_id: doc.id || null,
-            tab: doc.tab || null,
-            company_id: this.d.company.id,
-            download,
-        });
-        await this.action.doAction(action);
-    }
-
     /** The outputs a branch shows: all of them, or just the family being looked for. */
     docsOf(node) {
         const family = this.state.family;
@@ -286,38 +266,27 @@ export class AzmTreePage extends Component {
         }
     }
 
-    /**
-     * Read a node's document inside the tree, instead of sending the reader away to
-     * a new tab. The server builds it if nobody has opened it before, which is why
-     * the pane shows that it is working before it shows anything.
-     */
+    /** Which entity a document is read for, when the caller does not say. */
+    get previewCompanyId() {
+        return this.d.company.id;
+    }
+
     async previewDoc(doc) {
-        if (!doc || !this.docsAvailable) {
+        if (!this.docsAvailable) {
             return;
         }
-        this.state.preview = { doc, loading: true, error: "", name: doc.label || "" };
-        try {
-            const found = await this.keepPreview.add(this.orm.call(
-                "azm.dashboard", "preview_tree_document", [], {
-                kind: doc.kind,
-                node_id: doc.id || null,
-                tab: doc.tab || null,
-                    company_id: this.d.company.id,
-                }));
-            this.state.preview = { doc, loading: false, error: "", ...found };
-        } catch (error) {
-            // the document may be empty, or have failed to build: say so where the
-            // reader is looking rather than throwing them a dialog
-            this.state.preview = {
-                doc, loading: false, name: doc.label || "",
-                error: (error && error.data && error.data.message) || (error && error.message)
-                    || "تعذّر عرض هذا المستند.",
-            };
-        }
+        await previewDocument(this, doc);
     }
 
     closePreview() {
-        this.state.preview = null;
+        closeDocument(this);
+    }
+
+    async openDoc(doc, download = false) {
+        if (!this.docsAvailable) {
+            return;
+        }
+        await openDocument(this, doc, download);
     }
 
     /** Back to the page that lists every tree of every entity. */

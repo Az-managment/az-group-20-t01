@@ -97,7 +97,7 @@ class AzmDocPublication(models.Model):
     tab = fields.Selection(selection_add=PROC_TABS, ondelete={k: "cascade" for k in PROC_OUTPUTS})
     question_id = fields.Many2one("azm.question", "السؤال", ondelete="cascade", index=True)
     stage_id = fields.Many2one("azm.stage", "المرحلة", ondelete="cascade", index=True)
-    stage_sequence = fields.Integer(related="stage_id.sequence", store=True)
+    stage_sequence = fields.Integer("ترتيب المرحلة", related="stage_id.sequence", store=True)
     proc_assessment_id = fields.Many2one("azm.assessment", "إفادة المشتريات المصدر",
                                          ondelete="set null", readonly=True)
 
@@ -232,6 +232,10 @@ class AzmDocPublication(models.Model):
                 "stage_id": (question.stage_id.id if question else stage.id if stage else False),
                 "tab": tab or False,
             })
+            # looked up, never numbered here: _get is reached from reads, and the
+            # financial path does the same — a cycle document created by a preview
+            # whose build then failed would otherwise be missing from the library
+            pub.artifact_id = pub._artifact(create=False).id
         return pub
 
     @api.model

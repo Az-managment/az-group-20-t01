@@ -217,19 +217,7 @@
         }
     }
 
-    .o_azm_dot {
-        flex: 0 0 auto;
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: #cbd5e1;
-        &.o_azm_dot_ok { background: #16a34a; }
-        &.o_azm_dot_warn { background: #f59e0b; }
-        &.o_azm_dot_bad { background: #64748b; }
-        &.o_azm_dot_muted { background: #e2e8f0; }
-        // a question that is not asked of this entity at all: hollow, not merely pale
-        &.o_azm_dot_off { background: transparent; box-shadow: inset 0 0 0 1.5px #cbd5e1; }
-    }
+
 
     // ---------------------------------------------------------------- the requirement
     .o_azm_tree_detail { padding-bottom: 18px; }
@@ -266,16 +254,6 @@
         > div { display: flex; flex-direction: column; }
         small { color: $azm-muted; font-size: 11px; }
     }
-    .o_azm_tree_sec {
-        padding: 6px 16px 14px;
-        h4 {
-            font-size: 13px;
-            font-weight: 700;
-            margin-bottom: 6px;
-            small { font-weight: 400; color: $azm-muted; margin-inline-start: 6px; }
-        }
-        p { margin-bottom: 6px; }
-    }
     .o_azm_tree_kv {
         width: 100%;
         font-size: 13px;
@@ -302,30 +280,6 @@
         th, td { border: 1px solid $azm-border; padding: 4px 6px; }
         th { background: rgba($azm-blue, .06); font-weight: 600; }
     }
-    // ---------------------------------------------------------------- reading in place
-    // A document is read where it was picked: the tree keeps the left, the document
-    // takes the right. Leaving the page to a new tab loses the reader's place in it.
-    .o_azm_tree_preview_head {
-        align-items: flex-start;
-        h3 { margin: 2px 0 0; font-size: 15px; }
-        small .oi { font-size: 12px; }
-    }
-    .o_azm_tree_preview_tools {
-        display: flex;
-        gap: 6px;
-        flex: 0 0 auto;
-        .btn { display: inline-flex; align-items: center; border-radius: 8px; padding: 4px 9px; }
-        .oi { font-size: 15px; }
-    }
-    .o_azm_tree_preview_frame {
-        display: block;
-        width: 100%;
-        height: 72vh;
-        min-height: 420px;
-        border: 0;
-        border-top: 1px solid $azm-border;
-        background: #f1f5f9;
-    }
 
     .o_azm_tree_empty {
         display: flex;
@@ -350,15 +304,7 @@
 
 // Pieces this page needs that the shared sheets do not define on their own.
 .o_azm_tree_page {
-    .o_azm_code {
-        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-        font-size: .92em;
-        font-weight: 600;
-        color: $azm-blue;
-        white-space: nowrap;
-    }
-    .o_azm_code_dim { color: $azm-muted; font-weight: 500; }
-    .o_azm_code_big { font-size: 13px; }
+
 
     .o_azm_banner {
         border-radius: 8px;
@@ -385,14 +331,7 @@
         &.o_azm_pill_off { background: transparent; color: $azm-muted; box-shadow: inset 0 0 0 1px $azm-border; }
     }
 
-    .o_azm_box {
-        border-radius: 6px;
-        padding: 8px 12px;
-        font-size: 13px;
-        background: #f1f5f9;
-        color: $azm-muted;
-        &.o_azm_box_warn { background: #fff4e0; color: #8a4b00; }
-    }
+
 
     // the choices a question offers, with the one this entity picked marked
     .o_azm_tree_options {

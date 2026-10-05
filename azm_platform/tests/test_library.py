@@ -1,0 +1,224 @@
+from unittest.mock import patch
+
+from odoo.tests import HttpCase, TransactionCase, new_test_user, tagged
+
+
+@tagged('post_install', '-at_install')
+class TestOutputsLibrary(TransactionCase):
+    """The library reads one deliverable across every entity — the other way round
+    from the trees, which read one model for one entity."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.company = cls.env['res.company'].create({'name': 'AZM Library Campus'})
+        cls.other = cls.env['res.company'].create({'name': 'AZM Library Elsewhere'})
+        cls.env.user.company_ids = [(4, cls.company.id), (4, cls.other.id)]
+        cls.entity = cls.company.azm_entity_ids
+        # two entities that have both started, so coverage is a real figure and the
+        # books have something to bind
+        for company in (cls.company, cls.other):
+            entity = company.azm_entity_ids
+            cls.env['azm.fin.assessment'].create({'entity_id': entity.id}).action_fill_demo()
+            cls.env['azm.assessment'].create({
+                'entity_id': entity.id, 'purchase_kind': 'subscriptions',
+                'scenario': 'petty_cash'}).action_fill_demo()
+        cls.D = cls.env['azm.dashboard'].with_context(
+            allowed_company_ids=[cls.env.company.id, cls.company.id, cls.other.id])
+        cls.env['azm.doc.publication'].sudo()._enqueue(cls.company | cls.other)
+
+    # ------------------------------------------------------------------ the shelf
+    def test_every_deliverable_appears_once_however_many_entities_hold_it(self):
+        """Store once, map many: one row per master artifact, not per copy."""
+        library = self.D.get_outputs_library()
+        self.assertTrue(library['available'])
+        codes = [r['code'] for r in library['rows']]
+        self.assertEqual(len(codes), len(set(codes)), "a deliverable is listed once")
+        row = next(r for r in library['rows'] if r['ready'])
+        self.assertLessEqual(row['ready'], row['entities'],
+                             "no more entities hold it ready than exist")
+        shared = [r for r in library['rows'] if r['held'] > 1]
+        self.assertTrue(shared, "a deliverable held by several entities is still one row")
+        self.assertEqual(len([r for r in library['rows'] if r['code'] == shared[0]['code']]), 1)
+
+    def test_the_sheets_are_left_out_until_asked_for(self):
+        """Nine hundred per-requirement and per-question pages would bury the outputs
+        people actually file; the tree is where those are read."""
+        without = self.D.get_outputs_library()
+        with_them = self.D.get_outputs_library(sheets=True)
+        self.assertGreater(with_them['total'], without['total'])
+        self.assertFalse([r for r in without['rows'] if r['atype'] == 'REQ'])
+        self.assertTrue([r for r in with_them['rows'] if r['atype'] == 'REQ'])
+
+    # ------------------------------------------------------------------ the filters
+    def test_each_filter_narrows_to_what_it_names(self):
+        policies = self.D.get_outputs_library(atype='POL')
+        self.assertTrue(policies['rows'])
+        self.assertEqual({r['atype'] for r in policies['rows']}, {'POL'})
+
+        cycle = self.D.get_outputs_library(domain='PUR')
+        self.assertEqual({r['domain'] for r in cycle['rows']}, {'PUR'})
+
+        gaps = self.D.get_outputs_library(stage='GR')
+        self.assertEqual({r['stage'] for r in gaps['rows']}, {'GR'})
+
+        node = self.D.get_outputs_library(node='FIN.GOV')
+        self.assertTrue(node['rows'])
+        self.assertEqual({r['node'] for r in node['rows']}, {'FIN.GOV'})
+
+        found = self.D.get_outputs_library(query='AZM-PUR-POL')
+        self.assertTrue(found['rows'])
+        self.assertTrue(all('AZM-PUR-POL' in r['code'] for r in found['rows']))
+
+    def test_the_facets_count_what_the_filter_then_returns(self):
+        library = self.D.get_outputs_library()
+        for facet in library['types']:
+            narrowed = self.D.get_outputs_library(atype=facet['key'])
+            self.assertEqual(narrowed['total'], facet['count'],
+                             f"the {facet['key']} chip promises what filtering by it gives")
+
+    def test_a_chip_counts_under_the_filters_already_on(self):
+        """A chip is a promise about what clicking it returns, and it is read with the
+        other chips still lit — so it has to count under them, not over the whole shelf.
+        It counts under every filter but its own, or picking it could never widen."""
+        cycle = self.D.get_outputs_library(domain='PUR')
+        for facet in cycle['types']:
+            both = self.D.get_outputs_library(domain='PUR', atype=facet['key'])
+            self.assertEqual(both['total'], facet['count'],
+                             f"with the cycle showing, {facet['key']} promises its own count")
+        for facet in cycle['stages']:
+            both = self.D.get_outputs_library(domain='PUR', stage=facet['key'])
+            self.assertEqual(both['total'], facet['count'])
+        for branch in cycle['nodes']:
+            both = self.D.get_outputs_library(domain='PUR', node=branch['key'])
+            self.assertEqual(both['total'], branch['count'])
+        # its own dimension is the exception: the model chips still offer the other
+        # model, or picking PUR would leave no way back to FIN
+        self.assertEqual({m['key'] for m in cycle['domains']}, {'FIN', 'PUR'})
+
+        # and a search narrows the chips too
+        found = self.D.get_outputs_library(query='AZM-FIN-POL')
+        for facet in found['types']:
+            both = self.D.get_outputs_library(query='AZM-FIN-POL', atype=facet['key'])
+            self.assertEqual(both['total'], facet['count'])
+
+    def test_the_shelf_counts_do_not_move_when_a_chip_is_picked(self):
+        """The KPIs say what the group produces; that is a property of the group, not
+        of what is being looked at, so filtering must not rewrite it."""
+        whole = self.D.get_outputs_library()['totals']
+        filtered = self.D.get_outputs_library(atype='POL', domain='FIN')['totals']
+        self.assertEqual(filtered['deliverables'], whole['deliverables'])
+        self.assertEqual(filtered['types'], whole['types'])
+
+    # ------------------------------------------------------------------ the entities
+    def test_the_coverage_counts_only_the_entities_asked_for(self):
+        everywhere = self.D.get_outputs_library()
+        here = self.D.get_outputs_library(company_ids=[self.company.id])
+        self.assertEqual(here['totals']['entities'], 1)
+        self.assertGreater(everywhere['totals']['entities'], 1)
+        self.assertLessEqual(here['totals']['copies'], everywhere['totals']['copies'])
+
+    def test_an_entity_the_user_does_not_work_in_is_not_reachable(self):
+        """Filtering by entity can only ever narrow: asking for one the user was never
+        given falls back to the ones they work in rather than widening."""
+        outsider = self.env['res.company'].create({'name': 'AZM Library Outside'})
+        user = new_test_user(
+            self.env, 'azm_library_insider', company_id=self.company.id,
+            company_ids=[(6, 0, [self.company.id])],
+            groups='azm_platform.group_azm_user,azm_operating_model.azm_group_user')
+        D = self.env['azm.dashboard'].with_user(user).with_company(self.company)
+        library = D.get_outputs_library(company_ids=[outsider.id])
+        self.assertEqual([e['id'] for e in library['entity_options']], [self.company.id])
+        self.assertEqual(library['filters']['company_ids'], [self.company.id])
+
+        # opening a row is the other way in, and it names entities: it must narrow too,
+        # or the row would list an entity the filter was refused
+        row = library['rows'][0]
+        found = D.get_output_entities(row['id'], company_ids=[outsider.id])
+        self.assertEqual([e['company_id'] for e in found['rows']], [self.company.id])
+        self.assertNotIn(outsider.name, [e['name'] for e in found['rows']])
+
+    def test_a_model_the_reader_cannot_open_is_not_listed(self):
+        """The library lists both models, so it has to ask about both.
+
+        The gate used to be "either model is readable", and then the page listed them
+        both: a reader allowed the procurement cycle but not the financial model got
+        every financial deliverable's code, node and coverage because one of the two
+        answered yes.
+        """
+        cls = type(self.env['azm.dashboard'])
+        with patch.object(cls, '_fin_available', lambda self: False):
+            library = self.D.get_outputs_library()
+            self.assertEqual({r['domain'] for r in library['rows']}, {'PUR'})
+            self.assertEqual({m['key'] for m in library['domains']}, {'PUR'})
+            # and it cannot be reached by id through the other way in either
+            fin = self.env['azm.artifact'].sudo().search([('domain', '=', 'FIN')], limit=1)
+            self.assertTrue(fin)
+            self.assertFalse(self.D.get_output_entities(fin.id)['available'])
+
+        with patch.object(cls, '_om_available', lambda self: False):
+            self.assertEqual({r['domain'] for r in self.D.get_outputs_library()['rows']},
+                             {'FIN'})
+
+        with patch.object(cls, '_fin_available', lambda self: False), \
+                patch.object(cls, '_om_available', lambda self: False):
+            self.assertFalse(self.D.get_outputs_library()['available'])
+            self.assertFalse(self.D.get_output_entities(1)['available'])
+
+    def test_opening_a_deliverable_names_the_entities_and_how_each_is_doing(self):
+        library = self.D.get_outputs_library(atype='POL')
+        row = library['rows'][0]
+        found = self.D.get_output_entities(row['id'])
+        self.assertTrue(found['available'])
+        self.assertEqual(found['code'], row['code'])
+        self.assertEqual({e['company_id'] for e in found['rows']},
+                         set(self.D._companies().ids))
+        for entity in found['rows']:
+            self.assertIn(entity['state'], ('done', 'pending', 'empty', 'error'))
+            self.assertTrue(entity['doc']['kind'])
+            self.assertEqual(entity['doc']['company_id'], entity['company_id'])
+
+    # ------------------------------------------------------------------ reading it
+    def test_every_kind_the_library_offers_can_be_read_and_downloaded(self):
+        """A row is only worth listing if it leads to the document.
+
+        The library offers six kinds of deliverable — a branch output of either model,
+        each model's own summary, and each model's whole book. They are read through one
+        pair of methods, so a kind added to the shelf without a path to the file would
+        show up here rather than as a dead button.
+        """
+        library = self.D.get_outputs_library(company_ids=[self.company.id])
+        first = {}
+        for row in library['rows']:
+            first.setdefault(row['doc']['kind'], row)
+        self.assertEqual(set(first), {'module', 'stage', 'summary', 'cycle',
+                                      'book', 'cycle_book'},
+                         'every kind of deliverable is on the shelf')
+
+        for kind, row in first.items():
+            doc = next(e['doc'] for e in self.D.get_output_entities(row['id'])['rows']
+                       if e['company_id'] == self.company.id)
+            # exactly the arguments doc_preview.js sends
+            args = {'kind': doc['kind'], 'node_id': doc.get('id'),
+                    'tab': doc.get('tab'), 'company_id': doc['company_id']}
+            read = self.D.preview_tree_document(**args)
+            self.assertTrue(read['url'].startswith('/web/content/'),
+                            f'{kind} ({row["code"]}) can be read in place')
+            download = self.D.open_tree_document(**args, download=True)
+            self.assertIn('download=true', download['url'],
+                          f'{kind} ({row["code"]}) comes down as a file')
+
+    def test_the_whole_book_can_be_downloaded(self):
+        for kind in ('book', 'cycle_book'):
+            action = self.D.open_tree_document(kind=kind, company_id=self.company.id,
+                                               download=True)
+            self.assertIn('download=true', action['url'],
+                          f"{kind} comes down as one file")
+
+
+@tagged('post_install', '-at_install')
+class TestOutputsLibraryTour(HttpCase):
+
+    def test_the_library_renders_and_opens_a_deliverable(self):
+        self.start_tour('/odoo/action-azm_platform.action_azm_outputs_library',
+                        'azm_library_tour', login='admin')

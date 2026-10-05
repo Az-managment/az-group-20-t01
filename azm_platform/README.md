@@ -62,7 +62,8 @@ Each file shows its KPIs (assessments, completion, certainty / maturity, open fi
 clicking it opens the model page with all its data and statistics. Group KPIs and an entity × model table sit on top and below.
 
 ## شجر · Trees
-The sidebar entry **شجر · Trees** — marked by the group's own tree, three tiers drawn from
+The sidebar entry — **شجر** to an Arabic reader and **Trees** to an English one, never
+both at once — marked by the group's own tree, three tiers drawn from
 the same triangle as the AZM logo (`static/src/components/tree_mark.xml`, one SVG in
 `currentColor` that serves the dark sidebar, a tinted badge and a card footer at any size)
 — opens a landing page of every model that can be walked
@@ -170,10 +171,37 @@ visibility is decided by the engine that drives the answer workspace, so a quest
 entity is never asked reads as "لا يُسأل هنا" rather than as an unanswered hole. An entity
 that has not started still gets a card and a tree — it shows what the model asks of it.
 
+## مكتبة المخرجات · Outputs Library
+The sidebar entry — **مكتبة المخرجات**, or **Outputs Library** in English — reads the
+group the other way round from the trees. A tree reads one model for one entity; the library reads **one deliverable
+across every entity** — the question the trees cannot answer: *how many of our entities
+have a procurement policy, and which ones are missing it?*
+
+A deliverable is the master artifact of the coding registry, so it appears once however
+many entities hold a copy; the bar on its row is how many of them have theirs ready.
+Opening a row names the entities, and each one can be read in place, downloaded, or have
+its **whole book** downloaded as a single PDF.
+
+Filters narrow by:
+
+| | |
+|---|---|
+| entity | a set — pick any of the entities you work in; asking for one you do not only ever narrows |
+| kind of output | POL, PRO, WFL, DOA, CTL, KPI, RPT, SRQ, GAP, RSK, DEC, MAN |
+| model | the unified financial model, or the procurement cycle |
+| lifecycle stage | CS → GR → TD → SF → IMP → UAT → GLA → CA |
+| position in the tree | FIN.GOV, PUR-REQ … |
+| search | by code or node |
+
+The per-requirement and per-question sheets are left out unless asked for: there are
+nine hundred of them and the tree is where they are read. Reading a document in place is
+the same component the trees use (`static/src/components/doc_preview.*`), so a
+deliverable looks and behaves the same whichever page you found it on.
+
 ## What it adds
 | Where | What |
 |---|---|
-| AZM sidebar | **Operating Model**, **Assessments**, **Risk Register**, **شجر · Trees**, **Question Catalogue** (managers) |
+| AZM sidebar | **Operating Model**, **Assessments**, **Risk Register**, **Trees**, **Outputs Library**, **Question Catalogue** (managers) — each named in the reader's own language, Arabic or English, never the two side by side |
 | Unified financial model page | KPIs, application status, one card per financial module (FIN/HRF, templates, applicability, completion, maturity, gaps), charts, entities, top gaps, assessments |
 | Operating Model page | 8 KPIs, 3 domain cards (Governance / Procurement Operations / Financial), one card per question area (stage) with questions, risk rules, risks, findings, completion, certainty, question mix, application status; risk-register & assessment donuts; entities table; top open risks; current assessments |
 | AZM Home | "Operating Model" KPI tile, quick links and an Operating Model section (KPIs, domains, latest assessments, top risks) |

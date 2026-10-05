@@ -194,8 +194,11 @@ class AzmDocPublication(models.Model):
     requirement_id = fields.Many2one("azm.fin.requirement", "المتطلب", ondelete="cascade", index=True)
     tree_ref = fields.Char(related="requirement_id.tree_ref", store=True, string="مرجع الشجرة")
     module_id = fields.Many2one("azm.fin.module", "الموديول", ondelete="cascade", index=True)
-    module_sequence = fields.Integer(related="module_id.sequence", store=True)
+    module_sequence = fields.Integer("ترتيب المكوّن", related="module_id.sequence", store=True)
     tab = fields.Selection(TABS, "المخرج")
+    artifact_id = fields.Many2one("azm.artifact", "المخرج المعتمد", readonly=True, index=True,
+                                  ondelete="set null",
+                                  help="المخرج الذي يُعد هذا المستند نسخة الكيان منه.")
     document_id = fields.Many2one("documents.document", "المستند في Documents", ondelete="set null", readonly=True)
     folder_id = fields.Many2one(related="document_id.folder_id", string="المجلد")
     state = fields.Selection([
@@ -270,6 +273,8 @@ class AzmDocPublication(models.Model):
                 "module_id": (requirement.module_id.id if requirement else module.id if module else False),
                 "tab": tab or False,
             })
+            # looked up, never numbered here: _get is reached from reads
+            pub.artifact_id = pub._artifact(create=False).id
         return pub
 
     @api.model
@@ -361,6 +366,9 @@ class AzmDocPublication(models.Model):
                     or p._current_stamp(cache.get(p._source_key())) != p.stamp)
             pubs.write({"state": "pending", "error": False, "attempts": 0, "retry_after": False})
             queued |= pubs
+        # after the documents exist, not before: _ensure_company creates them inside the
+        # loop above, and linking first would leave every new one unlinked
+        self._link_artifacts()
         if queued:
             self._trigger_cron()
         return queued
@@ -535,6 +543,8 @@ class AzmDocPublication(models.Model):
                 })
             pub.write({"document_id": document.id, "state": "done", "generated_on": fields.Datetime.now(),
                        "stamp": stamp, "error": False, "attempts": 0, "retry_after": False,
+                       # building one is the moment its artifact certainly exists
+                       "artifact_id": pub._artifact().id,
                        **pub._source_vals(assessment)})
         return True
 
@@ -675,6 +685,30 @@ class AzmDocPublication(models.Model):
         if self.kind == "module":
             return FIN_ARTIFACTS[self.tab][1]
         return FIN_KIND_ARTIFACTS[self.kind][1]
+
+    @api.model
+    def _link_artifacts(self):
+        """Point every document at the artifact it is a copy of.
+
+        The link is derivable — a document knows its node and its output — but deriving
+        it per row is what made a library of the group's deliverables expensive. It is
+        stored once instead, and refreshed whenever the registry gains an entry.
+        """
+        Artifact = self.env["azm.artifact"].sudo()
+        by_ref = {art.ref: art.id for art in Artifact.search([])}
+        pending = self.sudo().search([("artifact_id", "=", False)])
+        grouped = {}
+        for pub in pending:
+            artifact = by_ref.get(pub._artifact_ref())
+            if artifact:
+                grouped.setdefault(artifact, []).append(pub.id)
+        linked = 0
+        for artifact, ids in grouped.items():
+            self.sudo().browse(ids).write({"artifact_id": artifact})
+            linked += len(ids)
+        # what was linked, not what was looked at: a document whose artifact is not in
+        # the registry stays unlinked, and saying otherwise would hide that
+        return linked
 
     @api.model
     def _book_kinds(self):
