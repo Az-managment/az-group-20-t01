@@ -3,7 +3,7 @@ import { registry } from "@web/core/registry";
 import { KeepLast } from "@web/core/utils/concurrency";
 import { useService } from "@web/core/utils/hooks";
 import { standardActionServiceProps } from "@web/webclient/actions/action_plugin";
-import { closeDocument, openDocument, previewDocument } from "@azm_platform/components/doc_preview";
+import { closeDocument, deliver, openDocument, previewDocument } from "@azm_platform/components/doc_preview";
 
 /**
  * AZM Platform · the outputs library.
@@ -290,7 +290,9 @@ export class AzmOutputsLibrary extends Component {
             domain: this.state.filters.domain || null,
             download: true,
         });
-        await this.action.doAction(action);
+        // binding a manual takes a moment, and doAction would be asking for a window
+        // long after the click that earned one
+        deliver(this, action, true);
     }
 
     get kpis() {
