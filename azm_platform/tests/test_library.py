@@ -111,6 +111,78 @@ class TestOutputsLibrary(TransactionCase):
         self.assertEqual(filtered['deliverables'], whole['deliverables'])
         self.assertEqual(filtered['types'], whole['types'])
 
+    # ------------------------------------------------------------------ issued or not
+    def _build_some(self, limit=8):
+        """Build a few documents for real.
+
+        A document records which assessment it was built from as it is built, so until
+        something is built nothing has been issued from anything — which is correct, and
+        is why these tests cannot just queue them.
+        """
+        Pub = self.env['azm.doc.publication'].sudo()
+        # the kinds the shelf lists: the per-requirement and per-question sheets are
+        # left off it, so building those proves nothing about what it shows
+        pubs = Pub.search([('company_id', '=', self.company.id),
+                           ('kind', 'not in', ('requirement', 'question'))]
+                          + Pub._due_domain(), limit=limit)
+        self.assertTrue(pubs, 'there was something queued to build')
+        for pub in pubs:
+            pub._generate_safe()
+        sourced = pubs.filtered(lambda p: p.assessment_id or p.proc_assessment_id)
+        self.assertTrue(sourced, f"nothing recorded a source; states={pubs.mapped('state')}")
+        return pubs
+
+    def test_a_ready_file_and_an_approved_one_are_not_the_same_thing(self):
+        """A deliverable built from a draft is a draft deliverable however finished the
+        file looks. What counts as issued is the state of the answers behind it."""
+        self.assertFalse(self.D.get_outputs_library()['approvals'],
+                         'nothing built yet, so nothing has been issued from anything')
+        self._build_some()
+
+        library = self.D.get_outputs_library()
+        by_state = {a['key']: a['count'] for a in library['approvals']}
+        self.assertTrue(by_state, 'now the copies are in some state or other')
+        self.assertEqual(by_state.get('approved', 0), library['totals']['approved'])
+        self.assertGreater(by_state.get('draft', 0), 0,
+                           'and they are draft, because that is what they came from')
+        self.assertEqual(self.D.get_outputs_library(approval='approved')['total'], 0,
+                         'nothing has been approved, so nothing is listed as such')
+        self.assertGreater(library['totals']['unissued'], 0)
+
+    def test_approving_an_assessment_issues_its_deliverables(self):
+        built = self._build_some()
+        fin = built.mapped('assessment_id')
+        proc = built.mapped('proc_assessment_id')
+        self.assertTrue(fin or proc, 'the documents know what they were built from')
+        before = self.D.get_outputs_library(approval='approved')['total']
+
+        for sources in (fin, proc):
+            if sources:
+                sources.sudo()._workflow().write({'state': 'approved'})
+
+        after = self.D.get_outputs_library(approval='approved')
+        self.assertGreater(after['total'], before,
+                           'the deliverables built from it now read as approved')
+        self.assertTrue(all(r['held'] for r in after['rows']),
+                        'and only the ones somebody actually holds in that state')
+        # each entity's own copy says where it stands
+        entities = self.D.get_output_entities(after['rows'][0]['id'])['rows']
+        self.assertTrue([e for e in entities if e['approval'] == 'approved'])
+        self.assertTrue(all(e['approval_label'] for e in entities if e['approval']))
+
+    def test_filtering_by_approval_counts_only_those_copies(self):
+        """The coverage bar should answer "how many have it approved", not "how many
+        have a file", once the question is about approval."""
+        self._build_some()
+        whole = self.D.get_outputs_library()
+        drafts = self.D.get_outputs_library(approval='draft')
+        self.assertGreater(drafts['total'], 0)
+        self.assertLess(drafts['totals']['copies'], whole['totals']['copies'],
+                        'only the copies issued from a draft are counted')
+        self.assertEqual(drafts['filters']['approval'], 'draft')
+        for row in drafts['rows']:
+            self.assertTrue(row['held'], 'a deliverable nobody holds in that state is out')
+
     # ------------------------------------------------------------------ the entities
     def test_the_coverage_counts_only_the_entities_asked_for(self):
         everywhere = self.D.get_outputs_library()

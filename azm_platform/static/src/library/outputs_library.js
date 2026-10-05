@@ -34,7 +34,7 @@ export class AzmOutputsLibrary extends Component {
             open: {},            // artifact id → its entities are showing
             entities: {},        // artifact id → the rows for them
             filters: { atype: null, domain: null, stage: null, node: null,
-                       query: "", sheets: false, company_ids: [] },
+                       approval: null, query: "", sheets: false, company_ids: [] },
         });
         onWillStart(async () => {
             await this.load();
@@ -135,12 +135,14 @@ export class AzmOutputsLibrary extends Component {
 
     get filtering() {
         const f = this.state.filters;
-        return !!(f.atype || f.domain || f.stage || f.node || f.query || f.company_ids.length);
+        return !!(f.atype || f.domain || f.stage || f.node || f.approval || f.query
+                  || f.company_ids.length);
     }
 
     async clearFilters() {
         this.state.filters = { atype: null, domain: null, stage: null, node: null,
-                               query: "", sheets: this.state.filters.sheets, company_ids: [] };
+                               approval: null, query: "",
+                               sheets: this.state.filters.sheets, company_ids: [] };
         this.forgetRows();
         await this.load();
     }
@@ -302,6 +304,11 @@ export class AzmOutputsLibrary extends Component {
                 icon: "inventory_2", tone: "indigo", sub: `${t.types} نوعًا من المخرجات` },
             { key: "ready", label: "نسخ جاهزة", en: "Copies ready", value: t.ready,
                 icon: "task_alt", tone: "green", sub: `من ${t.copies} نسخة لدى الكيانات` },
+            // a file being ready and the answers behind it being approved are two
+            // different things, and the second is what counts as issued
+            { key: "approved", label: "نسخ معتمدة", en: "Approved copies", value: t.approved,
+                icon: "verified", tone: "teal",
+                sub: t.unissued ? `${t.unissued} لم تُعتمد بعد` : "كلها معتمدة" },
             { key: "entities", label: "الكيانات", en: "Entities", value: t.entities,
                 icon: "business", tone: "slate", sub: "تُحسب التغطية عليها" },
         ];

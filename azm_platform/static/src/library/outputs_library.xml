@@ -102,6 +102,20 @@
                         <b t-out="s.key"/><span t-out="s.label"/><em t-out="s.count"/>
                     </button>
                 </div>
+                <div t-if="this.d.approvals.length" class="o_azm_library_row">
+                    <!-- a file being ready and the answers behind it being approved are
+                         two different things; this is the second -->
+                    <span class="o_azm_library_rail_label">
+                        الاعتماد <em class="o_azm_en">Approval</em>
+                    </span>
+                    <button t-foreach="this.d.approvals" t-as="a" t-key="a.key" type="button"
+                            t-attf-class="o_azm_facet o_azm_appr_{{a.key}} {{this.state.filters.approval === a.key ? 'o_azm_on' : ''}}"
+                            t-attf-title="{{a.label}} · {{a.en}}"
+                            t-on-click="() => this.setFilter('approval', a.key)">
+                        <span t-out="a.label"/><em t-out="a.count"/>
+                    </button>
+                </div>
+
                 <div class="o_azm_library_row">
                     <span class="o_azm_library_rail_label">الموقع <em class="o_azm_en">Where</em></span>
                     <select class="form-select form-select-sm o_azm_library_node"
@@ -182,6 +196,10 @@
                                 <span t-attf-class="o_azm_dot o_azm_dot_{{e.css}}" t-att-title="e.state_label"/>
                                 <span class="o_azm_output_entity_name" t-out="e.name"/>
                                 <small t-out="e.state_label"/>
+                                <small t-if="e.approval"
+                                       t-attf-class="o_azm_appr_chip o_azm_appr_{{e.approval}}"
+                                       t-attf-title="{{e.approval_label}} · {{e.approval_en}}"
+                                       t-out="e.approval_label"/>
                                 <span class="o_azm_output_actions">
                                     <!-- An entity with nothing in this output has no
                                          document to open: both buttons used to raise

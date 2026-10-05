@@ -209,6 +209,18 @@ class AzmDocPublication(models.Model):
     ], "الحالة", default="pending", required=True, readonly=True)
     generated_on = fields.Datetime("تاريخ الإصدار", readonly=True)
     assessment_id = fields.Many2one("azm.fin.assessment", "الإفادة المصدر", ondelete="set null", readonly=True)
+    # Where the answers behind this document stand. A deliverable built from a draft is
+    # a draft deliverable however finished the file looks, and one built from an
+    # approved assessment is approved — which is the difference between something being
+    # written and something being issued. Stored so the library can group and filter on
+    # it; it recomputes when an assessment changes state, which is exactly when a
+    # deliverable becomes issued.
+    source_state = fields.Selection([
+        ("draft", "مسودة"),
+        ("review", "تحت المراجعة"),
+        ("approved", "معتمدة"),
+        ("archived", "نسخة سابقة"),
+    ], "حالة المصدر", compute="_compute_source_state", store=True, index=True)
     stamp = fields.Char(readonly=True, help="Fingerprint of the answers the document was built from.")
     outdated = fields.Boolean("يحتاج تحديث", compute="_compute_outdated",
                               help="الإجابات تغيرت بعد إصدار المستند؛ يُحدَّث تلقائيًا عند فتحه.")
@@ -239,6 +251,12 @@ class AzmDocPublication(models.Model):
                 pub.name = "النموذج المالي الموحد · ملخص الكيان"
             elif pub.kind == "book":
                 pub.name = "النموذج المالي الموحد · الكتاب الكامل"
+
+    @api.depends("assessment_id.state", "proc_assessment_id.state")
+    def _compute_source_state(self):
+        for pub in self:
+            source = pub.assessment_id or pub.proc_assessment_id
+            pub.source_state = source.state if source else False
 
     @api.depends("state", "stamp")
     def _compute_outdated(self):

@@ -284,11 +284,21 @@ the branches and across both models, which is the shape somebody asking for "our
 policies" means. It is a compilation, not a deliverable: every part carries its own
 registry code and the volume takes none.
 
+A file being ready and the answers behind it being **approved** are two different
+things, and the second is what counts as issued. Every copy carries the state of the
+assessment it was built from — *معتمدة*, *تحت المراجعة*, *مسودة* — so the shelf can be
+read either way: **نسخ معتمدة** sits in the KPI row beside *نسخ جاهزة*, the **الاعتماد**
+chips narrow to one of them, and narrowing counts only those copies, so the coverage bar
+answers *how many have it approved* rather than *how many have a file*. A deliverable
+nobody holds in that state drops off the shelf rather than showing an empty bar. A
+document nobody has opened yet has been issued from nothing, and counts as unissued.
+
 Filters narrow by:
 
 | | |
 |---|---|
 | entity | a set — pick any of the entities you work in; asking for one you do not only ever narrows |
+| approval | معتمدة · تحت المراجعة · مسودة — the state of the answers the copy was built from |
 | kind of output | POL, PRO, WFL, DOA, CTL, KPI, RPT, SRQ, GAP, RSK, DEC, MAN |
 | model | the unified financial model, or the procurement cycle |
 | lifecycle stage | CS → GR → TD → SF → IMP → UAT → GLA → CA |

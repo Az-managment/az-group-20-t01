@@ -22,6 +22,17 @@ STATES = {
     "empty": ("لا يوجد محتوى", "Nothing in it", "muted"),
     "error": ("تعذّر إصداره", "Failed", "bad"),
 }
+# Where the answers behind a copy stand. A deliverable built from a draft is a draft
+# deliverable however finished the file looks; one built from an approved assessment has
+# been issued. "بلا مصدر" is a document nobody has opened yet, so nothing has been built
+# from anything.
+APPROVALS = [
+    ("approved", "معتمدة", "Approved"),
+    ("review", "تحت المراجعة", "In review"),
+    ("draft", "مسودة", "Draft"),
+    ("archived", "نسخة سابقة", "Superseded"),
+]
+
 # the leaves are many and are browsed in the tree; the library leads with what people file
 SHEET_TYPES = {"REQ"}
 LIMIT = 300
@@ -97,7 +108,7 @@ class AzmDashboard(models.AbstractModel):
 
     @api.model
     def get_outputs_library(self, company_ids=None, atype=None, domain=None, stage=None,
-                            node=None, query=None, sheets=False):
+                            node=None, query=None, sheets=False, approval=None):
         """Every deliverable, with how far each entity has got with its copy.
 
         The filters narrow by entity, by model, by the node in the structure, by kind of
@@ -120,13 +131,21 @@ class AzmDashboard(models.AbstractModel):
         scoped = [(a, self._library_lifecycle(a), self._library_node(a)) for a in shelf]
         in_scope = {a.id for a in shelf}
 
-        # how far each entity has got with its copy, counted per deliverable in one pass
-        # rather than a query per row
-        states = {}
-        for artifact, state, count in self.env["azm.doc.publication"].sudo()._read_group(
+        # How far each entity has got with its copy, and where the answers behind it
+        # stand, counted per deliverable in one pass rather than a query per row.
+        # Narrowing by approval counts only the copies issued from that kind of
+        # assessment, so the coverage bar answers "how many have it approved" rather
+        # than "how many have a file".
+        states, approvals = {}, {}
+        for artifact, state, source, count in self.env["azm.doc.publication"].sudo()._read_group(
                 [("artifact_id", "!=", False), ("company_id", "in", companies.ids)],
-                ["artifact_id", "state"], ["__count"]):
-            states.setdefault(artifact.id, {})[state] = count
+                ["artifact_id", "state", "source_state"], ["__count"]):
+            if artifact.id in in_scope:
+                approvals[source or False] = approvals.get(source or False, 0) + count
+            if approval and (source or False) != approval:
+                continue
+            bucket = states.setdefault(artifact.id, {})
+            bucket[state] = bucket.get(state, 0) + count
         counted = {a: c for a, c in states.items() if a in in_scope}
 
         needle = (query or "").strip().lower()
@@ -171,10 +190,12 @@ class AzmDashboard(models.AbstractModel):
             if not passes(entry):
                 continue
             artifact, life, branch = entry
+            counts = states.get(artifact.id, {})
+            if approval and not counts:
+                continue   # nobody holds a copy of this one in that state
             total += 1
             if len(rows) >= LIMIT:
                 continue
-            counts = states.get(artifact.id, {})
             ready = counts.get("done", 0)
             held = sum(counts.values())
             arabic, english = self._library_output_name(artifact)
@@ -207,7 +228,12 @@ class AzmDashboard(models.AbstractModel):
             "filters": {"atype": atype or False, "domain": domain or False,
                         "stage": stage or False, "node": node or False,
                         "query": query or "", "sheets": bool(sheets),
+                        "approval": approval or False,
                         "company_ids": sorted(companies.ids)},
+            "approvals": [{"key": key, "label": arabic, "en": english,
+                           "count": approvals.get(key, 0)}
+                          for key, arabic, english in APPROVALS
+                          if approvals.get(key)],
             "entity_options": [{"id": c.id, "name": c.name} for c in self._companies()],
             "nodes": [{"key": key, "domain": value[0], "count": value[1]}
                       for key, value in sorted(nodes_facet.items())],
@@ -224,6 +250,8 @@ class AzmDashboard(models.AbstractModel):
                 "deliverables": len(shelf),
                 "copies": sum(sum(c.values()) for c in counted.values()),
                 "ready": sum(c.get("done", 0) for c in counted.values()),
+                "approved": approvals.get("approved", 0),
+                "unissued": sum(approvals.get(key, 0) for key in ("draft", False)),
                 "types": len({a.atype for a in shelf}),
                 "entities": len(companies),
             },
@@ -293,7 +321,7 @@ class AzmDashboard(models.AbstractModel):
         by_company = {}
         for pub in self.env["azm.doc.publication"].sudo().search_read(
                 [("artifact_id", "=", artifact.id), ("company_id", "in", companies.ids)],
-                ["company_id", "state", "generated_on"]):
+                ["company_id", "state", "generated_on", "source_state"]):
             by_company[pub["company_id"][0]] = pub
         doc = self._library_doc_ref(artifact)
         rows = []
@@ -301,9 +329,14 @@ class AzmDashboard(models.AbstractModel):
             found = by_company.get(company.id)
             state = found["state"] if found else "pending"
             arabic, english, css = STATES.get(state, STATES["pending"])
+            source = (found or {}).get("source_state") or False
+            approval = next((a for a in APPROVALS if a[0] == source), None)
             rows.append({
                 "company_id": company.id,
                 "name": company.name,
+                "approval": source,
+                "approval_label": approval[1] if approval else "",
+                "approval_en": approval[2] if approval else "",
                 "state": state,
                 "state_label": arabic,
                 "state_en": english,

@@ -255,6 +255,22 @@
         .o_azm_tree_mark { width: 13px; height: 13px; color: map-get($azm-tones, 'green'); }
         em { font-style: normal; font-size: 10px; }
     }
+    // where the answers behind a copy stand: issued, on its way, or still being written
+    .o_azm_appr_approved.o_azm_on { border-color: #15803d; background: rgba(#16a34a, .14); color: #15803d; }
+    .o_azm_appr_review.o_azm_on   { border-color: $azm-blue; background: rgba($azm-blue, .14); color: $azm-blue; }
+    .o_azm_appr_draft.o_azm_on    { border-color: #c2410c; background: rgba(#f97316, .14); color: #c2410c; }
+    .o_azm_appr_chip {
+        padding: 1px 7px;
+        border-radius: 20px;
+        font-size: 10px;
+        font-weight: 600;
+        white-space: nowrap;
+        &.o_azm_appr_approved { background: rgba(#16a34a, .14); color: #15803d; }
+        &.o_azm_appr_review   { background: rgba($azm-blue, .12); color: $azm-blue; }
+        &.o_azm_appr_draft    { background: rgba($azm-muted, .14); color: $azm-muted; }
+        &.o_azm_appr_archived { background: rgba($azm-muted, .10); color: $azm-muted; }
+    }
+
     // all of one kind in one volume — offered once a kind is picked
     .o_azm_combine {
         display: inline-flex;
