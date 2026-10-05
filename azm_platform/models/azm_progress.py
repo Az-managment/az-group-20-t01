@@ -11,7 +11,7 @@ entities they have, not every entity there is.
 """
 from odoo import api, models
 
-from .azm_my_work import MODELS, STANDING
+from .azm_my_work import MODELS
 
 
 class AzmDashboard(models.AbstractModel):
@@ -76,8 +76,11 @@ class AzmDashboard(models.AbstractModel):
                     total, answered = assessment.question_count, assessment.answered_count
                 else:
                     total, answered = assessment.visible_count, assessment.answered_count
-                arabic, english, css, hint = STANDING.get(
-                    assessment.state, STANDING["draft"])
+                # Nobody's own work is on this page, so nothing here is "with you now":
+                # a draft is with whoever prepares it, and this reads it from where
+                # somebody tracking it stands. The chip says which stage; the line under
+                # it names the people.
+                standing = self._my_work_standing(assessment.state, mine=False)
                 parts = []
                 if may_see_parts:
                     field = ("fin_assessment_id" if spec["key"] == "financial"
@@ -112,9 +115,9 @@ class AzmDashboard(models.AbstractModel):
                     "preparer": preparer.name or "",
                     "reviewer": assessment.reviewer_id.name or "",
                     "state": assessment.state,
-                    "standing": arabic,
-                    "standing_en": english,
-                    "css": css,
+                    "standing": standing["label"],
+                    "standing_en": standing["en"],
+                    "css": standing["css"],
                     "progress": round(assessment.progress),
                     "answered": answered,
                     "total": total,

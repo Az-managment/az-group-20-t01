@@ -452,6 +452,11 @@ class TestMyWork(TransactionCase):
         self.assertEqual({p['user'] for p in split['parts']},
                          {self.answerer.name, self.reviewer.name})
 
+        # nobody's own work is on this page, so nothing on it is "with you now"
+        self.assertEqual(row['standing'], 'مع المُعد',
+                         'a draft is with whoever prepares it, said from the tracker\'s side')
+        self.assertNotIn('معك', [r['standing'] for r in page['rows']])
+
         people = {p['name']: p for p in page['people']}
         self.assertIn(self.answerer.name, people)
         self.assertIn('prepares', people[self.answerer.name]['roles'])
