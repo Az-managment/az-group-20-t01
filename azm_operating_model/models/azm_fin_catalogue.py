@@ -242,7 +242,11 @@ class AzmFinModule(models.Model):
         return True
 
     def action_reload_catalogue(self):
+        self.env["azm.fin.module"].check_access("write")
         self._load_catalogue()
+        # a requirement added here has no answer line on the assessments that already
+        # exist, and one retired here must stop being counted
+        self.env["azm.fin.assessment"]._ensure_all_answers()
         return {"type": "ir.actions.client", "tag": "display_notification",
                 "params": {"type": "success", "message": "تم تحديث كتالوج النموذج المالي."}}
 

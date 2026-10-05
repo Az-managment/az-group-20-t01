@@ -47,7 +47,13 @@ class TestAzmAssessment(TransactionCase):
         policy = self.assessment.workspace_output(stage_id=self.bud.id, tab="policy")
         self.assertIn("عند عدم كفاية المخصص يتم: استمرار الشراء", policy)
         self.assessment.action_sync_findings()
-        self.assertIn("R-BUD-shortage", self.assessment.finding_ids.mapped("code"))
+        # the rule's own code, not a literal: it names the answer that fires it, and
+        # which option that is comes from the catalogue
+        rule = self.env["azm.risk.rule"].search(
+            [("stage_id", "=", self.bud.id), ("question_id.key", "=", "shortage")], limit=1)
+        self.assertTrue(rule, "the catalogue watches this answer")
+        self.assertEqual(rule.trigger_option_id.name, "استمرار الشراء")
+        self.assertIn(rule.code, self.assessment.finding_ids.mapped("code"))
 
     def test_approval_flow_and_lock(self):
         self.assessment.with_user(self.preparer).action_fill_demo()

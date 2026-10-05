@@ -83,6 +83,15 @@ class AzmAssessment(models.Model):
         records._ensure_answers()
         return records
 
+    @api.model
+    def _ensure_all_answers(self):
+        """Give every assessment a line for every question, after a catalogue reload.
+
+        A question added to the catalogue has no answer line on the assessments that
+        already existed, and the workspace reads a line for every *visible* question —
+        so without this the whole workspace of every older assessment stops opening."""
+        self.search([])._ensure_answers()
+
     def _ensure_answers(self):
         questions = self.env["azm.question"].search([])
         lines = []
@@ -198,7 +207,9 @@ class AzmAssessment(models.Model):
         visible = engine.visible_questions(sdict, qdicts, answers)
         questions = []
         for qd in visible:
-            line = by_q[qd["id"]]
+            line = by_q.get(qd["id"])
+            if not line:
+                continue   # a question the catalogue gained since this assessment was made
             q = line.question_id
             questions.append({
                 "id": q.id, "line_id": line.id, "code": q.code, "label": q.label, "qtype": q.qtype,
@@ -334,8 +345,8 @@ class AzmAssessment(models.Model):
                 for stage in rec._stages():
                     sdict, qdicts, answers, by_q = rec._stage_payload(stage)
                     for qd in engine.visible_questions(sdict, qdicts, answers):
-                        line = by_q[qd["id"]]
-                        if line.has_value:
+                        line = by_q.get(qd["id"])
+                        if not line or line.has_value:
                             continue
                         normal = line.question_id.option_ids.filtered(lambda o: o.kind == "normal")
                         seed = zlib.crc32(f"{stage.code}/{qd['key']}".encode())

@@ -42,7 +42,12 @@ class AzmFinAssessment(models.Model):
     approved_date = fields.Datetime("تاريخ الاعتماد", readonly=True, copy=False)
     is_demo = fields.Boolean("مثال افتراضي", copy=False)
     previous_id = fields.Many2one("azm.fin.assessment", "الإصدار السابق", readonly=True, copy=False)
-    answer_ids = fields.One2many("azm.fin.answer", "assessment_id", string="الإجابات", copy=True)
+    # A requirement retired from the catalogue is archived, not deleted — so its answers
+    # survive for the record — but it must stop being asked, counted and printed. The
+    # domain keeps it out of everything that reads answer_ids; _ensure_answers goes
+    # around it so a retired requirement is never re-created either.
+    answer_ids = fields.One2many("azm.fin.answer", "assessment_id", string="الإجابات", copy=True,
+                                 domain=[("requirement_active", "=", True)])
     version_ids = fields.One2many("azm.fin.version", "assessment_id", string="الإصدارات المعتمدة")
 
     applicable_count = fields.Integer("متطلبات منطبقة", compute="_compute_stats")
@@ -102,13 +107,26 @@ class AzmFinAssessment(models.Model):
         return records
 
     def _ensure_answers(self):
+        """A line per live requirement, for every assessment given.
+
+        Read through the model rather than answer_ids: that field hides the lines of
+        retired requirements, and they must not be created a second time."""
         requirements = self.env["azm.fin.requirement"].search([])
-        lines = []
-        for rec in self:
-            have = set(rec.answer_ids.requirement_id.ids)
-            lines += [{"assessment_id": rec.id, "requirement_id": r.id} for r in requirements if r.id not in have]
+        Answer = self.env["azm.fin.answer"].with_context(active_test=False)
+        existing = {}
+        for line in Answer.search([("assessment_id", "in", self.ids)]):
+            existing.setdefault(line.assessment_id.id, set()).add(line.requirement_id.id)
+        lines = [{"assessment_id": rec.id, "requirement_id": r.id}
+                 for rec in self for r in requirements
+                 if r.id not in existing.get(rec.id, ())]
         if lines:
-            self.env["azm.fin.answer"].create(lines)
+            Answer.create(lines)
+
+    @api.model
+    def _ensure_all_answers(self):
+        """Top every assessment up after a catalogue reload — a requirement added to the
+        catalogue has no line on the assessments that already existed."""
+        self.search([])._ensure_answers()
 
     # ---------------------------------------------------------------- workspace RPC
     def _modules_nav(self):
@@ -381,6 +399,8 @@ class AzmFinAnswer(models.Model):
     module_sequence = fields.Integer(related="requirement_id.module_sequence", store=True, string="ترتيب الموديول")
     topic_sequence = fields.Integer(related="requirement_id.topic_sequence", store=True, string="ترتيب الموضوع")
     requirement_sequence = fields.Integer(related="requirement_id.sequence", store=True, string="ترتيب المتطلب")
+    # stored so the assessment can leave a retired requirement out without joining to it
+    requirement_active = fields.Boolean(related="requirement_id.active", store=True, index=True)
     code = fields.Char(related="requirement_id.code", store=True, string="الكود")
     req_id = fields.Char(related="requirement_id.req_id", string="Requirement ID")
     title = fields.Char(related="requirement_id.title", string="المتطلب ")
