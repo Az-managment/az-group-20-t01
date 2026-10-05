@@ -105,7 +105,7 @@
         <field name="tag">azm_progress</field>
     </record>
     <menuitem id="menu_progress" name="Progress" parent="azm_platform.menu_root"
-              action="action_azm_progress" sequence="2"
+              action="action_azm_progress" sequence="1"
               groups="azm_operating_model.azm_group_manager"/>
 
     <!-- ===================================================== who sees which page

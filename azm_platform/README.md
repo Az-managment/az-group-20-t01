@@ -100,7 +100,7 @@ the rules and the list say the same thing, so the two cannot drift apart.
 |---|---|---|
 | مُعد إفادات (answerer) | مساحتي | **مساحتي** and **مكتبة المخرجات** — their work, and what it produces |
 | مراجع (reviewer) | مساحتي | the above, plus **الإفادات**, **سجل المخاطر**, **شجر**, المشاريع والمهام والمستندات |
-| مدير النموذج (manager) | wherever they choose | all of it, plus **التقدّم**, the cockpit, the catalogue and the configuration |
+| مدير النموذج (manager) | wherever they choose | all of it, plus **التقدّم**, the cockpit, the catalogue and the configuration — but not **مساحتي**, which is one person's own work |
 
 Somebody whose job is answering their entity's questions was being shown the group
 cockpit, the entity list, the group structure and the model dashboards — figures about

@@ -1,6 +1,8 @@
 from . import res_company
 # where somebody lands when they log in
 from . import res_users
+# pages a role is not offered, where a group cannot say so
+from . import ir_ui_menu
 from . import azm_dashboard
 from . import res_config_settings
 # operating models (procurement cycle + unified financial model)

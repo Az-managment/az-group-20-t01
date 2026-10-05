@@ -290,7 +290,33 @@ class TestAzmGroupComposition(TransactionCase):
         running = self._azm_menus(manager)
         self.assertTrue({'Home', 'Entities', 'Group Structure', 'Operating Models',
                          'Progress', 'Question Catalogue'} <= running)
-        self.assertLess(reviewing, running, 'and a reviewer sees less than a manager')
+        # everything the reviewer works on, and more — except مساحتي, which is one
+        # person's own work and is withheld from the people who track everybody's
+        self.assertLess(reviewing - {'My work'}, running,
+                        'a reviewer works on a subset of what a manager does')
+        self.assertNotIn('My work', running)
+
+    def test_a_manager_is_not_offered_their_own_work_alongside_everybody_s(self):
+        """مساحتي is one person's own work; a manager tracks everybody's from التقدّم.
+
+        No group can say this — the hierarchy flows upward, so anything that shows the
+        page to an answerer shows it to a manager too — so it is withheld in the one
+        place every menu listing passes through, rather than hidden in one sidebar.
+        """
+        manager = self._user(
+            'azm_groups_nomywork',
+            'azm_platform.group_azm_user,azm_operating_model.azm_group_manager')
+        self.assertNotIn('My work', self._azm_menus(manager))
+        self.assertIn('Progress', self._azm_menus(manager))
+        # and the people who do the answering keep it
+        answerer = self._user(
+            'azm_groups_keepsmywork',
+            'azm_platform.group_azm_user,azm_operating_model.azm_group_user')
+        self.assertIn('My work', self._azm_menus(answerer))
+        reviewer = self._user(
+            'azm_groups_revkeeps',
+            'azm_platform.group_azm_user,azm_operating_model.azm_group_reviewer')
+        self.assertIn('My work', self._azm_menus(reviewer))
 
     def test_tracking_is_the_administrator_s_page_not_an_answerer_s(self):
         """التقدّم is everybody's work; مساحتي is your own. They are different pages for
