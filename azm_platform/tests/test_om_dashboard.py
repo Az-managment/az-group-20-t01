@@ -200,3 +200,62 @@ class TestOmDashboardTour(HttpCase):
         """The Operating Model page, Home page and an entity page load without JS errors."""
         self.start_tour('/odoo/action-azm_platform.action_azm_dashboard',
                         'azm_om_dashboard_tour', login='admin')
+
+
+@tagged('post_install', '-at_install')
+class TestAzmGroupComposition(TransactionCase):
+    """The two group hierarchies compose; neither implies the other.
+
+    azm_platform.group_azm_user is the right to use the cockpit; azm_operating_model's
+    is the right to work on the assessments. Holding only the first is a real, supported
+    position — the operating-model menus are not shown and every page that reads a model
+    says so rather than failing — and this pins that so it does not read as an accident.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.company = cls.env['res.company'].create({'name': 'AZM Groups Campus'})
+        cls.env.user.company_ids = [(4, cls.company.id)]
+
+    def _user(self, login, groups):
+        return new_test_user(self.env, login, company_id=self.company.id,
+                             company_ids=[(6, 0, [self.company.id])], groups=groups)
+
+    def _azm_menus(self, user):
+        root = self.env.ref('azm_platform.menu_root')
+        inside = set(self.env['ir.ui.menu'].search([('id', 'child_of', root.id)]).ids)
+        visible = set(self.env['ir.ui.menu'].with_user(user)._visible_menu_ids()) & inside
+        return set(self.env['ir.ui.menu'].browse(sorted(visible)).mapped('name'))
+
+    def test_the_cockpit_works_without_the_operating_model(self):
+        user = self._user('azm_groups_cockpit', 'azm_platform.group_azm_user')
+        menus = self._azm_menus(user)
+        self.assertIn('Home', menus)
+        self.assertIn('Entities', menus)
+        self.assertFalse(menus & {'Operating Models', 'Assessments', 'Risk Register'},
+                         "the operating model's menus are not offered to them")
+
+        dashboard = self.env['azm.dashboard'].with_user(user).with_context(
+            allowed_company_ids=[self.company.id]).with_company(self.company)
+        home = dashboard.get_dashboard_data()
+        self.assertFalse(home['om'], "the page says the model is not theirs, and does not fail")
+        self.assertFalse(home['fin'])
+        self.assertFalse(dashboard.get_trees_hub()['available'])
+        self.assertFalse(dashboard.get_fin_tree(company_id=self.company.id)['available'])
+        dashboard.get_company_overview(self.company.id)   # must not raise
+
+    def test_the_operating_model_menus_come_with_its_group(self):
+        both = self._user('azm_groups_both',
+                          'azm_platform.group_azm_user,azm_operating_model.azm_group_user')
+        menus = self._azm_menus(both)
+        self.assertTrue({'Operating Models', 'Assessments', 'Risk Register'} <= menus)
+
+    def test_neither_group_implies_the_other(self):
+        """Linking them would take the supported position above away."""
+        platform = self.env.ref('azm_platform.group_azm_user')
+        model = self.env.ref('azm_operating_model.azm_group_user')
+        self.assertNotIn(model, platform.implied_ids,
+                         "a cockpit user is not automatically an assessment preparer")
+        self.assertNotIn(platform, model.implied_ids,
+                         "and working on assessments does not hand out the cockpit")
