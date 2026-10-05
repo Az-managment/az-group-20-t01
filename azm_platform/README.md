@@ -179,8 +179,17 @@ have a procurement policy, and which ones are missing it?*
 
 A deliverable is the master artifact of the coding registry, so it appears once however
 many entities hold a copy; the bar on its row is how many of them have theirs ready.
-Opening a row names the entities, and each one can be read in place, downloaded, or have
-its **whole book** downloaded as a single PDF.
+Opening a row names the entities, and each one can be read in place, downloaded, have
+its **whole book** downloaded as a single PDF, or be opened **on that entity's tree** —
+on the branch, with the output showing, rather than at the top of the model. A tree is
+one entity's, so each entity carries its own way onto it.
+
+Picking a kind of output offers one more thing: **اجمعها في مستند واحد**, which binds
+all of that kind for one entity into a single volume — the policy manual, the procedure
+manual. The entity book binds one model whole in tree order; this binds one kind across
+the branches and across both models, which is the shape somebody asking for "our
+policies" means. It is a compilation, not a deliverable: every part carries its own
+registry code and the volume takes none.
 
 Filters narrow by:
 
@@ -192,6 +201,17 @@ Filters narrow by:
 | lifecycle stage | CS → GR → TD → SF → IMP → UAT → GLA → CA |
 | position in the tree | FIN.GOV, PUR-REQ … |
 | search | by code or node |
+
+Only what the group actually produces is on the shelf, and only that is numbered. Every
+entity marked investments, real estate and inter-company **not applicable** — nobody does
+that work — so there is no investments policy and no investments SOP. Fourteen codes
+stood for documents that exist nowhere, and each of them pushed every real deliverable
+after it up a place, which is why the third procedure once looked like the first. The
+registry is derived rather than accumulated: numbered in the catalogue's order, skipping
+what nothing is produced for, closing up so each type reads `000001..N` with no holes. A
+deliverable that becomes real later — an entity takes on investments — takes its place in
+that order and the ones after it move down. A document prints its code into its own
+fingerprint, so the ones affected age by themselves and are rebuilt when next read.
 
 The per-requirement and per-question sheets are left out unless asked for: there are
 nine hundred of them and the tree is where they are read. Reading a document in place is

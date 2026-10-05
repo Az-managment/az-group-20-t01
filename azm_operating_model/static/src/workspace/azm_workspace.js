@@ -88,11 +88,51 @@ export class AzmWorkspace extends Component {
         this.load(stage.id);
     }
 
+    /** Still owed answers: a stage is finished when every question it shows is answered. */
+    unfinished(stage) {
+        return (stage.answered || 0) < (stage.total || 0);
+    }
+
+    get missing() {
+        return this.state.data.stages.filter((s) => this.unfinished(s));
+    }
+
+    get atLastStage() {
+        const stages = this.state.data.stages;
+        return !!stages.length && stages[stages.length - 1].id === this.state.stageId;
+    }
+
+    /** What the forward button says, since past the last stage it does something else. */
+    get nextLabel() {
+        if (!this.atLastStage) {
+            return "المرحلة التالية";
+        }
+        const left = this.missing.length;
+        return left ? `أكمل الناقص (${left})` : "عُد إلى البداية";
+    }
+
+    /**
+     * Step through the stages, wrapping round at the ends.
+     *
+     * The last stage's "next" used to do nothing — the reader reached the end of the
+     * cycle and the button stopped answering. It wraps now, to the first stage still
+     * missing answers rather than to the top: at the end of a pass what is left to do
+     * is behind you. The financial workspace does the same with its modules.
+     */
     nextStage(step) {
         const stages = this.state.data.stages;
-        const idx = stages.findIndex((s) => s.id === this.state.stageId) + step;
-        if (idx >= 0 && idx < stages.length) {
-            this.load(stages.at(idx).id);
+        const at = stages.findIndex((s) => s.id === this.state.stageId);
+        const to = at + step;
+        if (to >= 0 && to < stages.length) {
+            this.load(stages.at(to).id);
+            return;
+        }
+        const rest = step > 0
+            ? [...stages.slice(0, at), ...stages.slice(at + 1)]
+            : [...stages.slice(at + 1), ...stages.slice(0, at)].reverse();
+        const target = rest.find((s) => this.unfinished(s)) || rest[0];
+        if (target) {
+            this.load(target.id);
         }
     }
 

@@ -115,7 +115,12 @@ class AzmArtifact(models.Model):
     serial = fields.Integer("المسلسل", required=True, readonly=True)
     node_name = fields.Char("اسم العقدة", readonly=True)
 
-    _code_uniq = models.Constraint("UNIQUE(code)", "هذا الكود مسجل بالفعل.")
+    # Deferred: renumbering moves a block of codes down one, and for a moment the code
+    # a row is taking is still held by the row ahead of it. Checked row by row that is a
+    # duplicate; checked at commit — which is what the registry actually promises — it
+    # is not. The same reason azm.fin.catalogue defers its tree reference.
+    _code_uniq = models.Constraint("UNIQUE(code) DEFERRABLE INITIALLY DEFERRED",
+                                   "هذا الكود مسجل بالفعل.")
     _ref_uniq = models.Constraint("UNIQUE(ref)", "هذه العقدة لها كود مسجل بالفعل.")
 
     @api.model
@@ -132,10 +137,12 @@ class AzmArtifact(models.Model):
     def _of(self, ref, domain, atype, name="", code=None):
         """The artifact registered under ``ref``, numbered the first time it is seen.
 
-        The serial is allocated once and then never moves: the registry keeps approved
-        history immutable, so adding a module must not renumber the ones after it. A
-        ``code`` that the registry already assigned — every requirement has one — is
-        taken as given rather than allocated again.
+        This is the interim answer, not the registry's. It is reached when a document
+        turns out to have content for a deliverable that was not numbered — the group
+        has started doing something it did not do before — and it takes the next free
+        serial so the document has a code to print right away. ``_register_all`` then
+        puts it where the catalogue says it belongs. A ``code`` the registry already
+        assigned — every requirement has one — is taken as given rather than allocated.
         """
         Artifact = self.sudo()
         found = Artifact.search([("ref", "=", ref)], limit=1)
@@ -166,15 +173,29 @@ class AzmArtifact(models.Model):
 
     @api.model
     def _register_all(self, reset=False):
-        """Number every artifact of the group, in the order the registry puts them.
+        """Number every deliverable of the group, in the order the registry puts them.
 
-        A serial allocated the first time somebody happens to open a document follows
-        the reader, not the model: the policy of whichever module was read first would
-        be POL-000001. So the whole catalogue is walked in its own order — modules by
-        the canonical ID the registry gave them, then their outputs, then the leaves,
-        then the documents that belong to the model as a whole — and each artifact is
-        numbered where it falls. Once numbered it never moves; a module added later
-        takes the next serial rather than displacing anyone.
+        The registry is derived, not accumulated. A code says two things and nothing
+        else: where the deliverable falls in the catalogue, and that the group produces
+        it at all. Both are read fresh every time this runs, so the codes are a function
+        of the model and the answers rather than of the order in which somebody happened
+        to open documents.
+
+        Two rules follow from that:
+
+        *Only what exists is numbered.* Every entity marked investments not applicable,
+        so no entity has an investments policy — and AZM-FIN-POL-000005 stood for a
+        document that does not exist anywhere, pushing every real policy after it up a
+        place. A deliverable nothing is filed under yet is left alone: a requirement
+        sheet is built when it is first read, and has something to say by definition.
+
+        *The numbers close up.* Each type reads 000001..N with no holes, in the
+        catalogue's order — modules by the canonical ID the registry gave them, then
+        their outputs, then the leaves, then the documents that belong to the model as a
+        whole. A deliverable that becomes real later takes its place in that order and
+        the ones after it move down, which is why a document prints its code into its
+        own fingerprint: the ones affected age by themselves and are rebuilt when next
+        read.
         """
         from .azm_documents import FIN_ARTIFACTS, FIN_KIND_ARTIFACTS, MODULE_OUTPUTS
         from .azm_proc_documents import (
@@ -212,13 +233,60 @@ class AzmArtifact(models.Model):
             if kind != "question":
                 plan.append((f"pur:{kind}", "PUR", atype, kind, None))
 
-        # What is already registered is read once; asking _of() for each of some eight
-        # hundred artifacts meant a search each, every time a document was queued.
-        known = set(self.sudo().search([]).mapped("ref"))
+        # ------------------------------------------------------------ what exists
+        # The catalogue says what could be produced; the answers say what is. A ref
+        # nothing has been filed under is not judged — only one whose every copy is
+        # empty is dropped.
+        filed, produced = env["azm.doc.publication"]._produced_refs()
+        plan = [row for row in plan if row[0] not in filed or row[0] in produced]
+
+        # ------------------------------------------------------------ the numbers
+        # A requirement carries the id the registry itself gave it, so those serials are
+        # reserved rather than allocated — the rest close up around them.
+        reserved = {}
         for ref, domain, atype, name, code in plan:
-            if ref not in known:
-                self._of(ref, domain, atype, name=name, code=code)
-        return len(plan)
+            tail = (code or "").rsplit("-", 1)[-1]
+            if code and tail.isdigit():
+                reserved.setdefault((domain, atype), set()).add(int(tail))
+        counters, wanted = {}, []
+        for ref, domain, atype, name, code in plan:
+            key = (domain, atype)
+            tail = (code or "").rsplit("-", 1)[-1]
+            if code:
+                serial = int(tail) if tail.isdigit() else 0
+            else:
+                serial = counters.get(key, 0) + 1
+                while serial in reserved.get(key, ()):
+                    serial += 1
+                counters[key] = serial
+                code = CANONICAL.format(domain=domain, atype=atype, serial=serial)
+            wanted.append((ref, domain, atype, name, code, serial))
+
+        # ------------------------------------------------------------ apply
+        Artifact = self.sudo()
+        existing = {art.ref: art for art in Artifact.search([])}
+        keep = {row[0] for row in wanted}
+        # a deliverable the group has stopped producing leaves the registry; the
+        # documents that were copies of it keep their file and lose the link
+        retired = [art.id for ref, art in existing.items() if ref not in keep]
+        if retired:
+            Artifact.browse(retired).unlink()
+        fresh = []
+        for ref, domain, atype, name, code, serial in wanted:
+            art = existing.get(ref)
+            if not art:
+                fresh.append({"code": code, "ref": ref, "domain": domain, "atype": atype,
+                              "serial": serial, "node_name": name})
+                continue
+            vals = {field: value for field, value in
+                    (("code", code), ("serial", serial), ("node_name", name),
+                     ("domain", domain), ("atype", atype))
+                    if art[field] != value}
+            if vals:
+                art.write(vals)
+        if fresh:
+            Artifact.create(fresh)
+        return len(wanted)
 
 
 class AzmFinModule(models.Model):

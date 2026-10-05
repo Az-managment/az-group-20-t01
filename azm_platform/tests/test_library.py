@@ -1,5 +1,6 @@
 from unittest.mock import patch
 
+from odoo.exceptions import UserError
 from odoo.tests import HttpCase, TransactionCase, new_test_user, tagged
 
 
@@ -207,6 +208,123 @@ class TestOutputsLibrary(TransactionCase):
             download = self.D.open_tree_document(**args, download=True)
             self.assertIn('download=true', download['url'],
                           f'{kind} ({row["code"]}) comes down as a file')
+
+    def test_a_row_can_be_found_again_on_the_tree(self):
+        """"Show it on the tree" has to show it, on somebody's tree.
+
+        The button hands the tree a branch and an output as well as an entity. If the
+        row carried neither — as it did — the tree opened the model at the top and left
+        the reader to find the branch by hand, which is the search they had just done.
+        """
+        library = self.D.get_outputs_library(company_ids=[self.company.id])
+        checked = set()
+        for row in library['rows']:
+            doc = row['doc']
+            if doc['kind'] not in ('module', 'stage') or doc['kind'] in checked:
+                continue
+            checked.add(doc['kind'])
+            self.assertTrue(doc.get('id'), f"{row['code']} names the branch it hangs on")
+            self.assertTrue(doc.get('tab'), f"{row['code']} names which output it is")
+            tree = (self.D.get_proc_tree(company_id=self.company.id) if row['domain'] == 'PUR'
+                    else self.D.get_fin_tree(company_id=self.company.id))
+            node = next((n for n in tree['nodes'] if n['id'] == doc['id']), None)
+            self.assertTrue(node, f"{row['code']} points at a branch the tree has")
+            self.assertIn(doc['tab'], [d['tab'] for d in node['docs']],
+                          f"{row['code']} points at an output that branch shows")
+        self.assertEqual(checked, {'module', 'stage'}, 'both models were checked')
+
+    def test_each_entity_has_its_own_way_onto_the_tree(self):
+        """A tree is one entity's model, so the row's entities each carry their own.
+
+        One button for nine entities opened whichever the filter happened to leave.
+        """
+        library = self.D.get_outputs_library()
+        row = next(r for r in library['rows'] if r['doc']['kind'] in ('module', 'stage'))
+        rows = self.D.get_output_entities(row['id'])['rows']
+        self.assertGreater(len(rows), 1, 'this deliverable is held by several entities')
+        named = [e['doc']['company_id'] for e in rows]
+        self.assertEqual(named, [e['company_id'] for e in rows],
+                         'each entity carries itself, not the one in focus')
+        self.assertEqual(len(set(named)), len(named), 'and each one is its own')
+
+    # ------------------------------------------------------------------ one volume
+    def test_all_of_one_kind_binds_into_one_document(self):
+        """"Give me our policies" is not "give me our financial model".
+
+        The entity book binds one model whole, in tree order. This binds one kind across
+        the branches and across both models, which is the shape a policy manual has.
+        """
+        Pub = self.env['azm.doc.publication'].sudo()
+        book = Pub._get_type_book(self.company, 'POL')
+        parts = book._book_parts()
+        self.assertTrue(parts, 'the entity has policies to bind')
+        self.assertEqual({p.artifact_id.atype for p in parts}, {'POL'},
+                         'and only policies went in')
+        self.assertEqual({p.company_id for p in parts}, {self.company},
+                         'all of them this entity\'s own')
+        self.assertEqual([p.artifact_id.serial for p in parts
+                          if p.artifact_id.domain == 'FIN'],
+                         sorted(p.artifact_id.serial for p in parts
+                                if p.artifact_id.domain == 'FIN'),
+                         'in the registry\'s order, not whatever the search returned')
+        self.assertEqual({p.artifact_id.domain for p in parts}, {'FIN', 'PUR'},
+                         'a policy manual crosses both models')
+        # the report prints the volume's own cover first, then every part
+        self.assertEqual(book._report_ids(), [book.id] + [p.id for p in parts])
+
+        # narrowing to one model gives that model's manual alone
+        cycle = Pub._get_type_book(self.company, 'POL', 'PUR')
+        self.assertEqual({p.artifact_id.domain for p in cycle._book_parts()}, {'PUR'})
+        self.assertLess(len(cycle._book_parts()), len(parts))
+
+    def test_a_manual_of_something_the_entity_has_none_of_says_so(self):
+        """Rather than handing over a cover with nothing behind it."""
+        Pub = self.env['azm.doc.publication'].sudo()
+        bare = self.env['res.company'].create({'name': 'AZM Library Bare'})
+        self.env.user.company_ids = [(4, bare.id)]
+        book = Pub._get_type_book(bare, 'POL')
+        self.assertFalse(book._book_parts())
+        self.assertTrue(book._is_empty(None))
+        with self.assertRaises(UserError):
+            self.D.open_outputs_book(atype='POL', company_id=bare.id)
+
+    def test_a_manual_is_only_offered_for_what_is_worth_binding(self):
+        """The per-requirement and per-question sheets are the tree's business, and
+        there are nine hundred of them."""
+        with self.assertRaises(UserError):
+            self.D.open_outputs_book(atype='REQ', company_id=self.company.id)
+        with self.assertRaises(UserError):
+            self.D.open_outputs_book(atype='NOPE', company_id=self.company.id)
+
+    def test_a_manual_cannot_be_bound_for_an_entity_the_reader_does_not_work_in(self):
+        """The entity is checked, not clamped: binding a different entity's manual than
+        the one asked for would be worse than refusing."""
+        outsider = self.env['res.company'].create({'name': 'AZM Library Outsider'})
+        user = new_test_user(
+            self.env, 'azm_library_binder', company_id=self.company.id,
+            company_ids=[(6, 0, [self.company.id])],
+            groups='azm_platform.group_azm_user,azm_operating_model.azm_group_user')
+        D = self.env['azm.dashboard'].with_user(user).with_company(self.company)
+        with self.assertRaises(UserError):
+            D.open_outputs_book(atype='POL', company_id=outsider.id)
+
+    def test_a_manual_is_a_binding_not_a_deliverable(self):
+        """Its parts each carry a registry code; the volume takes none.
+
+        Numbering it would put something in the registry the registry does not define,
+        and the next pass over the catalogue would take it straight back out.
+        """
+        Pub = self.env['azm.doc.publication'].sudo()
+        book = Pub._get_type_book(self.company, 'POL')
+        self.assertFalse(book._artifact_ref())
+        self.assertFalse(book._artifact())
+        self.assertFalse(book.artifact_id)
+        self.assertTrue(all(p.artifact_id for p in book._book_parts()),
+                        'while every part of it is numbered')
+        before = self.env['azm.artifact'].sudo().search_count([])
+        self.env['azm.artifact']._register_all()
+        self.assertEqual(self.env['azm.artifact'].sudo().search_count([]), before,
+                         'and binding one did not add anything to the registry')
 
     def test_the_whole_book_can_be_downloaded(self):
         for kind in ('book', 'cycle_book'):

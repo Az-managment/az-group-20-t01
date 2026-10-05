@@ -292,11 +292,57 @@ export class AzmFinWorkspace extends Component {
         this.load(module.code);
     }
 
+    /** The modules the nav is showing, in the order it shows them. */
+    get navModules() {
+        return this.d.modules.filter((m) => (this.state.showAll ? m.total : m.applicable));
+    }
+
+    /** Still owed answers. A module is finished when every question it shows is answered. */
+    unfinished(module) {
+        return (module.answered || 0) < (module.questions || 0);
+    }
+
+    get missing() {
+        return this.navModules.filter((m) => this.unfinished(m));
+    }
+
+    get atLastModule() {
+        const mods = this.navModules;
+        return !!mods.length && mods[mods.length - 1].code === this.state.moduleCode;
+    }
+
+    /** What the forward button says, since past the last module it does something else. */
+    get nextLabel() {
+        if (!this.atLastModule) {
+            return "الموديول التالي";
+        }
+        const left = this.missing.length;
+        return left ? `أكمل الناقص (${left})` : "عُد إلى البداية";
+    }
+
+    /**
+     * Step through the modules, wrapping round at the ends.
+     *
+     * The last module's "next" used to do nothing at all — the reader reached the end
+     * of the model and the button simply stopped answering. It wraps now, and it wraps
+     * to the first module still missing answers rather than to the top, because at the
+     * end of a pass what is left to do is behind you, not in front.
+     */
     nextModule(step) {
-        const mods = this.d.modules.filter((m) => (this.state.showAll ? m.total : m.applicable));
-        const idx = mods.findIndex((m) => m.code === this.state.moduleCode) + step;
-        if (idx >= 0 && idx < mods.length) {
-            this.load(mods[idx].code);
+        const mods = this.navModules;
+        const at = mods.findIndex((m) => m.code === this.state.moduleCode);
+        const to = at + step;
+        if (to >= 0 && to < mods.length) {
+            this.load(mods[to].code);
+            return;
+        }
+        // wrapped: the rest of the model in the direction of travel, this one aside
+        const rest = step > 0
+            ? [...mods.slice(0, at), ...mods.slice(at + 1)]
+            : [...mods.slice(at + 1), ...mods.slice(0, at)].reverse();
+        const target = rest.find((m) => this.unfinished(m)) || rest[0];
+        if (target) {
+            this.load(target.code);
         }
     }
 

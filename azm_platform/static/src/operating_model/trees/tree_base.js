@@ -46,10 +46,12 @@ export class AzmTreePage extends Component {
             preview: null,     // the document being read in place, if any
             family: null,      // only this family of outputs is showing, if any
         });
-        // the Trees page opens a card by handing us its entity
+        // the Trees page opens a card by handing us its entity; the outputs library
+        // hands us a branch and an output as well, and expects to see them
         const context = this.props.action.context || {};
         onWillStart(async () => {
             await this.load(context.azm_company_id || null);
+            this.reveal(context.azm_node_id, context.azm_family);
         });
     }
 
@@ -119,6 +121,29 @@ export class AzmTreePage extends Component {
                 "تعذّر تحميل الشجرة.";
         } finally {
             this.state.loaded = true;
+        }
+    }
+
+    /**
+     * Open the tree on one branch and one of its outputs.
+     *
+     * The branch is unfolded, its outputs are shown and the view narrows to the family
+     * asked for, which is what "show it on the tree" means: the policy of FIN.GOV, not
+     * the financial model from the top. A branch that is not on this tree is ignored
+     * rather than leaving the page half-opened on nothing.
+     */
+    reveal(nodeId, family) {
+        if (!nodeId || !this.d) {
+            return;
+        }
+        const node = this.nodes.find((n) => n.id === nodeId);
+        if (!node) {
+            return;
+        }
+        this.state.open[`n-${node.id}`] = true;
+        this.state.docs[node.id] = true;
+        if (family && node.docs.some((doc) => doc.tab === family)) {
+            this.state.family = family;
         }
     }
 

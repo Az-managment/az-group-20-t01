@@ -8,7 +8,8 @@ A deliverable is the master artifact of the coding registry, so it appears once 
 many entities hold a copy; what differs between them is the state of their copy, which
 is what the coverage figure counts.
 """
-from odoo import api, models
+from odoo import _, api, models
+from odoo.exceptions import UserError
 
 from .azm_coding import DOMAINS, LIFECYCLE_LABELS, TYPE_LABELS
 from .azm_documents import FIN_ARTIFACTS, FIN_KIND_ARTIFACTS, MODULE_OUTPUTS
@@ -251,6 +252,26 @@ class AzmDashboard(models.AbstractModel):
         # the model-wide ones: fin:summary, fin:book, pur:cycle, pur:cycle_book
         kind = (artifact.ref or "").split(":")[-1]
         return {"kind": kind, "label": artifact.code}
+
+    @api.model
+    def open_outputs_book(self, atype, company_id, domain=None, download=True):
+        """All of one kind of deliverable for one entity, bound as a single document.
+
+        The entity book binds one model whole; this binds one kind across the branches,
+        which is what somebody asking for "our policies" means. The entity is checked
+        against the ones the reader works in rather than clamped to them: binding a
+        different entity's manual than the one asked for would be worse than refusing.
+        """
+        allowed = self._library_domains()
+        if not allowed:
+            raise UserError(_("No deliverables are available for your user."))
+        if domain and domain not in allowed:
+            raise UserError(_("This model is not available for your user."))
+        company = self._companies().filtered(lambda c: c.id == company_id)[:1]
+        if not company:
+            raise UserError(_("This entity is not one you work in."))
+        pub = self.env["azm.doc.publication"]._get_type_book(company, atype, domain)
+        return pub._open(download=download)
 
     @api.model
     def get_output_entities(self, artifact_id, company_ids=None):

@@ -237,21 +237,41 @@
         flex: 0 0 auto;
         .btn { padding: 2px 7px; border-radius: 7px; }
         .oi { font-size: 14px; }
+        // the group's own mark, sized to sit level with the icons beside it
+        .o_azm_output_to_tree .o_azm_tree_mark {
+            width: 13px;
+            height: 13px;
+            display: block;
+            color: map-get($azm-tones, 'green');
+        }
     }
-    .o_azm_output_tree {
+    .o_azm_output_hint {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        margin: 2px 0 0;
+        font-size: 11.5px;
+        color: $azm-muted;
+        .o_azm_tree_mark { width: 13px; height: 13px; color: map-get($azm-tones, 'green'); }
+        em { font-style: normal; font-size: 10px; }
+    }
+    // all of one kind in one volume — offered once a kind is picked
+    .o_azm_combine {
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        margin-top: 8px;
-        padding: 4px 10px;
-        border: 1px solid $azm-border;
+        margin-inline-start: auto;
+        padding: 4px 12px;
+        border: 1px solid map-get($azm-tones, 'indigo');
         border-radius: 20px;
-        background: #fff;
+        background: rgba(map-get($azm-tones, 'indigo'), .08);
+        color: map-get($azm-tones, 'indigo');
         font-size: 11.5px;
-        color: $azm-blue;
-        .o_azm_tree_mark { width: 13px; height: 13px; }
-        .o_azm_en { font-size: 10px; color: $azm-muted; }
-        &:hover { border-color: $azm-blue; background: rgba($azm-blue, .06); }
+        font-weight: 600;
+        .oi { font-size: 14px; }
+        em { font-style: normal; font-weight: 400; font-size: 10px; color: $azm-muted; }
+        &:hover:not(:disabled) { background: rgba(map-get($azm-tones, 'indigo'), .16); }
+        &:disabled { opacity: .55; cursor: not-allowed; }
     }
 
     .o_azm_library_none {

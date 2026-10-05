@@ -348,17 +348,22 @@ class AzmDocPublication(models.Model):
         """Queue the documents of ``companies`` (all by default); only the outdated ones unless ``force``."""
         companies = companies or self.env["res.company"].sudo().search([])
         self.env["azm.doc.folder"]._ensure_all(companies)
-        # number anything the catalogue has gained, in the catalogue's order, before a
-        # document that happens to be read first can take a serial out of turn
-        self.env["azm.artifact"]._register_all()
         queued = self.sudo()
         # the catalogue is the same for every company: read it once for the whole loop
         self.env["azm.fin.requirement"].sudo().search([])
         self.env["azm.fin.module"].sudo().search([])
         self.env["azm.question"].sudo().search([])
         self.env["azm.stage"].sudo().search([])
-        for company in companies:
-            pubs = self._ensure_company(company).filtered(lambda p: p.build == "queued")
+        # The documents come first. The registry numbers what the group produces, and
+        # what it produces is read off them — so numbering before they exist would count
+        # a deliverable nobody has as real. Numbering must still happen before the
+        # outdated check below, because a document prints its code and ages when it
+        # changes: a renumbered one has to be queued in the same pass.
+        filed = [(company, self._ensure_company(company)) for company in companies]
+        self.env["azm.artifact"]._register_all()
+        self._link_artifacts()
+        for company, pubs in filed:
+            pubs = pubs.filtered(lambda p: p.build == "queued")
             if not force:
                 cache = self._source_cache(pubs)
                 pubs = pubs.filtered(
@@ -366,9 +371,6 @@ class AzmDocPublication(models.Model):
                     or p._current_stamp(cache.get(p._source_key())) != p.stamp)
             pubs.write({"state": "pending", "error": False, "attempts": 0, "retry_after": False})
             queued |= pubs
-        # after the documents exist, not before: _ensure_company creates them inside the
-        # loop above, and linking first would leave every new one unlinked
-        self._link_artifacts()
         if queued:
             self._trigger_cron()
         return queued
@@ -685,6 +687,36 @@ class AzmDocPublication(models.Model):
         if self.kind == "module":
             return FIN_ARTIFACTS[self.tab][1]
         return FIN_KIND_ARTIFACTS[self.kind][1]
+
+    @api.model
+    def _produced_refs(self):
+        """``(filed, produced)`` — the deliverables the group has documents filed under,
+        and the ones it actually produces something for.
+
+        A deliverable the registry *could* define is not a deliverable. Every entity in
+        the group marked investments, real estate and inter-company not applicable, so
+        every copy of the investments policy is empty: there is no investments policy to
+        number, to shelve or to count, and numbering one pushed every real policy after
+        it up by a place.
+
+        The question is put to the answers rather than to the built files, so a document
+        nobody has ever opened is judged on what it would say rather than counted as
+        produced because nothing has disproved it yet. A document already built with
+        content answers for itself and is not asked twice.
+        """
+        filed, produced = set(), set()
+        pubs = self.sudo().search([])
+        cache = self._source_cache(pubs)
+        for pub in pubs:
+            ref = pub._artifact_ref()
+            filed.add(ref)
+            if ref in produced:
+                continue
+            # a built document is empty only if it was filed as empty, so "done" is an
+            # answer on its own and skips the engine
+            if pub.state == "done" or not pub._is_empty(cache.get(pub._source_key())):
+                produced.add(ref)
+        return filed, produced
 
     @api.model
     def _link_artifacts(self):

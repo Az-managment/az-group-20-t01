@@ -218,13 +218,79 @@ export class AzmOutputsLibrary extends Component {
         }, true);
     }
 
-    /** Find this deliverable on the tree it belongs to. */
-    openTree(row) {
+    /**
+     * Find this deliverable on the tree it belongs to.
+     *
+     * "Show it on the tree" has to show *it*, and on whose tree. Handing the tree only
+     * the entity opened the model at the top and left the reader to find the branch
+     * again by hand — the search they had just done here — and the row offered one
+     * button for nine entities, so it opened whichever the filter happened to leave.
+     * Each entity now has its own, and it lands on the branch with the output showing.
+     */
+    openTree(row, companyId = null) {
+        const doc = row.doc || {};
         this.action.doAction(
             row.domain === "PUR" ? "azm_platform.action_azm_proc_tree"
                                  : "azm_platform.action_azm_fin_tree",
-            { additionalContext: { azm_company_id: this.previewCompanyId || undefined } }
+            { additionalContext: {
+                azm_company_id: companyId || this.previewCompanyId || undefined,
+                azm_node_id: doc.id || undefined,
+                azm_family: doc.tab || undefined,
+            } }
         );
+    }
+
+    // ---------------------------------------------------------------- binding a manual
+    /**
+     * What a "combine these into one document" would bind, or null.
+     *
+     * A manual is one kind of deliverable for one entity, so both have to be settled
+     * before the button means anything: all the policies of whom? The model filter
+     * rides along when it is on, which is how you get the procurement policies alone
+     * rather than every policy the group has.
+     */
+    get combining() {
+        const filters = this.state.filters;
+        const type = filters.atype
+            && (this.d.types || []).find((t) => t.key === filters.atype);
+        if (!type) {
+            return null;
+        }
+        const only = filters.company_ids.length === 1 ? filters.company_ids[0] : null;
+        const entity = only
+            && (this.d.entity_options || []).find((e) => e.id === only);
+        return { type, entity: entity || null };
+    }
+
+    get combineLabel() {
+        const what = this.combining;
+        return what ? `اجمع ${what.type.label} في مستند واحد` : "";
+    }
+
+    get combineHint() {
+        const what = this.combining;
+        if (!what) {
+            return "";
+        }
+        return what.entity
+            ? `${what.type.count} مستند · ${what.entity.name}`
+            : "اختر كيانًا واحدًا من الأعلى";
+    }
+
+    async combineOutputs() {
+        const what = this.combining;
+        if (!what || !what.entity) {
+            return;
+        }
+        // the dialog an empty manual raises says which entity has nothing to bind,
+        // which is the answer to the question the button asks
+        const action = await this.orm.call("azm.dashboard", "open_outputs_book", [], {
+            atype: what.type.key,
+            company_id: what.entity.id,
+            domain: this.state.filters.domain || null,
+            download: true,
+        });
+        await this.action.doAction(action);
     }
 
     get kpis() {

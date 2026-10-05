@@ -79,18 +79,20 @@ class TestCoding(TransactionCase):
         A._register_all()
         modules = self.env['azm.fin.module'].search([]).sorted(
             lambda m: (m.azm_code or 'ZZZ', m.id))
+        order = [f"FIN.{m.code}" for m in modules]
         tabs = {'POL': 'rules', 'PRO': 'workflow', 'DOA': 'authority',
                 'SRQ': 'integration', 'GAP': 'gaps', 'DEC': 'future'}
-        for atype, tab in tabs.items():
-            expected = next(m for m in modules if tab in m._azm_outputs())
-            first = A.search([('domain', '=', 'FIN'), ('atype', '=', atype), ('serial', '=', 1)])
-            self.assertIn(f"FIN.{expected.code}", first.node_name,
-                          f"AZM-FIN-{atype}-000001 belongs to the first module that has one")
-        # and they follow the registry's order of modules, which is not ours: it puts
-        # INV (MOD-000005) before PUR (MOD-000006) and the catalogue sequence does not
-        with_policy = [m for m in modules if 'rules' in m._azm_outputs()]
-        fifth = A.search([('domain', '=', 'FIN'), ('atype', '=', 'POL'), ('serial', '=', 5)])
-        self.assertIn(f"FIN.{with_policy[4].code}", fifth.node_name)
+        for atype in tabs:
+            arts = A.search([('domain', '=', 'FIN'), ('atype', '=', atype)]).sorted('serial')
+            self.assertTrue(arts, f"something is numbered AZM-FIN-{atype}-...")
+            self.assertEqual(arts[0].serial, 1, f"AZM-FIN-{atype} starts at 000001")
+            # which modules made the cut is the other test's business; this one is about
+            # the order they fall in, read off the names rather than asked of the registry
+            got = [next(o for o in order if (a.node_name or '').startswith(o + ' '))
+                   for a in arts]
+            self.assertEqual(got, sorted(got, key=order.index),
+                             f"AZM-FIN-{atype} follows the registry's order of modules, "
+                             "which is not the catalogue's")
 
     def test_every_code_is_well_formed_unique_and_dense(self):
         import re
@@ -134,10 +136,10 @@ class TestCoding(TransactionCase):
         for pub, expected in cases:
             self.assertEqual(pub._azm_payload()['tree_ref'], expected)
 
-    def test_a_serial_is_allocated_once_and_never_moves(self):
-        """Approved history is immutable: a module added later takes the next serial
-        rather than displacing the ones before it. The probe module carries a
-        requirement, or it would never enter the numbering at all."""
+    def test_a_deliverable_added_after_the_others_does_not_disturb_them(self):
+        """The registry is in the catalogue's order, so something that sorts last lands
+        last and nothing before it moves. The probe module carries a requirement, or it
+        would never enter the numbering at all."""
         A = self.env['azm.artifact'].sudo()
         A._register_all()
         before = {a.ref: a.code for a in A.search([])}
@@ -156,6 +158,47 @@ class TestCoding(TransactionCase):
         self.assertIn(new_ref, after, "and the new module was numbered")
         self.assertEqual(after[new_ref], f"AZM-FIN-POL-{highest + 1:06d}",
                          "with the next serial, not one taken from somebody else")
+
+    def test_a_deliverable_that_becomes_real_takes_its_place_in_the_order(self):
+        """An entity takes on investments, so now there is an investments policy.
+
+        It is numbered where the catalogue puts it — not appended at the end — and the
+        policies that come after it move down one. That is the point of deriving the
+        registry rather than accumulating it: a code says where a deliverable falls,
+        so it has to be able to change when what the group produces changes. Documents
+        print their code into their own fingerprint, so the ones affected age and are
+        rebuilt rather than keeping a number that has moved.
+        """
+        A = self.env['azm.artifact'].sudo()
+        Pub = self.env['azm.doc.publication'].sudo()
+        A._register_all()
+        module = self.env['azm.fin.module'].search([('code', '=', 'INV')], limit=1)
+        ref = f"azm.fin.module,{module.id},rules"
+        self.assertFalse(A.search_count([('ref', '=', ref)]), 'nobody does investments yet')
+        before = {a.ref: a.code for a in A.search([('domain', '=', 'FIN'), ('atype', '=', 'POL')])}
+        doc = Pub._get(self.company, 'module', module=module, tab='rules')
+        self.assertTrue(doc._is_empty(doc._assessment()), 'and its policy has nothing in it')
+
+        # the entity takes on the activity, and answers for it
+        scope = self.env['azm.fin.scope'].sudo().search([('code', '=', 'STOCK')], limit=1)
+        self.assertTrue(scope, 'investments is an activity an entity can have')
+        self.fin.scope_ids = [(4, scope.id)]
+        self.fin.action_fill_demo()
+        self.assertFalse(doc._is_empty(doc._assessment()), 'now the policy has something to say')
+
+        A._register_all()
+        now = {a.ref: a.code for a in A.search([('domain', '=', 'FIN'), ('atype', '=', 'POL')])}
+        self.assertIn(ref, now, 'the investments policy is numbered')
+        taken = now[ref]
+        self.assertNotEqual(taken, max(before.values()),
+                            'in its own place, not appended after everybody')
+        moved = [r for r in now if r in before and before[r] != now[r]]
+        self.assertTrue(moved, 'and the policies after it moved down one')
+        for ref_moved in moved:
+            self.assertGreater(now[ref_moved], before[ref_moved], 'down, never up')
+        # still 000001..N with no holes
+        serials = sorted(A.search([('domain', '=', 'FIN'), ('atype', '=', 'POL')]).mapped('serial'))
+        self.assertEqual(serials, list(range(1, len(serials) + 1)))
 
     def test_registering_twice_changes_nothing(self):
         A = self.env['azm.artifact'].sudo()
@@ -222,9 +265,33 @@ class TestCoding(TransactionCase):
             can = module._azm_outputs()
             self.assertTrue(set(can) <= set(MODULE_OUTPUTS))
             for tab in MODULE_OUTPUTS:
-                numbered = bool(A.search_count([('ref', '=', f"azm.fin.module,{module.id},{tab}")]))
-                self.assertEqual(numbered, tab in can,
-                                 f"FIN.{module.code}/{tab}: numbered={numbered}, can have={tab in can}")
+                if tab not in can:
+                    self.assertFalse(
+                        A.search_count([('ref', '=', f"azm.fin.module,{module.id},{tab}")]),
+                        f"FIN.{module.code} can have no {tab}, so there is none to number")
+
+    def test_a_deliverable_the_group_does_not_produce_is_not_numbered(self):
+        """A module that could have a policy, that nobody in the group needs one for.
+
+        Every entity marked investments not applicable — nobody does that work — so
+        there is no investments policy anywhere. It was numbered all the same, and the
+        number it held pushed every real policy after it up a place.
+        """
+        A = self.env['azm.artifact'].sudo()
+        A._register_all()
+        module = self.env['azm.fin.module'].search([('code', '=', 'INV')], limit=1)
+        self.assertTrue(module, 'the catalogue has the module')
+        self.assertIn('rules', module._azm_outputs(), 'and it could carry a policy')
+        # read from the answers, not from the registry, which is what is on trial
+        lines = self.env['azm.fin.answer'].sudo().search([('module_id', '=', module.id)])
+        self.assertTrue(lines, 'every entity has been asked about it')
+        self.assertFalse(lines.filtered('applicable'), 'and not one of them does this work')
+        self.assertFalse(A.search_count([('ref', '=', f"azm.fin.module,{module.id},rules")]),
+                         'so there is no investments policy to number')
+        # and nothing else is numbered with nothing behind it either
+        filed, produced = self.env['azm.doc.publication']._produced_refs()
+        hollow = [a.code for a in A.search([]) if a.ref in filed and a.ref not in produced]
+        self.assertFalse(hollow, f"numbered with nothing behind them: {hollow[:5]}")
 
     def test_a_governance_stage_has_no_procedure_and_no_workflow(self):
         """The engine says so itself: governance is not written as an operating

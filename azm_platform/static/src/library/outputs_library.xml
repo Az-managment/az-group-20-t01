@@ -118,6 +118,19 @@
                             t-on-click="() => this.toggleSheets()">
                         <i class="oi" data-icon="description"/><span>اعرض الأوراق أيضًا</span>
                     </button>
+
+                    <!-- All of one kind in one volume: the policy manual, the procedure
+                         manual. It needs a kind and an entity, so it appears once a kind
+                         is picked and waits for the entity. -->
+                    <button t-if="this.combining" type="button"
+                            class="o_azm_combine"
+                            t-att-disabled="this.combining.entity ? undefined : 'disabled'"
+                            t-attf-title="{{this.combineLabel}} · Bind them as one document"
+                            t-on-click="() => this.combineOutputs()">
+                        <i class="oi" data-icon="menu_book"/>
+                        <span t-out="this.combineLabel"/>
+                        <em t-out="this.combineHint"/>
+                    </button>
                 </div>
             </section>
 
@@ -170,12 +183,19 @@
                                 <span class="o_azm_output_entity_name" t-out="e.name"/>
                                 <small t-out="e.state_label"/>
                                 <span class="o_azm_output_actions">
-                                    <button type="button" class="btn btn-sm btn-light"
+                                    <!-- An entity with nothing in this output has no
+                                         document to open: both buttons used to raise
+                                         "no requirement of this module falls in this
+                                         output", which is an error dialog for something
+                                         the row already says. -->
+                                    <button t-if="e.state !== 'empty'" type="button"
+                                            class="btn btn-sm btn-light"
                                             title="قراءة هنا · Read here"
                                             t-on-click="() => this.previewDoc({...e.doc, label: row.code})">
                                         <i class="oi" data-icon="visibility"/>
                                     </button>
-                                    <button type="button" class="btn btn-sm btn-light"
+                                    <button t-if="e.state !== 'empty'" type="button"
+                                            class="btn btn-sm btn-light"
                                             title="تنزيل · Download"
                                             t-on-click="() => this.openDoc(e.doc, true)">
                                         <i class="oi" data-icon="download"/>
@@ -185,13 +205,21 @@
                                             t-on-click="() => this.book(e.company_id, row.domain)">
                                         <i class="oi" data-icon="menu_book"/>
                                     </button>
+                                    <button type="button" class="btn btn-sm btn-light o_azm_output_to_tree"
+                                            title="اعرضه في شجرة هذا الكيان · See it on this entity's tree"
+                                            t-on-click="() => this.openTree(row, e.company_id)">
+                                        <t t-call="azm_platform.TreeMark"/>
+                                    </button>
                                 </span>
                             </div>
-                            <button type="button" class="o_azm_output_tree"
-                                    t-on-click="() => this.openTree(row)">
+                            <!-- A tree is one entity's model, so the way onto it belongs
+                                 beside the entity. The row-level button named none of
+                                 them and opened whichever the filter happened to leave. -->
+                            <p class="o_azm_output_hint">
                                 <t t-call="azm_platform.TreeMark"/>
-                                اعرضه في الشجرة <em class="o_azm_en">See it on the tree</em>
-                            </button>
+                                اعرضه في شجرة أي كيان من الأزرار بجواره
+                                <em class="o_azm_en">Open it on any entity's tree from the buttons beside it</em>
+                            </p>
                         </div>
                     </div>
 
