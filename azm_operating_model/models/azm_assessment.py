@@ -129,8 +129,10 @@ class AzmAssessment(models.Model):
             line = by_q.get(qd["id"])
             if not line:
                 continue
-            probe = {**answers}
-            if engine.visible_questions(sdict, [qd], probe):
+            # visible_questions only reads the answers — is_applied and condition both
+            # do — so the defensive copy was rebuilding the whole dict once per question,
+            # which is quadratic in the questions of a stage and bought nothing
+            if engine.visible_questions(sdict, [qd], answers):
                 value = line._engine_value()
                 if value is not None:
                     answers[qd["key"]] = value
