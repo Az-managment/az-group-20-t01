@@ -83,8 +83,12 @@ work changes nothing. مساحتي then counts each person's own parts: *"14 que
 has to be *their* fourteen. An administrator sees the whole picture across both models
 under **من يجيب ماذا** — who has what, and how far they have got.
 
-**Answering and reviewing are two jobs, and they get two pages.** When every question is
-answered — and only then — **أرسل للمراجعة** appears on the row. It hands the work to
+**Answering and reviewing are two jobs, and they get two pages.** When every question of
+the assessment is answered — and only then, and only for the person preparing it —
+**أرسل للمراجعة** appears on the row. Somebody who has finished their own share while
+other parts are still open sees *بانتظار البقية* instead: their count is their share,
+but what goes for review is the whole of it, and sending it early would have taken
+everybody else's unanswered work to the reviewer along with it. It hands the work to
 whoever reviews it and says who that was. Submitting used to write the state and
 schedule an activity *if* a reviewer happened to be named on the record; where none was,
 the work left the preparer's hands and arrived in nobody's. Now it goes to the named

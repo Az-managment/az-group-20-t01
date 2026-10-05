@@ -103,10 +103,18 @@ class AzmDashboard(models.AbstractModel):
                 # nothing to answer yet is a state of its own, not zero progress
                 row.update({"started": False, "mine": False, "assessment_id": False,
                             "progress": 0, "answered": 0, "total": 0, "left": 0,
-                            "standing": None, "reviewer": "", "version": 0})
+                            "standing": None, "reviewer": "", "version": 0,
+                            "can_send": False, "preparing": False, "parts": [],
+                            "whole_total": 0, "whole_answered": 0, "whole_left": 0})
                 rows.append(row)
                 continue
             assessment, _named = found
+            # Where the whole of it stands, whoever is looking. This is what decides
+            # whether it can go for review, and once the model has been divided it is
+            # not the same as what this person still owes.
+            whole = self._my_work_whole(assessment, spec)
+            preparing = assessment.user_id.id == self.env.uid
+
             parts = self._my_work_parts(assessment, spec)
             if parts:
                 # the model has been split and some of it is this person's: the count
@@ -118,11 +126,8 @@ class AzmDashboard(models.AbstractModel):
                 # the whole of it — either because it was never split, or because this
                 # person is watching it rather than answering it. A reviewer named on an
                 # assessment sees how it is going; it is not theirs to fill in or send.
-                if spec["key"] == "financial":
-                    total, answered = assessment.question_count, assessment.answered_count
-                else:
-                    total, answered = assessment.visible_count, assessment.answered_count
-                mine = assessment.user_id.id == self.env.uid
+                total, answered = whole["total"], whole["answered"]
+                mine = preparing
             row.update({
                 "started": True,
                 "mine": mine,
@@ -132,6 +137,16 @@ class AzmDashboard(models.AbstractModel):
                 "total": total,
                 "left": max(total - answered, 0),
                 "standing": self._my_work_standing(assessment.state),
+                # Sending it on is the preparer's act, and only once the whole of it is
+                # answered. Keyed off this person's own count it appeared as soon as
+                # they had finished their share, and would have sent everybody else's
+                # unanswered work for review along with it.
+                "can_send": bool(preparing and assessment.state == "draft"
+                                 and not whole["left"]),
+                "preparing": preparing,
+                "whole_total": whole["total"],
+                "whole_answered": whole["answered"],
+                "whole_left": whole["left"],
                 "reviewer": assessment.reviewer_id.name or "",
                 "version": assessment.version,
                 "parts": [{"name": part.part_name, "answered": part.answered,
@@ -141,6 +156,16 @@ class AzmDashboard(models.AbstractModel):
             })
             rows.append(row)
         return rows
+
+    @api.model
+    def _my_work_whole(self, assessment, spec):
+        """Where the whole assessment stands, however it has been divided up."""
+        if spec["key"] == "financial":
+            total, answered = assessment.question_count, assessment.answered_count
+        else:
+            total, answered = assessment.visible_count, assessment.answered_count
+        return {"total": total, "answered": answered,
+                "left": max(total - answered, 0)}
 
     @api.model
     def _my_work_parts(self, assessment, spec):
@@ -300,6 +325,22 @@ class AzmDashboard(models.AbstractModel):
         # not moved, because nothing came back to say otherwise.
         if record.state != "draft":
             raise UserError(_("This has already been sent; it is not yours to send again."))
+        # The page offers this to the preparer alone, but the page is not the control:
+        # saying it here turns what used to surface as a bare access error into a
+        # sentence naming whose job it is.
+        preparer = record.user_id or record.create_uid
+        if preparer.id != self.env.uid \
+                and not self.env.user.has_group("azm_operating_model.azm_group_manager"):
+            raise UserError(_(
+                "Your part is done, but sending the assessment on is %s's to do.",
+                preparer.name))
+        outstanding = (record.question_count - record.answered_count
+                       if record._name == "azm.fin.assessment"
+                       else record.visible_count - record.answered_count)
+        if outstanding > 0:
+            raise UserError(_(
+                "%s questions have not been answered yet. The assessment goes for "
+                "review once all of it is answered.", outstanding))
         # the record rules decide whether this person may touch it
         record.check_access("write")
         reviewers = record._reviewers()

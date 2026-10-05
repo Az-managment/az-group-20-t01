@@ -133,6 +133,19 @@
         &:disabled { opacity: .6; }
     }
 
+    // their share is done; the assessment is waiting on somebody else
+    .o_azm_waiting {
+        display: inline-flex;
+        align-items: center;
+        padding: 3px 10px;
+        border-radius: 20px;
+        background: rgba($azm-muted, .12);
+        color: $azm-muted;
+        font-size: 10.5px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
     // sending it back is the quieter of the two decisions, so it reads quieter
     .o_azm_return {
         border: 1px solid $azm-border;

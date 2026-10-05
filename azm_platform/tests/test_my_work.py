@@ -182,6 +182,65 @@ class TestMyWork(TransactionCase):
         self.assertEqual(row['left'], 0, 'nothing left once every question is answered')
         self.assertEqual(row['answered'], row['total'])
 
+    def test_finishing_your_share_does_not_let_you_send_everybody_else_s(self):
+        """The button used to key off this person's own count.
+
+        Once the model is divided that is only their share: somebody who finished their
+        three modules was offered "send for review" while sixteen others were untouched,
+        and sending it would have taken everybody else's unanswered work to the reviewer
+        along with it. It is the preparer's act, and only once the whole is answered.
+        """
+        stages = self.env['azm.stage'].search([('is_governance', '=', False)], limit=2)
+        self.env['azm.assignment'].create([
+            {'proc_assessment_id': self.assessment.id, 'stage_id': stages[0].id,
+             'user_id': self.answerer.id},
+            {'proc_assessment_id': self.assessment.id, 'stage_id': stages[1].id,
+             'user_id': self.reviewer.id},
+        ])
+        row = next(r for r in self._page(self.answerer)['models']
+                   if r['key'] == 'procurement')
+        self.assertTrue(row['preparing'], 'they prepare it')
+        self.assertLess(row['total'], row['whole_total'],
+                        'and their own share is less than the whole of it')
+        self.assertGreater(row['whole_left'], 0)
+        self.assertFalse(row['can_send'], 'so it cannot go yet')
+
+        # the server says the same thing, in words, rather than letting it through
+        D = self.env['azm.dashboard'].with_user(self.answerer).with_company(self.company)
+        with self.assertRaises(UserError):
+            D.submit_my_work('azm.assessment', self.assessment.id)
+
+        # once all of it is answered, it is theirs to send. Filled with sudo: the whole
+        # of it crosses both people's parts and neither may write the other's, which is
+        # the lock doing its job. (self.assessment carries the answerer's environment,
+        # since that is who created it.)
+        self.assessment.sudo().action_fill_demo()
+        row = next(r for r in self._page(self.answerer)['models']
+                   if r['key'] == 'procurement')
+        self.assertEqual(row['whole_left'], 0)
+        self.assertTrue(row['can_send'])
+
+    def test_sending_it_on_is_the_preparer_s_act(self):
+        """An assignee who is not preparing it finished their part and got an access
+        error for their trouble; now they are told whose job it is."""
+        stage = self.env['azm.stage'].search([('is_governance', '=', False)], limit=1)
+        self.env['azm.assignment'].create(
+            {'proc_assessment_id': self.assessment.id, 'stage_id': stage.id,
+             'user_id': self.reviewer.id})
+        self.assessment.sudo().action_fill_demo()   # for the same reason
+
+        row = next(r for r in self._page(self.reviewer)['models']
+                   if r['key'] == 'procurement')
+        self.assertFalse(row['preparing'])
+        self.assertFalse(row['can_send'], 'not theirs to send')
+
+        D = self.env['azm.dashboard'].with_user(self.reviewer).with_company(self.company)
+        with self.assertRaises(UserError) as caught:
+            D.submit_my_work('azm.assessment', self.assessment.id)
+        self.assertIn(self.answerer.name, str(caught.exception),
+                      'and it names who it is for')
+        self.assertEqual(self.assessment.state, 'draft')
+
     def test_sending_it_on_moves_it_and_says_who_has_it(self):
         self.assessment.with_user(self.answerer).action_fill_demo()
         out = self.env['azm.dashboard'].with_user(self.answerer).with_company(

@@ -158,6 +158,12 @@
                                 <t t-if="this.state.sending === row.assessment_id">يُرسل…</t>
                                 <t t-else="">أرسل للمراجعة</t>
                             </button>
+                            <!-- their share is in, and the rest of the model is not -->
+                            <span t-if="this.waitingOnOthers(row)" class="o_azm_waiting"
+                                  t-attf-title="بقي {{row.whole_left}} سؤالًا في الإفادة كلها">
+                                <i class="oi me-1" data-icon="hourglass_top"/>
+                                بانتظار البقية
+                            </span>
                             <button t-if="row.started" type="button" class="btn btn-sm btn-light"
                                     title="اعرض نموذج هذا الكيان في الشجرة"
                                     t-on-click="() => this.openTree(row)">

@@ -81,15 +81,22 @@ export class AzmMyWork extends Component {
 
     // ---------------------------------------------------------------- handing it over
     /**
-     * Whether this row can go for review now.
+     * Whether this row can go for review now — worked out on the server, where the
+     * whole assessment is in view.
      *
-     * Only when it is finished, only while it is still theirs, and only for the person
-     * preparing it. A reviewer does not send work on from here, and nobody sends on
-     * work that is already with somebody else.
+     * It used to be read off this person's own count, which is only their share once
+     * the model has been divided: somebody who finished their three modules was offered
+     * the button while sixteen others were untouched, and sending it would have taken
+     * everybody else's unanswered work to the reviewer with it.
      */
     canSend(row) {
-        return !!(row.started && row.mine && row.assessment_id
-                  && row.standing && row.standing.state === "draft" && row.left === 0);
+        return !!row.can_send;
+    }
+
+    /** Their share is done and the assessment is waiting on other people. */
+    waitingOnOthers(row) {
+        return !!(row.started && row.parts.length && row.left === 0 && row.whole_left
+                  && row.standing && row.standing.state === "draft");
     }
 
     async sendForReview(row) {
