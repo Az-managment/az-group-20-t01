@@ -284,12 +284,19 @@ class AzmDocPublication(models.Model):
             return lines.filtered(lambda a: a.stage_id == stage)
         return lines
 
-    def _current_stamp(self):
+    def _source_key(self):
+        self.ensure_one()
+        if self.kind not in PROC_KEYS:
+            return super()._source_key()
+        return self.company_id.id, "pur"
+
+    def _current_stamp(self, assessment=None):
         """Fingerprint of what the document shows, so it is rebuilt when the answers move."""
         self.ensure_one()
         if self.kind not in PROC_KEYS or self.kind in self._book_kinds():
-            return super()._current_stamp()
-        assessment = self._assessment()
+            return super()._current_stamp(assessment=assessment)
+        if assessment is None:
+            assessment = self._assessment()
         lines = self._lines(assessment) if assessment else self.env["azm.answer"]
         data = {
             "assessment": [assessment.id, assessment.version, assessment.state, assessment.is_demo,

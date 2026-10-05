@@ -39,6 +39,14 @@ class AzmStage(models.Model):
             "governance": self.is_governance,
         }
 
+    def _engine_catalogue(self):
+        """(stage dict, question dicts) — the part of a payload that is the same for
+        every assessment, so a scan over many of them builds it once rather than once
+        per assessment and stage. Nothing downstream writes to these dicts."""
+        self.ensure_one()
+        questions = self.question_ids.sorted(lambda q: (q.sequence, q.id))
+        return self._engine_dict(), [q._engine_dict() for q in questions]
+
     # ------------------------------------------------------------ catalogue
     @api.model
     def _load_catalogue(self):

@@ -84,8 +84,13 @@ class AzmDashboard(models.AbstractModel):
 
         nodes = []
         totals = {"requirements": 0, "applicable": 0, "done": 0, "gaps": 0}
+        # one search for the whole catalogue, grouped here, instead of one per module
+        by_module = {}
+        for req in env["azm.fin.requirement"].search([]):
+            by_module.setdefault(req.module_id.id, env["azm.fin.requirement"])
+            by_module[req.module_id.id] |= req
         for module in env["azm.fin.module"].search([]):
-            requirements = env["azm.fin.requirement"].search([("module_id", "=", module.id)])
+            requirements = by_module.get(module.id, env["azm.fin.requirement"])
             topics, seen = [], {}
             m_fig = {"requirements": 0, "applicable": 0, "done": 0, "gaps": 0}
             for req in requirements:

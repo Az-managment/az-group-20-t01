@@ -212,8 +212,12 @@ class AzmArtifact(models.Model):
             if kind != "question":
                 plan.append((f"pur:{kind}", "PUR", atype, kind, None))
 
+        # What is already registered is read once; asking _of() for each of some eight
+        # hundred artifacts meant a search each, every time a document was queued.
+        known = set(self.sudo().search([]).mapped("ref"))
         for ref, domain, atype, name, code in plan:
-            self._of(ref, domain, atype, name=name, code=code)
+            if ref not in known:
+                self._of(ref, domain, atype, name=name, code=code)
         return len(plan)
 
 

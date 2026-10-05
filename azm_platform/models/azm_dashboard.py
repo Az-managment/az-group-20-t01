@@ -244,10 +244,20 @@ class AzmDashboard(models.AbstractModel):
         if project_records.has_access('read'):
             project_records = project_records.search([('company_id', '=', company.id)], limit=6,
                                                      order='sequence, id')
+        # two grouped counts for the whole set, not two searches per project
+        totals, opens = {}, {}
+        if project_records:
+            Task = env['project.task']
+            for project, count in Task._read_group(
+                    [('project_id', 'in', project_records.ids)], ['project_id'], ['__count']):
+                totals[project.id] = count
+            for project, count in Task._read_group(
+                    [('project_id', 'in', project_records.ids), ('is_closed', '=', False)],
+                    ['project_id'], ['__count']):
+                opens[project.id] = count
         for project in project_records:
-            total = env['project.task'].search_count([('project_id', '=', project.id)])
-            opened = env['project.task'].search_count([('project_id', '=', project.id),
-                                                       ('is_closed', '=', False)])
+            total = totals.get(project.id, 0)
+            opened = opens.get(project.id, 0)
             projects.append({
                 'id': project.id,
                 'name': project.name,

@@ -106,13 +106,24 @@ class AzmAssessment(models.Model):
     def _stages(self):
         return self.env["azm.stage"].search([])
 
-    def _stage_payload(self, stage):
-        """Questions, ordered answers (only those visible) for one stage."""
+    def _answers_by_stage(self):
+        """{stage id: {question id: line}} — built once instead of rescanning every
+        answer of the assessment for each stage in turn."""
         self.ensure_one()
-        questions = stage.question_ids.sorted(lambda q: (q.sequence, q.id))
-        by_q = {a.question_id.id: a for a in self.answer_ids if a.stage_id == stage}
-        qdicts = [q._engine_dict() for q in questions]
-        sdict = stage._engine_dict()
+        grouped = {}
+        for line in self.answer_ids:
+            grouped.setdefault(line.stage_id.id, {})[line.question_id.id] = line
+        return grouped
+
+    def _stage_payload(self, stage, catalogue=None, by_stage=None):
+        """Questions, ordered answers (only those visible) for one stage.
+
+        ``catalogue`` and ``by_stage`` let a scan over many assessments build the stage's
+        question dicts and this assessment's answer index once each, instead of per
+        assessment and stage — which is most of what the Home page used to cost."""
+        self.ensure_one()
+        sdict, qdicts = catalogue if catalogue else stage._engine_catalogue()
+        by_q = (by_stage if by_stage is not None else self._answers_by_stage()).get(stage.id, {})
         answers = {}
         for qd in qdicts:
             line = by_q.get(qd["id"])
@@ -141,7 +152,12 @@ class AzmAssessment(models.Model):
     # ---------------------------------------------------------------- computes
     @api.depends("answer_ids.has_value", "answer_ids.is_known", "answer_ids.is_visible")
     def _compute_progress(self):
+        # progress and risk_count are both columns of the list view, so this runs for a
+        # whole page at once: the stages and their question dicts are the same for every
+        # row and are read once, not once per assessment
         rules = self._rules() if self else []
+        stages = self._stages() if self else self.env["azm.stage"]
+        catalogues = {stage.id: stage._engine_catalogue() for stage in stages}
         for rec in self:
             vis = rec.answer_ids.filtered("is_visible")
             rec.visible_count = len(vis)
@@ -149,8 +165,10 @@ class AzmAssessment(models.Model):
             rec.progress = 100.0 * len(vis.filtered("has_value")) / len(vis) if vis else 0.0
             risks = 0
             if rec.id:
-                for stage in rec._stages():
-                    sdict, qdicts, answers, _by_q = rec._stage_payload(stage)
+                by_stage = rec._answers_by_stage()
+                for stage in stages:
+                    sdict, qdicts, answers, _by_q = rec._stage_payload(
+                        stage, catalogues[stage.id], by_stage)
                     risks += len(engine.findings(sdict, qdicts, answers, rules))
             rec.risk_count = risks
 

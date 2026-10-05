@@ -239,8 +239,14 @@ class AzmDocPublication(models.Model):
 
     @api.depends("state", "stamp")
     def _compute_outdated(self):
+        # the list view shows this column, so it is computed for a whole page at a time:
+        # the source assessment is resolved once per company rather than once per row
+        live = self.filtered(lambda p: p.state == "done").sudo()
+        cache = self._source_cache(live)
         for pub in self:
-            pub.outdated = pub.state == "done" and pub.sudo()._current_stamp() != pub.stamp
+            source = pub.sudo()
+            pub.outdated = (pub.state == "done"
+                            and source._current_stamp(cache.get(source._source_key())) != pub.stamp)
 
     # ---------------------------------------------------------------- lookup
     @api.model
@@ -302,12 +308,16 @@ class AzmDocPublication(models.Model):
         """
         Pub = self.sudo()
         stale = Pub.browse()
-        for pub in Pub.search([("company_id", "=", company.id), ("kind", "=", "module")]):
-            if pub.tab not in pub.module_id._azm_outputs():
-                stale |= pub
-        for pub in Pub.search([("company_id", "=", company.id), ("kind", "=", "stage")]):
-            if pub.tab not in pub.stage_id._azm_outputs():
-                stale |= pub
+        # what a node can have is a property of the node, so it is asked once per node
+        # rather than once per document filed against it
+        allowed = {}
+        for kind, field in (("module", "module_id"), ("stage", "stage_id")):
+            for pub in Pub.search([("company_id", "=", company.id), ("kind", "=", kind)]):
+                node = pub[field]
+                if node.id not in allowed:
+                    allowed[node.id] = set(node._azm_outputs()) if node else set()
+                if pub.tab not in allowed[node.id]:
+                    stale |= pub
         if stale:
             stale.document_id.filtered("active").write({"active": False})
             stale.unlink()
@@ -337,10 +347,18 @@ class AzmDocPublication(models.Model):
         # document that happens to be read first can take a serial out of turn
         self.env["azm.artifact"]._register_all()
         queued = self.sudo()
+        # the catalogue is the same for every company: read it once for the whole loop
+        self.env["azm.fin.requirement"].sudo().search([])
+        self.env["azm.fin.module"].sudo().search([])
+        self.env["azm.question"].sudo().search([])
+        self.env["azm.stage"].sudo().search([])
         for company in companies:
             pubs = self._ensure_company(company).filtered(lambda p: p.build == "queued")
             if not force:
-                pubs = pubs.filtered(lambda p: p.state != "done" or p._current_stamp() != p.stamp)
+                cache = self._source_cache(pubs)
+                pubs = pubs.filtered(
+                    lambda p: p.state != "done"
+                    or p._current_stamp(cache.get(p._source_key())) != p.stamp)
             pubs.write({"state": "pending", "error": False, "attempts": 0, "retry_after": False})
             queued |= pubs
         if queued:
@@ -382,6 +400,26 @@ class AzmDocPublication(models.Model):
         return self.env["azm.entity"].sudo().with_context(active_test=False).search(
             [("company_id", "=", self.company_id.id)], limit=1)
 
+    def _source_key(self):
+        """What the source assessment depends on: the company, and which model asks.
+
+        Every document of a company is built from the same assessment, so resolving it
+        per document meant three searches each — ~250 documents of one company all
+        finding the same record.
+        """
+        self.ensure_one()
+        return self.company_id.id, "fin"
+
+    @api.model
+    def _source_cache(self, publications):
+        """{source key: assessment} for a batch, each resolved once."""
+        cache = {}
+        for pub in publications:
+            key = pub._source_key()
+            if key not in cache:
+                cache[key] = pub._assessment()
+        return cache
+
     def _assessment(self):
         """The financial assessment the company's documents are built from: the approved
         one, else the latest.
@@ -412,14 +450,18 @@ class AzmDocPublication(models.Model):
             return lines.filtered(lambda a: a.module_id == self.module_id)
         return lines
 
-    def _current_stamp(self):
-        """Fingerprint of what the document shows: the source assessment and the answers it is built from."""
+    def _current_stamp(self, assessment=None):
+        """Fingerprint of what the document shows: the source assessment and the answers
+        it is built from. ``assessment`` lets a batch resolve it once for the company."""
         self.ensure_one()
         if self.kind in self._book_kinds():
             # a book is exactly its parts: it ages when any one of them would
-            parts = json.dumps([part._current_stamp() for part in self._book_parts()])
-            return hashlib.md5(parts.encode()).hexdigest()
-        assessment = self._assessment()
+            parts = self._book_parts()
+            cache = self._source_cache(parts)
+            stamps = [part._current_stamp(cache.get(part._source_key())) for part in parts]
+            return hashlib.md5(json.dumps(stamps).encode()).hexdigest()
+        if assessment is None:
+            assessment = self._assessment()
         lines = self._lines(assessment) if assessment else self.env["azm.fin.answer"]
         req, module = self.requirement_id, self.module_id
         data = {
@@ -647,14 +689,23 @@ class AzmDocPublication(models.Model):
         return self.ids
 
     def _book_parts(self):
-        """Every document this book binds, in the order the tree walks them."""
+        """Every document this book binds, in the order the tree walks them.
+
+        Read in one search and indexed, rather than asked for one at a time: a book of
+        the financial model binds some seventy documents, and _get() is a search each.
+        """
         self.ensure_one()
         Pub = self.env["azm.doc.publication"].sudo()
         company, assessment = self.company_id, self._assessment()
-        parts = [Pub._get(company, "summary")]
+        existing = {}
+        for pub in Pub.search([("company_id", "=", company.id),
+                               ("kind", "in", ("summary", "module"))]):
+            existing[(pub.kind, pub.module_id.id, pub.tab)] = pub
+        parts = [existing.get(("summary", False, False)) or Pub._get(company, "summary")]
         for module in self.env["azm.fin.module"].sudo().search([]):
             for tab in module._azm_outputs():
-                part = Pub._get(company, "module", module=module, tab=tab)
+                part = (existing.get(("module", module.id, tab))
+                        or Pub._get(company, "module", module=module, tab=tab))
                 if not part._is_empty(assessment):
                     parts.append(part)
         return parts
@@ -831,7 +882,9 @@ class AzmDocPublication(models.Model):
         if pub.kind in pub._book_kinds():
             parts = pub._book_parts()
             payload.update(pub._book_cover(parts, source))
-            payload["summary"] = [{"code": part._azm_payload()["code"], "name": part.name}
+            # the artifact knows the code; building each part's entire payload to read
+            # one key of it meant rendering the whole book twice
+            payload["summary"] = [{"code": part._artifact().code, "name": part.name}
                                   for part in parts]
             payload["summary_columns"] = []
             payload["single"] = False
