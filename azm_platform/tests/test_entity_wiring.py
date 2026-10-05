@@ -136,12 +136,14 @@ class TestEntityWiring(TransactionCase):
                 [('company_id', '=', company.id)], limit=1)
             self.assertTrue(entity, f"{company.name} has no entity")
             self.assertTrue(entity.fin_scope_ids, f"{entity.name} has no financial scope")
-            assessment = self.env['azm.assessment'].sudo().search(
-                [('entity_id', '=', entity.id)], limit=1)
-            self.assertTrue(assessment, f"{entity.name} has no assessment")
+            # any of them, not the first one back: an entity holds an assessment per
+            # kind and scenario, and a later empty one says nothing about the seed
+            assessments = self.env['azm.assessment'].sudo().search(
+                [('entity_id', '=', entity.id)])
+            self.assertTrue(assessments, f"{entity.name} has no assessment")
             self.assertTrue(
-                assessment.answer_ids.filtered('has_value'),
-                f"the assessment of {entity.name} is empty",
+                assessments.filtered(lambda a: a.answer_ids.filtered('has_value')),
+                f"no assessment of {entity.name} has been filled in",
             )
             financial = self.env['azm.fin.assessment'].sudo().search(
                 [('entity_id', '=', entity.id)], limit=1)

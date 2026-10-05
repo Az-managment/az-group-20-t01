@@ -162,6 +162,8 @@ class TestMyWork(TransactionCase):
         self.assertTrue(row['started'], 'they can see it')
         self.assertFalse(row['mine'], 'but it is not theirs')
         self.assertEqual(row['parts'], [], 'they have no part of it to answer')
+        self.assertEqual(row['standing']['label'], 'مع المُعد',
+                         'and a draft is with whoever is preparing it, not with them')
         self.assertGreater(row['total'], 0,
                            'and they see the whole of it, not an empty 0/0')
         mine = next(r for r in self._page(self.answerer)['models']

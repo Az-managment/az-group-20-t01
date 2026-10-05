@@ -53,8 +53,17 @@ class AzmDashboard(models.AbstractModel):
     _inherit = "azm.dashboard"
 
     @api.model
-    def _my_work_standing(self, state):
+    def _my_work_standing(self, state, mine=True):
+        """Where the work stands, said from where this person is standing.
+
+        A draft is "with you now" to the person preparing it and "with the preparer" to
+        anybody else looking at it — a reviewer named on an assessment was being told
+        that unanswered work was with them, which is the one thing it was not.
+        """
         arabic, english, css, note = STANDING.get(state, STANDING["draft"])
+        if state == "draft" and not mine:
+            arabic, english = "مع المُعد", "With the preparer"
+            note = "لم تُرسل بعد؛ ما زالت مع من يُعدّها."
         return {"state": state, "label": arabic, "en": english, "css": css, "note": note}
 
     @api.model
@@ -136,7 +145,7 @@ class AzmDashboard(models.AbstractModel):
                 "answered": answered,
                 "total": total,
                 "left": max(total - answered, 0),
-                "standing": self._my_work_standing(assessment.state),
+                "standing": self._my_work_standing(assessment.state, mine=mine),
                 # Sending it on is the preparer's act, and only once the whole of it is
                 # answered. Keyed off this person's own count it appeared as soon as
                 # they had finished their share, and would have sent everybody else's
