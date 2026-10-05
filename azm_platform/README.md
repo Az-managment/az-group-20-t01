@@ -88,7 +88,13 @@ the assessment is answered — and only then, and only for the person preparing 
 **أرسل للمراجعة** appears on the row. Somebody who has finished their own share while
 other parts are still open sees *بانتظار البقية* instead: their count is their share,
 but what goes for review is the whole of it, and sending it early would have taken
-everybody else's unanswered work to the reviewer along with it. It hands the work to
+everybody else's unanswered work to the reviewer along with it.
+
+The answering workspace offers the same step in the place it is reached: at the end of
+the model the forward button stops being *الموديول التالي* and becomes whatever is
+actually left — the first part still missing answers, or **أرسل للمراجعة** when nothing
+is. Whether it may be sent is the record's own answer (`_azm_can_send`), so the
+workspace, مساحتي and the server that honours either cannot disagree about it. It hands the work to
 whoever reviews it and says who that was. Submitting used to write the state and
 schedule an activity *if* a reviewer happened to be named on the record; where none was,
 the work left the preparer's hands and arrived in nobody's. Now it goes to the named

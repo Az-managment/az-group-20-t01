@@ -311,13 +311,58 @@ export class AzmFinWorkspace extends Component {
         return !!mods.length && mods[mods.length - 1].code === this.state.moduleCode;
     }
 
-    /** What the forward button says, since past the last module it does something else. */
+    /** Whether the assessment can go for review — the server's answer, not ours. */
+    get canSend() {
+        return !!(this.d && this.d.header && this.d.header.can_send);
+    }
+
+    /**
+     * What the forward button says.
+     *
+     * At the end of the model it stops being "next" and becomes whatever is actually
+     * left to do: the first module still missing answers, or — when there is nothing
+     * missing — sending the whole thing for review, which is what somebody who has just
+     * finished came here to do. It only offers that when the server says it may: the
+     * preparer, from draft, with the whole of it answered.
+     */
     get nextLabel() {
         if (!this.atLastModule) {
             return "الموديول التالي";
         }
         const left = this.missing.length;
-        return left ? `أكمل الناقص (${left})` : "عُد إلى البداية";
+        if (left) {
+            return `أكمل الناقص (${left})`;
+        }
+        return this.canSend ? "أرسل للمراجعة" : "عُد إلى البداية";
+    }
+
+    get nextIsSend() {
+        return this.atLastModule && !this.missing.length && this.canSend;
+    }
+
+    async onNext() {
+        if (this.nextIsSend) {
+            await this.sendForReview();
+            return;
+        }
+        this.nextModule(1);
+    }
+
+    /** Hand it to whoever reviews it, through the one guarded way in. */
+    async sendForReview() {
+        if (this.sending) {
+            return;
+        }
+        this.sending = true;
+        try {
+            await this.orm.call("azm.dashboard", "submit_my_work", [], {
+                res_model: "azm.fin.assessment",
+                assessment_id: this.d.header.id,
+            });
+            await this.load();   // so the header reads "with the reviewer"
+        } finally {
+            this.sending = false;
+        }
     }
 
     /**

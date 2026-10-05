@@ -116,6 +116,28 @@ class AzmReviewable(models.AbstractModel):
     def _review_summary(self):
         return _("Review an AZM assessment")
 
+    def _azm_outstanding(self):
+        """Visible questions of the whole assessment still unanswered. Per model."""
+        self.ensure_one()
+        return 0
+
+    def _azm_can_send(self):
+        """Whether this can go for review now, and by this person.
+
+        One answer for every way of asking — the workspace's last-step button, مساحتي's
+        row, and the server that honours either. It is the preparer's act, only from
+        draft, and only once the whole of it is answered: somebody who has finished
+        their own share of a divided model has not finished the assessment.
+        """
+        self.ensure_one()
+        if self.state != "draft":
+            return False
+        preparer = self.user_id or self.create_uid
+        if preparer.id != self.env.uid \
+                and not self.env.user.has_group("azm_operating_model.azm_group_manager"):
+            return False
+        return not self._azm_outstanding()
+
     def _submit_for_review(self, summary=None):
         """Hand the work to whoever reviews it, or say why it cannot be handed over."""
         self.ensure_one()

@@ -254,6 +254,7 @@ class AzmAssessment(models.Model):
                 "scenario": dict(SCENARIOS)[self.scenario],
                 "state": self.state, "state_label": dict(self._fields["state"].selection)[self.state],
                 "version": self.version, "progress": round(self.progress), "is_demo": self.is_demo,
+                "outstanding": self._azm_outstanding(), "can_send": self._azm_can_send(),
                 "readonly": self.state != "draft",
             },
             "stages": nav,
@@ -291,6 +292,10 @@ class AzmAssessment(models.Model):
         return str(self._render(tab, stage if scope == "stage" else False))
 
     # ---------------------------------------------------------------- actions
+    def _azm_outstanding(self):
+        self.ensure_one()
+        return max(self.visible_count - self.answered_count, 0)
+
     def action_open_workspace(self):
         self.ensure_one()
         return {

@@ -102,13 +102,58 @@ export class AzmWorkspace extends Component {
         return !!stages.length && stages[stages.length - 1].id === this.state.stageId;
     }
 
-    /** What the forward button says, since past the last stage it does something else. */
+    /** Whether the assessment can go for review — the server's answer, not ours. */
+    get canSend() {
+        const header = this.state.data && this.state.data.header;
+        return !!(header && header.can_send);
+    }
+
+    /**
+     * What the forward button says.
+     *
+     * At the end of the cycle it stops being "next" and becomes whatever is actually
+     * left to do: the first stage still missing answers, or — when there is nothing
+     * missing — sending the whole thing for review, which is what somebody who has just
+     * finished came here to do. The financial workspace does the same.
+     */
     get nextLabel() {
         if (!this.atLastStage) {
             return "المرحلة التالية";
         }
         const left = this.missing.length;
-        return left ? `أكمل الناقص (${left})` : "عُد إلى البداية";
+        if (left) {
+            return `أكمل الناقص (${left})`;
+        }
+        return this.canSend ? "أرسل للمراجعة" : "عُد إلى البداية";
+    }
+
+    get nextIsSend() {
+        return this.atLastStage && !this.missing.length && this.canSend;
+    }
+
+    async onNext() {
+        if (this.nextIsSend) {
+            await this.sendForReview();
+            return;
+        }
+        this.nextStage(1);
+    }
+
+    /** Hand it to whoever reviews it, through the one guarded way in. */
+    async sendForReview() {
+        if (this.sending) {
+            return;
+        }
+        this.sending = true;
+        try {
+            await this.orm.call("azm.dashboard", "submit_my_work", [], {
+                res_model: "azm.assessment",
+                assessment_id: this.state.data.header.id,
+            });
+            await this.load();
+        } finally {
+            this.sending = false;
+        }
     }
 
     /**

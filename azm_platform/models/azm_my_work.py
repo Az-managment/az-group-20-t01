@@ -150,8 +150,7 @@ class AzmDashboard(models.AbstractModel):
                 # answered. Keyed off this person's own count it appeared as soon as
                 # they had finished their share, and would have sent everybody else's
                 # unanswered work for review along with it.
-                "can_send": bool(preparing and assessment.state == "draft"
-                                 and not whole["left"]),
+                "can_send": assessment._azm_can_send(),
                 "preparing": preparing,
                 "whole_total": whole["total"],
                 "whole_answered": whole["answered"],
@@ -334,19 +333,17 @@ class AzmDashboard(models.AbstractModel):
         # not moved, because nothing came back to say otherwise.
         if record.state != "draft":
             raise UserError(_("This has already been sent; it is not yours to send again."))
-        # The page offers this to the preparer alone, but the page is not the control:
-        # saying it here turns what used to surface as a bare access error into a
-        # sentence naming whose job it is.
+        # The pages offer this to the preparer alone and only when the whole of it is
+        # answered, but a page is not the control. Said here too, in words, because what
+        # used to surface was a bare access error in answer to a reasonable act.
         preparer = record.user_id or record.create_uid
         if preparer.id != self.env.uid \
                 and not self.env.user.has_group("azm_operating_model.azm_group_manager"):
             raise UserError(_(
                 "Your part is done, but sending the assessment on is %s's to do.",
                 preparer.name))
-        outstanding = (record.question_count - record.answered_count
-                       if record._name == "azm.fin.assessment"
-                       else record.visible_count - record.answered_count)
-        if outstanding > 0:
+        outstanding = record._azm_outstanding()
+        if outstanding:
             raise UserError(_(
                 "%s questions have not been answered yet. The assessment goes for "
                 "review once all of it is answered.", outstanding))

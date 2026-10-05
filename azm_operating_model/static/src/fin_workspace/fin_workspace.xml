@@ -266,8 +266,8 @@
 
                     <div class="o_azm_stage_nav">
                         <button class="btn btn-secondary" t-on-click="() => this.nextModule(-1)">الموديول السابق</button>
-                        <button class="btn btn-primary" t-on-click="() => this.nextModule(1)"
-                                t-out="this.nextLabel"/>
+                        <button t-attf-class="btn {{this.nextIsSend ? 'btn-success' : 'btn-primary'}}"
+                                t-on-click="() => this.onNext()" t-out="this.nextLabel"/>
                     </div>
                 </section>
 

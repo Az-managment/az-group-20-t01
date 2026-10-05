@@ -154,6 +154,7 @@ class AzmFinAssessment(models.Model):
             "version": self.version, "is_demo": self.is_demo, "readonly": self.state != "draft",
             "applicable": self.applicable_count, "done": self.done_count, "progress": round(self.progress),
             "questions": self.question_count, "answered": self.answered_count,
+            "outstanding": self._azm_outstanding(), "can_send": self._azm_can_send(),
             "counts": {key: self[f"{key}_count"] for key, _label in STATES},
             "scopes": [{"code": "ALL", "name": SCOPES["ALL"]}] + [
                 {"code": s.code, "name": s.name} for s in self.scope_ids],
@@ -307,6 +308,10 @@ class AzmFinAssessment(models.Model):
         return Markup("".join(html))
 
     # ---------------------------------------------------------------- actions
+    def _azm_outstanding(self):
+        self.ensure_one()
+        return max(self.question_count - self.answered_count, 0)
+
     def action_open_workspace(self):
         self.ensure_one()
         return {"type": "ir.actions.client", "tag": "azm_fin_workspace", "name": self.name,

@@ -243,6 +243,46 @@ class TestMyWork(TransactionCase):
                       'and it names who it is for')
         self.assertEqual(self.assessment.state, 'draft')
 
+    def test_the_workspace_offers_the_same_last_step(self):
+        """At the end of the model the forward button stops being "next".
+
+        It becomes whatever is actually left: the first part still missing answers, or —
+        when nothing is — sending the whole thing for review, which is what somebody who
+        has just finished came here to do. The rule is the model's, so the workspace,
+        مساحتي and the server cannot disagree about it.
+        """
+        header = self.assessment.with_user(self.answerer).with_company(
+            self.company).workspace_data()['header']
+        self.assertGreater(header['outstanding'], 0)
+        self.assertFalse(header['can_send'], 'not while questions are unanswered')
+
+        self.assessment.sudo().action_fill_demo()
+        header = self.assessment.with_user(self.answerer).with_company(
+            self.company).workspace_data()['header']
+        self.assertEqual(header['outstanding'], 0)
+        self.assertTrue(header['can_send'], 'now it is the thing left to do')
+        # and مساحتي agrees, because both ask the record
+        row = next(r for r in self._page(self.answerer)['models']
+                   if r['key'] == 'procurement')
+        self.assertEqual(row['can_send'], header['can_send'])
+
+        self.env['azm.dashboard'].with_user(self.answerer).with_company(
+            self.company).submit_my_work('azm.assessment', self.assessment.id)
+        header = self.assessment.with_user(self.answerer).with_company(
+            self.company).workspace_data()['header']
+        self.assertFalse(header['can_send'], 'and it is not offered twice')
+
+    def test_only_the_preparer_is_offered_the_last_step(self):
+        """A reviewer reading the work in the same workspace is not offered to send it."""
+        self.assessment.sudo().action_fill_demo()
+        self.assessment.reviewer_id = self.reviewer.id
+        mine = self.assessment.with_user(self.answerer).with_company(
+            self.company).workspace_data()['header']
+        theirs = self.assessment.with_user(self.reviewer).with_company(
+            self.company).workspace_data()['header']
+        self.assertTrue(mine['can_send'])
+        self.assertFalse(theirs['can_send'])
+
     def test_sending_it_on_moves_it_and_says_who_has_it(self):
         self.assessment.with_user(self.answerer).action_fill_demo()
         out = self.env['azm.dashboard'].with_user(self.answerer).with_company(
