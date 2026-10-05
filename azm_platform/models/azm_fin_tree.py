@@ -25,6 +25,27 @@ class AzmDashboard(models.AbstractModel):
 
     # ------------------------------------------------------------------ helpers
     @api.model
+    def _fin_assessment(self, company):
+        """The financial assessment the tree reads, in the caller's own right.
+
+        Read through the user, never elevated. The access rules scope an assessment to
+        the person preparing or reviewing it, while a published *document* is scoped to
+        the company — two different decisions, both deliberate. The tree shows the
+        answers themselves, so it must follow the first: somebody who may not open an
+        assessment does not get to read it here either. The procurement tree has always
+        worked this way; this one used to elevate and show everyone everything.
+        """
+        env = self._env_all_companies()
+        entity = env["azm.entity"].search([("company_id", "=", company.id)], limit=1)
+        if not entity:
+            return env["azm.fin.assessment"]
+        Assessment = env["azm.fin.assessment"]
+        return (Assessment.search([("entity_id", "=", entity.id), ("state", "=", "approved")],
+                                  order="version desc, id desc", limit=1)
+                or Assessment.search([("entity_id", "=", entity.id), ("state", "!=", "archived")],
+                                     order="version desc, id desc", limit=1))
+
+    @api.model
     def _fin_tree_status(self, key):
         arabic, english, css = STATUS.get(key or "open", STATUS["open"])
         return {"key": key or "open", "label": arabic, "en": english, "css": css}
@@ -40,13 +61,12 @@ class AzmDashboard(models.AbstractModel):
             return {"available": False}
         env = self._env_all_companies()
 
-        Pub = env["azm.doc.publication"]
-        assessment = Pub._get(company, "summary").sudo()._assessment()
-        # the entity's answers, by requirement, so a node knows its own state
+        assessment = self._fin_assessment(company)
+        # the entity's answers, by requirement, so a node knows its own state — read as
+        # the user, so a node is blank for somebody who may not read the assessment
         lines = {}
-        if assessment:
-            for line in assessment.sudo().answer_ids:
-                lines[line.requirement_id.id] = line
+        for line in assessment.answer_ids:
+            lines[line.requirement_id.id] = line
         # Every output of the model hangs on its node. The list comes from the
         # catalogue, not from the documents already published, so a module shows all
         # of its outputs from the first visit; the document itself is resolved — and
@@ -184,11 +204,10 @@ class AzmDashboard(models.AbstractModel):
         company = self._tree_company(company_id)
         requirement = self._env_all_companies()["azm.fin.requirement"].browse(requirement_id)
         requirement.check_access("read")
-        Pub = self.env["azm.doc.publication"]
-        pub = Pub._get(company, "requirement", requirement=requirement)
-        assessment = pub.sudo()._assessment()
-        line = pub.sudo()._lines(assessment)[:1] if assessment else None
-        item = Pub._item(requirement, line or None)
+        assessment = self._fin_assessment(company)
+        line = assessment.answer_ids.filtered(
+            lambda a: a.requirement_id == requirement)[:1] if assessment else None
+        item = self.env["azm.doc.publication"]._item(requirement, line or None)
         item.update({
             # the document places a step as (label, code, name); a tree step is
             # (label, what to show), the same shape the procurement tree returns

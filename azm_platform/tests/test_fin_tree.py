@@ -1,3 +1,4 @@
+from odoo import Command
 from odoo.tests import TransactionCase, new_test_user, tagged
 
 
@@ -126,3 +127,52 @@ class TestFinTree(TransactionCase):
                          "only the sheets that really exist are counted")
         self.assertEqual(tree['outputs']['total'],
                          tree['totals']['requirements'] + 1)
+
+    def test_the_tree_shows_only_the_answers_the_reader_may_read(self):
+        """An assessment is scoped to the person preparing or reviewing it; a published
+        document is scoped to the company. The tree shows the answers themselves, so it
+        follows the first — it used to read them elevated and show everyone everything.
+        """
+        company = self.env['res.company'].create({'name': 'AZM Tree Scope'})
+        entity = company.azm_entity_ids[:1]
+
+        def azm_user(login):
+            user = self.env['res.users'].create({
+                'name': login, 'login': login, 'company_id': company.id,
+                'company_ids': [Command.set([company.id])],
+                'group_ids': [Command.link(self.env.ref('azm_platform.group_azm_user').id),
+                              Command.link(self.env.ref('azm_operating_model.azm_group_user').id)]})
+            entity.user_ids = [Command.link(user.id)]
+            return user
+
+        preparer, colleague = azm_user('azm_scope_preparer'), azm_user('azm_scope_colleague')
+        assessment = self.env['azm.fin.assessment'].create({
+            'entity_id': entity.id, 'user_id': preparer.id})
+        assessment.action_fill_demo()
+        requirement = self.env['azm.fin.requirement'].search([], limit=1)
+
+        def tree_for(user):
+            dashboard = self.env['azm.dashboard'].with_user(user).with_context(
+                allowed_company_ids=[company.id]).with_company(company)
+            data = dashboard.get_fin_tree(company_id=company.id)
+            answered = sum(1 for n in data['nodes'] for c in n['children'] for i in c['items']
+                           if i['status']['key'] != 'open')
+            node = dashboard.get_fin_tree_node(
+                requirement_id=requirement.id, company_id=company.id)
+            return data, answered, node
+
+        data, answered, node = tree_for(preparer)
+        self.assertEqual(data['assessment']['id'], assessment.id)
+        self.assertTrue(answered, "the preparer sees their own answers")
+        self.assertNotEqual(node['status']['key'], 'open')
+
+        self.assertFalse(
+            self.env['azm.fin.assessment'].with_user(colleague).search_count(
+                [('id', '=', assessment.id)]),
+            "the access rules do not let a colleague read this assessment")
+        data, answered, node = tree_for(colleague)
+        self.assertIsNone(data['assessment'], "so the tree does not read it for them either")
+        self.assertEqual(answered, 0, "no leaf carries somebody else's answer")
+        self.assertEqual(node['status']['key'], 'open',
+                         "a requirement reads as unanswered, which is what they may know")
+        self.assertTrue(data['nodes'], "the tree still shows what the model asks")

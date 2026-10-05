@@ -383,7 +383,16 @@ class AzmDocPublication(models.Model):
             [("company_id", "=", self.company_id.id)], limit=1)
 
     def _assessment(self):
-        """The financial assessment the company's documents are built from: the approved one, else the latest."""
+        """The financial assessment the company's documents are built from: the approved
+        one, else the latest.
+
+        Elevated on purpose, and not the same decision as the tree's. A document is the
+        entity's published output — azm.doc.publication is readable by anyone who works
+        in the company (security/ir.access.csv), and it is built by a cron that runs as
+        nobody — so it is resolved regardless of who is reading. The *tree* shows the
+        answers live rather than as a published document, so it reads them as the user
+        (azm_fin_tree._fin_assessment) and shows nothing it may not.
+        """
         self.ensure_one()
         Assessment = self.env["azm.fin.assessment"].sudo()
         entity = self._entity()
