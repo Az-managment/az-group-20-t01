@@ -153,15 +153,33 @@ class TestCoding(TransactionCase):
         self.assertEqual(found.group(1), payload['code'])
 
     def test_a_requirement_reference_cannot_be_given_to_two_of_them(self):
+        """The check is deferred to commit so that reordering a topic — which passes
+        through a moment where two rows share a reference — is allowed; what must never
+        stand is the end state."""
         from psycopg2 import IntegrityError
         from odoo.tools import mute_logger
         requirement = self.env['azm.fin.requirement'].search([('tree_ref', '!=', False)], limit=1)
+        other = self.env['azm.fin.requirement'].search([('id', '!=', requirement.id)], limit=1)
         with self.assertRaises(IntegrityError), mute_logger('odoo.sql_db'):
             with self.env.cr.savepoint():
-                self.env.cr.execute(
-                    "UPDATE azm_fin_requirement SET tree_ref = %s WHERE id = %s",
-                    (requirement.tree_ref, self.env['azm.fin.requirement'].search(
-                        [('id', '!=', requirement.id)], limit=1).id))
+                self.env.cr.execute("UPDATE azm_fin_requirement SET tree_ref = %s WHERE id = %s",
+                                    (requirement.tree_ref, other.id))
+                self.env.cr.execute("SET CONSTRAINTS ALL IMMEDIATE")
+
+    def test_a_topic_can_be_reordered_without_tripping_that(self):
+        """The reference is computed from sibling rank, so moving one requirement
+        renumbers its whole topic; that must not be refused."""
+        Req = self.env['azm.fin.requirement']
+        rows = Req._read_group([('topic_id', '!=', False)], ['topic_id'], ['__count'])
+        topic = next((t for t, n in rows if n >= 3), None)
+        self.assertTrue(topic, "the catalogue has a topic with several requirements")
+        reqs = Req.search([('topic_id', '=', topic.id)], order='sequence, id')
+        reqs[0].sequence = reqs[-1].sequence + 5
+        self.env.flush_all()
+        after = Req.search([('topic_id', '=', topic.id)], order='sequence, id')
+        refs = after.mapped('tree_ref')
+        self.assertEqual(len(set(refs)), len(refs), "no two requirements share a reference")
+        self.assertEqual(refs, sorted(refs), "they are numbered in order down the topic")
 
     def test_a_document_is_filed_under_a_name_a_file_system_can_hold(self):
         question = self.env['azm.question'].search([], limit=1)

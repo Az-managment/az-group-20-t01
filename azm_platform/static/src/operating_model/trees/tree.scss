@@ -82,7 +82,9 @@
         font-size: 11px;
         color: $azm-muted;
         transition: transform .15s ease;
-        &.o_azm_open { transform: rotate(-90deg); }
+        // rtlcss mirrors a rotation, which would point the open caret up rather than
+        // down; the caret turns the same way whichever way the page runs
+        &.o_azm_open { /*rtl:ignore*/transform: rotate(-90deg); }
     }
     .o_azm_tree_name {
         flex: 1 1 auto;

@@ -118,20 +118,38 @@ class AzmDocPublication(models.Model):
 
     # ---------------------------------------------------------------- lookup
     # ---------------------------------------------------------------- coding
-    def _artifact(self):
+    def _artifact_ref(self):
         self.ensure_one()
         if self.kind not in PROC_KEYS:
-            return super()._artifact()
-        Artifact = self.env["azm.artifact"]
+            return super()._artifact_ref()
         if self.kind == "question":
-            question = self.question_id
-            return Artifact._of(f"azm.question,{question.id}", "PUR", "REQ", name=question.label)
+            return f"azm.question,{self.question_id.id}"
+        if self.kind == "stage":
+            return f"azm.stage,{self.stage_id.id},{self.tab}"
+        return f"pur:{self.kind}"
+
+    def _artifact(self, create=True):
+        self.ensure_one()
+        if self.kind not in PROC_KEYS:
+            return super()._artifact(create=create)
+        Artifact = self.env["azm.artifact"]
+        ref = self._artifact_ref()
+        if not create:
+            return Artifact._find(ref)
+        if self.kind == "question":
+            return Artifact._of(ref, "PUR", "REQ", name=self.question_id.label)
         if self.kind == "stage":
             atype = PROC_ARTIFACTS[self.tab][0]
-            return Artifact._of(f"azm.stage,{self.stage_id.id},{self.tab}", "PUR", atype,
+            return Artifact._of(ref, "PUR", atype,
                                 name=f"PUR-{self.stage_id.code} · {PROC_OUTPUTS[self.tab][1]}")
-        return Artifact._of(f"pur:{self.kind}", "PUR", PROC_KIND_ARTIFACTS[self.kind][0],
-                            name=self.name)
+        return Artifact._of(ref, "PUR", PROC_KIND_ARTIFACTS[self.kind][0], name=self.name)
+
+    def _empty_message(self):
+        self.ensure_one()
+        if self.kind not in PROC_KEYS:
+            return super()._empty_message()
+        return _("There is no procurement assessment behind this output for %s yet.",
+                 self.company_id.name)
 
     def _tree_ref(self):
         self.ensure_one()
@@ -281,7 +299,7 @@ class AzmDocPublication(models.Model):
             # gaps, risks, controls, system and KPIs are written from the risk rules as
             # well as the answers, so an edited rule has to age the output it feeds
             "rules": self._rules_stamp() if self.kind == "stage" else None,
-            "coding": [self._artifact().code, self._lifecycle()],
+            "coding": [self._artifact(create=False).code or "", self._lifecycle()],
             "lines": {line.code: [line.is_visible, line.is_known, line._engine_value(), line.note or ""]
                       for line in lines},
         }

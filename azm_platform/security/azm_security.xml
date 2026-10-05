@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- noupdate: an upgrade must not re-grant these groups to users an
+         administrator deliberately removed them from -->
+    <data noupdate="1">
     <record id="module_category_azm" model="ir.module.category">
         <field name="name">AZM Platform</field>
         <field name="sequence">5</field>
@@ -26,4 +29,5 @@
         <field name="user_ids" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
         <field name="comment">Full control over entities, domains and the platform configuration.</field>
     </record>
+    </data>
 </odoo>

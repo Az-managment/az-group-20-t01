@@ -97,6 +97,10 @@ class AzmEntity(models.Model):
         return True
 
     def action_sync_companies(self):
+        """Re-sync entities with companies. The work runs elevated — it touches every
+        company — so the right to ask for it is checked here, or anyone could rename,
+        relink and archive the whole group's entities over RPC."""
+        self.env["azm.entity"].check_access("write")
         self._azm_sync_companies()
         return {"type": "ir.actions.client", "tag": "display_notification",
                 "params": {"type": "success", "message": "تمت مزامنة الكيانات مع الشركات.",

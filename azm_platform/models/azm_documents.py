@@ -419,7 +419,8 @@ class AzmDocPublication(models.Model):
             "catalogue": [req.tree_ref, req.title, req.question, req.owner, module.code, module.name],
             # the code a document prints is part of what it says, so a document filed
             # under an older coding ages by itself and is rebuilt when next read
-            "coding": [self._artifact().code, self._lifecycle()],
+            # looked up, not allocated: this runs inside the `outdated` compute
+            "coding": [self._artifact(create=False).code or "", self._lifecycle()],
             "lines": {line.code: [line.applicable, line._snapshot()] for line in lines},
         }
         return hashlib.md5(json.dumps(data, sort_keys=True, ensure_ascii=False, default=str).encode()).hexdigest()
@@ -530,7 +531,9 @@ class AzmDocPublication(models.Model):
         return action
 
     def action_refresh(self):
-        self.sudo(False).check_access("read")
+        # it rewrites the document and files a new one: the right to do that is write,
+        # and read-only users had been able to force it
+        self.sudo(False).check_access("write")
         pub = self.sudo()
         pub.write({"attempts": 0, "retry_after": False})   # an explicit retry starts the budget over
         pub._generate_safe()
@@ -567,26 +570,39 @@ class AzmDocPublication(models.Model):
         return self.kind == "module" and not self._module_items(assessment)
 
     # ---------------------------------------------------------------- coding
-    def _artifact(self):
+    def _artifact_ref(self):
+        """What this document is registered under in the coding registry."""
+        self.ensure_one()
+        if self.kind == "requirement":
+            return f"azm.fin.requirement,{self.requirement_id.id}"
+        if self.kind == "module":
+            return f"azm.fin.module,{self.module_id.id},{self.tab}"
+        return f"fin:{self.kind}"
+
+    def _artifact(self, create=True):
         """The master artifact this document is a copy of, per the coding registry.
 
         One artifact per node and output for the whole group: the nine entities that
         hold the policy of FIN.GOV all print AZM-FIN-POL-000001 on it, and what tells
         their copies apart is the scope beside the code, never the code itself.
+
+        ``create=False`` only looks: a compute field and a read-only request both ask
+        what a document is called, and numbering one there would be a write.
         """
         self.ensure_one()
         Artifact = self.env["azm.artifact"]
+        ref = self._artifact_ref()
+        if not create:
+            return Artifact._find(ref)
         if self.kind == "requirement":
             req = self.requirement_id
             # the registry already numbered every requirement; it is not renumbered here
-            return Artifact._of(f"azm.fin.requirement,{req.id}", "FIN", "REQ",
-                                name=req.title, code=req.req_id or None)
+            return Artifact._of(ref, "FIN", "REQ", name=req.title, code=req.req_id or None)
         if self.kind == "module":
             atype = FIN_ARTIFACTS[self.tab][0]
-            return Artifact._of(f"azm.fin.module,{self.module_id.id},{self.tab}", "FIN", atype,
+            return Artifact._of(ref, "FIN", atype,
                                 name=f"FIN.{self.module_id.code} · {MODULE_OUTPUTS[self.tab][1]}")
-        atype = FIN_KIND_ARTIFACTS[self.kind][0]
-        return Artifact._of(f"fin:{self.kind}", "FIN", atype, name=self.name)
+        return Artifact._of(ref, "FIN", FIN_KIND_ARTIFACTS[self.kind][0], name=self.name)
 
     def _tree_ref(self):
         """Where to find this document's node in the tree.
@@ -942,10 +958,14 @@ class AzmFinRequirement(models.Model):
     azm_doc_ids = fields.One2many("azm.doc.publication", "requirement_id", string="المستندات")
 
     def action_azm_publish_documents(self):
-        """(Re)build this requirement's document for every company now."""
+        """(Re)build this requirement's document for the entities the user works in."""
+        self.check_access("read")
         Pub = self.env["azm.doc.publication"]
+        # env.companies, not every company there is: this writes documents into each
+        # entity's workspace, and it was reaching entities the user cannot even see
+        companies = self.env.companies
         for req in self:
-            for company in self.env["res.company"].sudo().search([]):
+            for company in companies:
                 Pub._get(company, "requirement", requirement=req)._generate_safe()
         return {"type": "ir.actions.client", "tag": "display_notification",
                 "params": {"type": "success", "message": _("Documents updated for every entity."),

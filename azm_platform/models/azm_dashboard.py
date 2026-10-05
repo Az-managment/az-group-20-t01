@@ -3,6 +3,7 @@ import logging
 import requests
 
 from odoo import _, api, fields, models
+from odoo.exceptions import AccessError
 from odoo.fields import Domain
 from odoo.tools import html2plaintext
 
@@ -293,6 +294,11 @@ class AzmDashboard(models.AbstractModel):
     # ------------------------------------------------------------------
     @api.model
     def ai_ask(self, question):
+        # the key is the group's and the call is billed to it, so the question has to
+        # come from someone the platform is for, and be of a size it is worth answering
+        if not self.env.user.has_group('azm_platform.group_azm_user'):
+            raise AccessError(_("The assistant is available to AZM users."))
+        question = (question or '')[:2000]
         """Answer a question about the group with an LLM, grounded on live Odoo figures."""
         question = (question or '').strip()
         if not question:

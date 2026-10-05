@@ -5,3 +5,5 @@ azm_doc_publication_company,azm.doc.publication company,azm.doc.publication,,cru
 azm_doc_folder_user,azm.doc.folder user,azm.doc.folder,azm_operating_model.azm_group_user,r,
 azm_doc_folder_manager,azm.doc.folder manager,azm.doc.folder,azm_operating_model.azm_group_manager,crud,
 azm_doc_folder_company,azm.doc.folder company,azm.doc.folder,,crud,"[('company_id', 'in', company_ids)]"
+azm_artifact_user,azm.artifact user,azm.artifact,azm_operating_model.azm_group_user,r,
+azm_artifact_manager,azm.artifact manager,azm.artifact,azm_operating_model.azm_group_manager,crud,

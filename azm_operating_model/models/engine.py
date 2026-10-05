@@ -389,7 +389,7 @@ def render_cycle_map(stages_data):
         pos.append((x, y))
         fill, stroke = colors[s["status"]]
         svg.append(f'<rect x="{x}" y="{y}" width="{bw}" height="{bh}" rx="10" fill="{fill}" stroke="{stroke}" stroke-width="1.4"/>')
-        svg.append(f'<text x="{x + bw - 10}" y="{y + 20}" text-anchor="end" font-size="10.5" fill="#5b7380">{i + 1:02d} · {s["stage"]["code"]}</text>')
+        svg.append(f'<text x="{x + bw - 10}" y="{y + 20}" text-anchor="end" font-size="10.5" fill="#5b7380">{i + 1:02d} · {_e(s["stage"]["code"])}</text>')
         name = s["stage"]["name"]
         words = name.split()
         line1, line2 = name, ""

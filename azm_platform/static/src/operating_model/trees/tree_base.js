@@ -1,4 +1,5 @@
 import { Component, onWillStart, proxy, useProps } from "@odoo/owl";
+import { KeepLast } from "@web/core/utils/concurrency";
 import { useService } from "@web/core/utils/hooks";
 import { standardActionServiceProps } from "@web/webclient/actions/action_plugin";
 import { pct } from "../om_utils";
@@ -26,6 +27,11 @@ export class AzmTreePage extends Component {
         this.orm = useService("orm");
         this.action = useService("action");
         this.pct = pct;
+        // one per concern: clicking two leaves quickly must leave the panel showing the
+        // second, whichever answer comes back last
+        this.keepTree = new KeepLast();
+        this.keepNode = new KeepLast();
+        this.keepPreview = new KeepLast();
         this.state = proxy({
             loaded: false,
             data: null,
@@ -34,6 +40,7 @@ export class AzmTreePage extends Component {
             selected: null,    // leaf id
             node: null,        // its detail
             loadingNode: false,
+            error: "",
             query: "",
             preview: null,     // the document being read in place, if any
             family: null,      // only this family of outputs is showing, if any
@@ -85,20 +92,32 @@ export class AzmTreePage extends Component {
 
     async load(companyId = null, extra = {}) {
         this.state.loaded = false;
+        this.state.error = "";
         this.state.selected = null;
         this.state.node = null;
         this.state.preview = null;
         this.state.family = null;
         this.state.docs = {};
-        this.state.data = await this.orm.call("azm.dashboard", this.constructor.dataMethod, [], {
-            company_id: companyId,
-            ...extra,
-        });
-        this.state.loaded = true;
-        // open the first node so the page never greets anyone with a wall of closed rows
-        const first = this.nodes[0];
-        if (first) {
-            this.state.open[`n-${first.id}`] = true;
+        try {
+            this.state.data = await this.keepTree.add(
+                this.orm.call("azm.dashboard", this.constructor.dataMethod, [], {
+                    company_id: companyId,
+                    ...extra,
+                })
+            );
+            // open the first node so the page never greets anyone with a wall of closed rows
+            const first = this.nodes[0];
+            if (first) {
+                this.state.open[`n-${first.id}`] = true;
+            }
+        } catch (error) {
+            // without this the page sits on a spinner for ever when the tree cannot load
+            this.state.data = null;
+            this.state.error =
+                (error && error.data && error.data.message) || (error && error.message) ||
+                "تعذّر تحميل الشجرة.";
+        } finally {
+            this.state.loaded = true;
         }
     }
 
@@ -181,13 +200,21 @@ export class AzmTreePage extends Component {
         this.state.preview = null;
         this.state.loadingNode = true;
         try {
-            this.state.node = await this.orm.call("azm.dashboard", this.constructor.nodeMethod, [], {
-                [this.constructor.nodeArg]: item.id,
-                company_id: this.d.company.id,
-                ...this.extra,
-            });
-        } finally {
+            this.state.node = await this.keepNode.add(
+                this.orm.call("azm.dashboard", this.constructor.nodeMethod, [], {
+                    [this.constructor.nodeArg]: item.id,
+                    company_id: this.d.company.id,
+                    ...this.extra,
+                })
+            );
             this.state.loadingNode = false;
+        } catch (error) {
+            // a superseded request resolves to nothing: leave the spinner to the one
+            // that is still running rather than clearing it on the stale answer
+            if (error) {
+                this.state.loadingNode = false;
+                throw error;
+            }
         }
     }
 
@@ -270,12 +297,13 @@ export class AzmTreePage extends Component {
         }
         this.state.preview = { doc, loading: true, error: "", name: doc.label || "" };
         try {
-            const found = await this.orm.call("azm.dashboard", "preview_tree_document", [], {
+            const found = await this.keepPreview.add(this.orm.call(
+                "azm.dashboard", "preview_tree_document", [], {
                 kind: doc.kind,
                 node_id: doc.id || null,
                 tab: doc.tab || null,
-                company_id: this.d.company.id,
-            });
+                    company_id: this.d.company.id,
+                }));
             this.state.preview = { doc, loading: false, error: "", ...found };
         } catch (error) {
             // the document may be empty, or have failed to build: say so where the

@@ -119,6 +119,16 @@ class AzmArtifact(models.Model):
     _ref_uniq = models.Constraint("UNIQUE(ref)", "هذه العقدة لها كود مسجل بالفعل.")
 
     @api.model
+    def _find(self, ref):
+        """The artifact registered under ``ref``, or an empty recordset.
+
+        Reading must never number anything: a compute field, a report and a read-only
+        request all ask what a document is called, and allocating a serial there writes
+        to the database — which a read-only cursor refuses and a reader should not do.
+        """
+        return self.sudo().search([("ref", "=", ref)], limit=1)
+
+    @api.model
     def _of(self, ref, domain, atype, name="", code=None):
         """The artifact registered under ``ref``, numbered the first time it is seen.
 
@@ -131,15 +141,18 @@ class AzmArtifact(models.Model):
         found = Artifact.search([("ref", "=", ref)], limit=1)
         if found:
             return found
+        # Take the lock before deciding to create. Without it two transactions asking
+        # for the same unregistered ref both miss the search above, both allocate, and
+        # the second dies on _ref_uniq — so the search is repeated under the lock.
+        self.env.cr.execute("SELECT pg_advisory_xact_lock(hashtext(%s))",
+                            (f"azm.artifact:{domain}:{atype}",))
+        found = Artifact.search([("ref", "=", ref)], limit=1)
+        if found:
+            return found
         if code:
             serial = int(code.rsplit("-", 1)[-1]) if code.rsplit("-", 1)[-1].isdigit() else 0
         else:
-            # The next serial of this domain and type. Two documents built at the same
-            # moment must not be given the same number, and MAX() cannot be read FOR
-            # UPDATE, so the counter for this (domain, type) is locked for the
-            # transaction instead — the lock is released on commit or rollback.
-            self.env.cr.execute("SELECT pg_advisory_xact_lock(hashtext(%s))",
-                                (f"azm.artifact:{domain}:{atype}",))
+            # the next serial of this domain and type, read under the lock taken above
             self.env.cr.execute(
                 "SELECT COALESCE(MAX(serial), 0) FROM azm_artifact "
                 "WHERE domain = %s AND atype = %s", (domain, atype))

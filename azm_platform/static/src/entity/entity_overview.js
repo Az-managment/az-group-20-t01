@@ -41,9 +41,12 @@ export class AzmEntityOverview extends Component {
     }
 
     async load(resId) {
-        this.state.data = resId
+        // an entity outside the active companies answers {} — truthy, but with none of
+        // the keys this page reads, which blanks the whole form instead of saying so
+        const found = resId
             ? await this.orm.call("azm.dashboard", "get_company_overview", [resId])
             : null;
+        this.state.data = found && found.documents_model ? found : null;
     }
 
     get record() {

@@ -344,14 +344,25 @@ class AzmFinRequirement(models.Model):
     # all name a requirement by, and it is computed from sibling rank — so inserting or
     # reordering a requirement could quietly give two of them the same name. It cannot
     # now: the database refuses it instead of filing two documents under one name.
+    # Deferred to commit: reordering requirements inside a topic renumbers all of them,
+    # and any permutation passes through a moment where two rows share a reference.
+    # Postgres checks a plain UNIQUE row by row and would refuse the legal reorder; what
+    # must never be true is the *end state* having duplicates.
     _tree_ref_uniq = models.Constraint(
-        "UNIQUE(tree_ref)", "مرجع الشجرة مكرر؛ لا يمكن أن يحمل متطلبان نفس المرجع.")
+        "UNIQUE(tree_ref) DEFERRABLE INITIALLY DEFERRED",
+        "مرجع الشجرة مكرر؛ لا يمكن أن يحمل متطلبان نفس المرجع.")
 
-    @api.depends("topic_id.code", "module_id.code", "sequence")
+    @api.depends("topic_id.code", "topic_id.requirement_ids.sequence", "module_id.code", "sequence")
     def _compute_tree_ref(self):
         """Model › module › topic › requirement: FIN.PUR.03.02 is the 2nd requirement of topic FIN.PUR.03.
 
-        Numbered inside the topic (archived ones included, so a retired requirement never shifts the others)."""
+        Numbered inside the topic (archived ones included, so a retired requirement never
+        shifts the others).
+
+        The rank depends on the siblings, so the whole topic has to recompute when any one
+        of them moves — depending only on this record's own ``sequence`` left the others
+        holding their old rank, which is a duplicate reference, and the reference names the
+        tree leaf, the breadcrumb, the PDF cover and the filed document."""
         siblings = self.with_context(active_test=False).search(
             [("topic_id", "in", self.topic_id.ids)], order="sequence, id") if self.topic_id else self.browse()
         rank = {}

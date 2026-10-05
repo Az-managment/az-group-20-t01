@@ -121,6 +121,7 @@ class AzmStage(models.Model):
         return True
 
     def action_reload_catalogue(self):
+        self.env["azm.stage"].check_access("write")
         self._load_catalogue()
         return {"type": "ir.actions.client", "tag": "display_notification",
                 "params": {"type": "success", "message": "تم تحديث كتالوج الأسئلة."}}

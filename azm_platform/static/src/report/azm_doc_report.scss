@@ -1,5 +1,11 @@
 // Operating-model documents (PDF). Simple to read: one column, large text,
 // plain headings, few colours. Tables only (no flex / grid) for wkhtmltopdf.
+//
+// These documents are Arabic and are laid out right to left on purpose. Odoo builds a
+// mirrored stylesheet for a right-to-left *interface* language, reports included — so
+// for an Arabic reader rtlcss would flip this sheet to left-to-right, which is the one
+// direction it must never be. The whole file is therefore left alone.
+/*rtl:begin:ignore*/
 $azm-doc-ink: #1f2937;
 $azm-doc-muted: #6b7280;
 $azm-doc-navy: #0b2a5b;
@@ -106,3 +112,4 @@ $azm-doc-soft: #f6f8fb;
 .azm_doc_footer { font-size: 9.5px; color: $azm-doc-muted; border-top: 1px solid $azm-doc-line; padding-top: 4px; }
 .azm_ftr_mid { text-align: center; direction: ltr; }
 .azm_ftr_page { text-align: left; white-space: nowrap; }
+/*rtl:end:ignore*/
