@@ -208,6 +208,118 @@ class TestMyWork(TransactionCase):
         with self.assertRaises(Exception):
             D.submit_my_work('azm.assessment', theirs.id)
 
+    # ------------------------------------------------------------------ reviewing
+    def test_open_the_answers_lands_in_the_workspace(self):
+        """Not on the assessment's form, from which the reader had to find and press
+        another button to reach where they were going."""
+        D = self.env['azm.dashboard'].with_user(self.answerer).with_company(self.company)
+        action = D.open_my_workspace('azm.assessment', self.assessment.id)
+        self.assertEqual(action['type'], 'ir.actions.client')
+        self.assertEqual(action['tag'], 'azm_workspace')
+        self.assertEqual(action['params']['assessment_id'], self.assessment.id)
+
+        fin = self.env['azm.fin.assessment'].with_user(self.answerer).with_company(
+            self.company).create({'entity_id': self.entity.id, 'user_id': self.answerer.id})
+        action = D.open_my_workspace('azm.fin.assessment', fin.id)
+        self.assertEqual(action['tag'], 'azm_fin_workspace', 'and the same for both models')
+
+    def test_the_reviewer_accepts_the_answers(self):
+        self.assessment.with_user(self.answerer).action_fill_demo()
+        D = self.env['azm.dashboard']
+        D.with_user(self.answerer).with_company(self.company).submit_my_work('azm.assessment', self.assessment.id)
+
+        out = D.with_user(self.reviewer).with_company(self.company).accept_my_review('azm.assessment', self.assessment.id)
+        self.assertEqual(out['state'], 'approved')
+        self.assertEqual(self.assessment.approved_by_id, self.reviewer)
+        self.assertTrue(self.assessment.approved_date)
+        self.assertEqual(len(self.assessment.version_ids), 1,
+                         'and the accepted answers were snapshotted')
+        # the queue is empty again, and the preparer's row says so
+        self.assertEqual(D.with_user(self.reviewer).with_company(self.company).get_my_work()['reviews'], [])
+        row = next(r for r in out['work']['models'] if r['key'] == 'procurement')
+        self.assertEqual(row['standing']['state'], 'approved')
+
+    def test_the_reviewer_can_send_it_back_instead(self):
+        self.assessment.with_user(self.answerer).action_fill_demo()
+        D = self.env['azm.dashboard']
+        D.with_user(self.answerer).with_company(self.company).submit_my_work('azm.assessment', self.assessment.id)
+        activities = self.env['mail.activity'].search_count(
+            [('user_id', '=', self.answerer.id)])
+
+        out = D.with_user(self.reviewer).with_company(self.company).return_my_review('azm.assessment', self.assessment.id)
+        self.assertEqual(out['state'], 'draft')
+        self.assertGreater(self.env['mail.activity'].search_count(
+            [('user_id', '=', self.answerer.id)]), activities,
+            'and the person who has to act on it was told')
+        # it is the preparer's again — and no longer the reviewer's to see, which is
+        # why this reads their page and not the one the call handed back
+        row = next(r for r in self._page(self.answerer)['models']
+                   if r['key'] == 'procurement')
+        self.assertEqual(row['standing']['state'], 'draft')
+        self.assertTrue(row['mine'], 'back in their hands')
+        self.assertEqual(self._page(self.reviewer)['reviews'], [],
+                         'and off the reviewer\'s list')
+
+    def test_nobody_accepts_their_own_answers(self):
+        """The reviewer may accept; separation of duties is what stays."""
+        # a different kind and scenario: an entity holds one assessment per combination
+        own = self.env['azm.assessment'].with_user(self.reviewer).with_company(
+            self.company).create({'entity_id': self.entity.id, 'purchase_kind': 'goods',
+                                  'scenario': 'standard', 'user_id': self.reviewer.id})
+        own.with_user(self.reviewer).action_fill_demo()
+        own.with_user(self.reviewer).action_submit()
+        D = self.env['azm.dashboard'].with_user(self.reviewer).with_company(self.company)
+        with self.assertRaises(UserError):
+            D.accept_my_review('azm.assessment', own.id)
+        self.assertEqual(own.state, 'review', 'and it stayed where it was')
+
+    def test_an_answerer_cannot_accept_anything(self):
+        self.assessment.with_user(self.answerer).action_fill_demo()
+        D = self.env['azm.dashboard']
+        D.with_user(self.answerer).with_company(self.company).submit_my_work('azm.assessment', self.assessment.id)
+        with self.assertRaises(Exception):
+            D.with_user(self.answerer).with_company(self.company).accept_my_review('azm.assessment', self.assessment.id)
+
+    # ------------------------------------------------------------------ tracking
+    def test_progress_is_everybody_s_work_not_your_own(self):
+        """التقدّم is the other half of the subject, and deliberately not مساحتي.
+
+        Somebody tracking the work wants who prepares each model, who reviews it, where
+        it stands, and — where the work was divided — which part belongs to whom.
+        """
+        self.assessment.reviewer_id = self.reviewer.id
+        modules = self.env['azm.fin.module'].search([], limit=2)
+        fin = self.env['azm.fin.assessment'].with_user(self.answerer).with_company(
+            self.company).create({'entity_id': self.entity.id, 'user_id': self.answerer.id})
+        self.env['azm.assignment'].create([
+            {'fin_assessment_id': fin.id, 'module_id': modules[0].id,
+             'user_id': self.answerer.id},
+            {'fin_assessment_id': fin.id, 'module_id': modules[1].id,
+             'user_id': self.reviewer.id},
+        ])
+        page = self.env['azm.dashboard'].with_company(self.company).get_progress()
+        self.assertTrue(page['available'])
+
+        row = next(r for r in page['rows']
+                   if r['entity'] == self.entity.name and r['key'] == 'procurement')
+        self.assertEqual(row['preparer'], self.answerer.name, 'it names who prepares it')
+        self.assertEqual(row['reviewer'], self.reviewer.name, 'and who reviews it')
+        self.assertIn(row['state'], ('draft', 'review', 'approved'))
+
+        split = next(r for r in page['rows']
+                     if r['entity'] == self.entity.name and r['key'] == 'financial')
+        self.assertEqual(len(split['parts']), 2, 'and which parts were given out')
+        self.assertEqual({p['user'] for p in split['parts']},
+                         {self.answerer.name, self.reviewer.name})
+
+        people = {p['name']: p for p in page['people']}
+        self.assertIn(self.answerer.name, people)
+        self.assertIn('prepares', people[self.answerer.name]['roles'])
+        self.assertIn('answers', people[self.answerer.name]['roles'])
+        self.assertIn('reviews', people[self.reviewer.name]['roles'])
+        self.assertEqual(people[self.answerer.name]['parts'], 1,
+                         'counted per person, over the parts actually theirs')
+
     # ------------------------------------------------------------------ landing
     def test_an_answerer_starts_on_their_own_page(self):
         action = self.env.ref('azm_platform.action_azm_my_work')

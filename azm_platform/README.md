@@ -96,11 +96,30 @@ A reviewer's page carries a second section, **بانتظار مراجعتك**: t
 the entities they are assigned to, never their own. They can open what they are shown —
 the rules and the list say the same thing, so the two cannot drift apart.
 
-| Who | Lands on | Sees |
+| Who | Lands on | The AZM sidebar holds |
 |---|---|---|
-| مُعد إفادات (answerer) | مساحتي | their entities, what they owe, send for review, their deliverables |
-| مراجع (reviewer) | مساحتي | the above, plus what has been sent to them to review |
-| مدير النموذج (manager) | wherever they choose | all of it, plus the catalogue and the configuration |
+| مُعد إفادات (answerer) | مساحتي | **مساحتي** and **مكتبة المخرجات** — their work, and what it produces |
+| مراجع (reviewer) | مساحتي | the above, plus **الإفادات**, **سجل المخاطر**, **شجر**, المشاريع والمهام والمستندات |
+| مدير النموذج (manager) | wherever they choose | all of it, plus **التقدّم**, the cockpit, the catalogue and the configuration |
+
+Somebody whose job is answering their entity's questions was being shown the group
+cockpit, the entity list, the group structure and the model dashboards — figures about
+other people's work that they cannot act on — and a technical menu holding the question
+catalogue beside them. Each role now gets the pages its job needs and no more.
+
+**التقدّم · Progress** is the administrator's page, and deliberately not مساحتي:
+somebody tracking the work does not want their own work, they want everybody's. Who
+prepares each model for each entity, who reviews it, where it stands, how much is
+answered, and — where the work has been divided — which part belongs to whom and how far
+each of them has got, with a per-person summary on top. The people being tracked are not
+offered it.
+
+Opening the answers from مساحتي lands in the **answering workspace**, for both models,
+rather than on the assessment's form with another button to find. A reviewer opens the
+same workspace to read what was sent, then **اقبل الإجابات** to accept it — which
+snapshots the version and records who accepted — or sends it back, which returns it to
+the preparer and tells them. Nobody accepts their own work; that is the one part of
+manager-only approval worth keeping, and it is still enforced.
 
 The technical menu — the question catalogue, the stages, the risk rules, the financial
 model's own configuration — is a reviewer's and upwards. An answerer was being shown it

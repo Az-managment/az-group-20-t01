@@ -33,10 +33,14 @@
             <div t-if="this.state.sent" class="o_azm_card o_azm_sent">
                 <i class="oi" data-icon="check_circle" title="Sent"/>
                 <div>
-                    <strong>أُرسلت <t t-out="this.state.sent.model"/> — <t t-out="this.state.sent.entity"/> للمراجعة.</strong>
+                    <strong t-if="this.state.sent.note">
+                        <t t-out="this.state.sent.model"/> — <t t-out="this.state.sent.entity"/>
+                    </strong>
+                    <strong t-else="">أُرسلت <t t-out="this.state.sent.model"/> — <t t-out="this.state.sent.entity"/> للمراجعة.</strong>
                     <small t-if="this.state.sent.reviewers.length">
                         وصلت إلى: <t t-out="this.state.sent.reviewers.join('، ')"/>
                     </small>
+                    <small t-if="this.state.sent.note" t-out="this.state.sent.note"/>
                 </div>
                 <button type="button" class="btn btn-sm btn-light"
                         t-on-click="() => this.dismissSent()">
@@ -195,9 +199,24 @@
                             </small>
                         </div>
                         <div class="o_azm_model_actions">
-                            <button type="button" class="btn btn-sm btn-primary"
-                                    t-on-click="() => this.openReview(review)">
+                            <button type="button" class="btn btn-sm btn-light"
+                                    title="اقرأ الإجابات في مساحة الإجابة"
+                                    t-on-click="() => this.openReviewWorkspace(review)">
                                 <i class="oi me-1" data-icon="fact_check"/>راجعها
+                            </button>
+                            <button type="button" class="btn btn-sm o_azm_send"
+                                    t-att-disabled="this.state.deciding ? 'disabled' : undefined"
+                                    title="اقبل الإجابات واعتمدها"
+                                    t-on-click="() => this.decide(review, true)">
+                                <i class="oi me-1" data-icon="check_circle"/>
+                                <t t-if="this.state.deciding === review.id">…</t>
+                                <t t-else="">اقبل الإجابات</t>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-light o_azm_return"
+                                    t-att-disabled="this.state.deciding ? 'disabled' : undefined"
+                                    title="أعدها للمُعد لاستكمالها"
+                                    t-on-click="() => this.decide(review, false)">
+                                <i class="oi" data-icon="undo"/>
                             </button>
                         </div>
                     </div>

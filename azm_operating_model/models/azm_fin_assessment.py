@@ -321,8 +321,12 @@ class AzmFinAssessment(models.Model):
         self.filtered(lambda r: r.state == "review")._workflow().write({"state": "draft"})
 
     def action_approve(self):
-        if not self.env.user.has_group("azm_operating_model.azm_group_manager"):
-            raise UserError("الاعتماد لمدير النموذج فقط.")
+        # The reviewer is who the work was sent to; making them unable to accept it
+        # left the role with nothing to do but look. What stays is the part that
+        # matters — nobody signs off their own work, which is checked below.
+        if not (self.env.user.has_group("azm_operating_model.azm_group_reviewer")
+                or self.env.user.has_group("azm_operating_model.azm_group_manager")):
+            raise UserError("الاعتماد للمراجع أو مدير النموذج.")
         for rec in self:
             if rec.state != "review":
                 raise UserError("الاعتماد يتم من حالة «تحت المراجعة» فقط.")

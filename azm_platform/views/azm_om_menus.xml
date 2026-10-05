@@ -95,4 +95,75 @@
     <!-- Same page from the Operating Model app itself -->
     <menuitem id="menu_om_dashboard_in_om" name="نماذج التشغيل" parent="azm_operating_model.azm_menu_root"
               action="action_azm_om_hub" sequence="1"/>
+    <!-- =========================================================== Progress
+         مساحتي is one person's own page; this is the other half of the same subject and
+         deliberately not that. Somebody tracking the work does not want their own work,
+         they want everybody's: who prepares each model, who reviews it, where it stands,
+         and which part belongs to whom. -->
+    <record id="action_azm_progress" model="ir.actions.client">
+        <field name="name">Progress</field>
+        <field name="tag">azm_progress</field>
+    </record>
+    <menuitem id="menu_progress" name="Progress" parent="azm_platform.menu_root"
+              action="action_azm_progress" sequence="2"
+              groups="azm_operating_model.azm_group_manager"/>
+
+    <!-- ===================================================== who sees which page
+         Said as records, not as `groups=` on the menuitems: that *adds* to whatever a
+         menu already carries, so an upgrade would leave every one of these showing to
+         exactly the people it is being taken from.
+
+         Somebody whose job is answering their entity's questions gets their own page
+         and the deliverables it produces, and nothing else — the group cockpit, the
+         entity list, the structure and the model dashboards are figures about other
+         people's work that they cannot act on. A reviewer gets what reviewing needs on
+         top of that. The rest is the administrator's.
+    -->
+    <record id="azm_platform.menu_home" model="ir.ui.menu">
+        <field name="group_ids" eval="[(6, 0, [
+            ref('azm_operating_model.azm_group_manager'),
+            ref('azm_platform.group_azm_manager')])]"/>
+    </record>
+    <record id="azm_platform.menu_entities" model="ir.ui.menu">
+        <field name="group_ids" eval="[(6, 0, [
+            ref('azm_operating_model.azm_group_manager'),
+            ref('azm_platform.group_azm_manager')])]"/>
+    </record>
+    <record id="azm_platform.menu_structure" model="ir.ui.menu">
+        <field name="group_ids" eval="[(6, 0, [
+            ref('azm_operating_model.azm_group_manager'),
+            ref('azm_platform.group_azm_manager')])]"/>
+    </record>
+    <record id="menu_om_dashboard" model="ir.ui.menu">
+        <field name="group_ids" eval="[(6, 0, [ref('azm_operating_model.azm_group_manager')])]"/>
+    </record>
+    <record id="azm_platform.menu_employees" model="ir.ui.menu">
+        <field name="group_ids" eval="[(6, 0, [
+            ref('azm_operating_model.azm_group_manager'),
+            ref('azm_platform.group_azm_manager')])]"/>
+    </record>
+    <record id="azm_platform.menu_departments" model="ir.ui.menu">
+        <field name="group_ids" eval="[(6, 0, [
+            ref('azm_operating_model.azm_group_manager'),
+            ref('azm_platform.group_azm_manager')])]"/>
+    </record>
+    <record id="azm_platform.menu_projects" model="ir.ui.menu">
+        <field name="group_ids" eval="[(6, 0, [ref('azm_operating_model.azm_group_reviewer')])]"/>
+    </record>
+    <record id="azm_platform.menu_tasks" model="ir.ui.menu">
+        <field name="group_ids" eval="[(6, 0, [ref('azm_operating_model.azm_group_reviewer')])]"/>
+    </record>
+    <record id="azm_platform.menu_documents" model="ir.ui.menu">
+        <field name="group_ids" eval="[(6, 0, [ref('azm_operating_model.azm_group_reviewer')])]"/>
+    </record>
+    <!-- reviewing needs these: the work sent in, and the risks it raised -->
+    <record id="menu_om_assessments" model="ir.ui.menu">
+        <field name="group_ids" eval="[(6, 0, [ref('azm_operating_model.azm_group_reviewer')])]"/>
+    </record>
+    <record id="menu_om_findings" model="ir.ui.menu">
+        <field name="group_ids" eval="[(6, 0, [ref('azm_operating_model.azm_group_reviewer')])]"/>
+    </record>
+    <record id="menu_trees" model="ir.ui.menu">
+        <field name="group_ids" eval="[(6, 0, [ref('azm_operating_model.azm_group_reviewer')])]"/>
+    </record>
 </odoo>

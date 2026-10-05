@@ -25,7 +25,8 @@ export class AzmMyWork extends Component {
         this.action = useService("action");
         this.keepLoad = new KeepLast();
         this.state = proxy({ loaded: false, data: null, error: "",
-                             sending: false, sent: null, sendError: "" });
+                             sending: false, deciding: false, sent: null,
+                             sendError: "" });
         onWillStart(async () => {
             await this.load();
         });
@@ -121,19 +122,59 @@ export class AzmMyWork extends Component {
     }
 
     // ---------------------------------------------------------------- going somewhere
-    /** Straight into the assessment, where the questions are answered. */
-    openAssessment(row) {
+    /**
+     * Straight into the answering workspace, which is where the questions are.
+     *
+     * It used to open the assessment's form, from which the reader had to find and
+     * press another button to get where they were going. Both models have their own
+     * workspace and both open the same way.
+     */
+    async openAssessment(row) {
         if (!row.assessment_id) {
             this.action.doAction(row.action);
             return;
         }
-        this.action.doAction({
-            type: "ir.actions.act_window",
+        const action = await this.orm.call("azm.dashboard", "open_my_workspace", [], {
             res_model: row.res_model,
-            res_id: row.assessment_id,
-            views: [[false, "form"]],
-            target: "current",
+            assessment_id: row.assessment_id,
         });
+        await this.action.doAction(action);
+    }
+
+    // ---------------------------------------------------------------- reviewing
+    /** Accept the answers, or send them back for more work. */
+    async decide(review, accept) {
+        if (this.state.deciding) {
+            return;
+        }
+        this.state.deciding = review.id;
+        this.state.sendError = "";
+        try {
+            const out = await this.orm.call(
+                "azm.dashboard", accept ? "accept_my_review" : "return_my_review", [], {
+                    res_model: review.res_model,
+                    assessment_id: review.id,
+                });
+            this.state.data = out.work;
+            this.state.sent = {
+                entity: review.entity, model: review.model_label, reviewers: [],
+                note: accept ? "قُبلت الإجابات واعتُمدت." : "أُعيدت للمُعد لاستكمالها.",
+            };
+        } catch (error) {
+            this.state.sendError = (error && error.data && error.data.message)
+                || (error && error.message) || "تعذّر إتمام المراجعة.";
+        } finally {
+            this.state.deciding = false;
+        }
+    }
+
+    /** Read the answers being reviewed, in the workspace they were written in. */
+    async openReviewWorkspace(review) {
+        const action = await this.orm.call("azm.dashboard", "open_my_workspace", [], {
+            res_model: review.res_model,
+            assessment_id: review.id,
+        });
+        await this.action.doAction(action);
     }
 
     openDeliverables() {
@@ -151,11 +192,6 @@ export class AzmMyWork extends Component {
     companyOf(row) {
         const entity = this.d.entities.find((e) => e.id === row.entity_id);
         return (entity && entity.company_id) || undefined;
-    }
-
-    /** Open a submitted assessment to review it. */
-    openReview(review) {
-        this.openRecord(review.res_model, review.id);
     }
 
     openRecord(model, id) {

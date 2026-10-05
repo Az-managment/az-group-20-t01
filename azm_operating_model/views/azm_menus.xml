@@ -10,14 +10,14 @@
     -->
     <menuitem id="azm_menu_root" name="AZM نموذج التشغيل" sequence="60"
               web_icon="azm_operating_model,static/description/icon.png"
-              groups="azm_operating_model.azm_group_reviewer"/>
+              groups="azm_operating_model.azm_group_manager"/>
     <!--
         Said again, as a replacement. `groups=` on an existing menuitem adds to what is
         already there, so on an upgrade the menu kept the preparer group it was created
         with and went on being shown to exactly the people it was being taken from.
     -->
     <record id="azm_menu_root" model="ir.ui.menu">
-        <field name="group_ids" eval="[(6, 0, [ref('azm_operating_model.azm_group_reviewer')])]"/>
+        <field name="group_ids" eval="[(6, 0, [ref('azm_operating_model.azm_group_manager')])]"/>
     </record>
     <menuitem id="azm_assessment_menu" name="الإفادات" parent="azm_menu_root"
               action="azm_assessment_action" sequence="10"/>

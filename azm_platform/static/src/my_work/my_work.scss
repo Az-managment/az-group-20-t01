@@ -133,6 +133,13 @@
         &:disabled { opacity: .6; }
     }
 
+    // sending it back is the quieter of the two decisions, so it reads quieter
+    .o_azm_return {
+        border: 1px solid $azm-border;
+        color: $azm-muted;
+        &:hover:not(:disabled) { border-color: #c2410c; color: #c2410c; }
+    }
+
     // ---------------------------------------------------------------- deliverables
     .o_azm_outputs_card {
         display: flex;

@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="azm_platform.Progress">
+    <div class="o_action o_azm_dashboard o_azm_om o_azm_progress_page" dir="rtl">
+
+        <div class="o_azm_om_title">
+            <div>
+                <h1>التقدّم <small class="text-muted">Progress</small></h1>
+                <p class="text-muted mb-0">
+                    من يعمل على ماذا، وأين وصل.
+                    <small class="o_azm_en">Who is doing what, and how far they have got.</small>
+                </p>
+            </div>
+            <button t-if="this.state.loaded and this.d and this.d.available" type="button"
+                    class="btn btn-sm btn-light" t-on-click="() => this.openAssignments()">
+                <i class="oi me-1" data-icon="assignment"/>وزّع الأجزاء
+            </button>
+        </div>
+
+        <div t-if="!this.state.loaded" class="o_azm_loading">
+            <i class="oi oi-spin" data-icon="progress_activity" title="Loading"/>
+        </div>
+        <div t-elif="this.state.error" class="o_azm_card o_azm_empty">
+            <i class="oi" data-icon="error" title="Error"/>
+            <strong t-out="this.state.error"/>
+        </div>
+        <div t-elif="!this.d.available" class="o_azm_card o_azm_empty">
+            <i class="oi" data-icon="lock" title="No access"/>
+            <strong>لا تتوفّر متابعة لحسابك</strong>
+            <small>No work is visible to your user.</small>
+        </div>
+
+        <t t-else="">
+            <section class="o_azm_kpis">
+                <div t-foreach="this.kpis" t-as="kpi" t-key="kpi.key"
+                     t-attf-class="o_azm_kpi o_azm_kpi_static o_azm_tone_{{kpi.tone}}">
+                    <span class="o_azm_kpi_text">
+                        <span class="o_azm_kpi_label">
+                            <t t-out="kpi.label"/><em class="o_azm_kpi_en" t-out="kpi.en"/>
+                        </span>
+                        <strong class="o_azm_kpi_value" t-out="kpi.value"/>
+                        <small t-out="kpi.sub"/>
+                    </span>
+                    <span class="o_azm_icon_badge">
+                        <i class="oi" t-att-data-icon="kpi.icon" t-att-title="kpi.label"/>
+                    </span>
+                </div>
+            </section>
+
+            <!-- ====================================================== by person -->
+            <section t-if="this.d.people.length">
+                <h2 class="o_azm_section_title">
+                    الأشخاص <em class="o_azm_en">People</em>
+                </h2>
+                <div class="o_azm_card">
+                    <div t-foreach="this.d.people" t-as="person" t-key="person.id"
+                         class="o_azm_person_row">
+                        <span class="o_azm_icon_badge o_azm_tone_slate">
+                            <i class="oi" data-icon="person" title="Person"/>
+                        </span>
+                        <div class="o_azm_model_main">
+                            <b t-out="person.name"/>
+                            <small>
+                                <t t-out="person.roles.join('، ')"/>
+                                · <t t-out="person.entities.join('، ')"/>
+                            </small>
+                        </div>
+                        <div t-if="person.parts" class="o_azm_model_meter">
+                            <span class="o_azm_progress o_azm_om_meter o_azm_tone_indigo">
+                                <span class="o_azm_progress_bar"
+                                      t-attf-style="width: {{person.progress}}%"/>
+                            </span>
+                            <small>
+                                <t t-out="person.answered"/>/<t t-out="person.total"/>
+                                · <t t-out="person.parts"/> جزء
+                                <t t-if="person.left"> · بقي <b t-out="person.left"/></t>
+                            </small>
+                        </div>
+                        <small t-else="" class="text-muted">لا أجزاء مُسندة إليه</small>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ====================================================== by entity -->
+            <section>
+                <h2 class="o_azm_section_title">
+                    الكيانات والنماذج <em class="o_azm_en">Entities and models</em>
+                </h2>
+                <div t-if="!this.byEntity.length" class="o_azm_card o_azm_empty">
+                    <i class="oi" data-icon="inbox" title="Nothing"/>
+                    <strong>لا توجد إفادات بعد</strong>
+                </div>
+                <div t-foreach="this.byEntity" t-as="block" t-key="block.id"
+                     class="o_azm_card o_azm_entity_block">
+                    <header class="o_azm_entity_head">
+                        <span class="o_azm_icon_badge o_azm_tone_slate">
+                            <i class="oi" data-icon="business" title="Entity"/>
+                        </span>
+                        <h3 t-out="block.name"/>
+                    </header>
+
+                    <t t-foreach="block.rows" t-as="row" t-key="row.res_model + '-' + row.id">
+                        <div class="o_azm_model_row">
+                            <span t-attf-class="o_azm_icon_badge o_azm_tone_{{row.tone}}">
+                                <i class="oi" t-att-data-icon="row.icon" t-att-title="row.label"/>
+                            </span>
+                            <div class="o_azm_model_main">
+                                <b t-out="row.label"/>
+                                <small>
+                                    يُعدّها <t t-out="row.preparer"/>
+                                    <t t-if="row.reviewer"> · يراجعها <t t-out="row.reviewer"/></t>
+                                    <t t-else=""> · بلا مراجع محدد</t>
+                                </small>
+                                <div class="o_azm_model_meter">
+                                    <span t-attf-class="o_azm_progress o_azm_om_meter o_azm_tone_{{row.tone}}">
+                                        <span class="o_azm_progress_bar"
+                                              t-attf-style="width: {{row.progress}}%"/>
+                                    </span>
+                                    <small>
+                                        <t t-out="row.answered"/>/<t t-out="row.total"/>
+                                        <t t-if="row.left"> · بقي <b t-out="row.left"/></t>
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="o_azm_model_side">
+                                <span t-attf-class="o_azm_standing o_azm_standing_{{row.css}}"
+                                      t-out="row.standing"/>
+                                <small class="text-muted">نسخة <t t-out="row.version"/></small>
+                            </div>
+                            <div class="o_azm_model_actions">
+                                <button t-if="row.parts.length" type="button"
+                                        class="btn btn-sm btn-light"
+                                        t-attf-title="{{row.parts.length}} جزء مُسند"
+                                        t-on-click="() => this.toggle(row)">
+                                    <i t-attf-class="oi {{this.isOpen(row) ? 'o_azm_open' : ''}}"
+                                       data-icon="chevron_left"/>
+                                    <t t-out="row.parts.length"/>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-light"
+                                        title="افتح الإفادة"
+                                        t-on-click="() => this.open(row)">
+                                    <i class="oi" data-icon="open_in_new"/>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div t-if="this.isOpen(row)" class="o_azm_part_rows">
+                            <div t-foreach="row.parts" t-as="part" t-key="part.name"
+                                 class="o_azm_part_row">
+                                <span t-attf-class="o_azm_dot {{part.left ? 'o_azm_dot_muted' : 'o_azm_dot_ok'}}"/>
+                                <span class="o_azm_line_main">
+                                    <b t-out="part.name"/>
+                                    <small t-out="part.user"/>
+                                </span>
+                                <small>
+                                    <t t-out="part.answered"/>/<t t-out="part.total"/>
+                                    <t t-if="part.left"> · بقي <t t-out="part.left"/></t>
+                                </small>
+                            </div>
+                        </div>
+                    </t>
+                </div>
+            </section>
+        </t>
+    </div>
+</t>
+
+</templates>

@@ -233,16 +233,21 @@ class TestAzmGroupComposition(TransactionCase):
                              company_ids=[(6, 0, [self.company.id])], groups=groups)
 
     def _azm_menus(self, user):
+        """The pages inside the AZM app this person is offered — the root itself is not
+        a page, so `child_of`, which includes it, has it taken back out."""
         root = self.env.ref('azm_platform.menu_root')
         inside = set(self.env['ir.ui.menu'].search([('id', 'child_of', root.id)]).ids)
+        inside.discard(root.id)
         visible = set(self.env['ir.ui.menu'].with_user(user)._visible_menu_ids()) & inside
         return set(self.env['ir.ui.menu'].browse(sorted(visible)).mapped('name'))
 
-    def test_the_cockpit_works_without_the_operating_model(self):
+    def test_the_cockpit_degrades_rather_than_failing_without_the_operating_model(self):
+        """Holding only the platform group is still a supported position: nothing of the
+        operating model is offered, and every page that reads one says so rather than
+        failing. The cockpit pages themselves are now the administrator's — see
+        test_each_role_sees_only_what_it_works_on."""
         user = self._user('azm_groups_cockpit', 'azm_platform.group_azm_user')
         menus = self._azm_menus(user)
-        self.assertIn('Home', menus)
-        self.assertIn('Entities', menus)
         self.assertFalse(menus & {'Operating Models', 'Assessments', 'Risk Register'},
                          "the operating model's menus are not offered to them")
 
@@ -255,11 +260,49 @@ class TestAzmGroupComposition(TransactionCase):
         self.assertFalse(dashboard.get_fin_tree(company_id=self.company.id)['available'])
         dashboard.get_company_overview(self.company.id)   # must not raise
 
-    def test_the_operating_model_menus_come_with_its_group(self):
-        both = self._user('azm_groups_both',
-                          'azm_platform.group_azm_user,azm_operating_model.azm_group_user')
-        menus = self._azm_menus(both)
-        self.assertTrue({'Operating Models', 'Assessments', 'Risk Register'} <= menus)
+    def test_each_role_sees_only_what_it_works_on(self):
+        """Somebody whose job is answering their entity's questions was being shown the
+        group cockpit, the entity list, the structure and the model dashboards — figures
+        about other people's work that they cannot act on, and a way into the catalogue
+        besides. Each role now gets the pages its job needs and no more."""
+        answerer = self._user(
+            'azm_groups_answerer',
+            'azm_platform.group_azm_user,azm_operating_model.azm_group_user')
+        reviewer = self._user(
+            'azm_groups_reviewer',
+            'azm_platform.group_azm_user,azm_operating_model.azm_group_reviewer')
+        manager = self._user(
+            'azm_groups_manager',
+            'azm_platform.group_azm_user,azm_operating_model.azm_group_manager')
+
+        theirs = self._azm_menus(answerer)
+        self.assertEqual(theirs, {'My work', 'Outputs Library'},
+                         'their own work, and what it produces')
+
+        reviewing = self._azm_menus(reviewer)
+        self.assertTrue({'My work', 'Assessments', 'Risk Register', 'Trees'} <= reviewing,
+                        'reviewing needs the work sent in and the risks it raised')
+        self.assertFalse(reviewing & {'Home', 'Entities', 'Group Structure',
+                                      'Operating Models', 'Question Catalogue'},
+                         'but not the cockpit or the catalogue')
+        self.assertLess(theirs, reviewing, 'and an answerer sees less than a reviewer')
+
+        running = self._azm_menus(manager)
+        self.assertTrue({'Home', 'Entities', 'Group Structure', 'Operating Models',
+                         'Progress', 'Question Catalogue'} <= running)
+        self.assertLess(reviewing, running, 'and a reviewer sees less than a manager')
+
+    def test_tracking_is_the_administrator_s_page_not_an_answerer_s(self):
+        """التقدّم is everybody's work; مساحتي is your own. They are different pages for
+        different jobs, and the tracking one is not offered to the people being tracked."""
+        answerer = self._user(
+            'azm_groups_tracked',
+            'azm_platform.group_azm_user,azm_operating_model.azm_group_user')
+        self.assertNotIn('Progress', self._azm_menus(answerer))
+        manager = self._user(
+            'azm_groups_tracker',
+            'azm_platform.group_azm_user,azm_operating_model.azm_group_manager')
+        self.assertIn('Progress', self._azm_menus(manager))
 
     def test_neither_group_implies_the_other(self):
         """Linking them would take the supported position above away."""

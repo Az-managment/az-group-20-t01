@@ -21,5 +21,7 @@ from . import azm_trees
 from . import azm_library
 # مساحتي: one person's own work, rather than the group's cockpit
 from . import azm_my_work
+# التقدّم: everybody's work, for whoever is tracking it
+from . import azm_progress
 from . import azm_fin_tree
 from . import azm_proc_tree

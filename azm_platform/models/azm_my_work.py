@@ -232,6 +232,61 @@ class AzmDashboard(models.AbstractModel):
         return out
 
     @api.model
+    def _my_work_record(self, res_model, record_id):
+        """One of the two things this page deals in, checked rather than taken.
+
+        The model name arrives from a browser: tested against the pair this page knows
+        before it is used to reach the registry, so one page does not become a way to
+        call anything.
+        """
+        if res_model not in {spec["model"] for spec in MODELS}:
+            raise UserError(_("This is not something this page can open."))
+        try:
+            record_id = int(record_id)
+        except (TypeError, ValueError):
+            raise UserError(_("This assessment no longer exists.")) from None
+        record = self.env[res_model].browse(record_id).exists()
+        if not record:
+            raise UserError(_("This assessment no longer exists."))
+        return record
+
+    @api.model
+    def open_my_workspace(self, res_model, assessment_id):
+        """Open the answering workspace, which is where the questions actually are.
+
+        "Open the answers" used to land on the assessment's form, from which the reader
+        had to find and press another button to reach the place they were going. Both
+        models have their own workspace and both are opened the same way.
+        """
+        record = self._my_work_record(res_model, assessment_id)
+        record.check_access("read")
+        return record.action_open_workspace()
+
+    @api.model
+    def accept_my_review(self, res_model, assessment_id):
+        """Accept the answers that were sent for review, and hand the page back."""
+        record = self._my_work_record(res_model, assessment_id)
+        record.check_access("write")
+        record.action_approve()
+        return {"done": True, "state": record.state, "work": self.get_my_work()}
+
+    @api.model
+    def return_my_review(self, res_model, assessment_id):
+        """Send it back for more work, rather than accepting it."""
+        record = self._my_work_record(res_model, assessment_id)
+        record.check_access("write")
+        if record.state != "review":
+            raise UserError(_("Only work that is under review can be sent back."))
+        record.action_back_to_draft()
+        preparer = record.user_id or record.create_uid
+        if preparer:
+            # they are not watching this page; put it on their list
+            record.sudo().activity_schedule(
+                "mail.mail_activity_data_todo", user_id=preparer.id,
+                summary=_("Your assessment was sent back for more work"))
+        return {"done": True, "state": record.state, "work": self.get_my_work()}
+
+    @api.model
     def submit_my_work(self, res_model, assessment_id):
         """Send one assessment for review, and hand back the page as it now stands.
 
@@ -239,16 +294,7 @@ class AzmDashboard(models.AbstractModel):
         given: this is reached from a browser, and a method name plus a model name from
         the client is how one page becomes a way to call anything.
         """
-        allowed = {spec["model"] for spec in MODELS}
-        if res_model not in allowed:
-            raise UserError(_("This is not something that goes for review."))
-        try:
-            assessment_id = int(assessment_id)
-        except (TypeError, ValueError):
-            raise UserError(_("This assessment no longer exists.")) from None
-        record = self.env[res_model].browse(assessment_id).exists()
-        if not record:
-            raise UserError(_("This assessment no longer exists."))
+        record = self._my_work_record(res_model, assessment_id)
         # Said here rather than left to action_submit, which quietly skips anything not
         # in draft: the page would have reported "sent for review" over work that had
         # not moved, because nothing came back to say otherwise.

@@ -53,6 +53,7 @@ No data is duplicated: every figure is computed live from the source apps.
             'azm_platform/static/src/entity/**/*',
             'azm_platform/static/src/library/**/*',
             'azm_platform/static/src/my_work/**/*',
+            'azm_platform/static/src/progress/**/*',
             'azm_platform/static/src/operating_model/**/*',
         ],
         'web.report_assets_common': [
