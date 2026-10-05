@@ -30,6 +30,12 @@ class AzmDashboard(models.AbstractModel):
                         if bucket["total"] else 0,
             "entities": sorted(bucket["entities"]),
             "roles": sorted(bucket["roles"]),
+            # what else they are on, so somebody who answers nothing is not written up
+            # as having nothing: a reviewer's work is the reviewing
+            "preparing": bucket["preparing"],
+            "reviewing": bucket["reviewing"],
+            "awaiting": bucket["awaiting"],
+            "outstanding": bucket["outstanding"],
         }
 
     @api.model
@@ -44,12 +50,14 @@ class AzmDashboard(models.AbstractModel):
 
         rows, people = [], {}
 
-        def note(user, role, answered=0, total=0, entity="", part=False):
+        def note(user, role, answered=0, total=0, entity="", part=False, waiting=False,
+                 outstanding=0):
             if not user:
                 return
             bucket = people.setdefault(user.id, {
                 "user": user, "parts": 0, "answered": 0, "total": 0,
-                "entities": set(), "roles": set()})
+                "entities": set(), "roles": set(),
+                "preparing": 0, "reviewing": 0, "awaiting": 0, "outstanding": 0})
             bucket["roles"].add(role)
             if entity:
                 bucket["entities"].add(entity)
@@ -57,6 +65,13 @@ class AzmDashboard(models.AbstractModel):
                 bucket["parts"] += 1
                 bucket["answered"] += answered
                 bucket["total"] += total
+            elif role == "prepares":
+                bucket["preparing"] += 1
+                bucket["outstanding"] += outstanding
+            elif role == "reviews":
+                bucket["reviewing"] += 1
+                if waiting:
+                    bucket["awaiting"] += 1
 
         for spec in MODELS:
             Model = self.env.get(spec["model"])
@@ -98,9 +113,14 @@ class AzmDashboard(models.AbstractModel):
                         note(part.user_id, "answers", part.answered, part.total,
                              assessment.entity_id.name, part=True)
                 preparer = assessment.user_id or assessment.create_uid
-                note(preparer, "prepares", entity=assessment.entity_id.name)
+                # only what is still owed: an assessment under review or approved is no
+                # longer waiting on the person who prepared it
+                note(preparer, "prepares", entity=assessment.entity_id.name,
+                     outstanding=max(total - answered, 0)
+                     if assessment.state == "draft" else 0)
                 note(assessment.reviewer_id, "reviews",
-                     entity=assessment.entity_id.name)
+                     entity=assessment.entity_id.name,
+                     waiting=assessment.state == "review")
                 rows.append({
                     "id": assessment.id,
                     "ref": assessment.name,
@@ -127,7 +147,8 @@ class AzmDashboard(models.AbstractModel):
                 })
 
         ranked = sorted((self._progress_person(b["user"], b) for b in people.values()),
-                        key=lambda p: (-p["left"], p["name"]))
+                        key=lambda p: (-p["left"], -p["outstanding"], -p["awaiting"],
+                                       p["name"]))
         return {
             "available": True,
             "rows": sorted(rows, key=lambda r: (r["entity"], r["key"], r["ref"])),

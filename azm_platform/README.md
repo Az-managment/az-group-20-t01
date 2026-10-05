@@ -132,6 +132,14 @@ answered, and — where the work has been divided — which part belongs to whom
 each of them has got, with a per-person summary on top. The people being tracked are not
 offered it.
 
+Each person on it is described by what they actually carry. Measuring everybody on
+answering parts told a reviewer with three assessments to look at that they had
+*لا أجزاء مُسندة إليه*, and somebody preparing ten the same — so it reads *يجيب N جزءًا*,
+*يُعدّ N إفادة*, *يراجع N إفادة*, and the figure beside it is whichever of those is
+actually outstanding: questions left in their parts, questions left in the drafts they
+prepare, or assessments waiting on their review. Whoever is carrying the most sorts
+first.
+
 Opening the answers from مساحتي lands in the **answering workspace**, for both models,
 rather than on the assessment's form with another button to find. A reviewer opens the
 same workspace to read what was sent, then **اقبل الإجابات** to accept it — which

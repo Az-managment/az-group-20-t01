@@ -465,6 +465,40 @@ class TestMyWork(TransactionCase):
         self.assertEqual(people[self.answerer.name]['parts'], 1,
                          'counted per person, over the parts actually theirs')
 
+    def test_a_person_is_described_by_what_they_actually_carry(self):
+        """"لا أجزاء مُسندة إليه" is the wrong thing to say about a reviewer.
+
+        The people column measured everybody on answering parts, so anybody whose job is
+        not answering was written up as having nothing — a reviewer with work waiting on
+        them, and somebody preparing ten assessments, both read as idle.
+        """
+        self.assessment.reviewer_id = self.reviewer.id
+        self.assessment.sudo().action_fill_demo()
+        D = self.env['azm.dashboard']
+        D.with_user(self.answerer).with_company(self.company).submit_my_work(
+            'azm.assessment', self.assessment.id)
+
+        people = {p['name']: p for p in D.with_company(self.company).get_progress()['people']}
+
+        reviewer = people[self.reviewer.name]
+        self.assertEqual(reviewer['parts'], 0, 'a reviewer answers nothing')
+        self.assertGreaterEqual(reviewer['reviewing'], 1, 'but they review something')
+        self.assertGreaterEqual(reviewer['awaiting'], 1, 'and some of it is waiting')
+
+        preparer = people[self.answerer.name]
+        self.assertGreaterEqual(preparer['preparing'], 1)
+        self.assertEqual(preparer['outstanding'], 0,
+                         'what they prepare is answered, and under review besides')
+
+        # somebody with an unfinished draft carries what is still unanswered in it
+        fresh = self.env['azm.assessment'].with_user(self.answerer).with_company(
+            self.company).create({'entity_id': self.entity.id, 'purchase_kind': 'goods',
+                                  'scenario': 'standard', 'user_id': self.answerer.id})
+        self.assertGreater(fresh.visible_count, 0)
+        people = {p['name']: p for p in D.with_company(self.company).get_progress()['people']}
+        self.assertGreater(people[self.answerer.name]['outstanding'], 0,
+                           'an unfinished draft is work they are carrying')
+
     def test_tracking_shows_every_live_assessment_of_an_entity(self):
         """An entity holds a procurement assessment per kind and scenario.
 

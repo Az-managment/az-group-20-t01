@@ -62,10 +62,23 @@
                         <div class="o_azm_model_main">
                             <b t-out="person.name"/>
                             <small>
-                                <t t-out="person.roles.join('، ')"/>
+                                <!-- what they are on, in their own words rather than
+                                     the engine's role keys -->
+                                <t t-if="person.parts">
+                                    يجيب <t t-out="person.parts"/> جزءًا
+                                </t>
+                                <t t-if="person.preparing">
+                                    <t t-if="person.parts"> · </t>
+                                    يُعدّ <t t-out="person.preparing"/> إفادة
+                                </t>
+                                <t t-if="person.reviewing">
+                                    <t t-if="person.parts or person.preparing"> · </t>
+                                    يراجع <t t-out="person.reviewing"/> إفادة
+                                </t>
                                 · <t t-out="person.entities.join('، ')"/>
                             </small>
                         </div>
+                        <!-- somebody who answers parts is measured on them -->
                         <div t-if="person.parts" class="o_azm_model_meter">
                             <span class="o_azm_progress o_azm_om_meter o_azm_tone_indigo">
                                 <span class="o_azm_progress_bar"
@@ -73,11 +86,26 @@
                             </span>
                             <small>
                                 <t t-out="person.answered"/>/<t t-out="person.total"/>
-                                · <t t-out="person.parts"/> جزء
                                 <t t-if="person.left"> · بقي <b t-out="person.left"/></t>
                             </small>
                         </div>
-                        <small t-else="" class="text-muted">لا أجزاء مُسندة إليه</small>
+                        <!-- a reviewer answers nothing, so measuring them on parts said
+                             they had nothing. What they carry is what is waiting. -->
+                        <span t-elif="person.awaiting" class="o_azm_standing o_azm_standing_info">
+                            <t t-out="person.awaiting"/> بانتظار مراجعته
+                        </span>
+                        <!-- and somebody preparing undivided assessments carries what
+                             is still unanswered in them -->
+                        <span t-elif="person.outstanding" class="o_azm_standing o_azm_standing_warn">
+                            بقي <t t-out="person.outstanding"/> سؤالًا
+                        </span>
+                        <small t-elif="person.reviewing" class="text-muted">
+                            لا شيء بانتظاره الآن
+                        </small>
+                        <small t-elif="person.preparing" class="text-muted">
+                            إفاداته مكتملة
+                        </small>
+                        <small t-else="" class="text-muted">لا شيء مُسند إليه</small>
                     </div>
                 </div>
             </section>
