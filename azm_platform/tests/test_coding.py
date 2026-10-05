@@ -135,12 +135,34 @@ class TestCoding(TransactionCase):
             self.assertEqual(pub._azm_payload()['tree_ref'], expected)
 
     def test_a_serial_is_allocated_once_and_never_moves(self):
-        module = self.env['azm.fin.module'].search([], limit=1)
-        pub = self.Pub._get(self.company, 'module', module=module, tab='rules')
-        first = pub._artifact().code
-        self.env['azm.fin.module'].create({'code': 'ZZZ', 'name': 'AZM Coding Probe'})
-        self.assertEqual(pub._artifact().code, first,
-                         "approved history is immutable: a new module renumbers nothing")
+        """Approved history is immutable: a module added later takes the next serial
+        rather than displacing the ones before it. The probe module carries a
+        requirement, or it would never enter the numbering at all."""
+        A = self.env['azm.artifact'].sudo()
+        A._register_all()
+        before = {a.ref: a.code for a in A.search([])}
+        highest = max(A.search([('domain', '=', 'FIN'), ('atype', '=', 'POL')]).mapped('serial'))
+
+        module = self.env['azm.fin.module'].create({'code': 'ZZZ', 'name': 'AZM Coding Probe'})
+        self.env['azm.fin.requirement'].create({
+            'module_id': module.id, 'code': 'ZZZ-001', 'req_id': 'AZM-FIN-REQ-900001',
+            'title': 'متطلب تجريبي', 'question': 'سؤال تجريبي', 'profile': 'P'})
+        A._register_all()
+
+        after = {a.ref: a.code for a in A.search([])}
+        self.assertEqual({r: c for r, c in after.items() if r in before}, before,
+                         "nothing that was already numbered moved")
+        new_ref = f"azm.fin.module,{module.id},rules"
+        self.assertIn(new_ref, after, "and the new module was numbered")
+        self.assertEqual(after[new_ref], f"AZM-FIN-POL-{highest + 1:06d}",
+                         "with the next serial, not one taken from somebody else")
+
+    def test_registering_twice_changes_nothing(self):
+        A = self.env['azm.artifact'].sudo()
+        A._register_all()
+        before = {a.ref: a.code for a in A.search([])}
+        A._register_all()
+        self.assertEqual({a.ref: a.code for a in A.search([])}, before)
 
     def test_a_document_names_itself_one_way(self):
         """The cover and the body of the same PDF print the same code."""
@@ -229,17 +251,31 @@ class TestCoding(TransactionCase):
             stage = self.env['azm.stage'].browse(node['id'])
             self.assertEqual([d['tab'] for d in node['docs']], stage._azm_outputs())
 
-    def test_the_tree_offers_only_what_this_entity_has(self):
-        """An output the catalogue allows but this entity's answers put nothing in is
-        not offered: a chip that opens on "there is nothing here" is worse than none."""
+    def test_an_output_this_entity_has_nothing_in_is_not_offered(self):
+        """Not restating the rule: an output is made genuinely empty for this entity and
+        the chip has to disappear, while its neighbours stay."""
         D = self.env['azm.dashboard'].with_company(self.company)
-        empty = D._tree_known_empty(self.company, 'module')
-        tree = D.get_fin_tree(company_id=self.company.id)
-        for node in tree['nodes']:
-            module = self.env['azm.fin.module'].browse(node['id'])
-            self.assertEqual(
-                [d['tab'] for d in node['docs']],
-                [t for t in module._azm_outputs() if (module.id, t) not in empty])
+        module = next(m for m in self.env['azm.fin.module'].search([])
+                      if len(m._azm_outputs()) >= 2)
+        tab, keep = module._azm_outputs()[0], module._azm_outputs()[1]
+
+        def chips():
+            tree = D.get_fin_tree(company_id=self.company.id)
+            node = next(n for n in tree['nodes'] if n['id'] == module.id)
+            return [d['tab'] for d in node['docs']], tree['outputs']
+
+        before, outputs_before = chips()
+        self.assertIn(tab, before)
+        count_before = next(f['count'] for f in outputs_before['families'] if f['tab'] == tab)
+
+        # the document itself is what knows an output came out empty
+        self.Pub._get(self.company, 'module', module=module, tab=tab).write({'state': 'empty'})
+
+        after, outputs_after = chips()
+        self.assertNotIn(tab, after, "the empty output is no longer offered")
+        self.assertIn(keep, after, "its neighbours still are")
+        count_after = next((f['count'] for f in outputs_after['families'] if f['tab'] == tab), 0)
+        self.assertEqual(count_after, count_before - 1, "and it stops being counted")
 
     def test_the_count_says_what_the_branches_show(self):
         """The tile and the chips are the same documents counted once."""
@@ -255,3 +291,30 @@ class TestCoding(TransactionCase):
                 if family['tab'] in on_branches:
                     self.assertEqual(family['count'], on_branches[family['tab']],
                                      f"{family['tab']}: the tile and the branches disagree")
+
+    # ------------------------------------------------------------------ the ground truth
+    def test_which_outputs_a_module_has_is_pinned_to_the_catalogue(self):
+        """Every other test builds its expectation by calling _azm_outputs() — the method
+        under test. This one states the answer, read off the requirements themselves:
+        FIN.GOV holds no requirement of the procedure kind, FIN.PUR none of the policy
+        kind, and gaps and target direction belong to any module with requirements."""
+        expected = {
+            'GOV': ['rules', 'authority', 'reports', 'gaps', 'future'],
+            'GLD': ['rules', 'gaps', 'future'],
+            'PUR': ['workflow', 'authority', 'gaps', 'future'],
+            'TRY': ['rules', 'workflow', 'reports', 'integration', 'gaps', 'future'],
+        }
+        for code, tabs in expected.items():
+            module = self.env['azm.fin.module'].search([('code', '=', code)], limit=1)
+            self.assertTrue(module, f"the catalogue has module {code}")
+            self.assertEqual(module._azm_outputs(), tabs, f"FIN.{code}")
+
+    def test_a_governance_stage_is_pinned_too(self):
+        governance = self.env['azm.stage'].search([('is_governance', '=', True)])
+        self.assertEqual(governance.mapped('code'), ['GOV'],
+                         "the cycle has exactly one governance stage")
+        self.assertNotIn('pur_procedure', governance._azm_outputs())
+        self.assertNotIn('pur_workflow', governance._azm_outputs())
+        operating = self.env['azm.stage'].search([('is_governance', '=', False)], limit=1)
+        self.assertIn('pur_procedure', operating._azm_outputs())
+        self.assertIn('pur_workflow', operating._azm_outputs())

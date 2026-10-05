@@ -67,7 +67,13 @@ class TestProcDocuments(TransactionCase):
             self.assertEqual(pub._folder_key()[0], PROC_OUTPUTS[tab][0])
         policy = self.Pub.sudo()._get(self.company, 'stage', stage=self.stage, tab='pur_policy')
         payload = policy._azm_payload()
-        self.assertTrue(payload['html'], "the engine writes the body of an output; the document wraps it")
+        # the engine writes the body; assert it wrote *this stage's* policy rather than
+        # merely returning a non-empty string
+        self.assertTrue(payload['html'], "the engine writes the body of an output")
+        self.assertIn(payload['code'], str(payload['html']),
+                      "and stamps the document's own code inside it")
+        self.assertIn(self.stage.name, str(payload['html']),
+                      "and it is this stage's policy, not another's")
         self.assertTrue(payload['code'].startswith('AZM-PUR-POL-'),
                         "an output is coded the way the registry codes it")
 

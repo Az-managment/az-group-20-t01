@@ -119,8 +119,12 @@ class TestOmDashboard(TransactionCase):
         self.assertGreaterEqual(self.company.azm_employee_count, 1)
         plain = new_test_user(self.env, 'azm_no_hr', company_id=self.company.id,
                               company_ids=[(6, 0, [self.company.id])], groups='azm_platform.group_azm_user')
-        if not self.env['hr.employee'].with_user(plain).has_access('read'):
-            self.assertEqual(self.company.with_user(plain).azm_employee_count, 0)
+        # the precondition is asserted rather than branched on: if access config drifts,
+        # the check must fail rather than quietly stop running
+        self.assertFalse(self.env['hr.employee'].with_user(plain).has_access('read'),
+                         "a plain platform user is not an HR reader")
+        self.assertEqual(self.company.with_user(plain).azm_employee_count, 0,
+                         "so the entity's headcount reads zero for them")
         home = self.env['azm.dashboard'].with_user(plain).get_dashboard_data()
         self.assertEqual(home['kpis']['employees'], self.company.with_user(plain).azm_employee_count)
 
@@ -144,7 +148,13 @@ class TestOmDashboard(TransactionCase):
         hrf = Dash.get_financial_model_data(source='HRF')
         self.assertEqual(hrf['kpis']['requirements'], 60)
         one = Dash.get_financial_model_data(assessment_id=fin.id, profile='A')
-        self.assertTrue(all(m['requirements'] == len([1 for _ in range(m['requirements'])]) for m in one['modules']))
+        # the profile filter must actually narrow the catalogue, not be ignored
+        self.assertTrue(one['modules'])
+        self.assertLess(sum(m['requirements'] for m in one['modules']),
+                        sum(m['requirements'] for m in data['modules']),
+                        "asking for one answer template returns fewer requirements than all of them")
+        self.assertTrue(all(p['key'] == 'A' or p['requirements'] == 0 for p in one['profiles']),
+                        "and only that template is represented")
         self.assertTrue(Dash.get_dashboard_data()['fin'])
         self.assertTrue(Dash.get_company_overview(self.company.id)['fin'])
         other = new_test_user(self.env, 'azm_fin_other', company_id=self.company.id,

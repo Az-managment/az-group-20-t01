@@ -69,7 +69,13 @@ class TestAzmAssessment(TransactionCase):
         new = self.env["azm.assessment"].browse(
             self.assessment.with_user(self.manager).action_new_version()["res_id"])
         self.assertEqual((new.version, new.state, self.assessment.state), (2, "draft", "archived"))
-        self.assertEqual(len(new.answer_ids), len(self.assessment.answer_ids))
+        # a copy that produced the right number of *blank* lines would pass a count,
+        # so the answers themselves are compared
+        was = {a.question_id.id: a._engine_value() for a in self.assessment.answer_ids}
+        now = {a.question_id.id: a._engine_value() for a in new.answer_ids}
+        self.assertEqual(now, was, "the new version carries the answers, not just the questions")
+        self.assertTrue([v for v in now.values() if v is not None],
+                        "and there were answers to carry")
 
     def test_every_tab_renders(self):
         self.assessment.action_fill_demo()

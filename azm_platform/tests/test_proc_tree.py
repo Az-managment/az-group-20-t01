@@ -85,10 +85,12 @@ class TestProcTree(TransactionCase):
         self.assertTrue(answer, "the demo fills at least one single-choice answer")
         self.assertEqual(self._leaf(self._tree(), answer.question_id)['status']['key'], 'answered')
 
+        # asserted, not branched on: this is the only coverage of the "not certain"
+        # status, and an `if` here would let it disappear silently
         unknown = answer.question_id.option_ids.filtered(lambda o: o.kind == 'unknown')[:1]
-        if unknown:
-            answer.option_id = unknown
-            self.assertEqual(self._leaf(self._tree(), answer.question_id)['status']['key'], 'unsure')
+        self.assertTrue(unknown, "the catalogue offers 'لا أعرف' on this question")
+        answer.option_id = unknown
+        self.assertEqual(self._leaf(self._tree(), answer.question_id)['status']['key'], 'unsure')
 
         answer.option_id = False
         self.assertEqual(self._leaf(self._tree(), answer.question_id)['status']['key'], 'open')

@@ -147,6 +147,8 @@ class TestOperatingModelDocuments(TransactionCase):
         outputs = pubs.filtered(lambda p: p.kind == 'module' and p.module_id == self.pur)
         outputs._generate_safe()
         self.assertFalse(outputs.filtered(lambda p: p.state == 'error'), outputs.mapped('error'))
+        self.assertTrue(outputs.filtered(lambda p: p.state == 'done'),
+                        "at least one output has content, or the checks below never run")
         for pub in outputs.filtered(lambda p: p.state == 'done'):
             payload = pub._azm_payload()
             # grouped under their topic, in tree order
