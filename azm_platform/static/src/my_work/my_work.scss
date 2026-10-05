@@ -1,0 +1,185 @@
+// مساحتي · My work — one person's own page.
+//
+// Logical properties throughout: the page is always rtl, and the bundle is mirrored by
+// the reader's language, so the two must not disagree.
+.o_azm_mywork {
+
+    .o_azm_section_title {
+        margin: 22px 0 10px;
+        font-size: 13px;
+        font-weight: 700;
+        color: $azm-ink;
+        em { font-style: normal; font-size: 10.5px; color: $azm-muted; margin-inline-start: 7px; }
+    }
+
+    // ---------------------------------------------------------------- what just happened
+    .o_azm_sent {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+        border-inline-start: 3px solid map-get($azm-tones, 'green');
+        small { display: block; color: $azm-muted; font-size: 11px; }
+        > .oi { font-size: 18px; color: map-get($azm-tones, 'green'); }
+        > .btn { margin-inline-start: auto; }
+        &.o_azm_sent_bad {
+            border-inline-start-color: #dc2626;
+            > .oi { color: #dc2626; }
+        }
+    }
+
+    // ---------------------------------------------------------------- an entity's models
+    .o_azm_entity_block { padding: 0; }
+    .o_azm_entity_head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 16px;
+        border-bottom: 1px solid $azm-border;
+        h3 { margin: 0; font-size: 13px; font-weight: 700; }
+        small { font-size: 10.5px; }
+    }
+    .o_azm_model_row,
+    .o_azm_review_row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px;
+        + .o_azm_model_row,
+        + .o_azm_review_row { border-top: 1px solid $azm-border; }
+    }
+    .o_azm_model_main {
+        flex: 1 1 auto;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        b { font-size: 12.5px; }
+        small { font-size: 11px; color: $azm-muted; }
+        .o_azm_en { font-size: 10px; }
+    }
+    .o_azm_model_meter {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 4px;
+        .o_azm_progress { width: 150px; }
+        small { white-space: nowrap; }
+    }
+    // the parts of a split model that are this person's
+    .o_azm_parts {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        margin-top: 6px;
+    }
+    .o_azm_part {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 2px 8px;
+        border: 1px solid $azm-border;
+        border-radius: 20px;
+        font-size: 10.5px;
+        color: $azm-ink;
+        em {
+            font-style: normal;
+            font-weight: 700;
+            color: #c2410c;
+        }
+        .oi { font-size: 11px; color: map-get($azm-tones, 'green'); }
+        &.o_azm_part_done {
+            border-color: rgba(map-get($azm-tones, 'green'), .5);
+            background: rgba(map-get($azm-tones, 'green'), .07);
+        }
+    }
+
+    .o_azm_model_side {
+        flex: 0 0 auto;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 3px;
+        small { font-size: 10.5px; }
+    }
+    .o_azm_model_actions {
+        flex: 0 0 auto;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        .o_azm_tree_mark { width: 14px; height: 14px; color: map-get($azm-tones, 'green'); display: block; }
+    }
+
+    // where somebody's work stands, in a word
+    .o_azm_standing {
+        padding: 2px 9px;
+        border-radius: 20px;
+        font-size: 10.5px;
+        font-weight: 600;
+        white-space: nowrap;
+        &.o_azm_standing_warn  { background: rgba(#f97316, .14); color: #c2410c; }
+        &.o_azm_standing_info  { background: rgba($azm-blue, .12); color: $azm-blue; }
+        &.o_azm_standing_ok    { background: rgba(#16a34a, .14); color: #15803d; }
+        &.o_azm_standing_muted { background: rgba($azm-muted, .14); color: $azm-muted; }
+    }
+
+    // the one button that only appears when there is nothing left to answer
+    .o_azm_send {
+        border: 1px solid map-get($azm-tones, 'green');
+        background: rgba(map-get($azm-tones, 'green'), .1);
+        color: #15803d;
+        font-weight: 600;
+        &:hover:not(:disabled) { background: rgba(map-get($azm-tones, 'green'), .18); }
+        &:disabled { opacity: .6; }
+    }
+
+    // ---------------------------------------------------------------- deliverables
+    .o_azm_outputs_card {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+        padding: 14px 16px;
+        text-align: start;
+        border: 1px solid $azm-border;
+        &:hover { border-color: $azm-blue; }
+        b { font-size: 13px; }
+        small { font-size: 11px; color: $azm-muted; }
+        > .oi { margin-inline-start: auto; color: $azm-muted; }
+    }
+
+    // ---------------------------------------------------------------- around the work
+    .o_azm_around_grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 14px;
+        > .o_azm_card { padding: 0; }
+    }
+    .o_azm_line {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        width: 100%;
+        padding: 9px 14px;
+        text-align: start;
+        border: 0;
+        background: transparent;
+        + .o_azm_line { border-top: 1px solid $azm-border; }
+        &:not(.o_azm_line_flat):hover { background: rgba($azm-blue, .05); }
+        small { font-size: 10.5px; color: $azm-muted; white-space: nowrap; }
+    }
+    .o_azm_line_main {
+        flex: 1 1 auto;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        b { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        small { font-size: 10.5px; }
+    }
+
+    @media (max-width: 768px) {
+        .o_azm_model_row,
+        .o_azm_review_row { flex-wrap: wrap; }
+        .o_azm_model_meter .o_azm_progress { width: 110px; }
+    }
+}

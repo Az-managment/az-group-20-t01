@@ -4,6 +4,7 @@ from odoo.exceptions import UserError
 
 class AzmAnswer(models.Model):
     _name = "azm.answer"
+    _inherit = ["azm.assignable"]
     _description = "AZM Answer"
     _order = "stage_sequence, group, question_sequence, id"
 
@@ -57,7 +58,23 @@ class AzmAnswer(models.Model):
         if value_keys & set(vals) and not self.env.context.get("azm_skip_lock"):
             if any(a.assessment_id.state != "draft" for a in self):
                 raise UserError("الإفادة مش في حالة مسودة؛ لا يمكن تعديل الإجابات.")
+            self._azm_check_assignee()
         res = super().write(vals)
         if value_keys & set(vals) and not self.env.context.get("azm_no_visibility"):
             self.assessment_id._refresh_visibility()
         return res
+
+    # ---------------------------------------------------------------- whose part
+    def _azm_part_key(self):
+        self.ensure_one()
+        return (self.assessment_id.id, self.stage_id.id)
+
+    def _azm_part_name(self):
+        self.ensure_one()
+        return f"PUR-{self.stage_id.code}"
+
+    @api.model
+    def _azm_assignments(self, lines):
+        found = self.env["azm.assignment"].sudo().search(
+            [("proc_assessment_id", "in", lines.assessment_id.ids)])
+        return {(a.proc_assessment_id.id, a.stage_id.id): a.user_id.id for a in found}

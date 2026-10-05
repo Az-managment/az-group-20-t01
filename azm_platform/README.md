@@ -61,6 +61,54 @@ The sidebar entry **Operating Models** opens a landing page where every operatin
 Each file shows its KPIs (assessments, completion, certainty / maturity, open findings / gaps, entities covered);
 clicking it opens the model page with all its data and statistics. Group KPIs and an entity × model table sit on top and below.
 
+## مساحتي · My work
+Home is the group's cockpit — every entity, every model, the whole picture. It is the
+right page for somebody who runs the group and the wrong one for somebody whose job is
+to answer their own entity's questions: they were opening it onto figures they cannot
+act on, next to a technical menu holding the question catalogue.
+
+**مساحتي** is the other page, and it is where an AZM user lands when they log in. One
+person: the entities they are assigned to, each model they can answer with how far it
+has got and exactly how many questions are left, where their work stands in words —
+*معك الآن*, *مع المراجع*, *معتمدة* — the deliverables their answers have produced, and
+the projects, tasks and team around the work. Everything on it is already narrowed by
+the record rules, so a manager opening it sees their own work rather than everybody's.
+
+**A model can be divided.** The financial model is 19 modules; Treasury, HR and
+Procurement each know their own part. A module — or a stage of the cycle — can be given
+to somebody from the assessment's **التوزيع** tab, and then it is theirs: they answer it
+and everybody else reads it, including the person preparing the assessment. What is not
+given to anybody stays with the preparer, so an entity that does not want to divide the
+work changes nothing. مساحتي then counts each person's own parts: *"14 questions left"*
+has to be *their* fourteen. An administrator sees the whole picture across both models
+under **من يجيب ماذا** — who has what, and how far they have got.
+
+**Answering and reviewing are two jobs, and they get two pages.** When every question is
+answered — and only then — **أرسل للمراجعة** appears on the row. It hands the work to
+whoever reviews it and says who that was. Submitting used to write the state and
+schedule an activity *if* a reviewer happened to be named on the record; where none was,
+the work left the preparer's hands and arrived in nobody's. Now it goes to the named
+reviewer, else to the reviewers assigned to that entity, else to the managers — and if
+somehow nobody can be reached it refuses rather than parking the work in a state nobody
+is watching. A preparer is never their own reviewer.
+
+A reviewer's page carries a second section, **بانتظار مراجعتك**: the work submitted on
+the entities they are assigned to, never their own. They can open what they are shown —
+the rules and the list say the same thing, so the two cannot drift apart.
+
+| Who | Lands on | Sees |
+|---|---|---|
+| مُعد إفادات (answerer) | مساحتي | their entities, what they owe, send for review, their deliverables |
+| مراجع (reviewer) | مساحتي | the above, plus what has been sent to them to review |
+| مدير النموذج (manager) | wherever they choose | all of it, plus the catalogue and the configuration |
+
+The technical menu — the question catalogue, the stages, the risk rules, the financial
+model's own configuration — is a reviewer's and upwards. An answerer was being shown it
+next to their work. Note what this is and is not: the **menu** is what hides it, and
+that takes the catalogue out of the interface. Reading a question is still permitted,
+because answering one requires it — so the data remains reachable to somebody who goes
+looking for it over RPC. What has gone is any way to sit and browse it.
+
 ## شجر · Trees
 The sidebar entry — **شجر** to an Arabic reader and **Trees** to an English one, never
 both at once — marked by the group's own tree, three tiers drawn from
@@ -221,7 +269,7 @@ deliverable looks and behaves the same whichever page you found it on.
 ## What it adds
 | Where | What |
 |---|---|
-| AZM sidebar | **Operating Model**, **Assessments**, **Risk Register**, **Trees**, **Outputs Library**, **Question Catalogue** (managers) — each named in the reader's own language, Arabic or English, never the two side by side |
+| AZM sidebar | **My work** (first, and where an AZM user lands), **Operating Model**, **Assessments**, **Risk Register**, **Trees**, **Outputs Library**, **Question Catalogue** (managers) — each named in the reader's own language, Arabic or English, never the two side by side |
 | Unified financial model page | KPIs, application status, one card per financial module (FIN/HRF, templates, applicability, completion, maturity, gaps), charts, entities, top gaps, assessments |
 | Operating Model page | 8 KPIs, 3 domain cards (Governance / Procurement Operations / Financial), one card per question area (stage) with questions, risk rules, risks, findings, completion, certainty, question mix, application status; risk-register & assessment donuts; entities table; top open risks; current assessments |
 | AZM Home | "Operating Model" KPI tile, quick links and an Operating Model section (KPIs, domains, latest assessments, top risks) |

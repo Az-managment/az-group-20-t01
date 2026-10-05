@@ -85,8 +85,15 @@
                             <field name="company_id" groups="base.group_multi_company"/>
                         </group>
                         <group>
-                            <field name="user_id" widget="many2one_avatar_user"/>
-                            <field name="reviewer_id" widget="many2one_avatar_user"/>
+                            <field name="allowed_preparer_ids" invisible="1"/>
+                            <field name="allowed_reviewer_ids" invisible="1"/>
+                            <!-- only people who are on this entity, or the role
+                                 at large when nobody is on it yet: assigning
+                                 anyone else hands them work they cannot open -->
+                            <field name="user_id" widget="many2one_avatar_user"
+                                   domain="[('id', 'in', allowed_preparer_ids)]"/>
+                            <field name="reviewer_id" widget="many2one_avatar_user"
+                                   domain="[('id', 'in', allowed_reviewer_ids)]"/>
                             <field name="progress" widget="progressbar"/>
                             <field name="risk_count" string="مؤشرات خطر"/>
                             <field name="approved_by_id" invisible="not approved_by_id"/>
@@ -95,6 +102,21 @@
                         </group>
                     </group>
                     <notebook>
+                        <!-- Who answers which part. What is not given to anybody stays
+                             with whoever prepares the assessment, so leaving this empty
+                             keeps the old behaviour exactly. -->
+                        <page string="التوزيع" name="assignment">
+                            <p class="text-muted">
+                                وزّع مراحل دورة المشتريات على المسؤولين عنها. الجزء المُسند يصبح ملك صاحبه:
+                                يجيبه وحده، ويقرأه الباقون دون تعديل. ما لا يُسند يبقى مع
+                                مُعد الإفادة.
+                            </p>
+                            <field name="assignment_ids" nolabel="1"
+                                   context="{'default_proc_assessment_id': id}"
+                                   readonly="state != 'draft'"
+                                   widget="one2many" mode="list"
+                                   view_ids="[ref('azm_operating_model.azm_assignment_proc_list')]"/>
+                        </page>
                         <page string="خريطة الدورة" name="map">
                             <field name="output_map_html" readonly="1" nolabel="1"/>
                         </page>

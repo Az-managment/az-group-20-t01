@@ -2817,3 +2817,9 @@ msgstr "شجرة دورة المشتريات"
 #: model:ir.ui.menu,name:azm_platform.menu_trees
 msgid "Trees"
 msgstr "شجر"
+
+#. module: azm_platform
+#: model:ir.actions.client,name:azm_platform.action_azm_my_work
+#: model:ir.ui.menu,name:azm_platform.menu_my_work
+msgid "My work"
+msgstr "مساحتي"

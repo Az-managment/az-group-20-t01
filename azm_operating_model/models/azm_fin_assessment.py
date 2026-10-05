@@ -18,7 +18,7 @@ def _e(text):
 class AzmFinAssessment(models.Model):
     _name = "azm.fin.assessment"
     _description = "إفادة النموذج المالي الموحد"
-    _inherit = ["mail.thread", "mail.activity.mixin"]
+    _inherit = ["mail.thread", "mail.activity.mixin", "azm.reviewable"]
     _order = "create_date desc, id desc"
 
     name = fields.Char("المرجع", required=True, copy=False, readonly=True, default="جديد")
@@ -38,6 +38,8 @@ class AzmFinAssessment(models.Model):
     ], default="draft", required=True, tracking=True, copy=False, string="الحالة")
     user_id = fields.Many2one("res.users", "مُعد الإفادة", default=lambda self: self.env.user, tracking=True)
     reviewer_id = fields.Many2one("res.users", "المراجع", tracking=True)
+    assignment_ids = fields.One2many("azm.assignment", "fin_assessment_id",
+                                     string="توزيع الموديولات")
     approved_by_id = fields.Many2one("res.users", "اعتمدها", readonly=True, copy=False)
     approved_date = fields.Datetime("تاريخ الاعتماد", readonly=True, copy=False)
     is_demo = fields.Boolean("مثال افتراضي", copy=False)
@@ -311,15 +313,12 @@ class AzmFinAssessment(models.Model):
                 "params": {"assessment_id": self.id}}
 
     def action_submit(self):
+        """Send the financial assessment to whoever reviews it."""
         for rec in self.filtered(lambda r: r.state == "draft"):
-            rec.state = "review"
-            if rec.reviewer_id:
-                # the preparer loses write access once the assessment leaves draft: notify as superuser
-                rec.sudo().activity_schedule("mail.mail_activity_data_todo", user_id=rec.reviewer_id.id,
-                                             summary="مراجعة إفادة النموذج المالي")
+            rec._submit_for_review("مراجعة إفادة النموذج المالي")
 
     def action_back_to_draft(self):
-        self.filtered(lambda r: r.state == "review").write({"state": "draft"})
+        self.filtered(lambda r: r.state == "review")._workflow().write({"state": "draft"})
 
     def action_approve(self):
         if not self.env.user.has_group("azm_operating_model.azm_group_manager"):
@@ -336,7 +335,7 @@ class AzmFinAssessment(models.Model):
                 "summary_html": "".join(str(rec._render(tab)) for tab in ("book", "rules", "workflow", "authority",
                                                                             "reports", "integration", "gaps", "future")),
             })
-            rec.write({"state": "approved", "approved_by_id": self.env.user.id,
+            rec._workflow().write({"state": "approved", "approved_by_id": self.env.user.id,
                        "approved_date": fields.Datetime.now()})
 
     def action_new_version(self):
@@ -345,7 +344,7 @@ class AzmFinAssessment(models.Model):
             raise UserError("الإصدار الجديد يتعمل من إفادة معتمدة.")
         new = self.copy({"version": self.version + 1, "previous_id": self.id, "name": "جديد",
                          "scope_ids": [Command.set(self.scope_ids.ids)]})
-        self.state = "archived"
+        self._workflow().state = "archived"
         return {"type": "ir.actions.act_window", "res_model": self._name, "res_id": new.id, "view_mode": "form"}
 
     def action_view_gaps(self):
@@ -387,6 +386,7 @@ class AzmFinAssessment(models.Model):
 class AzmFinAnswer(models.Model):
     """One line per requirement in an assessment; its status and texts are derived from the question answers."""
     _name = "azm.fin.answer"
+    _inherit = ["azm.assignable"]
     _description = "إجابة متطلب مالي"
     _order = "module_sequence, topic_sequence, requirement_sequence, id"
 
@@ -673,7 +673,23 @@ class AzmFinAnswer(models.Model):
         if {"na", "reason"} & set(vals) and not self.env.context.get("azm_skip_lock"):
             if any(a.assessment_id.state != "draft" for a in self):
                 raise UserError("الإفادة مش في حالة مسودة؛ لا يمكن تعديل الإجابات.")
+            self._azm_check_assignee()
         return super().write(vals)
+
+    # ---------------------------------------------------------------- whose part
+    def _azm_part_key(self):
+        self.ensure_one()
+        return (self.assessment_id.id, self.module_id.id)
+
+    def _azm_part_name(self):
+        self.ensure_one()
+        return f"FIN.{self.module_id.code}"
+
+    @api.model
+    def _azm_assignments(self, lines):
+        found = self.env["azm.assignment"].sudo().search(
+            [("fin_assessment_id", "in", lines.assessment_id.ids)])
+        return {(a.fin_assessment_id.id, a.module_id.id): a.user_id.id for a in found}
 
 
 class AzmFinQAnswer(models.Model):
@@ -772,14 +788,19 @@ class AzmFinQAnswer(models.Model):
     def create(self, vals_list):
         records = super().create(vals_list)
         records._check_draft()
+        # a question is first answered by creating this line, so the check belongs here
+        # as much as on write
+        records.line_id._azm_check_assignee()
         return records
 
     def write(self, vals):
         self._check_draft()
+        self.line_id._azm_check_assignee()
         return super().write(vals)
 
     def unlink(self):
         self._check_draft()
+        self.line_id._azm_check_assignee()
         return super().unlink()
 
 

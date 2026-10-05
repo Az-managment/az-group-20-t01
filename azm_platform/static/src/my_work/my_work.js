@@ -1,0 +1,172 @@
+import { Component, onWillStart, proxy, useProps } from "@odoo/owl";
+import { registry } from "@web/core/registry";
+import { KeepLast } from "@web/core/utils/concurrency";
+import { useService } from "@web/core/utils/hooks";
+import { standardActionServiceProps } from "@web/webclient/actions/action_plugin";
+
+/**
+ * AZM Platform · مساحتي — one person's own work.
+ *
+ * The Home page is the group's cockpit: every entity, every model, the whole picture.
+ * It is the right page for somebody who runs the group and the wrong one for somebody
+ * whose job is to answer their own entity's questions. This is the other page: the
+ * entities they are assigned to, how far each model has got, what is left, who has
+ * their work now, what it has produced, and the projects and people around it.
+ *
+ * Everything it shows is already narrowed by the record rules, so a manager opening it
+ * sees their own work rather than everybody's.
+ */
+export class AzmMyWork extends Component {
+    static template = "azm_platform.MyWork";
+    props = useProps(standardActionServiceProps);
+
+    setup() {
+        this.orm = useService("orm");
+        this.action = useService("action");
+        this.keepLoad = new KeepLast();
+        this.state = proxy({ loaded: false, data: null, error: "",
+                             sending: false, sent: null, sendError: "" });
+        onWillStart(async () => {
+            await this.load();
+        });
+    }
+
+    async load() {
+        this.state.loaded = false;
+        this.state.error = "";
+        try {
+            this.state.data = await this.keepLoad.add(
+                this.orm.call("azm.dashboard", "get_my_work", [], {})
+            );
+        } catch (error) {
+            this.state.data = null;
+            this.state.error = (error && error.data && error.data.message)
+                || (error && error.message) || "تعذّر تحميل مساحتك.";
+        } finally {
+            this.state.loaded = true;
+        }
+    }
+
+    get d() {
+        return this.state.data;
+    }
+
+    /** The headline: what is still owed, across everything assigned to them. */
+    get kpis() {
+        const t = this.d.totals;
+        const made = this.d.deliverables;
+        return [
+            { key: "left", label: "أسئلة متبقية", en: "Questions left", value: t.left,
+                icon: "help", tone: t.left ? "orange" : "green",
+                sub: t.left ? "عليك الإجابة عنها" : "لا شيء متبقٍ عليك" },
+            { key: "progress", label: "نسبة الاكتمال", en: "Completion", value: `${t.progress}%`,
+                icon: "donut_large", tone: "indigo", sub: "متوسط ما أنجزته" },
+            { key: "ready", label: "مخرجات جاهزة", en: "Deliverables ready", value: made.ready,
+                icon: "task_alt", tone: "green", sub: `من ${made.total} لدى كياناتك` },
+        ];
+    }
+
+    /** Models grouped under the entity they belong to, so one entity reads as one block. */
+    get byEntity() {
+        const blocks = [];
+        for (const entity of this.d.entities) {
+            const rows = this.d.models.filter((m) => m.entity_id === entity.id);
+            if (rows.length) {
+                blocks.push({ entity, rows });
+            }
+        }
+        return blocks;
+    }
+
+    // ---------------------------------------------------------------- handing it over
+    /**
+     * Whether this row can go for review now.
+     *
+     * Only when it is finished, only while it is still theirs, and only for the person
+     * preparing it. A reviewer does not send work on from here, and nobody sends on
+     * work that is already with somebody else.
+     */
+    canSend(row) {
+        return !!(row.started && row.mine && row.assessment_id
+                  && row.standing && row.standing.state === "draft" && row.left === 0);
+    }
+
+    async sendForReview(row) {
+        if (this.state.sending || !this.canSend(row)) {
+            return;
+        }
+        this.state.sending = row.assessment_id;
+        this.state.sendError = "";
+        try {
+            const out = await this.orm.call("azm.dashboard", "submit_my_work", [], {
+                res_model: row.res_model,
+                assessment_id: row.assessment_id,
+            });
+            // the page comes back with it, so the row re-reads as "with the reviewer"
+            this.state.data = out.work;
+            this.state.sent = { entity: row.entity, model: row.label,
+                                reviewers: out.reviewers };
+        } catch (error) {
+            // said on the page, beside the work, rather than thrown as a dialog
+            this.state.sendError = (error && error.data && error.data.message)
+                || (error && error.message) || "تعذّر الإرسال للمراجعة.";
+        } finally {
+            this.state.sending = false;
+        }
+    }
+
+    dismissSent() {
+        this.state.sent = null;
+        this.state.sendError = "";
+    }
+
+    // ---------------------------------------------------------------- going somewhere
+    /** Straight into the assessment, where the questions are answered. */
+    openAssessment(row) {
+        if (!row.assessment_id) {
+            this.action.doAction(row.action);
+            return;
+        }
+        this.action.doAction({
+            type: "ir.actions.act_window",
+            res_model: row.res_model,
+            res_id: row.assessment_id,
+            views: [[false, "form"]],
+            target: "current",
+        });
+    }
+
+    openDeliverables() {
+        this.action.doAction("azm_platform.action_azm_outputs_library");
+    }
+
+    openTree(row) {
+        this.action.doAction(
+            row.key === "procurement" ? "azm_platform.action_azm_proc_tree"
+                                      : "azm_platform.action_azm_fin_tree",
+            { additionalContext: { azm_company_id: this.companyOf(row) } }
+        );
+    }
+
+    companyOf(row) {
+        const entity = this.d.entities.find((e) => e.id === row.entity_id);
+        return (entity && entity.company_id) || undefined;
+    }
+
+    /** Open a submitted assessment to review it. */
+    openReview(review) {
+        this.openRecord(review.res_model, review.id);
+    }
+
+    openRecord(model, id) {
+        this.action.doAction({
+            type: "ir.actions.act_window",
+            res_model: model,
+            res_id: id,
+            views: [[false, "form"]],
+            target: "current",
+        });
+    }
+}
+
+registry.category("actions").add("azm_my_work", AzmMyWork);

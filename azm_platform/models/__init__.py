@@ -1,4 +1,6 @@
 from . import res_company
+# where somebody lands when they log in
+from . import res_users
 from . import azm_dashboard
 from . import res_config_settings
 # operating models (procurement cycle + unified financial model)
@@ -17,5 +19,7 @@ from . import azm_type_book
 # the models read as trees: one page each, one landing page for all of them
 from . import azm_trees
 from . import azm_library
+# مساحتي: one person's own work, rather than the group's cockpit
+from . import azm_my_work
 from . import azm_fin_tree
 from . import azm_proc_tree

@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- The two sides are the same model, so each gets a list that shows its own kind
+         of part: a module of the financial model, a stage of the cycle. -->
+    <record id="azm_assignment_fin_list" model="ir.ui.view">
+        <field name="name">azm.assignment.fin.list</field>
+        <field name="model">azm.assignment</field>
+        <field name="arch" type="xml">
+            <list string="توزيع الموديولات" editable="bottom">
+                <field name="module_id" required="1" options="{'no_create': True}"/>
+                <field name="user_id" options="{'no_create': True}"/>
+                <field name="answered" string="مُجاب"/>
+                <field name="total" string="الأسئلة"/>
+                <field name="left" string="المتبقي"/>
+                <field name="progress" widget="progressbar"/>
+                <field name="note" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="azm_assignment_proc_list" model="ir.ui.view">
+        <field name="name">azm.assignment.proc.list</field>
+        <field name="model">azm.assignment</field>
+        <field name="arch" type="xml">
+            <list string="توزيع المراحل" editable="bottom">
+                <field name="stage_id" required="1" options="{'no_create': True}"/>
+                <field name="user_id" options="{'no_create': True}"/>
+                <field name="answered" string="مُجاب"/>
+                <field name="total" string="الأسئلة"/>
+                <field name="left" string="المتبقي"/>
+                <field name="progress" widget="progressbar"/>
+                <field name="note" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ========================================================== tracking
+         What an administrator asks is one question across both models: who is doing
+         what, and how far have they got. So it is one list, grouped by person. -->
+    <record id="azm_assignment_list" model="ir.ui.view">
+        <field name="name">azm.assignment.list</field>
+        <field name="model">azm.assignment</field>
+        <field name="arch" type="xml">
+            <list string="من يجيب ماذا" create="0">
+                <field name="user_id" widget="many2one_avatar_user"/>
+                <field name="entity_id"/>
+                <field name="model_key"/>
+                <field name="part_name"/>
+                <field name="answered" sum="مُجاب"/>
+                <field name="total" sum="الأسئلة"/>
+                <field name="left" sum="المتبقي"/>
+                <field name="progress" widget="progressbar"/>
+                <field name="company_id" column_invisible="True"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="azm_assignment_search" model="ir.ui.view">
+        <field name="name">azm.assignment.search</field>
+        <field name="model">azm.assignment</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="user_id"/>
+                <field name="entity_id"/>
+                <field name="part_name"/>
+                <filter name="unfinished" string="لم يكتمل بعد" domain="[('left', '>', 0)]"/>
+                <filter name="done" string="مكتمل" domain="[('left', '=', 0)]"/>
+                <filter name="financial" string="النموذج المالي"
+                        domain="[('model_key', '=', 'financial')]"/>
+                <filter name="procurement" string="دورة المشتريات"
+                        domain="[('model_key', '=', 'procurement')]"/>
+                <group>
+                    <filter name="by_user" string="المسؤول" context="{'group_by': 'user_id'}"/>
+                    <filter name="by_entity" string="الكيان" context="{'group_by': 'entity_id'}"/>
+                    <filter name="by_model" string="النموذج" context="{'group_by': 'model_key'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="azm_assignment_action" model="ir.actions.act_window">
+        <field name="name">من يجيب ماذا</field>
+        <field name="res_model">azm.assignment</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_by_user': 1, 'search_default_unfinished': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">لا يوجد توزيع بعد</p>
+            <p>وزّع موديولات النموذج المالي أو مراحل دورة المشتريات على المسؤولين عنها من
+               داخل الإفادة، تبويب «التوزيع». ما لا يُوزَّع يبقى مع مُعد الإفادة.</p>
+        </field>
+    </record>
+
+    <menuitem id="azm_assignment_menu" name="من يجيب ماذا"
+              parent="azm_operating_model.azm_menu_root"
+              action="azm_assignment_action" sequence="25"
+              groups="azm_operating_model.azm_group_reviewer"/>
+
+</odoo>

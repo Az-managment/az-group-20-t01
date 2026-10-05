@@ -61,6 +61,19 @@
         <field name="tag">azm_proc_tree</field>
     </record>
 
+    <!-- =========================================================== My work
+         The Home page is the group's cockpit. This is the other page: one person's own
+         entities, what they still owe, where their work stands, and — for a reviewer —
+         what is waiting for them. It sits first, because for most people it is the only
+         page they need. -->
+    <record id="action_azm_my_work" model="ir.actions.client">
+        <field name="name">My work</field>
+        <field name="tag">azm_my_work</field>
+    </record>
+    <menuitem id="menu_my_work" name="My work" parent="azm_platform.menu_root"
+              action="action_azm_my_work" sequence="0"
+              groups="azm_operating_model.azm_group_user"/>
+
     <!-- =========================================================== Outputs library
          The trees read one model for one entity; the library reads one deliverable
          across every entity, which is the question the trees cannot answer. -->

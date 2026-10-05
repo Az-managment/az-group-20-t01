@@ -9,6 +9,7 @@ import { render } from "@web/owl2/utils";
 const ROOT_XMLID = "azm_platform.menu_root";
 
 const ICONS = {
+    "azm_platform.menu_my_work": "assignment_ind",
     "azm_platform.menu_home": "home",
     "azm_platform.menu_entities": "business",
     "azm_platform.menu_structure": "account_tree",

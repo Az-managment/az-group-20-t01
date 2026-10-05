@@ -12,7 +12,7 @@ AZM – Enterprise Operating Model
 * دورة المشتريات كاملة (الحوكمة + 12 مرحلة تشغيلية، 396 سؤال)
 * النموذج المالي الموحد (19 موديول، 215 موضوع فرعي، 167 متطلب، 1136 سؤال: اختيار واحد، اختيار متعدد، رقم، جدول؛ بشروط ظهور وأسئلة افتتاحية مقترحة لكل موضوع)
 """,
-    "version": "20.0.1.16.0",
+    "version": "20.0.1.17.0",
     "category": "Productivity",
     "author": "Fue-Team",
     "license": "LGPL-3",
@@ -30,6 +30,7 @@ AZM – Enterprise Operating Model
         "views/azm_assessment_views.xml",
         "views/azm_fin_catalogue_views.xml",
         "views/azm_fin_assessment_views.xml",
+        "views/azm_assignment_views.xml",
         "views/azm_menus.xml",
         "views/azm_fin_menus.xml",
         "report/azm_assessment_reports.xml",

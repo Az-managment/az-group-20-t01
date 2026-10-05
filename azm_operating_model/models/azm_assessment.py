@@ -27,7 +27,7 @@ SCENARIOS = [
 class AzmAssessment(models.Model):
     _name = "azm.assessment"
     _description = "إفادة AZM"
-    _inherit = ["mail.thread", "mail.activity.mixin"]
+    _inherit = ["mail.thread", "mail.activity.mixin", "azm.reviewable"]
     _order = "create_date desc, id desc"
 
     name = fields.Char("المرجع", required=True, copy=False, readonly=True, default="جديد")
@@ -46,6 +46,8 @@ class AzmAssessment(models.Model):
     ], default="draft", required=True, tracking=True, copy=False, string="الحالة")
     user_id = fields.Many2one("res.users", "مُعد الإفادة", default=lambda self: self.env.user, tracking=True)
     reviewer_id = fields.Many2one("res.users", "المراجع", tracking=True)
+    assignment_ids = fields.One2many("azm.assignment", "proc_assessment_id",
+                                     string="توزيع المراحل")
     approved_by_id = fields.Many2one("res.users", "اعتمدها", readonly=True, copy=False)
     approved_date = fields.Datetime("تاريخ الاعتماد", readonly=True, copy=False)
     is_demo = fields.Boolean("مثال افتراضي", copy=False)
@@ -56,6 +58,7 @@ class AzmAssessment(models.Model):
 
     progress = fields.Float("نسبة الاكتمال", compute="_compute_progress")
     visible_count = fields.Integer(compute="_compute_progress")
+    answered_count = fields.Integer("أسئلة مُجابة", compute="_compute_progress")
     known_count = fields.Integer(compute="_compute_progress")
     risk_count = fields.Integer(compute="_compute_progress")
     finding_count = fields.Integer(compute="_compute_finding_count")
@@ -162,9 +165,13 @@ class AzmAssessment(models.Model):
         catalogues = {stage.id: stage._engine_catalogue() for stage in stages}
         for rec in self:
             vis = rec.answer_ids.filtered("is_visible")
+            answered = vis.filtered("has_value")
             rec.visible_count = len(vis)
+            # counted here rather than read back off the percentage: "nine questions
+            # left" is what somebody answering wants, and it has to be exact
+            rec.answered_count = len(answered)
             rec.known_count = len(vis.filtered("is_known"))
-            rec.progress = 100.0 * len(vis.filtered("has_value")) / len(vis) if vis else 0.0
+            rec.progress = 100.0 * len(answered) / len(vis) if vis else 0.0
             risks = 0
             if rec.id:
                 by_stage = rec._answers_by_stage()
@@ -292,18 +299,13 @@ class AzmAssessment(models.Model):
         }
 
     def action_submit(self):
-        for rec in self:
-            if rec.state != "draft":
-                continue
+        """Send the cycle assessment to whoever reviews it."""
+        for rec in self.filtered(lambda r: r.state == "draft"):
             rec.action_sync_findings()
-            rec.state = "review"
-            if rec.reviewer_id:
-                # the preparer loses write access once the assessment leaves draft: notify as superuser
-                rec.sudo().activity_schedule("mail.mail_activity_data_todo", user_id=rec.reviewer_id.id,
-                                      summary="مراجعة إفادة AZM")
+            rec._submit_for_review("مراجعة إفادة دورة المشتريات")
 
     def action_back_to_draft(self):
-        self.filtered(lambda r: r.state == "review").write({"state": "draft"})
+        self.filtered(lambda r: r.state == "review")._workflow().write({"state": "draft"})
 
     def action_approve(self):
         if not self.env.user.has_group("azm_operating_model.azm_group_manager"):
@@ -321,7 +323,7 @@ class AzmAssessment(models.Model):
                 "answers_json": json.dumps(answers, ensure_ascii=False, indent=1),
                 "snapshot_html": snapshot,
             })
-            rec.write({"state": "approved", "approved_by_id": self.env.user.id,
+            rec._workflow().write({"state": "approved", "approved_by_id": self.env.user.id,
                        "approved_date": fields.Datetime.now()})
 
     def action_new_version(self):
@@ -329,7 +331,7 @@ class AzmAssessment(models.Model):
         if self.state != "approved":
             raise UserError("الإصدار الجديد يتعمل من إفادة معتمدة.")
         new = self.copy({"version": self.version + 1, "previous_id": self.id, "name": "جديد"})
-        self.state = "archived"
+        self._workflow().state = "archived"
         return {"type": "ir.actions.act_window", "res_model": self._name, "res_id": new.id,
                 "view_mode": "form"}
 

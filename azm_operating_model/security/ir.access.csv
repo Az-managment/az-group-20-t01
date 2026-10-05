@@ -14,6 +14,8 @@ azm_assessment_user_read,azm.assessment user: own on assigned entities,azm.asses
 azm_assessment_user_write,azm.assessment user: own drafts,azm.assessment,azm_group_user,cu,"[('state', '=', 'draft'), ('entity_id', 'access', 'read'), ('user_id', '=', user.id)]"
 azm_assessment_reviewer_read,azm.assessment reviewer: own or to review,azm.assessment,azm_group_reviewer,r,"[('entity_id', 'access', 'read'), '|', ('user_id', '=', user.id), ('reviewer_id', '=', user.id)]"
 azm_assessment_reviewer,azm.assessment reviewer: draft / review,azm.assessment,azm_group_reviewer,cru,"[('state', 'in', ('draft', 'review')), ('entity_id', 'access', 'read'), '|', ('user_id', '=', user.id), ('reviewer_id', '=', user.id)]"
+azm_assessment_reviewer_submitted,azm.assessment reviewer: submitted work of their entities,azm.assessment,azm_group_reviewer,r,"[('entity_id', 'access', 'read'), ('state', 'in', ('review', 'approved'))]"
+azm_assessment_reviewer_return,azm.assessment reviewer: act on work under review,azm.assessment,azm_group_reviewer,u,"[('entity_id', 'access', 'read'), ('state', '=', 'review')]"
 azm_assessment_manager,azm.assessment manager,azm.assessment,azm_group_manager,crud,
 azm_assessment_company,azm.assessment company,azm.assessment,,crud,"[('company_id', 'in', company_ids)]"
 azm_answer_user_read,azm.answer user read,azm.answer,azm_group_user,r,"[('assessment_id', 'access', 'read')]"
@@ -38,6 +40,8 @@ azm_fin_assessment_user_read,azm.fin.assessment user: own on assigned entities,a
 azm_fin_assessment_user_write,azm.fin.assessment user: own drafts,azm.fin.assessment,azm_group_user,cu,"[('state', '=', 'draft'), ('entity_id', 'access', 'read'), ('user_id', '=', user.id)]"
 azm_fin_assessment_reviewer_read,azm.fin.assessment reviewer: own or to review,azm.fin.assessment,azm_group_reviewer,r,"[('entity_id', 'access', 'read'), '|', ('user_id', '=', user.id), ('reviewer_id', '=', user.id)]"
 azm_fin_assessment_reviewer,azm.fin.assessment reviewer: draft / review,azm.fin.assessment,azm_group_reviewer,cru,"[('state', 'in', ('draft', 'review')), ('entity_id', 'access', 'read'), '|', ('user_id', '=', user.id), ('reviewer_id', '=', user.id)]"
+azm_fin_assessment_reviewer_submitted,azm.fin.assessment reviewer: submitted work of their entities,azm.fin.assessment,azm_group_reviewer,r,"[('entity_id', 'access', 'read'), ('state', 'in', ('review', 'approved'))]"
+azm_fin_assessment_reviewer_return,azm.fin.assessment reviewer: act on work under review,azm.fin.assessment,azm_group_reviewer,u,"[('entity_id', 'access', 'read'), ('state', '=', 'review')]"
 azm_fin_assessment_manager,azm.fin.assessment manager,azm.fin.assessment,azm_group_manager,crud,
 azm_fin_assessment_company,azm.fin.assessment company,azm.fin.assessment,,crud,"[('company_id', 'in', company_ids)]"
 azm_fin_answer_user_read,azm.fin.answer user read,azm.fin.answer,azm_group_user,r,"[('assessment_id', 'access', 'read')]"
@@ -60,3 +64,11 @@ azm_fin_qanswer_user_read,azm.fin.qanswer user read,azm.fin.qanswer,azm_group_us
 azm_fin_qanswer_user_write,azm.fin.qanswer user draft,azm.fin.qanswer,azm_group_user,cud,"[('line_id.assessment_id.state', '=', 'draft'), ('line_id', 'access', 'write')]"
 azm_fin_qanswer_manager,azm.fin.qanswer manager,azm.fin.qanswer,azm_group_manager,crud,
 azm_fin_qanswer_company,azm.fin.qanswer company,azm.fin.qanswer,,crud,"[('company_id', 'in', company_ids)]"
+azm_assignment_user,azm.assignment user: on work they can see,azm.assignment,azm_group_user,r,"[('entity_id', 'access', 'read')]"
+azm_assignment_reviewer,azm.assignment reviewer: on their entities,azm.assignment,azm_group_reviewer,cru,"[('entity_id', 'access', 'read')]"
+azm_assignment_manager,azm.assignment manager,azm.assignment,azm_group_manager,crud,
+azm_assignment_company,azm.assignment company,azm.assignment,,crud,"[('company_id', 'in', company_ids)]"
+azm_assessment_assignee_read,azm.assessment assignee: work they have a part of,azm.assessment,azm_group_user,r,"[('entity_id', 'access', 'read'), ('assignment_ids', 'any', [('user_id', '=', user.id)])]"
+azm_answer_assignee,azm.answer assignee: the lines of work they have a part of,azm.answer,azm_group_user,cu,"[('assessment_id.state', '=', 'draft'), ('assessment_id', 'access', 'read'), ('assessment_id.assignment_ids', 'any', [('user_id', '=', user.id)])]"
+azm_fin_assessment_assignee_read,azm.fin.assessment assignee: work they have a part of,azm.fin.assessment,azm_group_user,r,"[('entity_id', 'access', 'read'), ('assignment_ids', 'any', [('user_id', '=', user.id)])]"
+azm_fin_answer_assignee,azm.fin.answer assignee: the lines of work they have a part of,azm.fin.answer,azm_group_user,cu,"[('assessment_id.state', '=', 'draft'), ('assessment_id', 'access', 'read'), ('assessment_id.assignment_ids', 'any', [('user_id', '=', user.id)])]"

@@ -8,3 +8,4 @@ from . import test_trees_hub
 from . import test_proc_documents
 from . import test_coding
 from . import test_library
+from . import test_my_work
