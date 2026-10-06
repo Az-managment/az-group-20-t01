@@ -19,17 +19,22 @@ from odoo.exceptions import UserError, ValidationError
 class AzmAssignment(models.Model):
     _name = "azm.assignment"
     _description = "AZM part assignment"
-    _order = "company_id, user_id, sequence, id"
+    _order = "company_id, sequence, id"
     _rec_name = "part_name"
 
-    user_id = fields.Many2one("res.users", "المسؤول", required=True, index=True,
-                              domain=[("share", "=", False)])
+    # A part can be shared. One row per part still, with everybody on it, so "who holds
+    # FIN.GOV" has one answer rather than one row per person to reconcile.
+    user_ids = fields.Many2many("res.users", string="المسؤولون", required=True,
+                                domain=[("share", "=", False)])
     note = fields.Char("ملاحظة")
 
     # one side or the other, never both — see _check_one_side
     fin_assessment_id = fields.Many2one("azm.fin.assessment", "الإفادة المالية",
                                         ondelete="cascade", index=True)
     module_id = fields.Many2one("azm.fin.module", "الموديول", ondelete="cascade")
+    # a module can be divided further: a topic of it may be given to somebody else, and
+    # that narrower word wins over the module's for the requirements under it
+    topic_id = fields.Many2one("azm.fin.topic", "الموضوع", ondelete="cascade")
     proc_assessment_id = fields.Many2one("azm.assessment", "إفادة المشتريات",
                                          ondelete="cascade", index=True)
     stage_id = fields.Many2one("azm.stage", "المرحلة", ondelete="cascade")
@@ -53,23 +58,42 @@ class AzmAssignment(models.Model):
     _one_part = models.Constraint(
         "CHECK((fin_assessment_id IS NULL) <> (proc_assessment_id IS NULL))",
         "التوزيع يخص إفادة واحدة: مالية أو مشتريات.")
-    _fin_uniq = models.Constraint(
-        "UNIQUE(fin_assessment_id, module_id)",
-        "هذا الموديول مُسند بالفعل في هذه الإفادة.")
+    # The financial side's "one row per part" is an index rather than a constraint,
+    # because it has to apply to that side only: a procurement row leaves every
+    # financial column empty, and one key over the lot collides them all on
+    # (null, null, null). See init().
     _proc_uniq = models.Constraint(
         "UNIQUE(proc_assessment_id, stage_id)",
         "هذه المرحلة مُسندة بالفعل في هذه الإفادة.")
 
-    @api.depends("fin_assessment_id", "module_id", "proc_assessment_id", "stage_id")
+    def init(self):
+        """One row per part, said per side and per level.
+
+        NULLS NOT DISTINCT because a module-level row leaves topic_id empty, and
+        postgres otherwise counts two empty topics as different — which would let the
+        same module be handed out twice over.
+        """
+        self.env.cr.execute("""
+            CREATE UNIQUE INDEX IF NOT EXISTS azm_assignment_fin_part_uniq
+                ON azm_assignment (fin_assessment_id, module_id, topic_id)
+                NULLS NOT DISTINCT
+             WHERE fin_assessment_id IS NOT NULL
+        """)
+
+    @api.depends("fin_assessment_id", "module_id", "topic_id", "proc_assessment_id", "stage_id")
     def _compute_source(self):
         for record in self:
             if record.fin_assessment_id:
-                module = record.module_id
+                module = record.module_id or record.topic_id.module_id
+                topic = record.topic_id
                 record.entity_id = record.fin_assessment_id.entity_id
                 record.company_id = record.fin_assessment_id.company_id
                 record.model_key = "financial"
                 record.sequence = module.sequence
-                record.part_name = f"FIN.{module.code} · {module.name}" if module else ""
+                if topic:
+                    record.part_name = f"{topic.code or ''} · {topic.name or ''}".strip(" ·")
+                else:
+                    record.part_name = f"FIN.{module.code} · {module.name}" if module else ""
             else:
                 stage = record.stage_id
                 record.entity_id = record.proc_assessment_id.entity_id
@@ -93,6 +117,42 @@ class AzmAssignment(models.Model):
             record.left = max(total - answered, 0)
             record.progress = 100.0 * answered / total if total else 0.0
 
+    def _answered_by(self):
+        """``[{"user", "id", "answers"}]`` — what each person on this part has written.
+
+        Counted from who last wrote each answer. A question answered by one person and
+        then corrected by another counts for whoever wrote what stands now, because the
+        figure is read to see who is carrying the work, not who touched it first.
+
+        Everybody on the part is listed, including whoever has written nothing yet:
+        a nought is the thing worth seeing.
+        """
+        self.ensure_one()
+        lines = self._lines()
+        tally = {}
+        if self.model_key == "financial":
+            rows = self.env["azm.fin.qanswer"].sudo().search(
+                [("line_id", "in", lines.ids), ("is_answered", "=", True)])
+        else:
+            rows = lines.sudo().filtered("has_value")
+        system = self.env.ref("base.user_root", raise_if_not_found=False)
+        for row in rows:
+            who = row.write_uid or row.create_uid
+            # answers the system wrote — a demo fill, an import — have no person to
+            # credit. The part's own figure still counts them; this list is about who
+            # among the people on it is carrying the work.
+            if system and who == system:
+                continue
+            tally[who.id] = tally.get(who.id, 0) + 1
+        people = [{"id": user.id, "user": user.name, "answers": tally.pop(user.id, 0)}
+                  for user in self.user_ids]
+        # somebody who answered here but is not on the part any more still shows, or the
+        # figures would not add up to the part's own
+        for user_id, count in tally.items():
+            user = self.env["res.users"].sudo().browse(user_id)
+            people.append({"id": user_id, "user": user.name, "answers": count, "off": True})
+        return sorted(people, key=lambda person: -person["answers"])
+
     def _search_left(self, operator, value):
         """"What is still outstanding" is the question an administrator filters on, and
         it is counted from the answers rather than stored — so it is worked out here.
@@ -113,23 +173,34 @@ class AzmAssignment(models.Model):
         return [("id", "in", hit.ids)]
 
     def _lines(self):
-        """The answer lines this part covers."""
-        self.ensure_one()
-        if self.model_key == "financial":
-            return self.fin_assessment_id.answer_ids.filtered(
-                lambda a: a.module_id == self.module_id)
-        return self.proc_assessment_id.answer_ids.filtered(
-            lambda a: a.stage_id == self.stage_id)
+        """The answer lines this part covers.
 
-    @api.constrains("module_id", "stage_id", "fin_assessment_id", "proc_assessment_id")
+        A topic covers its own requirements; a module covers the ones its topics were
+        not handed out separately for, so dividing a module does not leave the same
+        requirement owed by two people.
+        """
+        self.ensure_one()
+        if self.model_key != "financial":
+            return self.proc_assessment_id.answer_ids.filtered(
+                lambda a: a.stage_id == self.stage_id)
+        lines = self.fin_assessment_id.answer_ids
+        if self.topic_id:
+            return lines.filtered(lambda a: a.topic_id == self.topic_id)
+        carved = self.sudo().search([
+            ("fin_assessment_id", "=", self.fin_assessment_id.id),
+            ("topic_id", "!=", False),
+        ]).topic_id
+        return lines.filtered(lambda a: a.module_id == self.module_id and a.topic_id not in carved)
+
+    @api.constrains("module_id", "topic_id", "stage_id", "fin_assessment_id", "proc_assessment_id")
     def _check_part_matches_side(self):
         for record in self:
-            if record.fin_assessment_id and not record.module_id:
+            if record.fin_assessment_id and not (record.module_id or record.topic_id):
                 raise ValidationError(_("Name the module this covers."))
             if record.proc_assessment_id and not record.stage_id:
                 raise ValidationError(_("Name the stage this covers."))
 
-    @api.constrains("user_id", "entity_id")
+    @api.constrains("user_ids", "entity_id")
     def _check_assignee_can_see_the_entity(self):
         """Giving somebody a part they cannot open is giving them nothing.
 
@@ -138,17 +209,17 @@ class AzmAssignment(models.Model):
         """
         group = self.env.ref("azm_operating_model.azm_group_user", raise_if_not_found=False)
         for record in self:
-            user = record.user_id
-            if not user or not record.entity_id:
+            if not record.entity_id:
                 continue
-            if group and group not in user.all_group_ids:
-                raise ValidationError(_(
-                    "%s is not an AZM user, so they cannot answer anything.", user.name))
-            if user not in record.entity_id.sudo().user_ids:
-                raise ValidationError(_(
-                    "%(user)s is not on %(entity)s, so they could not open this part. "
-                    "Add them to the entity first.",
-                    user=user.name, entity=record.entity_id.name))
+            for user in record.user_ids:
+                if group and group not in user.all_group_ids:
+                    raise ValidationError(_(
+                        "%s is not an AZM user, so they cannot answer anything.", user.name))
+                if user not in record.entity_id.sudo().user_ids:
+                    raise ValidationError(_(
+                        "%(user)s is not on %(entity)s, so they could not open this part. "
+                        "Add them to the entity first.",
+                        user=user.name, entity=record.entity_id.name))
 
 
 class AzmAssignable(models.AbstractModel):
@@ -183,8 +254,10 @@ class AzmAssignable(models.AbstractModel):
         uid = self.env.uid
         for line in self:
             key = line._azm_part_key()
-            owner = assignments.get(key)
-            if owner and owner != uid:
+            owners = assignments.get(key)
+            # a part can be held by several people; it is somebody else's only when it
+            # was given out and this reader is not among them
+            if owners and uid not in owners:
                 raise UserError(_(
                     "%s is answered by somebody else. You can read it, but it is not "
                     "yours to fill in.", line._azm_part_name()))

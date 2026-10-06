@@ -8,8 +8,11 @@
         <field name="model">azm.assignment</field>
         <field name="arch" type="xml">
             <list string="توزيع الموديولات" editable="bottom">
-                <field name="module_id" required="1" options="{'no_create': True}"/>
-                <field name="user_id" options="{'no_create': True}"/>
+                <field name="module_id" options="{'no_create': True}"/>
+                <!-- a module can be divided: naming a topic hands out that part of it -->
+                <field name="topic_id" optional="show" options="{'no_create': True}"
+                       domain="[('module_id', '=', module_id)]"/>
+                <field name="user_ids" widget="many2many_tags_avatar" options="{'no_create': True}"/>
                 <field name="answered" string="مُجاب"/>
                 <field name="total" string="الأسئلة"/>
                 <field name="left" string="المتبقي"/>
@@ -25,7 +28,7 @@
         <field name="arch" type="xml">
             <list string="توزيع المراحل" editable="bottom">
                 <field name="stage_id" required="1" options="{'no_create': True}"/>
-                <field name="user_id" options="{'no_create': True}"/>
+                <field name="user_ids" widget="many2many_tags_avatar" options="{'no_create': True}"/>
                 <field name="answered" string="مُجاب"/>
                 <field name="total" string="الأسئلة"/>
                 <field name="left" string="المتبقي"/>
@@ -43,7 +46,7 @@
         <field name="model">azm.assignment</field>
         <field name="arch" type="xml">
             <list string="من يجيب ماذا" create="0">
-                <field name="user_id" widget="many2one_avatar_user"/>
+                <field name="user_ids" widget="many2many_tags_avatar"/>
                 <field name="entity_id"/>
                 <field name="model_key"/>
                 <field name="part_name"/>
@@ -61,7 +64,7 @@
         <field name="model">azm.assignment</field>
         <field name="arch" type="xml">
             <search>
-                <field name="user_id"/>
+                <field name="user_ids" widget="many2many_tags_avatar"/>
                 <field name="entity_id"/>
                 <field name="part_name"/>
                 <filter name="unfinished" string="لم يكتمل بعد" domain="[('left', '>', 0)]"/>
@@ -71,7 +74,7 @@
                 <filter name="procurement" string="دورة المشتريات"
                         domain="[('model_key', '=', 'procurement')]"/>
                 <group>
-                    <filter name="by_user" string="المسؤول" context="{'group_by': 'user_id'}"/>
+                    <filter name="by_user" string="المسؤول" context="{'group_by': 'user_ids'}"/>
                     <filter name="by_entity" string="الكيان" context="{'group_by': 'entity_id'}"/>
                     <filter name="by_model" string="النموذج" context="{'group_by': 'model_key'}"/>
                 </group>

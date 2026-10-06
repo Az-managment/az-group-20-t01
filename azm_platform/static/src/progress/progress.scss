@@ -87,6 +87,41 @@
         box-shadow: inset 3px 0 0 rgba(249, 115, 22, .55);
     }
 
+    // ------------------------------------------- who is on a part, and what they wrote
+    .o_azm_part_level {
+        margin-inline-start: 6px;
+        padding: 1px 7px;
+        border-radius: 99px;
+        font-size: 10px;
+        font-weight: 600;
+        color: $azm-blue;
+        background: rgba(29, 99, 224, .1);
+    }
+    .o_azm_part_people {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 3px;
+    }
+    .o_azm_part_person {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 5px;
+        padding: 2px 8px;
+        border-radius: 99px;
+        font-size: 11px;
+        color: $azm-ink;
+        background: rgba(15, 35, 71, .05);
+        b { font-weight: 700; color: $azm-blue; }
+        // somebody who answered here and is no longer on the part
+        &.o_azm_part_person_off {
+            color: $azm-muted;
+            background: transparent;
+            border: 1px dashed rgba(15, 35, 71, .18);
+            b { color: $azm-muted; }
+        }
+    }
+
     .o_azm_section_title {
         margin: 22px 0 10px;
         font-size: 13px;

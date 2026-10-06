@@ -213,8 +213,19 @@
                                  class="o_azm_part_row">
                                 <span t-attf-class="o_azm_dot {{part.left ? 'o_azm_dot_muted' : 'o_azm_dot_ok'}}"/>
                                 <span class="o_azm_line_main">
-                                    <b t-out="part.name"/>
-                                    <small t-out="part.user"/>
+                                    <b>
+                                        <t t-out="part.name"/>
+                                        <span t-if="part.level === 'topic'" class="o_azm_part_level">موضوع</span>
+                                    </b>
+                                    <!-- who is on it, and what each of them has written -->
+                                    <span class="o_azm_part_people">
+                                        <span t-foreach="part.people" t-as="person" t-key="person.id"
+                                              t-attf-class="o_azm_part_person {{person.off ? 'o_azm_part_person_off' : ''}}"
+                                              t-attf-title="{{person.off ? 'أجاب هنا ثم رُفع من الجزء' : ''}}">
+                                            <t t-out="person.user"/>
+                                            <b t-out="person.answers"/>
+                                        </span>
+                                    </span>
                                 </span>
                                 <small>
                                     <t t-out="part.answered"/>/<t t-out="part.total"/>

@@ -78,4 +78,4 @@ class AzmAnswer(models.Model):
     def _azm_assignments(self, lines):
         found = self.env["azm.assignment"].sudo().search(
             [("proc_assessment_id", "in", lines.assessment_id.ids)])
-        return {(a.proc_assessment_id.id, a.stage_id.id): a.user_id.id for a in found}
+        return {(a.proc_assessment_id.id, a.stage_id.id): a.user_ids.ids for a in found}

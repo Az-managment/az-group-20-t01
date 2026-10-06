@@ -105,17 +105,27 @@ class AzmDashboard(models.AbstractModel):
                     field = ("fin_assessment_id" if spec["key"] == "financial"
                              else "proc_assessment_id")
                     for part in Assignment.search([(field, "=", assessment.id)]):
+                        people_on_it = part._answered_by()
                         parts.append({
                             "name": part.part_name,
-                            "user": part.user_id.name,
-                            "user_id": part.user_id.id,
+                            "level": "topic" if part.topic_id else (
+                                "module" if part.module_id else "stage"),
+                            "user": "، ".join(part.user_ids.mapped("name")),
+                            "user_ids": part.user_ids.ids,
+                            # what each of them has actually written
+                            "people": people_on_it,
                             "answered": part.answered,
                             "total": part.total,
                             "left": part.left,
                             "progress": round(part.progress),
                         })
-                        note(part.user_id, "answers", part.answered, part.total,
-                             assessment.entity_id.name, part=True)
+                        # a shared part is shared work: each person is credited with
+                        # what they wrote rather than with the whole part
+                        written = {person["id"]: person["answers"] for person in people_on_it}
+                        for who in part.user_ids:
+                            note(who, "answers", written.get(who.id, 0),
+                                 part.total if len(part.user_ids) == 1 else 0,
+                                 assessment.entity_id.name, part=True)
                 preparer = assessment.user_id or assessment.create_uid
                 # only what is still owed: an assessment under review or approved is no
                 # longer waiting on the person who prepared it

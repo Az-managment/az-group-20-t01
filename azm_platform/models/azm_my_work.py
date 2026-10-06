@@ -191,7 +191,7 @@ class AzmDashboard(models.AbstractModel):
         split = Assignment.search([(field, "=", assessment.id)])
         if not split:
             return None
-        return split.filtered(lambda a: a.user_id.id == self.env.uid)
+        return split.filtered(lambda a: self.env.uid in a.user_ids.ids)
 
     @api.model
     def _my_work_deliverables(self, companies):

@@ -130,9 +130,9 @@ class TestMyWork(TransactionCase):
         modules = self.env['azm.fin.module'].search([], limit=2)
         self.env['azm.assignment'].create([
             {'fin_assessment_id': fin.id, 'module_id': modules[0].id,
-             'user_id': self.answerer.id},
+             'user_ids': [(6, 0, [self.answerer.id])]},
             {'fin_assessment_id': fin.id, 'module_id': modules[1].id,
-             'user_id': self.reviewer.id},
+             'user_ids': [(6, 0, [self.reviewer.id])]},
         ])
         mine = next(r for r in self._page(self.answerer)['models']
                     if r['key'] == 'financial')
@@ -195,9 +195,9 @@ class TestMyWork(TransactionCase):
         stages = self.env['azm.stage'].search([('is_governance', '=', False)], limit=2)
         self.env['azm.assignment'].create([
             {'proc_assessment_id': self.assessment.id, 'stage_id': stages[0].id,
-             'user_id': self.answerer.id},
+             'user_ids': [(6, 0, [self.answerer.id])]},
             {'proc_assessment_id': self.assessment.id, 'stage_id': stages[1].id,
-             'user_id': self.reviewer.id},
+             'user_ids': [(6, 0, [self.reviewer.id])]},
         ])
         row = next(r for r in self._page(self.answerer)['models']
                    if r['key'] == 'procurement')
@@ -228,7 +228,7 @@ class TestMyWork(TransactionCase):
         stage = self.env['azm.stage'].search([('is_governance', '=', False)], limit=1)
         self.env['azm.assignment'].create(
             {'proc_assessment_id': self.assessment.id, 'stage_id': stage.id,
-             'user_id': self.reviewer.id})
+             'user_ids': [(6, 0, [self.reviewer.id])]})
         self.assessment.sudo().action_fill_demo()   # for the same reason
 
         row = next(r for r in self._page(self.reviewer)['models']
@@ -433,9 +433,9 @@ class TestMyWork(TransactionCase):
             self.company).create({'entity_id': self.entity.id, 'user_id': self.answerer.id})
         self.env['azm.assignment'].create([
             {'fin_assessment_id': fin.id, 'module_id': modules[0].id,
-             'user_id': self.answerer.id},
+             'user_ids': [(6, 0, [self.answerer.id])]},
             {'fin_assessment_id': fin.id, 'module_id': modules[1].id,
-             'user_id': self.reviewer.id},
+             'user_ids': [(6, 0, [self.reviewer.id])]},
         ])
         page = self.env['azm.dashboard'].with_company(self.company).get_progress()
         self.assertTrue(page['available'])

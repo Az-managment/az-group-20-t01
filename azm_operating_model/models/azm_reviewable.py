@@ -107,7 +107,7 @@ class AzmReviewable(models.AbstractModel):
                      else self.env["azm.question"].browse(part_id).stage_id)
             found = Assignment.search([("proc_assessment_id", "=", self.id),
                                        ("stage_id", "=", stage.id)], limit=1)
-        return found.user_id or self.user_id
+        return found.user_ids[:1] or self.user_id
 
     def _notify_returned(self, rows):
         """Tell whoever must deal with it. Overridden where a model has its own wording."""
