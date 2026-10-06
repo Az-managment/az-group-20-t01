@@ -30,7 +30,8 @@ from odoo.exceptions import UserError
 
 from odoo.addons.azm_operating_model.models import fin_engine
 
-from .azm_coding import LIFECYCLE_LABELS, TYPE_LABELS
+from .azm_coding import (LIFECYCLE_LABELS, MODULE_WIDE_OUTPUTS, PROFILE_OUTPUT,
+                         TYPE_LABELS, WHOLE_MODEL)
 from odoo.addons.azm_operating_model.models.azm_fin_catalogue import PROFILES, SCOPES
 
 _logger = logging.getLogger(__name__)
@@ -648,6 +649,19 @@ class AzmDocPublication(models.Model):
         self.ensure_one()
         if self.kind in self._book_kinds():
             return len(self._book_parts()) <= 1   # nothing but the entity's own summary
+        if self.kind == "requirement":
+            # A requirement is now the deliverable itself, so the promise that only what
+            # the group produces gets numbered has to hold here too: a requirement no
+            # entity finds applicable — nobody does investments — is not a policy of
+            # theirs, and a page saying so is not one either.
+            #
+            # Not having started is a different thing from not applying. An entity with
+            # no assessment yet gets the blank sheet, which is the list of what it has
+            # to answer; that is the whole use of it.
+            if not assessment:
+                return False
+            line = self._lines(assessment)[:1]
+            return not (line and line.applicable)
         return self.kind == "module" and not self._module_items(assessment)
 
     # ---------------------------------------------------------------- coding
@@ -676,14 +690,48 @@ class AzmDocPublication(models.Model):
         if not create:
             return Artifact._find(ref)
         if self.kind == "requirement":
+            # A requirement *is* the deliverable — a policy, a procedure, an authority —
+            # and which one comes from the profile it is answered under. One that falls
+            # in no output is a question nobody issues anything for.
             req = self.requirement_id
-            # the registry already numbered every requirement; it is not renumbered here
-            return Artifact._of(ref, "FIN", "REQ", name=req.title, code=req.req_id or None)
+            tab = PROFILE_OUTPUT.get(req.profile)
+            if not tab:
+                return Artifact
+            module = req.module_id
+            return Artifact._of(ref, "FIN", FIN_ARTIFACTS[tab][0], node=module.code,
+                                name=f"FIN.{module.code} · {req.title}")
         if self.kind == "module":
-            atype = FIN_ARTIFACTS[self.tab][0]
-            return Artifact._of(ref, "FIN", atype,
+            # the module's compiled version of its policies is a binding of them, not a
+            # deliverable beside them; its gap register and target direction are
+            # readings across the module and are
+            if self.tab not in MODULE_WIDE_OUTPUTS:
+                return Artifact
+            return Artifact._of(ref, "FIN", FIN_ARTIFACTS[self.tab][0],
+                                node=self.module_id.code,
                                 name=f"FIN.{self.module_id.code} · {MODULE_OUTPUTS[self.tab][1]}")
-        return Artifact._of(ref, "FIN", FIN_KIND_ARTIFACTS[self.kind][0], name=self.name)
+        return Artifact._of(ref, "FIN", FIN_KIND_ARTIFACTS[self.kind][0],
+                            node=WHOLE_MODEL, name=self.name)
+
+    def _scoped_code(self):
+        """This entity's copy of the deliverable, under its own name.
+
+        The master is the group's — AZM-FIN-GOV-POL-000001 — and every entity holds the
+        same one; that is what "store once, map many" means and it is why the entity is
+        not part of the master's identity. But the thing that sits in Future
+        University's folders is *their* copy, and it says so: FUE-FIN-GOV-POL-000001,
+        the same deliverable at their scope. The master code travels with it, so one can
+        always be read back to the other.
+        """
+        self.ensure_one()
+        artifact = self._artifact(create=False)
+        if not artifact:
+            return ""
+        entity = self._entity()
+        prefix = (entity.code or "").strip() if entity else ""
+        if not prefix:
+            return artifact.code
+        _group, _sep, rest = artifact.code.partition("-")
+        return f"{prefix}-{rest}" if rest else artifact.code
 
     def _tree_ref(self):
         """Where to find this document's node in the tree.
@@ -730,9 +778,11 @@ class AzmDocPublication(models.Model):
             filed.add(ref)
             if ref in produced:
                 continue
-            # a built document is empty only if it was filed as empty, so "done" is an
-            # answer on its own and skips the engine
-            if pub.state == "done" or not pub._is_empty(cache.get(pub._source_key())):
+            # Asked of the answers every time, not read off the file. "Already built,
+            # so it must have had something in it" is only true of the rule it was built
+            # under: a requirement sheet filed as done before a requirement became a
+            # deliverable in its own right would be grandfathered in for ever.
+            if not pub._is_empty(cache.get(pub._source_key())):
                 produced.add(ref)
         return filed, produced
 
@@ -1047,7 +1097,9 @@ class AzmDocPublication(models.Model):
         artifact = pub._artifact()
         stage = pub._lifecycle()
         payload.update({
-            "code": artifact.code,
+            # what this entity's copy is called, with the group's master beside it
+            "code": pub._scoped_code() or artifact.code,
+            "master_code": artifact.code,
             "azm_type": TYPE_LABELS.get(artifact.atype, ("", "")),
             "status": LIFECYCLE_LABELS.get(stage, ("", "")),
             "stage": stage,
@@ -1056,7 +1108,8 @@ class AzmDocPublication(models.Model):
             "tree_ref": pub._tree_ref(),   # how the tree names it, for the reader
         })
         payload["verify"] = " · ".join(x for x in (
-            artifact.code,
+            payload["code"],
+            artifact.code if payload["code"] != artifact.code else "",
             payload["entity_code"] or company.name,
             f"v{assessment.version}" if assessment else "",
             stage,

@@ -11,7 +11,7 @@ is what the coverage figure counts.
 from odoo import _, api, models
 from odoo.exceptions import UserError
 
-from .azm_coding import DOMAINS, LIFECYCLE_LABELS, TYPE_LABELS
+from .azm_coding import DOMAINS, LIFECYCLE_LABELS, TYPE_LABELS, WHOLE_MODEL
 from .azm_documents import FIN_ARTIFACTS, FIN_KIND_ARTIFACTS, MODULE_OUTPUTS
 from .azm_proc_documents import PROC_ARTIFACTS, PROC_KIND_ARTIFACTS, PROC_OUTPUTS
 
@@ -62,13 +62,21 @@ class AzmDashboard(models.AbstractModel):
 
     @api.model
     def _library_output_name(self, artifact):
-        """What kind of output it is, in words: "السياسات والقواعد", "الإجراء" …"""
+        """What this deliverable is called.
+
+        A module's gap register is named by the output it is; an individual policy is
+        named by the policy it is. Falling back to the kind — "سياسة" against every one
+        of a hundred and twenty-three policies — tells the reader nothing about which.
+        """
         tab = self._library_tab(artifact)
         if tab in MODULE_OUTPUTS:
             return MODULE_OUTPUTS[tab][1], MODULE_OUTPUTS[tab][2]
         if tab in PROC_OUTPUTS:
             return PROC_OUTPUTS[tab][1], PROC_OUTPUTS[tab][2]
-        return TYPE_LABELS.get(artifact.atype, ("", ""))
+        # the node name carries "FIN.GOV · الفترات المالية"; the title is what names it
+        title = (artifact.node_name or "").split(" · ")[-1].strip()
+        kind = TYPE_LABELS.get(artifact.atype, ("", ""))
+        return (title or kind[0]), kind[1]
 
     @api.model
     def _library_companies(self, company_ids=None):
@@ -260,12 +268,15 @@ class AzmDashboard(models.AbstractModel):
     @api.model
     def _library_node(self, artifact):
         """The branch of the structure a deliverable hangs on: FIN.GOV, PUR-REQ, or the
-        model itself for the ones that belong to the whole of it."""
-        name = artifact.node_name or ""
-        head = name.split(" · ")[0].strip()
-        if head.startswith("FIN.") or head.startswith("PUR-"):
-            return head
-        return "FIN" if artifact.domain == "FIN" else "PUR"
+        model itself for the ones that belong to the whole of it.
+
+        Read off the artifact's own node rather than parsed back out of its name, now
+        that the node is part of what it is and of what it is called.
+        """
+        node = (artifact.node or "").strip()
+        if not node or node == WHOLE_MODEL:
+            return artifact.domain
+        return f"FIN.{node}" if artifact.domain == "FIN" else f"PUR-{node}"
 
     @api.model
     def _library_doc_ref(self, artifact):

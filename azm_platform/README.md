@@ -264,7 +264,47 @@ visibility is decided by the engine that drives the answer workspace, so a quest
 entity is never asked reads as "لا يُسأل هنا" rather than as an unanswered hole. An entity
 that has not started still gets a card and a tree — it shows what the model asks of it.
 
+## الترميز · How a deliverable is coded
+
+    AZM-FIN-GOV-POL-000001      الفترات المالية
+    AZM-FIN-GOV-POL-000002      رقابة النشاط
+    AZM-FIN-GOV-POL-000003      حالات إضافية
+    └─┬─┘ └┬┘ └┬┘ └┬┘ └──┬───┘
+   group  │   │   │   which one of them, counted inside the module
+          │   │   what kind of deliverable it is
+          │   the module or cycle stage it hangs on
+          the model
+
+Broad to narrow, the way the registry's own tree runs. The registry v2.1 numbers
+`AZM-<DOMAIN>-<TYPE>-<SERIAL>` straight through, which reads as though a module has one
+deliverable of each kind — FIN.GOV's policy was `AZM-FIN-POL-000001`, singular, when
+FIN.GOV has three. **The deliverable is the individual requirement**, in its own
+document, and which kind it is comes from the profile it is answered under: P/C/L a
+policy, W a procedure, A an authority, R a report, I a system requirement. So the thing
+somebody answers and the thing the group issues are the same thing under two names,
+rather than a page about a policy filed next to the policy. A module's gap register and
+target direction stay module-level — a gap is a reading across the module, and one that
+appears and disappears with the answers has no business holding a permanent number.
+
+Counting inside the module is what makes a number stable: FIN.BUD gaining a policy used
+to push every later policy in the group along, and every document carrying a moved code
+had to be reissued. Now the disturbance stops at the module boundary.
+
+**Each entity's copy says whose it is.** The master belongs to the group and every entity
+holds the same one — that is what *store once, map many* means. What sits in an entity's
+Documents folders is their copy of it, and it is called so:
+
+| | |
+|---|---|
+| `AZM-FIN-GOV-POL-000001` | the group's master |
+| `FUI-FIN-GOV-POL-000001` | Future University's copy of that same one |
+| `AMD-FIN-GOV-POL-000001` | AZ Management's copy |
+
+The master travels on the document beside it, so one always reads back to the other. The
+version and the lifecycle stage stay outside the code, as the registry insists.
+
 ## مكتبة المخرجات · Outputs Library
+
 The sidebar entry — **مكتبة المخرجات**, or **Outputs Library** in English — reads the
 group the other way round from the trees. A tree reads one model for one entity; the library reads **one deliverable
 across every entity** — the question the trees cannot answer: *how many of our entities

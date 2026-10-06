@@ -29,6 +29,8 @@ from odoo import _, api, fields, models
 
 from odoo.addons.azm_operating_model.models import engine
 
+from .azm_coding import WHOLE_MODEL
+
 # tab value -> (folder key, arabic, english, document code). The tab values are
 # prefixed because the financial model already owns "workflow", "authority" and
 # "gaps"; the suffix after pur_ is the engine's own name for the output.
@@ -137,12 +139,17 @@ class AzmDocPublication(models.Model):
         if not create:
             return Artifact._find(ref)
         if self.kind == "question":
-            return Artifact._of(ref, "PUR", "REQ", name=self.question_id.label)
+            question = self.question_id
+            return Artifact._of(ref, "PUR", "REQ", node=question.stage_id.code,
+                                name=question.label)
         if self.kind == "stage":
+            # a stage's outputs are written for the stage as a whole — its policy is one
+            # policy, not one per question — so the stage is the node
             atype = PROC_ARTIFACTS[self.tab][0]
-            return Artifact._of(ref, "PUR", atype,
+            return Artifact._of(ref, "PUR", atype, node=self.stage_id.code,
                                 name=f"PUR-{self.stage_id.code} · {PROC_OUTPUTS[self.tab][1]}")
-        return Artifact._of(ref, "PUR", PROC_KIND_ARTIFACTS[self.kind][0], name=self.name)
+        return Artifact._of(ref, "PUR", PROC_KIND_ARTIFACTS[self.kind][0],
+                            node=WHOLE_MODEL, name=self.name)
 
     def _empty_message(self):
         self.ensure_one()
@@ -454,9 +461,10 @@ class AzmDocPublication(models.Model):
         if self.kind == "stage":
             stage = self.stage_id
             folder, arabic, english, code = PROC_OUTPUTS[self.tab]
-            # the body prints the code the cover prints, not a shorthand of its own
+            # The body prints the code the cover prints, not a shorthand of its own —
+            # and the cover prints this entity's copy, so the body does too.
             body = assessment._render(_engine_tab(self.tab), stage,
-                                      doc_code=self._artifact().code) if assessment else ""
+                                      doc_code=self._scoped_code()) if assessment else ""
             return {
                 "doc_type": (arabic, english),
                 "code": f"{code}-{stage.code}",

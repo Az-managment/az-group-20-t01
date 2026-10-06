@@ -74,8 +74,13 @@ class TestProcDocuments(TransactionCase):
                       "and stamps the document's own code inside it")
         self.assertIn(self.stage.name, str(payload['html']),
                       "and it is this stage's policy, not another's")
-        self.assertTrue(payload['code'].startswith('AZM-PUR-POL-'),
-                        "an output is coded the way the registry codes it")
+        entity = self.company.azm_entity_ids[:1]
+        self.assertEqual(payload['code'],
+                         f"{entity.code}-PUR-{self.stage.code}-POL-000001",
+                         "coded broad to narrow, as this entity's own copy of it")
+        self.assertTrue(payload['master_code'].startswith(
+            f"AZM-PUR-{self.stage.code}-POL-"),
+            "with the group's master code beside it")
 
     def test_a_document_is_built_the_first_time_it_is_opened(self):
         pub = self.Pub.sudo()._get(self.company, 'question', question=self.question)

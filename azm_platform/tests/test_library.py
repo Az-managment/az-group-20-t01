@@ -43,13 +43,25 @@ class TestOutputsLibrary(TransactionCase):
         self.assertEqual(len([r for r in library['rows'] if r['code'] == shared[0]['code']]), 1)
 
     def test_the_sheets_are_left_out_until_asked_for(self):
-        """Nine hundred per-requirement and per-question pages would bury the outputs
-        people actually file; the tree is where those are read."""
+        """The four hundred per-question pages of the cycle would bury the outputs people
+        actually file; the tree is where those are read.
+
+        A financial requirement is no longer one of them — it *is* the policy or the
+        procedure it asks about, so it belongs on the shelf under that name. What is
+        left as a sheet is the cycle's questions.
+        """
         without = self.D.get_outputs_library()
         with_them = self.D.get_outputs_library(sheets=True)
         self.assertGreater(with_them['total'], without['total'])
         self.assertFalse([r for r in without['rows'] if r['atype'] == 'REQ'])
-        self.assertTrue([r for r in with_them['rows'] if r['atype'] == 'REQ'])
+        # asked for by kind rather than looked for in the first page: there are four
+        # hundred of them and the page stops at three hundred
+        sheets = self.D.get_outputs_library(sheets=True, atype='REQ')
+        self.assertTrue(sheets['total'], 'the sheets are there when asked for')
+        self.assertEqual({r['domain'] for r in sheets['rows']}, {'PUR'},
+                         'and the sheets that remain are the cycle\'s questions')
+        self.assertTrue(self.D.get_outputs_library(atype='POL')['total'],
+                        'while the policies are on the shelf in their own right')
 
     # ------------------------------------------------------------------ the filters
     def test_each_filter_narrows_to_what_it_names(self):
@@ -67,9 +79,10 @@ class TestOutputsLibrary(TransactionCase):
         self.assertTrue(node['rows'])
         self.assertEqual({r['node'] for r in node['rows']}, {'FIN.GOV'})
 
-        found = self.D.get_outputs_library(query='AZM-PUR-POL')
+        # the node sits between the model and the kind now, so a search by code says so
+        found = self.D.get_outputs_library(query='AZM-FIN-GOV-POL')
         self.assertTrue(found['rows'])
-        self.assertTrue(all('AZM-PUR-POL' in r['code'] for r in found['rows']))
+        self.assertTrue(all('AZM-FIN-GOV-POL' in r['code'] for r in found['rows']))
 
     def test_the_facets_count_what_the_filter_then_returns(self):
         library = self.D.get_outputs_library()
@@ -260,26 +273,41 @@ class TestOutputsLibrary(TransactionCase):
         pair of methods, so a kind added to the shelf without a path to the file would
         show up here rather than as a dead button.
         """
-        library = self.D.get_outputs_library(company_ids=[self.company.id])
-        first = {}
-        for row in library['rows']:
-            first.setdefault(row['doc']['kind'], row)
-        self.assertEqual(set(first), {'module', 'stage', 'summary', 'cycle',
-                                      'book', 'cycle_book'},
+        # Every kind, asked for rather than taken off the first page — the shelf stops
+        # at three hundred rows and the model-wide volumes sort last.
+        rows_by_kind = {}
+        for atype in (None, 'MAN', 'RPT'):
+            library = self.D.get_outputs_library(company_ids=[self.company.id],
+                                                 atype=atype)
+            for row in library['rows']:
+                rows_by_kind.setdefault(row['doc']['kind'], []).append(row)
+        self.assertEqual(set(rows_by_kind), {'requirement', 'module', 'stage', 'summary',
+                                             'cycle', 'book', 'cycle_book'},
                          'every kind of deliverable is on the shelf')
 
-        for kind, row in first.items():
-            doc = next(e['doc'] for e in self.D.get_output_entities(row['id'])['rows']
-                       if e['company_id'] == self.company.id)
-            # exactly the arguments doc_preview.js sends
-            args = {'kind': doc['kind'], 'node_id': doc.get('id'),
-                    'tab': doc.get('tab'), 'company_id': doc['company_id']}
-            read = self.D.preview_tree_document(**args)
-            self.assertTrue(read['url'].startswith('/web/content/'),
-                            f'{kind} ({row["code"]}) can be read in place')
-            download = self.D.open_tree_document(**args, download=True)
-            self.assertIn('download=true', download['url'],
-                          f'{kind} ({row["code"]}) comes down as a file')
+        for kind, rows in rows_by_kind.items():
+            # One that this entity actually holds something for. A module's gap register
+            # with no gaps in it is on the shelf for the group and empty for an entity
+            # that has none, and "open the first row of this kind" would land on one.
+            opened = None
+            for row in rows[:12]:
+                doc = next(e['doc'] for e in self.D.get_output_entities(row['id'])['rows']
+                           if e['company_id'] == self.company.id)
+                # exactly the arguments doc_preview.js sends
+                args = {'kind': doc['kind'], 'node_id': doc.get('id'),
+                        'tab': doc.get('tab'), 'company_id': doc['company_id']}
+                try:
+                    read = self.D.preview_tree_document(**args)
+                except UserError:
+                    continue   # nothing in this one for this entity
+                self.assertTrue(read['url'].startswith('/web/content/'),
+                                f'{kind} ({row["code"]}) can be read in place')
+                download = self.D.open_tree_document(**args, download=True)
+                self.assertIn('download=true', download['url'],
+                              f'{kind} ({row["code"]}) comes down as a file')
+                opened = row
+                break
+            self.assertTrue(opened, f'at least one {kind} this entity holds can be read')
 
     def test_a_row_can_be_found_again_on_the_tree(self):
         """"Show it on the tree" has to show it, on somebody's tree.
