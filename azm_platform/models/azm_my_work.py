@@ -194,23 +194,6 @@ class AzmDashboard(models.AbstractModel):
         return split.filtered(lambda a: self.env.uid in a.user_ids.ids)
 
     @api.model
-    def _my_work_deliverables(self, companies):
-        """What this person's answers have produced, counted over their own entities."""
-        Pub = self.env.get("azm.doc.publication")
-        if Pub is None or not companies or not Pub.has_access("read"):
-            return {"ready": 0, "total": 0, "pending": 0}
-        counts = {}
-        for state, count in Pub._read_group(
-                [("company_id", "in", companies.ids), ("artifact_id", "!=", False)],
-                ["state"], ["__count"]):
-            counts[state] = count
-        return {
-            "ready": counts.get("done", 0),
-            "pending": counts.get("pending", 0),
-            "total": sum(counts.values()),
-        }
-
-    @api.model
     def _my_work_around(self, companies):
         """The work around the answering: the projects, the tasks, the people.
 
@@ -263,6 +246,39 @@ class AzmDashboard(models.AbstractModel):
                         "job": mate.job_title or mate.job_id.name or "",
                     })
         return out
+
+    @api.model
+    def _my_work_team(self, entities):
+        """Who else is working the same models, and how far each has got.
+
+        Not a department: the people this page is about are the ones holding the other
+        parts of the same assessments, because they are who a person waits on and who
+        waits on them.
+        """
+        Assignment = self.env.get("azm.assignment")
+        if Assignment is None or not entities or not Assignment.has_access("read"):
+            return []
+        mine = Assignment.search([("entity_id", "in", entities.ids)])
+        people = {}
+        for part in mine:
+            for user in part.user_ids:
+                row = people.setdefault(user.id, {
+                    "id": user.id, "name": user.name, "parts": 0,
+                    "answered": 0, "total": 0, "entities": set(), "me": user.id == self.env.uid,
+                })
+                row["parts"] += 1
+                row["answered"] += part.answered
+                row["total"] += part.total
+                row["entities"].add(part.entity_id.name)
+        rows = []
+        for row in people.values():
+            left = max(row["total"] - row["answered"], 0)
+            rows.append({**row,
+                         "entities": sorted(row["entities"]),
+                         "left": left,
+                         "progress": round(100.0 * row["answered"] / row["total"]) if row["total"] else 0})
+        # the most owed first: who needs help is the reason to look
+        return sorted(rows, key=lambda person: (-person["left"], person["name"]))
 
     @api.model
     def _my_work_record(self, res_model, record_id):
@@ -509,7 +525,7 @@ class AzmDashboard(models.AbstractModel):
             "reviews": self._my_work_reviews(),
             "returned": self._my_work_returned(),
             "is_reviewer": self.env.user.has_group("azm_operating_model.azm_group_reviewer"),
-            "deliverables": self._my_work_deliverables(companies),
+            "team": self._my_work_team(entities),
             "around": self._my_work_around(companies),
             "totals": {
                 "entities": len(entities),

@@ -17,6 +17,17 @@ NOT_OFFERED_TO = {
     "azm_platform.menu_my_work": "azm_operating_model.azm_group_manager",
 }
 
+# {menu xml id: the group a reader must hold to be offered it at all}
+#
+# Said here rather than with groups= on the menu for the same reason as above: the AZM
+# hierarchy flows upward, so a group that shows a page to a reviewer shows it to an
+# answerer's manager too, and there is no group that means "a reviewer but not an
+# answerer". The library is the whole group's shelf of deliverables across every
+# entity — somebody answering one entity's model is not asked to curate it.
+ONLY_OFFERED_TO = {
+    "azm_platform.menu_outputs_library": "azm_operating_model.azm_group_reviewer",
+}
+
 
 class IrUiMenu(models.Model):
     _inherit = "ir.ui.menu"
@@ -27,6 +38,12 @@ class IrUiMenu(models.Model):
         withheld = set()
         for xmlid, group in NOT_OFFERED_TO.items():
             if not self.env.user.has_group(group):
+                continue
+            menu = self.env.ref(xmlid, raise_if_not_found=False)
+            if menu:
+                withheld.add(menu.id)
+        for xmlid, group in ONLY_OFFERED_TO.items():
+            if self.env.user.has_group(group):
                 continue
             menu = self.env.ref(xmlid, raise_if_not_found=False)
             if menu:

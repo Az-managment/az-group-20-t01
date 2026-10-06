@@ -310,24 +310,38 @@
             </section>
 
             <!-- ====================================================== what it produced -->
-            <section class="o_azm_mywork_outputs">
+            <!-- ====================================================== your team -->
+            <section t-if="this.d.team.length" class="o_azm_mywork_team">
                 <h2 class="o_azm_section_title">
-                    مخرجاتك <em class="o_azm_en">Your deliverables</em>
+                    زملاؤك على العمل <em class="o_azm_en">Your team</em>
                 </h2>
-                <button type="button" class="o_azm_card o_azm_outputs_card"
-                        t-on-click="() => this.openDeliverables()">
-                    <span class="o_azm_icon_badge o_azm_tone_indigo">
-                        <i class="oi" data-icon="inventory_2" title="Deliverables"/>
-                    </span>
-                    <span class="o_azm_model_main">
-                        <b><t t-out="this.d.deliverables.ready"/> مخرجًا جاهزًا</b>
-                        <small>
-                            من <t t-out="this.d.deliverables.total"/> لدى كياناتك —
-                            السياسات والإجراءات والكتب التي أنتجتها إجاباتك
-                        </small>
-                    </span>
-                    <i class="oi" data-icon="chevron_left" title="Open"/>
-                </button>
+                <div class="o_azm_card">
+                    <div t-foreach="this.d.team" t-as="mate" t-key="mate.id"
+                         t-attf-class="o_azm_team_row {{mate.me ? 'o_azm_team_me' : ''}}">
+                        <span class="o_azm_icon_badge o_azm_tone_slate">
+                            <i class="oi" data-icon="person" title="Person"/>
+                        </span>
+                        <div class="o_azm_model_main">
+                            <b>
+                                <t t-out="mate.name"/>
+                                <span t-if="mate.me" class="o_azm_team_badge">أنت</span>
+                            </b>
+                            <small>
+                                <t t-out="mate.parts"/> جزءًا · <t t-out="mate.entities.join('، ')"/>
+                            </small>
+                            <div class="o_azm_model_meter">
+                                <span class="o_azm_progress o_azm_om_meter o_azm_tone_slate">
+                                    <span class="o_azm_progress_bar"
+                                          t-attf-style="width: {{mate.progress}}%"/>
+                                </span>
+                                <small>
+                                    <t t-out="mate.answered"/>/<t t-out="mate.total"/>
+                                    <t t-if="mate.left"> · بقي <b t-out="mate.left"/></t>
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </section>
 
             <!-- ====================================================== around the work -->

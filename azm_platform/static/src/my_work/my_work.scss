@@ -330,3 +330,22 @@
     margin-top: 10px;
     small { margin-inline-end: auto; }
 }
+
+// ------------------------------------------------------------- who else is on it
+.o_azm_mywork .o_azm_team_row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    + .o_azm_team_row { border-top: 1px solid $azm-border; }
+    &.o_azm_team_me { background: rgba(29, 99, 224, .04); }
+}
+.o_azm_mywork .o_azm_team_badge {
+    margin-inline-start: 6px;
+    padding: 1px 7px;
+    border-radius: 99px;
+    font-size: 10px;
+    font-weight: 600;
+    color: $azm-blue;
+    background: rgba(29, 99, 224, .12);
+}

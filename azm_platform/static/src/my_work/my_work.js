@@ -59,15 +59,15 @@ export class AzmMyWork extends Component {
     /** The headline: what is still owed, across everything assigned to them. */
     get kpis() {
         const t = this.d.totals;
-        const made = this.d.deliverables;
         return [
             { key: "left", label: "أسئلة متبقية", en: "Questions left", value: t.left,
                 icon: "help", tone: t.left ? "orange" : "green",
                 sub: t.left ? "عليك الإجابة عنها" : "لا شيء متبقٍ عليك" },
             { key: "progress", label: "نسبة الاكتمال", en: "Completion", value: `${t.progress}%`,
                 icon: "donut_large", tone: "indigo", sub: "متوسط ما أنجزته" },
-            { key: "ready", label: "مخرجات جاهزة", en: "Deliverables ready", value: made.ready,
-                icon: "task_alt", tone: "green", sub: `من ${made.total} لدى كياناتك` },
+            { key: "team", label: "زملاؤك", en: "Your team", value: this.d.team.length,
+                icon: "group", tone: "slate",
+                sub: `${this.d.team.filter((p) => p.left).length} ما زال عليهم عمل` },
         ];
     }
 
@@ -270,10 +270,6 @@ export class AzmMyWork extends Component {
             assessment_id: review.id,
         });
         await this.action.doAction(action);
-    }
-
-    openDeliverables() {
-        this.action.doAction("azm_platform.action_azm_outputs_library");
     }
 
     openTree(row) {
