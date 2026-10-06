@@ -1006,18 +1006,13 @@ class AzmDocPublication(models.Model):
             columns = qa["columns"]
             if qa["qtype"] == "table" and qa["rows"]:
                 if columns and columns[0]["label"] in fin_engine.STEP_COLUMNS:
-                    steps = [{
-                        "title": (row[0] if row else "") or "[لم يُحدد]",
-                        "detail": " · ".join(f"{columns[i]['label']}: {row[i]}"
-                                             for i in range(1, min(len(columns), len(row))) if row[i]),
-                    } for row in qa["rows"]]
-                    # a work cycle is drawn, here as on the screen the answers were
-                    # given on and as the procurement cycle has always been
+                    # read the same way the engine reads it, so the document and the
+                    # screen the answers were given on cannot disagree about the cycle
+                    steps = fin_engine.step_rows(qa)
                     data["steps"].append({
-                        "label": qa["label"], "items": steps,
-                        "flow": Markup(azm_svg.flow(
-                            [{"title": step["title"], "sub": step["detail"]} for step in steps],
-                            label=qa["label"])),
+                        "label": qa["label"],
+                        "items": [{"title": step["title"], "detail": step["sub"]} for step in steps],
+                        "flow": Markup(azm_svg.flow(steps, label=qa["label"])),
                     })
                 else:
                     data["tables"].append({

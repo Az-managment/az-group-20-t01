@@ -53,7 +53,41 @@ ROLE_WORDS = {
     "approve": ("يعتمد", "يعتمده", "يعتمدها", "المعتمد", "يُعتمد"),
 }
 NOT_A_PERSON = {"لا يوجد", "لا أعرف", "غير مدرج", ""}
-STEP_COLUMNS = ("الخطوة", "المرحلة", "الحدث")
+# A table whose first column names a step is a cycle, and is drawn as one. "بعد (يوم)"
+# is here because an escalation ladder — after so many days, do this, and it is theirs —
+# is an order of work like any other; what differs is that its first column is when the
+# step happens rather than what it is, which is handled below.
+STEP_COLUMNS = ("الخطوة", "المرحلة", "الحدث", "بعد (يوم)")
+
+
+def step_rows(qa):
+    """``[{"title", "sub"}]`` for a table that reads as a sequence.
+
+    The step's name is the first column that reads as a name: where a table is ordered
+    by a number — days elapsed, a level — that number says *when*, not *what*, so it
+    moves into the line underneath and the next column gives the box its title.
+    """
+    columns, rows = qa["columns"], qa["rows"]
+    if not columns or not rows:
+        return []
+
+    def numeric(index):
+        seen = [row[index] for row in rows if index < len(row) and str(row[index]).strip()]
+        if not seen:
+            return False
+        return all(str(value).strip().replace(".", "", 1).isdigit() for value in seen)
+
+    lead = 1 if (numeric(0) and len(columns) > 1) else 0
+    ordered = sorted(rows, key=lambda row: float(row[0])) if lead else rows
+    steps = []
+    for row in ordered:
+        title = (row[lead] if lead < len(row) else "") or "[لم يُحدد]"
+        detail = " · ".join(
+            f"{columns[i]['label']}: {row[i]}"
+            for i in range(len(columns))
+            if i != lead and i < len(row) and str(row[i]).strip())
+        steps.append({"title": title, "sub": detail})
+    return steps
 
 
 def _e(text):
@@ -222,15 +256,8 @@ def _steps(qa):
     rows read top to bottom with an arrow between them say it outright, and match the
     procurement cycle, which has always been drawn this way.
     """
-    cols = qa["columns"]
-    steps = []
-    for row in qa["rows"]:
-        head = row[0] if row else ""
-        rest = " · ".join(f"{cols[i]['label']}: {row[i]}"
-                          for i in range(1, min(len(cols), len(row))) if row[i])
-        steps.append({"title": head or "[لم يُحدد]", "sub": rest})
     return (f'<p class="o_azm_fin_tablecap">{_e(qa["label"])}</p>'
-            + flow(steps, label=qa["label"]))
+            + flow(step_rows(qa), label=qa["label"]))
 
 
 def _by_profile(tab, module, items):
