@@ -281,3 +281,49 @@
         .o_azm_model_meter .o_azm_progress { width: 110px; }
     }
 }
+
+// ------------------------------------------------- choosing what goes back
+// The review row lists the whole assessment; this is how a reviewer names the parts
+// of it that are wrong without opening the work first.
+.o_azm_picker {
+    margin: 0 16px 14px;
+    padding: 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(249, 115, 22, .3);
+    background: rgba(255, 247, 237, .9);
+}
+.o_azm_picker_list {
+    max-height: 260px;
+    overflow-y: auto;
+    margin-bottom: 10px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, .7);
+}
+.o_azm_picker_row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    padding: 6px 10px;
+    font-size: 12.5px;
+    cursor: pointer;
+    &:hover { background: rgba(15, 35, 71, .04); }
+    // a topic sits under its module, a requirement under its topic
+    &.o_azm_picker_d1 { padding-inline-start: 28px; color: $azm-ink; }
+    &.o_azm_picker_d2 { padding-inline-start: 46px; color: $azm-muted; }
+    &.o_azm_picker_on { background: rgba(249, 115, 22, .12); font-weight: 600; }
+}
+.o_azm_picker_note {
+    display: block;
+    font-size: 12.5px;
+    em { font-size: 11px; opacity: .7; margin-inline-start: 6px; }
+    textarea { margin-top: 4px; }
+}
+.o_azm_picker_actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 10px;
+    small { margin-inline-end: auto; }
+}

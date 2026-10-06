@@ -26,7 +26,11 @@ export class AzmMyWork extends Component {
         this.keepLoad = new KeepLast();
         this.state = proxy({ loaded: false, data: null, error: "",
                              sending: false, deciding: false, sent: null,
-                             sendError: "" });
+                             sendError: "",
+                             // the review whose parts are being chosen, what is ticked,
+                             // and the reason they are going back
+                             picking: null, parts: [], chosen: {}, pickNote: "",
+                             loadingParts: false });
         onWillStart(async () => {
             await this.load();
         });
@@ -136,6 +140,77 @@ export class AzmMyWork extends Component {
      * press another button to get where they were going. Both models have their own
      * workspace and both open the same way.
      */
+    // ------------------------------------------------------------ returning parts
+    /** Offer the parts of one review to choose from, without opening the work first. */
+    async openPicker(review) {
+        if (this.state.picking && this.state.picking.id === review.id) {
+            return this.closePicker();
+        }
+        this.state.picking = { id: review.id, res_model: review.res_model, entity: review.entity };
+        this.state.parts = [];
+        this.state.chosen = {};
+        this.state.pickNote = "";
+        this.state.loadingParts = true;
+        try {
+            const data = await this.orm.call("azm.dashboard", "review_parts", [], {
+                res_model: review.res_model,
+                assessment_id: review.id,
+            });
+            this.state.parts = data.parts;
+        } finally {
+            this.state.loadingParts = false;
+        }
+    }
+
+    closePicker() {
+        this.state.picking = null;
+        this.state.parts = [];
+        this.state.chosen = {};
+        this.state.pickNote = "";
+    }
+
+    partKey(part) {
+        return `${part.level}:${part.id}`;
+    }
+
+    isChosen(part) {
+        return !!this.state.chosen[this.partKey(part)];
+    }
+
+    togglePart(part) {
+        const key = this.partKey(part);
+        if (this.state.chosen[key]) {
+            delete this.state.chosen[key];
+        } else {
+            this.state.chosen[key] = part;
+        }
+    }
+
+    chosenCount() {
+        return Object.keys(this.state.chosen).length;
+    }
+
+    /** Send every chosen part back, each carrying the reason typed for them. */
+    async confirmPicker() {
+        const note = (this.state.pickNote || "").trim();
+        const chosen = Object.values(this.state.chosen);
+        if (!note || !chosen.length || !this.state.picking) {
+            return;
+        }
+        this.state.deciding = this.state.picking.id;
+        try {
+            const result = await this.orm.call("azm.dashboard", "return_review_parts", [], {
+                res_model: this.state.picking.res_model,
+                assessment_id: this.state.picking.id,
+                parts: chosen.map((part) => ({ level: part.level, id: part.id, note })),
+            });
+            this.closePicker();
+            this.state.data = result.work;
+        } finally {
+            this.state.deciding = false;
+        }
+    }
+
     /** Open the assessment a returned part belongs to, so it can be dealt with. */
     openReturned(item) {
         return this.action.doAction({

@@ -296,6 +296,47 @@ class AzmDashboard(models.AbstractModel):
         return record.action_open_workspace()
 
     @api.model
+    def review_parts(self, res_model, assessment_id):
+        """What a reviewer may send back, for the page to choose from.
+
+        The workspace knows the part being looked at, so it can offer a button in
+        place. مساحتي does not — a review row there is the whole assessment — so the
+        parts are listed for it to pick from without opening the work first.
+        """
+        record = self._my_work_record(res_model, assessment_id)
+        record.check_access("read")
+        rows = []
+        if res_model == "azm.fin.assessment":
+            for module in record.answer_ids.module_id.sorted("sequence"):
+                rows.append({"level": "module", "id": module.id, "depth": 0,
+                             "name": f"FIN.{module.code} · {module.name}"})
+                lines = record.answer_ids.filtered(lambda a, m=module: a.module_id == m)
+                for topic in lines.topic_id.sorted("sequence"):
+                    rows.append({"level": "topic", "id": topic.id, "depth": 1,
+                                 "name": f"{topic.code or ''} · {topic.name or ''}".strip(" ·")})
+                    for line in lines.filtered(lambda a, t=topic: a.topic_id == t):
+                        rows.append({"level": "requirement", "id": line.requirement_id.id,
+                                     "depth": 2, "name": f"{line.code} · {line.title}"})
+        else:
+            visible = record.answer_ids.filtered("is_visible")
+            for stage in visible.stage_id.sorted("sequence"):
+                rows.append({"level": "stage", "id": stage.id, "depth": 0,
+                             "name": f"PUR-{stage.code} · {stage.name}"})
+                for line in visible.filtered(lambda a, s=stage: a.stage_id == s):
+                    rows.append({"level": "question", "id": line.question_id.id, "depth": 1,
+                                 "name": f"{line.code} · {line.label}"})
+        return {"parts": rows, "state": record.state}
+
+    @api.model
+    def return_review_parts(self, res_model, assessment_id, parts):
+        """Send several named parts back at once, each with its reason."""
+        record = self._my_work_record(res_model, assessment_id)
+        record.check_access("write")
+        record.action_return_parts(parts)
+        return {"done": True, "state": record.state,
+                "open_returns": record.open_return_count, "work": self.get_my_work()}
+
+    @api.model
     def return_review_part(self, res_model, assessment_id, level, part_id, note):
         """Send one named part back to be done again, with the reason why.
 

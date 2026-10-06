@@ -251,13 +251,58 @@
                                 <t t-if="this.state.deciding === review.id">…</t>
                                 <t t-else="">اقبل الإجابات</t>
                             </button>
+                            <!-- choose the parts that are wrong, without opening the work -->
                             <button type="button" class="btn btn-sm btn-light o_azm_return"
                                     t-att-disabled="this.state.deciding ? 'disabled' : undefined"
-                                    title="أعدها للمُعد لاستكمالها"
+                                    title="اختر أجزاءً وأعدها مع ملاحظة"
+                                    t-on-click="() => this.openPicker(review)">
+                                <i class="oi me-1" data-icon="checklist"/>أعد أجزاءً
+                            </button>
+                            <button type="button" class="btn btn-sm btn-light o_azm_return"
+                                    t-att-disabled="this.state.deciding ? 'disabled' : undefined"
+                                    title="أعدها كلها للمُعد"
                                     t-on-click="() => this.decide(review, false)">
                                 <i class="oi" data-icon="undo"/>
                             </button>
                         </div>
+                    </div>
+
+                    <!-- the parts of this review, to tick -->
+                    <div t-if="this.state.picking and this.state.picking.id === review.id"
+                         class="o_azm_picker">
+                        <div t-if="this.state.loadingParts" class="o_azm_loading">
+                            <i class="oi oi-spin" data-icon="progress_activity" title="Loading"/>
+                        </div>
+                        <t t-else="">
+                            <div class="o_azm_picker_list">
+                                <label t-foreach="this.state.parts" t-as="part"
+                                       t-key="part.level + '-' + part.id"
+                                       t-attf-class="o_azm_picker_row o_azm_picker_d{{part.depth}} {{this.isChosen(part) ? 'o_azm_picker_on' : ''}}">
+                                    <input type="checkbox" t-att-checked="this.isChosen(part)"
+                                           t-on-change="() => this.togglePart(part)"/>
+                                    <span t-out="part.name"/>
+                                </label>
+                            </div>
+                            <label class="o_azm_picker_note">
+                                سبب الإعادة <em class="o_azm_en">Why it is coming back</em>
+                                <textarea class="form-control" rows="2"
+                                          placeholder="ما الذي يحتاج معالجة؟"
+                                          t-att-value="this.state.pickNote"
+                                          t-on-input="(ev) => this.state.pickNote = ev.target.value"/>
+                            </label>
+                            <div class="o_azm_picker_actions">
+                                <small class="text-muted">
+                                    اخترت <t t-out="this.chosenCount()"/> جزءًا
+                                </small>
+                                <button type="button" class="btn btn-sm btn-light"
+                                        t-on-click="() => this.closePicker()">تراجع</button>
+                                <button type="button" class="btn btn-sm btn-warning"
+                                        t-att-disabled="!this.chosenCount() or !this.state.pickNote.trim() or this.state.deciding ? 'disabled' : undefined"
+                                        t-on-click="() => this.confirmPicker()">
+                                    أعدها مع الملاحظة
+                                </button>
+                            </div>
+                        </t>
                     </div>
                 </div>
             </section>
