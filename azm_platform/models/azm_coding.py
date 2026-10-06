@@ -2,7 +2,7 @@
 
 The registry is the authority on how anything the group produces is identified:
 
-    Canonical ID   AZM-<DOMAIN>-<NODE>-<TYPE>-<SERIAL>   — entity, system, version and
+    Canonical ID   AZM-<DOMAIN>-<TYPE>-<SERIAL>   — entity, system, version and
                    lifecycle stage are *separate* from the identity, never part of it.
     Tree           Model → Module → Sub-module → Process/Topic → Requirement.
     Artifacts      0..N of every output type per process; store once, map many.
@@ -14,30 +14,37 @@ So an artifact is registered once for the node it belongs to — and each entity
 it is the same artifact at a scope, not a document of its own. That is what azm.artifact
 holds, and what every document prints on its cover.
 
-The node is part of the code, and the serial runs within it. The registry v2.1 numbers
-AZM-<DOMAIN>-<TYPE>-<SERIAL> straight through, which reads as though a node has one
-deliverable of each type: FIN.GOV's policy was AZM-FIN-POL-000001, singular, when
-FIN.GOV has three policies — financial periods, activity oversight, additional cases.
-Each of those is its own policy and its own document, so each carries its own code:
+The serial runs straight through the model and the type, and the node is a field beside
+it rather than part of it. That is the registry's own rule and it has a reason: *one
+artifact may map to many nodes without copies*, which a code naming one node forbids.
 
-    AZM-FIN-GOV-POL-000001   الفترات المالية
-    AZM-FIN-GOV-POL-000002   رقابة النشاط
-    AZM-FIN-GOV-POL-000003   حالات إضافية
+What the registry does say about nodes is that there are **0..N of every output type per
+process**. FIN.GOV has three policies — financial periods, activity oversight, additional
+cases — and the old reading, one policy document per module, collapsed them into one
+code that stood for all three. Each of them is its own policy, its own document and its
+own code:
+
+    AZM-FIN-POL-000001   FIN.GOV · الفترات المالية
+    AZM-FIN-POL-000002   FIN.GOV · رقابة النشاط
+    AZM-FIN-POL-000003   FIN.GOV · حالات إضافية
 
 Which deliverable a requirement is comes from its answer profile — P/C/L are policy,
 W procedure, A authority, R reporting, I system requirement — so the thing somebody
 answers and the thing the group issues are the same thing under two names, rather than
 a page about a policy filed next to the policy.
 
-A module's gap register and its target direction stay module-level: a gap is not a
-deliverable of its own but a reading across the module, and one that appears and
-disappears as answers change has no business holding a permanent number.
+Where an entity falls short of a requirement, and where it means to take it, are
+deliverables of that requirement too — each in its own document and under its own code.
+A module still has a gap register and a target direction, and they are compilations of
+those: bound from the deliverables under them, carrying no code of their own, exactly as
+a module's compiled policy is a binding of its policies.
+
+That is the rule, and it is the only rule: **every module-level document is a binding,
+every requirement-level document is a deliverable.**
 """
 from odoo import api, fields, models
 
-# Broad to narrow, the way the registry's own tree runs: model, then the module or
-# stage inside it, then what kind of deliverable this is, then which one of them.
-CANONICAL = "AZM-{domain}-{node}-{atype}-{serial:06d}"
+CANONICAL = "AZM-{domain}-{atype}-{serial:06d}"
 # what stands in for the node on the documents that belong to a whole model
 WHOLE_MODEL = "ALL"
 
@@ -53,9 +60,14 @@ PROFILE_OUTPUT = {
     "I": "integration",                         # → a system requirement
 }
 
-# Outputs that are a reading across the whole module rather than one of its
-# requirements: which of them fell short, and where the module is going.
-MODULE_WIDE_OUTPUTS = ("gaps", "future")
+# What a single requirement produces, beyond the deliverable it is: where this entity
+# falls short of it, and where it intends to take it. Both belong to the requirement and
+# not to the module — FIN.GOV's gap register carried one code over five gaps, which is
+# the same thing as a policy document carrying one code over three policies.
+REQUIREMENT_ASPECTS = ("gaps", "future")
+
+# the profile-driven outputs, in the order a module's deliverables are read
+PROFILE_TABS = ("rules", "workflow", "authority", "reports", "integration")
 
 # The models the group codes for. HRF requirements are numbered inside FIN, exactly as
 # the registry numbers them (167 = 107 FIN + 60 HRF, all AZM-FIN-REQ-…).
@@ -152,7 +164,7 @@ class AzmArtifact(models.Model):
                              "نوع المخرج", required=True, readonly=True)
     node = fields.Char("العقدة", required=True, readonly=True, index=True,
                        default=WHOLE_MODEL,
-                       help="الموديول أو المرحلة التي ينتمي إليها المخرج؛ المسلسل يعُدّ داخلها.")
+                       help="الموديول أو المرحلة التي ينتمي إليها المخرج — بجوار الكود لا بداخله.")
     serial = fields.Integer("المسلسل", required=True, readonly=True)
     node_name = fields.Char("اسم العقدة", readonly=True)
 
@@ -193,19 +205,19 @@ class AzmArtifact(models.Model):
         # for the same unregistered ref both miss the search above, both allocate, and
         # the second dies on _ref_uniq — so the search is repeated under the lock.
         self.env.cr.execute("SELECT pg_advisory_xact_lock(hashtext(%s))",
-                            (f"azm.artifact:{domain}:{atype}:{node}",))
+                            (f"azm.artifact:{domain}:{atype}",))
         found = Artifact.search([("ref", "=", ref)], limit=1)
         if found:
             return found
         if code:
             serial = int(code.rsplit("-", 1)[-1]) if code.rsplit("-", 1)[-1].isdigit() else 0
         else:
-            # the next serial of this type *within this node*, read under the lock
+            # the next serial of this domain and type, read under the lock taken above
             self.env.cr.execute(
                 "SELECT COALESCE(MAX(serial), 0) FROM azm_artifact "
-                "WHERE domain = %s AND atype = %s AND node = %s", (domain, atype, node))
+                "WHERE domain = %s AND atype = %s", (domain, atype))
             serial = self.env.cr.fetchone()[0] + 1
-            code = CANONICAL.format(domain=domain, atype=atype, node=node, serial=serial)
+            code = CANONICAL.format(domain=domain, atype=atype, serial=serial)
         return Artifact.create({
             "code": code, "ref": ref, "domain": domain, "atype": atype,
             "node": node, "serial": serial, "node_name": name,
@@ -254,23 +266,22 @@ class AzmArtifact(models.Model):
         # these rather than a deliverable beside them, so it is not numbered here.
         modules = env["azm.fin.module"].sudo().search([])
         ordered = modules.sorted(lambda m: (m.azm_code or "ZZZ", m.sequence, m.id))
+        Pub = env["azm.doc.publication"]
         for module in ordered:
             requirements = module.requirement_ids.sorted(
                 lambda r: (r.topic_sequence or 0, r.sequence or 0, r.id))
-            for req in requirements:
-                tab = PROFILE_OUTPUT.get(req.profile)
-                if not tab:
-                    continue
-                plan.append((f"azm.fin.requirement,{req.id}", "FIN", FIN_ARTIFACTS[tab][0],
-                             module.code, f"FIN.{module.code} · {req.title}", None))
-            # a gap register and a target direction are readings across the module, not
-            # deliverables of their own — and one that appears and disappears with the
-            # answers has no business holding a permanent number of its own
-            for tab in module._azm_outputs():
-                if tab in MODULE_WIDE_OUTPUTS:
-                    plan.append((f"azm.fin.module,{module.id},{tab}", "FIN",
+            # Everything a requirement produces, grouped by kind so that a module's
+            # policies run 1..N before its procedures start again at one — the registry
+            # is read a kind at a time, not a requirement at a time.
+            for tab in (PROFILE_TABS + REQUIREMENT_ASPECTS):
+                for req in requirements:
+                    if tab not in Pub._requirement_tabs(req):
+                        continue
+                    aspect = (f" · {MODULE_OUTPUTS[tab][1]}"
+                              if tab in REQUIREMENT_ASPECTS else "")
+                    plan.append((f"azm.fin.requirement,{req.id},{tab}", "FIN",
                                  FIN_ARTIFACTS[tab][0], module.code,
-                                 f"FIN.{module.code} · {MODULE_OUTPUTS[tab][1]}", None))
+                                 f"FIN.{module.code} · {req.title}{aspect}", None))
         for kind, (atype, _stage) in FIN_KIND_ARTIFACTS.items():
             if kind != "requirement":
                 plan.append((f"fin:{kind}", "FIN", atype, WHOLE_MODEL, kind, None))
@@ -299,15 +310,15 @@ class AzmArtifact(models.Model):
         plan = [row for row in plan if row[0] not in filed or row[0] in produced]
 
         # ------------------------------------------------------------ the numbers
-        # Counted inside the node: FIN.GOV's three policies are its first, second and
-        # third, and FIN.BUD's begin again at one. That is the whole point of the node
-        # being in the code — AZM-FIN-POL-000001 read as though GOV had one policy.
+        # One running serial per model and type, as the registry numbers them. The node
+        # travels on the artifact as a field, because an artifact is allowed to belong
+        # to more than one node and a code naming one would forbid that.
         counters, wanted = {}, []
         for ref, domain, atype, node, name, code in plan:
-            key = (domain, atype, node)
+            key = (domain, atype)
             serial = counters.get(key, 0) + 1
             counters[key] = serial
-            code = CANONICAL.format(domain=domain, atype=atype, node=node, serial=serial)
+            code = CANONICAL.format(domain=domain, atype=atype, serial=serial)
             wanted.append((ref, domain, atype, node, name, code, serial))
 
         # ------------------------------------------------------------ apply

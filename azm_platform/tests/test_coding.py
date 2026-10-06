@@ -54,19 +54,19 @@ class TestCoding(TransactionCase):
         ]
         for pub in cases:
             payload = pub._azm_payload()
-            prefix, domain, node, atype, serial = payload['code'].split('-')
-            self.assertEqual(prefix, entity.code, "this entity's own copy of it")
+            azm, domain, atype, serial = payload['code'].split('-')
+            self.assertEqual(azm, 'AZM')
             self.assertIn(domain, ('FIN', 'PUR'))
             self.assertIn(atype, types)
-            self.assertTrue(node, 'the module or stage it hangs on')
-            self.assertEqual(payload['master_code'],
-                             CANONICAL.format(domain=domain, node=node, atype=atype,
-                                              serial=int(serial)),
-                             "and the group's master code travels with it")
+            self.assertEqual(payload['code'],
+                             CANONICAL.format(domain=domain, atype=atype,
+                                              serial=int(serial)))
+            # the node, the entity, the version and the stage all sit beside it
+            self.assertTrue(payload['azm_node'], 'the module or stage it hangs on')
             self.assertIn(payload['stage'], stages)
             self.assertEqual(payload['scope'], self.company.name)
-            self.assertNotIn('v', payload['code'],
-                             "the version travels beside the code, not inside it")
+            self.assertNotIn(entity.code, payload['code'])
+            self.assertNotIn(payload['azm_node'], payload['code'])
 
     def test_a_requirement_is_coded_as_the_deliverable_it_is(self):
         """A requirement is not a page about a policy filed next to the policy — it *is*
@@ -83,37 +83,47 @@ class TestCoding(TransactionCase):
         A._register_all()
         requirement = self.env['azm.fin.requirement'].search(
             [('req_id', '!=', False), ('profile', 'in', list(PROFILE_OUTPUT))], limit=1)
-        art = A.search([('ref', '=', f"azm.fin.requirement,{requirement.id}")], limit=1)
+        tab = PROFILE_OUTPUT[requirement.profile]
+        art = A.search([('ref', '=', f"azm.fin.requirement,{requirement.id},{tab}")],
+                       limit=1)
         self.assertTrue(art, 'a requirement is a deliverable of its own')
-        self.assertEqual(art.atype,
-                         FIN_ARTIFACTS[PROFILE_OUTPUT[requirement.profile]][0],
-                         'typed by what it asks for')
-        self.assertEqual(art.node, requirement.module_id.code, 'noded by its module')
-        self.assertEqual(art.code,
-                         f"AZM-FIN-{art.node}-{art.atype}-{art.serial:06d}")
+        self.assertEqual(art.atype, FIN_ARTIFACTS[tab][0], 'typed by what it asks for')
+        self.assertEqual(art.node, requirement.module_id.code,
+                         'with its module beside the code, not inside it')
+        self.assertEqual(art.code, f"AZM-FIN-{art.atype}-{art.serial:06d}")
         self.assertTrue(requirement.req_id,
                         'and the registry id it came in with is still on the record')
 
-    def test_the_entity_s_copy_carries_the_entity_s_own_code(self):
-        """One master deliverable for the group, and each entity's copy of it says whose
-        it is: AZM-FIN-GOV-POL-000001 is the group's, FUI-FIN-GOV-POL-000001 is Future
-        University's copy of that same one."""
+    def test_the_entity_is_an_applicability_not_an_identity(self):
+        """One artifact, held by every entity it applies to — "store once, map many".
+
+        So the entity is not part of the code and neither is the module: both are
+        printed beside it, where they can change without the deliverable changing its
+        name. The registry's reason for the second one shows up later — an artifact may
+        map to many nodes without copies, which a code naming one node forbids.
+        """
         A = self.env['azm.artifact'].sudo()
         A._register_all()
         requirement = self.env['azm.fin.requirement'].search(
             [('req_id', '!=', False)], limit=1)
         pub = self.Pub._get(self.company, 'requirement', requirement=requirement)
-        master = pub._artifact(create=False)
-        self.assertTrue(master, 'the group numbered it once')
-        scoped = pub._scoped_code()
+        artifact = pub._artifact(create=False)
+        self.assertTrue(artifact, 'the group numbered it once')
         entity = self.company.azm_entity_ids[:1]
         self.assertTrue(entity.code)
-        self.assertEqual(scoped, master.code.replace('AZM', entity.code, 1),
-                         "the entity's code in place of the group's, nothing else moved")
+
         payload = pub._azm_payload()
-        self.assertEqual(payload['code'], scoped, 'and that is what the document prints')
-        self.assertEqual(payload['master_code'], master.code,
-                         'with the master travelling beside it, so one reads back to the other')
+        self.assertEqual(payload['code'], artifact.code)
+        self.assertNotIn(entity.code, payload['code'], 'the entity is not in the code')
+        self.assertNotIn(artifact.node, payload['code'], 'and neither is the module')
+        self.assertEqual(payload['azm_node'], artifact.node, 'they are printed beside it')
+        self.assertEqual(payload['scope'], self.company.name)
+        # and the next entity's copy of it is the same deliverable, not another one
+        other = self.env['res.company'].create({'name': 'AZM Coding Campus Two'})
+        self.env.user.company_ids = [(4, other.id)]
+        theirs = self.Pub._get(other, 'requirement', requirement=requirement)
+        self.assertEqual(theirs._artifact(create=False), artifact,
+                         'stored once, mapped to many')
 
     def test_one_artifact_is_shared_by_every_entity(self):
         """Store once, map many: the same policy is one code for the whole group."""
@@ -140,14 +150,10 @@ class TestCoding(TransactionCase):
         for atype in tabs:
             arts = A.search([('domain', '=', 'FIN'), ('atype', '=', atype)])
             self.assertTrue(arts, f"something is numbered AZM-FIN-…-{atype}-…")
-            # every module that has one starts its own count at one
-            for node in set(arts.mapped('node')):
-                theirs = arts.filtered(lambda a, n=node: a.node == n).sorted('serial')
-                self.assertEqual(theirs[0].serial, 1,
-                                 f"FIN.{node}'s first {atype} is 000001")
-                self.assertEqual([a.serial for a in theirs],
-                                 list(range(1, len(theirs) + 1)),
-                                 f"and FIN.{node}'s {atype}s run 1..N")
+            # one running count for the model, 1..N with no holes
+            self.assertEqual(sorted(arts.mapped('serial')),
+                             list(range(1, len(arts) + 1)),
+                             f"AZM-FIN-{atype} runs 1..N")
             # the modules themselves still fall in the registry's order, which is not
             # the catalogue's — read off the names rather than asked of the registry
             seen, got = set(), []
@@ -169,19 +175,17 @@ class TestCoding(TransactionCase):
         arts = A.search([])
         self.assertTrue(arts)
         for art in arts:
-            self.assertRegex(art.code, r"^AZM-(FIN|PUR)-[A-Z0-9]{2,8}-[A-Z]{2,4}-\d{6}$")
-            self.assertEqual(
-                art.code, f"AZM-{art.domain}-{art.node}-{art.atype}-{art.serial:06d}",
-                "a code says exactly what its own fields say")
+            self.assertRegex(art.code, r"^AZM-(FIN|PUR)-[A-Z]{2,4}-\d{6}$")
+            self.assertEqual(art.code, f"AZM-{art.domain}-{art.atype}-{art.serial:06d}",
+                             "a code says exactly what its own fields say")
+            self.assertTrue(art.node, "and the node travels beside it, as a field")
         for field in ('code', 'ref'):
             dupes = [k for k, n in Counter(arts.mapped(field)).items() if n > 1]
             self.assertFalse(dupes, f"duplicate {field}: {dupes[:3]}")
-        # dense *inside the node*: FIN.GOV's policies are its first, second and third,
-        # and FIN.BUD's begin again at one — which is the whole point of the node being
-        # in the code
+        # one running serial per model and type, as the registry numbers them
         by = defaultdict(list)
         for art in arts:
-            by[(art.domain, art.node, art.atype)].append(art.serial)
+            by[(art.domain, art.atype)].append(art.serial)
         for key, serials in by.items():
             self.assertEqual(sorted(serials), list(range(1, len(serials) + 1)),
                              f"{key} is numbered 1..N with no gaps")
@@ -198,13 +202,15 @@ class TestCoding(TransactionCase):
         self.assertGreater(len(policies), 1, 'GOV has more than one policy')
         coded = A.search([('domain', '=', 'FIN'), ('node', '=', 'GOV'),
                           ('atype', '=', 'POL')])
-        self.assertEqual(len(coded), len(policies), 'and each of them is numbered')
-        self.assertEqual(sorted(coded.mapped('serial')),
-                         list(range(1, len(policies) + 1)), 'from one, inside GOV')
-        # another module counts its own from one as well
-        other = A.search([('domain', '=', 'FIN'), ('atype', '=', 'POL'),
-                          ('node', '!=', 'GOV'), ('serial', '=', 1)], limit=1)
-        self.assertTrue(other, 'every module that has a policy has a first one')
+        self.assertEqual(len(coded), len(policies),
+                         'and each of them is a deliverable of its own')
+        self.assertEqual(len(set(coded.mapped('code'))), len(policies),
+                         'each under its own code')
+        # the serial runs through the model, so another module's policies carry on
+        # rather than starting again — the module is a field, not part of the number
+        everything = A.search([('domain', '=', 'FIN'), ('atype', '=', 'POL')])
+        self.assertEqual(sorted(everything.mapped('serial')),
+                         list(range(1, len(everything) + 1)))
 
     def test_the_tree_reference_points_at_the_tree(self):
         """The identity is the canonical code; the tree reference is how to find the
@@ -237,12 +243,12 @@ class TestCoding(TransactionCase):
         after = {a.ref: a.code for a in A.search([])}
         self.assertEqual({r: c for r, c in after.items() if r in before}, before,
                          "nothing that was already numbered moved")
-        new_ref = f"azm.fin.requirement,{probe.id}"
+        new_ref = f"azm.fin.requirement,{probe.id},rules"
         self.assertIn(new_ref, after, "and the new module's policy was numbered")
         # a module counts its own, so a new one starts at one rather than carrying on
         # from whatever the last module reached
-        self.assertEqual(after[new_ref], "AZM-FIN-ZZZ-POL-000001",
-                         "in its own module, from one")
+        self.assertTrue(after[new_ref].startswith("AZM-FIN-POL-"),
+                        "numbered among the model's policies")
 
     def test_a_deliverable_that_becomes_real_is_numbered_without_moving_anyone(self):
         """An entity takes on an activity, so now there are deliverables for it.
@@ -291,15 +297,20 @@ class TestCoding(TransactionCase):
         A._register_all()
         gained = A.search([('domain', '=', 'FIN'), ('node', '=', 'QQQ')])
         self.assertTrue(gained, 'the new deliverables are numbered')
-        self.assertEqual(gained.filtered(lambda a: a.atype == 'POL').code,
-                         'AZM-FIN-QQQ-POL-000001',
-                         'in their own module, counted from one')
+        policy = gained.filtered(lambda a: a.atype == 'POL')
+        self.assertTrue(policy.code.startswith('AZM-FIN-POL-'),
+                        'numbered among the model\'s policies')
+        self.assertEqual(policy.node, 'QQQ', 'with its module beside the code')
         now = {a.ref: a.code for a in A.search([('domain', '=', 'FIN')])}
-        # outside the probe module: what happens inside it is the point of the test
-        outside = {r: c for r, c in before.items() if not c.startswith('AZM-FIN-QQQ-')}
-        moved = {r: (outside[r], now.get(r)) for r in outside if now.get(r) != outside[r]}
-        self.assertFalse(moved,
-                         f"not one code outside FIN.QQQ moved; {list(moved.items())[:3]}")
+        # The serial runs through the model, so a deliverable appearing in the middle of
+        # it does move the ones after — that is the price of the registry's flat
+        # numbering, and the reason a document prints its code into its own fingerprint:
+        # the ones affected age by themselves rather than keeping a number that moved.
+        moved = {r: (before[r], now[r]) for r in before if r in now and before[r] != now[r]}
+        for ref, (was, is_now) in moved.items():
+            self.assertGreater(is_now, was, 'down the list, never up')
+        self.assertFalse([r for r in before if r not in now],
+                         'and nothing already numbered was dropped')
 
     def test_registering_twice_changes_nothing(self):
         A = self.env['azm.artifact'].sudo()

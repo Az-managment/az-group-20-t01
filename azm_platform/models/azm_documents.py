@@ -30,7 +30,7 @@ from odoo.exceptions import UserError
 
 from odoo.addons.azm_operating_model.models import fin_engine
 
-from .azm_coding import (LIFECYCLE_LABELS, MODULE_WIDE_OUTPUTS, PROFILE_OUTPUT,
+from .azm_coding import (LIFECYCLE_LABELS, PROFILE_OUTPUT, REQUIREMENT_ASPECTS,
                          TYPE_LABELS, WHOLE_MODEL)
 from odoo.addons.azm_operating_model.models.azm_fin_catalogue import PROFILES, SCOPES
 
@@ -245,7 +245,11 @@ class AzmDocPublication(models.Model):
         for pub in self:
             if pub.kind == "requirement":
                 req = pub.requirement_id
-                pub.name = f"{req.tree_ref or req.code} · {req.title}"
+                # the aspect is part of the name, or a requirement's gap and the
+                # requirement itself are two files called the same thing
+                aspect = (f" · {MODULE_OUTPUTS[pub.tab][1]}"
+                          if pub.tab in REQUIREMENT_ASPECTS else "")
+                pub.name = f"{req.tree_ref or req.code} · {req.title}{aspect}"
             elif pub.kind == "module":
                 pub.name = f"FIN.{pub.module_id.code} · {MODULE_OUTPUTS[pub.tab][1]}" if pub.tab else False
             elif pub.kind == "summary":
@@ -274,15 +278,31 @@ class AzmDocPublication(models.Model):
     @api.model
     def _key(self, kind, requirement=None, module=None, tab=None):
         if kind == "requirement":
-            return f"req:{requirement.id}"
+            return f"req:{requirement.id}:{tab or self._requirement_tab(requirement)}"
         if kind == "module":
             return f"mod:{module.id}:{tab}"
         return kind   # summary, book — one of each per company
 
     @api.model
+    def _requirement_tab(self, requirement):
+        """The deliverable a requirement is, from the profile it is answered under."""
+        return PROFILE_OUTPUT.get(requirement.profile) or "rules"
+
+    @api.model
+    def _requirement_tabs(self, requirement):
+        """Everything this requirement produces: itself, where the entity falls short of
+        it, and where it means to take it."""
+        return (self._requirement_tab(requirement),) + REQUIREMENT_ASPECTS
+
+    @api.model
     def _get(self, company, kind, requirement=None, module=None, tab=None):
         """The publication record (sudo), created when missing."""
         Pub = self.sudo()
+        # A requirement produces several documents and the key says which; the record
+        # has to say the same, or it is filed under one output and claims to be none —
+        # which is how it ends up with no deliverable behind it.
+        if kind == "requirement" and not tab:
+            tab = self._requirement_tab(requirement)
         key = self._key(kind, requirement, module, tab)
         pub = Pub.search([("company_id", "=", company.id), ("key", "=", key)], limit=1)
         if not pub:
@@ -303,9 +323,18 @@ class AzmDocPublication(models.Model):
         have = set(Pub.search([("company_id", "=", company.id)]).mapped("key"))
         vals = []
         for req in self.env["azm.fin.requirement"].sudo().search([]):
-            if f"req:{req.id}" not in have:
-                vals.append({"company_id": company.id, "kind": "requirement", "key": f"req:{req.id}",
-                             "requirement_id": req.id, "module_id": req.module_id.id})
+            # the deliverable it is, where this entity falls short of it, and where it
+            # means to take it — each its own document under its own code
+            for tab in self._requirement_tabs(req):
+                if f"req:{req.id}:{tab}" not in have:
+                    vals.append({"company_id": company.id, "kind": "requirement",
+                                 "key": f"req:{req.id}:{tab}", "tab": tab,
+                                 # the deliverable itself is published up front; a gap
+                                 # and a direction exist for every requirement and most
+                                 # entities have neither, so those wait to be asked for
+                                 "build": ("on_open" if tab in REQUIREMENT_ASPECTS
+                                           else "queued"),
+                                 "requirement_id": req.id, "module_id": req.module_id.id})
         for module in self.env["azm.fin.module"].sudo().search([]):
             for tab in module._azm_outputs():
                 if f"mod:{module.id}:{tab}" not in have:
@@ -497,12 +526,10 @@ class AzmDocPublication(models.Model):
             "assessment": [assessment.id, assessment.version, assessment.state, assessment.is_demo,
                            str(assessment.approved_date or "")] if assessment else None,
             "catalogue": [req.tree_ref, req.title, req.question, req.owner, module.code, module.name],
-            # The code a document prints is part of what it says, so one filed under an
-            # older coding ages by itself and is rebuilt when next read. It is the
-            # *scoped* code that is printed — the entity's own — so renaming an entity
-            # ages that entity's documents and nobody else's. Looked up and not
-            # allocated: this runs inside the `outdated` compute.
-            "coding": [self._scoped_code(), self._lifecycle()],
+            # the code a document prints is part of what it says, so one filed under an
+            # older coding ages by itself and is rebuilt when next read; looked up and
+            # not allocated, because this runs inside the `outdated` compute
+            "coding": [self._artifact(create=False).code or "", self._lifecycle()],
             "lines": {line.code: [line.applicable, line._snapshot()] for line in lines},
         }
         return hashlib.md5(json.dumps(data, sort_keys=True, ensure_ascii=False, default=str).encode()).hexdigest()
@@ -663,7 +690,16 @@ class AzmDocPublication(models.Model):
             if not assessment:
                 return False
             line = self._lines(assessment)[:1]
-            return not (line and line.applicable)
+            if not (line and line.applicable):
+                return True
+            item = line._engine_dict()
+            if self.tab == "gaps":
+                # a gap is a gap: an entity that meets the requirement has none
+                return item["state"] not in ("partial", "unavailable")
+            if self.tab == "future":
+                return not (item["state"] in ("unavailable", "partial", "unknown")
+                            or (item["target"] and item["target"] != "استمرار"))
+            return False
         return self.kind == "module" and not self._module_items(assessment)
 
     # ---------------------------------------------------------------- coding
@@ -671,7 +707,7 @@ class AzmDocPublication(models.Model):
         """What this document is registered under in the coding registry."""
         self.ensure_one()
         if self.kind == "requirement":
-            return f"azm.fin.requirement,{self.requirement_id.id}"
+            return f"azm.fin.requirement,{self.requirement_id.id},{self.tab or ''}"
         if self.kind == "module":
             return f"azm.fin.module,{self.module_id.id},{self.tab}"
         return f"fin:{self.kind}"
@@ -692,48 +728,34 @@ class AzmDocPublication(models.Model):
         if not create:
             return Artifact._find(ref)
         if self.kind == "requirement":
-            # A requirement *is* the deliverable — a policy, a procedure, an authority —
-            # and which one comes from the profile it is answered under. One that falls
-            # in no output is a question nobody issues anything for.
-            req = self.requirement_id
-            tab = PROFILE_OUTPUT.get(req.profile)
-            if not tab:
+            # A requirement *is* the deliverable — a policy, a procedure, an authority,
+            # the gap against it, the direction for it — and which one this document is
+            # comes from its tab.
+            req, tab = self.requirement_id, self.tab
+            if tab not in FIN_ARTIFACTS:
                 return Artifact
             module = req.module_id
+            aspect = f" · {MODULE_OUTPUTS[tab][1]}" if tab in REQUIREMENT_ASPECTS else ""
             return Artifact._of(ref, "FIN", FIN_ARTIFACTS[tab][0], node=module.code,
-                                name=f"FIN.{module.code} · {req.title}")
+                                name=f"FIN.{module.code} · {req.title}{aspect}")
         if self.kind == "module":
-            # the module's compiled version of its policies is a binding of them, not a
-            # deliverable beside them; its gap register and target direction are
-            # readings across the module and are
-            if self.tab not in MODULE_WIDE_OUTPUTS:
-                return Artifact
-            return Artifact._of(ref, "FIN", FIN_ARTIFACTS[self.tab][0],
-                                node=self.module_id.code,
-                                name=f"FIN.{self.module_id.code} · {MODULE_OUTPUTS[self.tab][1]}")
+            # every module-level document is a binding of the deliverables under it, so
+            # none of them carries a code of its own
+            return Artifact
         return Artifact._of(ref, "FIN", FIN_KIND_ARTIFACTS[self.kind][0],
                             node=WHOLE_MODEL, name=self.name)
 
     def _scoped_code(self):
-        """This entity's copy of the deliverable, under its own name.
+        """The code this document prints: the deliverable's own, unqualified.
 
-        The master is the group's — AZM-FIN-GOV-POL-000001 — and every entity holds the
-        same one; that is what "store once, map many" means and it is why the entity is
-        not part of the master's identity. But the thing that sits in Future
-        University's folders is *their* copy, and it says so: FUE-FIN-GOV-POL-000001,
-        the same deliverable at their scope. The master code travels with it, so one can
-        always be read back to the other.
+        One artifact, held by every entity that it applies to — "store once, map many".
+        The entity is an *applicability* of it, which is why the registry keeps the
+        entity, the system, the version and the lifecycle stage outside the identity;
+        they are printed beside the code on the document, where they can change without
+        the thing changing its name.
         """
         self.ensure_one()
-        artifact = self._artifact(create=False)
-        if not artifact:
-            return ""
-        entity = self._entity()
-        prefix = (entity.code or "").strip() if entity else ""
-        if not prefix:
-            return artifact.code
-        _group, _sep, rest = artifact.code.partition("-")
-        return f"{prefix}-{rest}" if rest else artifact.code
+        return self._artifact(create=False).code or ""
 
     def _tree_ref(self):
         """Where to find this document's node in the tree.
@@ -857,6 +879,9 @@ class AzmDocPublication(models.Model):
         if self.kind in self._book_kinds():
             return "RPT", None
         if self.kind == "requirement":
+            if self.tab in REQUIREMENT_ASPECTS:
+                # a gap belongs with the gaps, wherever the requirement itself is filed
+                return MODULE_OUTPUTS[self.tab][0], None
             module = self.requirement_id.module_id
             return "FIN", (module.code, f"FIN.{module.code} · {module.name}")
         if self.kind == "module":
@@ -1030,8 +1055,12 @@ class AzmDocPublication(models.Model):
             req = pub.requirement_id
             line = pub._lines(assessment)[:1] if assessment else None
             item = self._item(req, line)
+            # what this one of its outputs is: the deliverable itself, the gap against
+            # it, or the direction for it — three documents, three names
+            kind_ar, kind_en = (MODULE_OUTPUTS[pub.tab][1], MODULE_OUTPUTS[pub.tab][2]) \
+                if pub.tab in MODULE_OUTPUTS else ("ورقة متطلب", "Requirement sheet")
             payload.update({
-                "doc_type": ("ورقة متطلب", "Requirement sheet"),
+                "doc_type": (kind_ar, kind_en),
                 "code": item["tree_ref"],
                 "title": req.title,
                 "path": item["path"],
@@ -1099,8 +1128,9 @@ class AzmDocPublication(models.Model):
         artifact = pub._artifact()
         stage = pub._lifecycle()
         payload.update({
-            # what this entity's copy is called, with the group's master beside it
-            "code": pub._scoped_code() or artifact.code,
+            "code": artifact.code,
+            # where it hangs and whose copy this is — beside the code, never inside it
+            "azm_node": artifact.node or "",
             "master_code": artifact.code,
             "azm_type": TYPE_LABELS.get(artifact.atype, ("", "")),
             "status": LIFECYCLE_LABELS.get(stage, ("", "")),
@@ -1110,8 +1140,8 @@ class AzmDocPublication(models.Model):
             "tree_ref": pub._tree_ref(),   # how the tree names it, for the reader
         })
         payload["verify"] = " · ".join(x for x in (
-            payload["code"],
-            artifact.code if payload["code"] != artifact.code else "",
+            artifact.code,
+            artifact.node or "",
             payload["entity_code"] or company.name,
             f"v{assessment.version}" if assessment else "",
             stage,

@@ -225,6 +225,7 @@ class AzmDashboard(models.AbstractModel):
                 "held": held,
                 "entities": len(companies),
                 "doc": self._library_doc_ref(artifact),
+                "tree": self._library_branch(artifact),
             })
 
         return {
@@ -277,6 +278,29 @@ class AzmDashboard(models.AbstractModel):
         if not node or node == WHOLE_MODEL:
             return artifact.domain
         return f"FIN.{node}" if artifact.domain == "FIN" else f"PUR-{node}"
+
+    @api.model
+    def _library_branch(self, artifact):
+        """``(node id, output)`` — the branch of the tree this deliverable hangs on.
+
+        Not the same as how the document is asked for: a requirement's policy is opened
+        as that requirement, and found on the tree under its *module*. Handing the tree
+        the requirement's id would send it looking for a branch that is a leaf.
+        """
+        ref = (artifact.ref or "").split(",")
+        model = ref[0] if ref else ""
+        if len(ref) < 2:
+            return {}
+        rid, tab = int(ref[1]), (ref[2] if len(ref) > 2 else None)
+        if model == "azm.fin.requirement":
+            req = self.env["azm.fin.requirement"].sudo().browse(rid).exists()
+            return {"node_id": req.module_id.id, "family": tab} if req else {}
+        if model == "azm.question":
+            question = self.env["azm.question"].sudo().browse(rid).exists()
+            return {"node_id": question.stage_id.id} if question else {}
+        if model in ("azm.fin.module", "azm.stage"):
+            return {"node_id": rid, "family": tab}
+        return {}
 
     @api.model
     def _library_doc_ref(self, artifact):

@@ -80,9 +80,9 @@ class TestOutputsLibrary(TransactionCase):
         self.assertEqual({r['node'] for r in node['rows']}, {'FIN.GOV'})
 
         # the node sits between the model and the kind now, so a search by code says so
-        found = self.D.get_outputs_library(query='AZM-FIN-GOV-POL')
+        found = self.D.get_outputs_library(query='AZM-FIN-POL')
         self.assertTrue(found['rows'])
-        self.assertTrue(all('AZM-FIN-GOV-POL' in r['code'] for r in found['rows']))
+        self.assertTrue(all('AZM-FIN-POL' in r['code'] for r in found['rows']))
 
     def test_the_facets_count_what_the_filter_then_returns(self):
         library = self.D.get_outputs_library()
@@ -133,10 +133,12 @@ class TestOutputsLibrary(TransactionCase):
         is why these tests cannot just queue them.
         """
         Pub = self.env['azm.doc.publication'].sudo()
-        # the kinds the shelf lists: the per-requirement and per-question sheets are
-        # left off it, so building those proves nothing about what it shows
+        # The kinds the shelf lists. A requirement is one of them now — it *is* the
+        # policy or the procedure — while the cycle's question sheets are not, and the
+        # module-level documents are bindings of the deliverables under them rather than
+        # deliverables, so building either of those proves nothing about what it shows.
         pubs = Pub.search([('company_id', '=', self.company.id),
-                           ('kind', 'not in', ('requirement', 'question'))]
+                           ('kind', '=', 'requirement')]
                           + Pub._due_domain(), limit=limit)
         self.assertTrue(pubs, 'there was something queued to build')
         for pub in pubs:
@@ -281,7 +283,9 @@ class TestOutputsLibrary(TransactionCase):
                                                  atype=atype)
             for row in library['rows']:
                 rows_by_kind.setdefault(row['doc']['kind'], []).append(row)
-        self.assertEqual(set(rows_by_kind), {'requirement', 'module', 'stage', 'summary',
+        # a module-level document is a binding of the deliverables under it, so it is
+        # not one of them and is not on the shelf
+        self.assertEqual(set(rows_by_kind), {'requirement', 'stage', 'summary',
                                              'cycle', 'book', 'cycle_book'},
                          'every kind of deliverable is on the shelf')
 
@@ -316,22 +320,27 @@ class TestOutputsLibrary(TransactionCase):
         row carried neither — as it did — the tree opened the model at the top and left
         the reader to find the branch by hand, which is the search they had just done.
         """
-        library = self.D.get_outputs_library(company_ids=[self.company.id])
+        # each model asked for in turn: the shelf stops at three hundred rows and the
+        # financial requirements fill it, so the cycle's would never be reached
+        rows = []
+        for domain in ('FIN', 'PUR'):
+            rows += self.D.get_outputs_library(company_ids=[self.company.id],
+                                               domain=domain)['rows']
         checked = set()
-        for row in library['rows']:
+        for row in rows:
             doc = row['doc']
-            if doc['kind'] not in ('module', 'stage') or doc['kind'] in checked:
+            if doc['kind'] not in ('requirement', 'stage') or doc['kind'] in checked:
                 continue
             checked.add(doc['kind'])
-            self.assertTrue(doc.get('id'), f"{row['code']} names the branch it hangs on")
-            self.assertTrue(doc.get('tab'), f"{row['code']} names which output it is")
+            branch = row['tree']
+            self.assertTrue(doc.get('id'), f"{row['code']} names what to open")
+            self.assertTrue(branch.get('node_id'),
+                            f"{row['code']} names the branch it hangs on")
             tree = (self.D.get_proc_tree(company_id=self.company.id) if row['domain'] == 'PUR'
                     else self.D.get_fin_tree(company_id=self.company.id))
-            node = next((n for n in tree['nodes'] if n['id'] == doc['id']), None)
+            node = next((n for n in tree['nodes'] if n['id'] == branch['node_id']), None)
             self.assertTrue(node, f"{row['code']} points at a branch the tree has")
-            self.assertIn(doc['tab'], [d['tab'] for d in node['docs']],
-                          f"{row['code']} points at an output that branch shows")
-        self.assertEqual(checked, {'module', 'stage'}, 'both models were checked')
+        self.assertEqual(checked, {'requirement', 'stage'}, 'both models were checked')
 
     def test_each_entity_has_its_own_way_onto_the_tree(self):
         """A tree is one entity's model, so the row's entities each carry their own.
@@ -339,7 +348,8 @@ class TestOutputsLibrary(TransactionCase):
         One button for nine entities opened whichever the filter happened to leave.
         """
         library = self.D.get_outputs_library()
-        row = next(r for r in library['rows'] if r['doc']['kind'] in ('module', 'stage'))
+        row = next(r for r in library['rows']
+                   if r['doc']['kind'] in ('requirement', 'stage'))
         rows = self.D.get_output_entities(row['id'])['rows']
         self.assertGreater(len(rows), 1, 'this deliverable is held by several entities')
         named = [e['doc']['company_id'] for e in rows]

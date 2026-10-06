@@ -7,8 +7,21 @@ def _norm(text):
     return " ".join((text or "").split()).casefold()
 
 
+# Words nobody puts in an acronym. "Future University in Egypt" is FUE to everyone who
+# works there, and was FUIE here because the "in" counted — which is the sort of thing
+# that only shows up once the code is printed on every document the entity issues.
+# "Al" is not among them: it is part of a name, not a joining word.
+_NOT_IN_AN_ACRONYM = {
+    "in", "of", "the", "and", "for", "at", "on", "to", "a", "an", "by", "with",
+    "من", "في", "و", "ال",
+}
+
+
 def _initials(text):
-    return "".join(w[0] for w in (text or "").split() if w[0].isalnum()).upper()
+    """The letters somebody would actually write for a name of this shape."""
+    words = [w for w in (text or "").split()
+             if w[0].isalnum() and w.strip("-–—").lower() not in _NOT_IN_AN_ACRONYM]
+    return "".join(w[0] for w in words).upper()
 
 
 class AzmEntity(models.Model):

@@ -95,6 +95,14 @@ class TestAzmAssessment(TransactionCase):
         self.assertEqual(entity.name, "Zeta Academy")
         other = self.env["res.company"].create({"name": "Zeta Tech Center"})
         self.assertEqual(other.azm_entity_ids.code, "ZTC2")
+        # the code is printed on every document the entity issues, so it reads as the
+        # acronym a person would write: joining words do not count towards it
+        for name, code in (("Zeta University in Egypt", "ZUE"),
+                           ("Zeta Bank of Alexandria", "ZBA"),
+                           ("The Zeta Company for Trade", "ZCT")):
+            made = self.env["res.company"].create({"name": name})
+            self.assertEqual(made.azm_entity_ids.code, code,
+                             f"{name} is {code} to everyone who works there")
         # an entity typed by hand earlier is linked instead of duplicated
         manual = Entity.create({"code": "OMG", "name": "Omega Group"})
         omega = self.env["res.company"].create({"name": "Omega Group"})

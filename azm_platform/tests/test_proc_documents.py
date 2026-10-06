@@ -74,13 +74,13 @@ class TestProcDocuments(TransactionCase):
                       "and stamps the document's own code inside it")
         self.assertIn(self.stage.name, str(payload['html']),
                       "and it is this stage's policy, not another's")
+        self.assertRegex(payload['code'], r'^AZM-PUR-POL-\d{6}$',
+                         "coded the way the registry codes it")
+        self.assertEqual(payload['azm_node'], self.stage.code,
+                         "with the stage beside the code, not inside it")
         entity = self.company.azm_entity_ids[:1]
-        self.assertEqual(payload['code'],
-                         f"{entity.code}-PUR-{self.stage.code}-POL-000001",
-                         "coded broad to narrow, as this entity's own copy of it")
-        self.assertTrue(payload['master_code'].startswith(
-            f"AZM-PUR-{self.stage.code}-POL-"),
-            "with the group's master code beside it")
+        self.assertNotIn(entity.code, payload['code'],
+                         "and the entity is an applicability, not an identity")
 
     def test_a_document_is_built_the_first_time_it_is_opened(self):
         pub = self.Pub.sudo()._get(self.company, 'question', question=self.question)

@@ -230,14 +230,17 @@ export class AzmOutputsLibrary extends Component {
      * Each entity now has its own, and it lands on the branch with the output showing.
      */
     openTree(row, companyId = null) {
-        const doc = row.doc || {};
+        // the branch it hangs on, which is not the same as how the document is asked
+        // for: a requirement's policy is opened as that requirement and found on the
+        // tree under its module
+        const branch = row.tree || {};
         this.action.doAction(
             row.domain === "PUR" ? "azm_platform.action_azm_proc_tree"
                                  : "azm_platform.action_azm_fin_tree",
             { additionalContext: {
                 azm_company_id: companyId || this.previewCompanyId || undefined,
-                azm_node_id: doc.id || undefined,
-                azm_family: doc.tab || undefined,
+                azm_node_id: branch.node_id || undefined,
+                azm_family: branch.family || undefined,
             } }
         );
     }

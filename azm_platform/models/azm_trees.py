@@ -71,24 +71,15 @@ class AzmDashboard(models.AbstractModel):
     # ------------------------------------------------------------------ documents
     @api.model
     def _tree_codes(self, company):
-        """``{ref: the code this entity's copy of it carries}`` for the whole registry.
+        """``{ref: its code}`` for the whole registry.
 
         Read once for the tree rather than per row: a tree of one model is a couple of
-        hundred leaves and each would otherwise be a lookup. The entity's own prefix is
-        put on here for the same reason the documents carry it — what the reader is
-        looking at is their copy, not the group's master.
+        hundred leaves and each would otherwise be a lookup. One artifact is held by
+        every entity it applies to, so the code is the same on all of their trees; which
+        entity is being read is the page's own business.
         """
-        entity = company.azm_entity_ids[:1]
-        prefix = (entity.code or "").strip() if entity else ""
-        codes = {}
-        for art in self.env["azm.artifact"].sudo().search([]):
-            code = art.code
-            if prefix:
-                _group, _sep, rest = code.partition("-")
-                if rest:
-                    code = f"{prefix}-{rest}"
-            codes[art.ref] = code
-        return codes
+        return {art.ref: art.code
+                for art in self.env["azm.artifact"].sudo().search([])}
 
     @api.model
     def _tree_publication(self, kind, node_id=None, tab=None, company_id=None):
@@ -104,7 +95,9 @@ class AzmDashboard(models.AbstractModel):
         # this method is callable over RPC, and an unknown kind used to resolve quietly
         # to the entity summary while a mismatched tab filed a document in the wrong place.
         NODES = {
-            "requirement": ("azm.fin.requirement", "requirement", None),
+            # a requirement produces several documents — itself, its gap, its
+            # direction — so it takes an output like a module does
+            "requirement": ("azm.fin.requirement", "requirement", MODULE_OUTPUTS),
             "module": ("azm.fin.module", "module", MODULE_OUTPUTS),
             "question": ("azm.question", "question", None),
             "stage": ("azm.stage", "stage", PROC_OUTPUTS),

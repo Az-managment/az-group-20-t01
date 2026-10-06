@@ -266,49 +266,51 @@ that has not started still gets a card and a tree — it shows what the model as
 
 ## الترميز · How a deliverable is coded
 
-    AZM-FIN-GOV-POL-000001      الفترات المالية
-    AZM-FIN-GOV-POL-000002      رقابة النشاط
-    AZM-FIN-GOV-POL-000003      حالات إضافية
-    └─┬─┘ └┬┘ └┬┘ └┬┘ └──┬───┘
-   group  │   │   │   which one of them, counted inside the module
-          │   │   what kind of deliverable it is
-          │   the module or cycle stage it hangs on
+    AZM-FIN-POL-000001      FIN.GOV · الفترات المالية
+    AZM-FIN-POL-000002      FIN.GOV · رقابة النشاط
+    AZM-FIN-POL-000003      FIN.GOV · حالات إضافية
+    AZM-FIN-POL-000004      FIN.GLD · استخدام شجرة الحسابات
+    └─┬─┘ └┬┘ └┬┘ └──┬───┘
+   group  │   │   which one of them
+          │   what kind of deliverable it is
           the model
 
-Broad to narrow, the way the registry's own tree runs. The registry v2.1 numbers
-`AZM-<DOMAIN>-<TYPE>-<SERIAL>` straight through, which reads as though a module has one
-deliverable of each kind — FIN.GOV's policy was `AZM-FIN-POL-000001`, singular, when
-FIN.GOV has three. **The deliverable is the individual requirement**, in its own
-document, and which kind it is comes from the profile it is answered under: P/C/L a
-policy, W a procedure, A an authority, R a report, I a system requirement. So the thing
-somebody answers and the thing the group issues are the same thing under two names,
-rather than a page about a policy filed next to the policy. A module's gap register and
-target direction stay module-level — a gap is a reading across the module, and one that
-appears and disappears with the answers has no business holding a permanent number.
+`AZM-<DOMAIN>-<TYPE>-<SERIAL>`, exactly as AZM Master Coding Registry v2.1 defines it.
+The module, the entity, the system, the version and the lifecycle stage are all
+**beside** the code, never inside it — the registry is explicit about that, and the
+reason shows up in its own relationship table: *one artifact may map to many nodes
+without copies*. A code naming one node would forbid that, and a code naming one entity
+would make every entity's copy a different thing, which is the opposite of *store once,
+map many*.
 
-Counting inside the module is what makes a number stable: FIN.BUD gaining a policy used
-to push every later policy in the group along, and every document carrying a moved code
-had to be reissued. Now the disturbance stops at the module boundary.
+What the registry asks for and the first reading of it missed is this: **0..N of every
+output type per process.** FIN.GOV does not have *a* policy — it has three, and they are
+three artifacts, three documents and three codes. So:
 
-**Each entity's copy says whose it is.** The master belongs to the group and every entity
-holds the same one — that is what *store once, map many* means. What sits in an entity's
-Documents folders is their copy of it, and it is called so:
+**The deliverable is the requirement, not the module's collection of them.** Which kind
+it is comes from the profile it is answered under — P/C/L a policy, W a procedure, A an
+authority, R a report, I a system requirement — so the thing somebody answers and the
+thing the group issues are the same thing under two names, rather than a page about a
+policy filed next to the policy.
 
-| | |
-|---|---|
-| `AZM-FIN-GOV-POL-000001` | the group's master |
-| `FUI-FIN-GOV-POL-000001` | Future University's copy of that same one |
-| `AMD-FIN-GOV-POL-000001` | AZ Management's copy |
+**And so are the gap against it and the direction for it.** A module's gap register
+carried one code over five gaps for the same reason its policy document carried one over
+three policies. Each gap is the gap of a requirement; each direction is that
+requirement's direction. One rule, and it is the only rule:
 
-The master travels on the document beside it, so one always reads back to the other. The
-version and the lifecycle stage stay outside the code, as the registry insists. Changing
-an entity's code re-codes its documents and ages them, so they reissue under the new one
-— and only that entity's.
+> every module-level document is a **binding** of what sits under it and carries no code;
+> every requirement-level document is a **deliverable** and carries its own.
+
+Nothing is numbered that the group does not produce: a requirement no entity finds
+applicable is not a policy of theirs, a gap nobody has is not a gap, and FIN.INV, FIN.REA
+and FIN.ICO — which no entity does — hold no deliverables at all. An entity that has
+merely not started still gets its blank sheet; not having begun is different from not
+applying.
 
 **It shows wherever the deliverable does.** On the tree a requirement carries two codes
-and they answer two questions: `FIN.GOV.01.01` is *where it sits*, `FUE-FIN-GOV-DOA-000001`
-is *what this entity's copy is called*. So somebody holding a document can find it on the
-tree, and somebody on the tree knows what to ask the library for.
+answering two questions: `FIN.GOV.01.01` is *where it sits*, `AZM-FIN-DOA-000001` is
+*what it is called*. So somebody holding a document can find it on the tree, and somebody
+on the tree knows what to ask the library for.
 
 ## مكتبة المخرجات · Outputs Library
 

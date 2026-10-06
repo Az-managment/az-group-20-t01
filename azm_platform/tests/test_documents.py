@@ -139,8 +139,15 @@ class TestOperatingModelDocuments(TransactionCase):
 
     def test_module_outputs_and_summary(self):
         pubs = self.Pub._ensure_company(self.company)
-        self.assertEqual(len(pubs.filtered(lambda p: p.kind == 'requirement')),
-                         self.env['azm.fin.requirement'].search_count([]))
+        # a requirement produces three documents: the deliverable it is, the gap against
+        # it and the direction for it, each under its own code
+        requirements = self.env['azm.fin.requirement'].search([])
+        sheets = pubs.filtered(lambda p: p.kind == 'requirement')
+        self.assertEqual(len(sheets), len(requirements) * 3)
+        self.assertEqual(len(sheets.filtered(lambda p: p.tab == 'gaps')),
+                         len(requirements))
+        self.assertEqual(len({(p.requirement_id.id, p.tab) for p in sheets}), len(sheets),
+                         'one document per requirement per output, never two')
         summary = pubs.filtered(lambda p: p.kind == 'summary')
         summary._generate()
         self.assertEqual(summary.state, 'done')

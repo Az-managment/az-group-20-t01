@@ -75,6 +75,7 @@ class AzmDashboard(models.AbstractModel):
         empty = self._tree_known_empty(company, "module")
 
         codes = self._tree_codes(company)
+        Pub = env["azm.doc.publication"]
 
         def module_outputs(module):
             """What this entity actually has here: an output the module can have, and
@@ -112,9 +113,11 @@ class AzmDashboard(models.AbstractModel):
                     "scope": SCOPES.get(req.scope_code, ""),
                     "questions": len(req.question_ids),
                     "status": self._fin_tree_status(state),
-                    # the requirement *is* the deliverable, so the tree says what it is
-                    # called as well as where it sits
-                    "azm_code": codes.get(f"azm.fin.requirement,{req.id}", ""),
+                    # The requirement *is* the deliverable, so the tree says what it is
+                    # called as well as where it sits. Its gap and its direction are
+                    # deliverables of their own and are read from the library, not here.
+                    "azm_code": codes.get(
+                        f"azm.fin.requirement,{req.id},{Pub._requirement_tab(req)}", ""),
                     "doc": {"kind": "requirement", "id": req.id},
                 }
                 topic = req.topic_id
