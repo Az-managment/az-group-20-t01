@@ -189,6 +189,36 @@ class AzmAssignable(models.AbstractModel):
                     "%s is answered by somebody else. You can read it, but it is not "
                     "yours to fill in.", line._azm_part_name()))
 
+    def _azm_check_returns(self):
+        """Refuse a write to a part the reviewer did not send back.
+
+        When a review returns named parts, the rest of the assessment stands as it was
+        reviewed. Answering something outside them would change work that was already
+        accepted, without the reviewer ever seeing it again — so while any return is
+        open, only what it names may be touched.
+
+        Said here rather than in an access rule for the same reason as above: whether a
+        line is writable depends on rows in another table matched against this line's
+        module, topic, requirement, stage or question.
+        """
+        if not self or self.env.su:
+            return
+        Return = self.env["azm.review.return"]
+        by_assessment = {}
+        for line in self:
+            by_assessment.setdefault(line.assessment_id, self.browse())
+            by_assessment[line.assessment_id] |= line
+        for assessment, lines in by_assessment.items():
+            returns = Return._open_for(assessment)
+            if not returns:
+                continue
+            for line in lines:
+                if not returns._covers(line):
+                    raise UserError(_(
+                        "This assessment came back with %s part(s) to deal with, and "
+                        "%s is not one of them. Answer what was returned and send it "
+                        "back for review.", len(returns), line._azm_part_name() or line.display_name))
+
     def _azm_part_name(self):
         self.ensure_one()
         return ""

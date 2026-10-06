@@ -36,6 +36,83 @@ class AzmReviewable(models.AbstractModel):
         "منذ", readonly=True, copy=False,
         help="متى انتقلت هذه الإفادة إلى حالتها الحالية.")
 
+    return_ids = fields.One2many("azm.review.return", compute="_compute_returns",
+                                 string="الأجزاء المُعادة")
+    open_return_count = fields.Integer("أجزاء مُعادة", compute="_compute_returns")
+
+    def _invalidate_returns(self):
+        """Forget a cached count of returns, because one of them has just moved."""
+        if self:
+            self.invalidate_recordset(["return_ids", "open_return_count"])
+
+    def _compute_returns(self):
+        Return = self.env["azm.review.return"]
+        for record in self:
+            found = Return._open_for(record) if record.id else Return.browse()
+            record.return_ids = found
+            record.open_return_count = len(found)
+
+    def action_return_parts(self, parts):
+        """Send named parts back to be done again, each with the reason why.
+
+        ``parts`` is a list of ``{"level", "id", "note"}``. The assessment goes back to
+        its preparer, but only these parts are open: see azm.review.return.
+        """
+        self.ensure_one()
+        if self.state != "review":
+            raise UserError(_("Work is sent back from review."))
+        if not (self.env.user.has_group("azm_operating_model.azm_group_reviewer")
+                or self.env.user.has_group("azm_operating_model.azm_group_manager")):
+            raise UserError(_("Only a reviewer sends work back."))
+        if not parts:
+            raise UserError(_("Say which part is coming back, and why."))
+        financial = self._name == "azm.fin.assessment"
+        allowed = {"module": "module_id", "topic": "topic_id", "requirement": "requirement_id"} \
+            if financial else {"stage": "stage_id", "question": "question_id"}
+        side = "fin_assessment_id" if financial else "proc_assessment_id"
+        rows = []
+        for part in parts:
+            field = allowed.get(part.get("level"))
+            if not field or not part.get("id"):
+                raise UserError(_("A returned part must name what it is."))
+            if not (part.get("note") or "").strip():
+                raise UserError(_("A returned part carries the reason it came back."))
+            rows.append({side: self.id, field: int(part["id"]),
+                         "note": part["note"].strip(),
+                         "reviewer_id": self.env.user.id,
+                         "user_id": self._return_owner(part.get("level"), int(part["id"])).id})
+        self.env["azm.review.return"].create(rows)
+        self._workflow().write({"state": "draft"})
+        self._notify_returned(rows)
+        return True
+
+    def _return_owner(self, level, part_id):
+        """Who has to deal with a returned part: whoever was given it, else the preparer.
+
+        Work is handed out per module and per stage, so a return on anything narrower
+        is traced up to the part that was assigned before asking who holds it.
+        """
+        Assignment = self.env["azm.assignment"].sudo()
+        if self._name == "azm.fin.assessment":
+            owner_of = {
+                "module": lambda: self.env["azm.fin.module"].browse(part_id),
+                "topic": lambda: self.env["azm.fin.topic"].browse(part_id).module_id,
+                "requirement": lambda: self.env["azm.fin.requirement"].browse(part_id).module_id,
+            }
+            module = owner_of[level]()
+            found = Assignment.search([("fin_assessment_id", "=", self.id),
+                                       ("module_id", "=", module.id)], limit=1)
+        else:
+            stage = (self.env["azm.stage"].browse(part_id) if level == "stage"
+                     else self.env["azm.question"].browse(part_id).stage_id)
+            found = Assignment.search([("proc_assessment_id", "=", self.id),
+                                       ("stage_id", "=", stage.id)], limit=1)
+        return found.user_id or self.user_id
+
+    def _notify_returned(self, rows):
+        """Tell whoever must deal with it. Overridden where a model has its own wording."""
+        return
+
     def _workflow(self):
         """This record, with the right to move itself along."""
         return self.with_context(**{self.AZM_WORKFLOW: True})
@@ -164,6 +241,9 @@ class AzmReviewable(models.AbstractModel):
                 "There is nobody to review this. Ask an administrator to name a "
                 "reviewer on it, or to assign a reviewer to %s.",
                 self.entity_id.name or ""))
+        # whatever came back has now been looked at again: sending it up closes the
+        # returns, so the next reviewer sees the work rather than last round's notes
+        self.env["azm.review.return"]._open_for(self).action_done()
         self._workflow().state = "review"
         self._notify_reviewers(reviewers, summary or self._review_summary())
         return reviewers

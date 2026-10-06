@@ -136,6 +136,17 @@ export class AzmMyWork extends Component {
      * press another button to get where they were going. Both models have their own
      * workspace and both open the same way.
      */
+    /** Open the assessment a returned part belongs to, so it can be dealt with. */
+    openReturned(item) {
+        return this.action.doAction({
+            type: "ir.actions.act_window",
+            res_model: item.res_model,
+            res_id: item.res_id,
+            views: [[false, "form"]],
+            target: "current",
+        });
+    }
+
     async openAssessment(row) {
         if (!row.assessment_id) {
             this.action.doAction(row.action);

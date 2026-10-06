@@ -683,6 +683,7 @@ class AzmFinAnswer(models.Model):
             if any(a.assessment_id.state != "draft" for a in self):
                 raise UserError("الإفادة مش في حالة مسودة؛ لا يمكن تعديل الإجابات.")
             self._azm_check_assignee()
+            self._azm_check_returns()
         return super().write(vals)
 
     # ---------------------------------------------------------------- whose part

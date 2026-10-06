@@ -76,6 +76,36 @@
             </section>
 
             <!-- ====================================================== what you owe -->
+            <!-- what a review sent back. It comes before everything else, because
+                 until it is dealt with nothing else in that assessment can be answered -->
+            <section t-if="this.d.returned.length" class="o_azm_mywork_returned">
+                <h2 class="o_azm_section_title">
+                    عاد إليك <em class="o_azm_en">Sent back to you</em>
+                </h2>
+                <div class="o_azm_card">
+                    <div t-foreach="this.d.returned" t-as="item" t-key="item.id"
+                         class="o_azm_returned_row">
+                        <span class="o_azm_icon_badge o_azm_tone_orange">
+                            <i class="oi" data-icon="undo" title="عاد"/>
+                        </span>
+                        <div class="o_azm_returned_main">
+                            <b>
+                                <span class="o_azm_returned_level" t-out="item.level_label"/>
+                                <t t-out="item.part"/>
+                            </b>
+                            <p class="o_azm_returned_note" t-out="item.note"/>
+                            <small>
+                                <t t-out="item.entity"/> · أعادها <t t-out="item.reviewer"/>
+                            </small>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-primary"
+                                t-on-click="() => this.openReturned(item)">
+                            عالِجها <em class="o_azm_en">Fix it</em>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
             <section class="o_azm_mywork_models">
                 <h2 class="o_azm_section_title">
                     ما عليك <em class="o_azm_en">What you owe</em>

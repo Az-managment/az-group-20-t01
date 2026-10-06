@@ -59,6 +59,7 @@ class AzmAnswer(models.Model):
             if any(a.assessment_id.state != "draft" for a in self):
                 raise UserError("الإفادة مش في حالة مسودة؛ لا يمكن تعديل الإجابات.")
             self._azm_check_assignee()
+            self._azm_check_returns()
         res = super().write(vals)
         if value_keys & set(vals) and not self.env.context.get("azm_no_visibility"):
             self.assessment_id._refresh_visibility()

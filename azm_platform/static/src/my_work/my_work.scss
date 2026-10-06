@@ -39,6 +39,43 @@
         .oi { font-size: 26px; color: map-get($azm-tones, 'green'); }
     }
 
+    // ------------------------------------------------- what a review sent back
+    .o_azm_returned_row {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 14px 16px;
+        + .o_azm_returned_row { border-top: 1px solid $azm-border; }
+        /*rtl:ignore*/
+        box-shadow: inset 3px 0 0 rgba(249, 115, 22, .55);
+    }
+    .o_azm_returned_main {
+        flex: 1 1 auto;
+        min-width: 0;
+        b { display: block; font-size: 14px; }
+        small { color: $azm-muted; font-size: 11px; }
+    }
+    .o_azm_returned_level {
+        display: inline-block;
+        margin-inline-end: 6px;
+        padding: 1px 8px;
+        border-radius: 99px;
+        font-size: 10px;
+        font-weight: 700;
+        color: #c2410c;
+        background: rgba(249, 115, 22, .14);
+    }
+    // the reason it came back, in the reviewer's own words
+    .o_azm_returned_note {
+        margin: 4px 0;
+        padding: 8px 12px;
+        border-radius: 10px;
+        font-size: 12.5px;
+        color: $azm-ink;
+        background: rgba(15, 35, 71, .04);
+        white-space: pre-line;
+    }
+
     // the same glass and the same meter as the pages either side of it
     .o_azm_card { @include azm-glass; }
     .o_azm_kpi { @include azm-glass(16px); }

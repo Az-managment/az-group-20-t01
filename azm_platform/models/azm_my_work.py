@@ -396,6 +396,36 @@ class AzmDashboard(models.AbstractModel):
         return rows
 
     @api.model
+    def _my_work_returned(self):
+        """The parts a review sent back to this person, and why.
+
+        These come first on the page: until they are dealt with, nothing else in that
+        assessment can be answered, so a list of everything else would only say what is
+        shut.
+        """
+        Return = self.env.get("azm.review.return")
+        if Return is None or not Return.has_access("read"):
+            return []
+        rows = []
+        for item in Return.search([("state", "=", "open"), ("user_id", "=", self.env.uid)]):
+            assessment = item.fin_assessment_id or item.proc_assessment_id
+            rows.append({
+                "id": item.id,
+                "part": item.part_name,
+                "level": item.level,
+                "level_label": dict(Return._fields["level"].selection).get(item.level, ""),
+                "note": item.note,
+                "reviewer": item.reviewer_id.name,
+                "since": str(item.create_date or ""),
+                "entity": item.entity_id.name,
+                "model_key": item.model_key,
+                "res_model": assessment._name if assessment else "",
+                "res_id": assessment.id if assessment else False,
+                "state": assessment.state if assessment else "",
+            })
+        return rows
+
+    @api.model
     def get_my_work(self):
         """The whole page: whose it is, what they owe, and what it has produced."""
         Entity = self.env.get("azm.entity")
@@ -418,6 +448,7 @@ class AzmDashboard(models.AbstractModel):
                           "company_id": e.company_id.id} for e in entities],
             "models": models_rows,
             "reviews": self._my_work_reviews(),
+            "returned": self._my_work_returned(),
             "is_reviewer": self.env.user.has_group("azm_operating_model.azm_group_reviewer"),
             "deliverables": self._my_work_deliverables(companies),
             "around": self._my_work_around(companies),
