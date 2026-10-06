@@ -113,6 +113,13 @@
                                         <span class="o_azm_code" t-out="q.code"/>
                                         <button t-if="q.help" class="btn btn-link btn-sm p-0"
                                                 t-on-click="() => this.toggleHelp(q)">؟</button>
+                                        <!-- one question back, rather than the stage it sits in -->
+                                        <button t-if="d.header.can_return"
+                                                class="o_azm_chip o_azm_chip_soft o_azm_return_chip"
+                                                title="أعد هذا السؤال مع ملاحظة"
+                                                t-on-click="() => this.startReturn('question', q.id, q.label)">
+                                            <i class="oi" data-icon="undo" title="أعد"/> أعده
+                                        </button>
                                     </div>
                                     <p t-if="this.state.showHelp[q.id]" class="o_azm_muted" t-out="q.help"/>
                                     <t t-if="q.qtype === 'number'">

@@ -246,6 +246,14 @@
                         <div class="o_azm_fin_topicline">
                             <span class="o_azm_code" t-out="topic.code"/>
                             <span class="o_azm_fin_topicname" t-out="topic.name"/>
+                            <!-- the sub-module: narrower than the whole module, wider
+                                 than one requirement -->
+                            <button t-if="d.header.can_return"
+                                    class="o_azm_chip o_azm_chip_soft o_azm_fin_return_chip"
+                                    title="أعد هذا الموضوع مع ملاحظة"
+                                    t-on-click="() => this.startReturn('topic', topic.id, topic.name)">
+                                <i class="oi" data-icon="undo" title="أعد"/> أعده
+                            </button>
                             <button t-if="topic.prompts.length" class="btn btn-link btn-sm p-0 o_azm_fin_prompts_toggle"
                                     t-on-click="() => this.togglePrompts(topic)">
                                 أسئلة افتتاحية مقترحة (<t t-out="topic.prompts.length"/>)
