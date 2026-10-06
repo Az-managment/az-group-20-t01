@@ -166,6 +166,21 @@ class TestOperatingModelDocuments(TransactionCase):
             self.assertTrue(payload['groups'])
             self.assertTrue(all(group['items'] for group in payload['groups']))
 
+    def test_the_queue_will_not_render_into_a_full_disk(self):
+        """A failed render spends a document's retry budget, so a queue that keeps going
+        on a full disk marks thousands of good documents as broken. It waits instead."""
+        Pub = self.env['azm.doc.publication'].sudo()
+        self.assertGreater(Pub._free_mb(), 0, 'it can see the disk at all')
+        self.assertTrue(Pub._room_to_work(), 'there is room right now')
+
+        # a floor nothing could satisfy: the queue must decline rather than render
+        self.env['ir.config_parameter'].sudo().set_int('azm.documents.disk_floor_mb', 10 ** 9)
+        self.assertFalse(Pub._room_to_work())
+        due = Pub.search_count(Pub._due_domain())
+        Pub._cron_process()
+        self.assertEqual(Pub.search_count(Pub._due_domain()), due,
+                         'the work stays queued rather than being burned through')
+
     def test_company_without_assessment_gets_a_blank_sheet(self):
         pub = self.Pub._get(self.other_company, 'requirement', requirement=self.requirement)
         pub._generate()

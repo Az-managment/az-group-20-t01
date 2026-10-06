@@ -101,6 +101,20 @@ BATCH = 20
 # once, and draining thousands of documents twenty at a time takes hours; a human doing
 # that drain raises this, then drops it back to the standing pace.
 BATCH_PARAM = "azm.documents.batch"
+# How much room the queue insists on before it renders anything, and the setting that
+# overrides it.
+#
+# Every document is a PDF of its own, and the file each one replaces is not collectable
+# for half an hour after it is replaced — so a queue that renders until the disk is gone
+# outruns its own cleanup and takes the whole build down with it. It has done exactly
+# that. The queue now stops while there is no room, collects what it can, and comes back
+# when the garbage has aged enough to be taken.
+DISK_FLOOR_MB = 150
+DISK_FLOOR_PARAM = "azm.documents.disk_floor_mb"
+# how long to wait before looking again, once there was no room: the collector cannot
+# take anything younger than its own grace period, so coming back sooner finds the same
+# disk
+NO_ROOM_RETRY = 35
 # Minutes to wait before each retry of a document that failed to render. A failure is
 # usually transient (a registry reload mid-flight, a lock, a renderer hiccup), so the
 # first retry comes quickly; after the last one the document stays in error for a human.
@@ -437,12 +451,60 @@ class AzmDocPublication(models.Model):
 
     @api.model
     def _cron_process(self, limit=None):
+        # checked before every batch, not once at the start: the room is spent by the
+        # batches themselves, so a figure taken at the beginning says nothing by the end
+        if not self._room_to_work():
+            return True
         pubs = self.sudo().search(self._due_domain(), limit=limit or self._batch(),
                                   order="company_id, kind desc, module_sequence, tree_ref, id")
         for pub in pubs:
             pub._generate_safe()
         self._schedule_next()
         return True
+
+    @api.model
+    def _free_mb(self):
+        """Megabytes left on whichever disk the files are written to."""
+        store = self.env["ir.attachment"].sudo()._filestore()
+        stat = os.statvfs(store)
+        return stat.f_bavail * stat.f_frsize / 1048576.0
+
+    @api.model
+    def _collect_space(self):
+        """Take back what this queue has already replaced, if anything is collectable.
+
+        Failures are logged and swallowed on purpose: whether the collector ran is not
+        the question being asked. The floor is checked again afterwards either way, and
+        a collector that cannot run must not stop the queue from saying there is no room.
+        """
+        try:
+            self.env["ir.attachment"].sudo()._gc_file_store()
+        except Exception as error:  # noqa: BLE001 - see above
+            _logger.info("Documents: could not collect the filestore now (%s)", error)
+
+    @api.model
+    def _room_to_work(self):
+        """Whether there is disk to render into — collecting first if there is not.
+
+        A failed render is recorded as a failed document and spends that document's
+        retry budget, so a queue that keeps going on a full disk does not merely stop:
+        it marks thousands of perfectly good documents as broken. Better to wait.
+        """
+        floor = self.env["ir.config_parameter"].sudo().get_int(DISK_FLOOR_PARAM, DISK_FLOOR_MB)
+        free = self._free_mb()
+        if free >= floor:
+            return True
+        self._collect_space()
+        free = self._free_mb()
+        if free >= floor:
+            _logger.info("Documents: collected back to %.0f MB free, carrying on", free)
+            return True
+        _logger.warning(
+            "Documents: %.0f MB free is under the %s MB floor; %s documents stay queued "
+            "and the queue will look again in %s minutes.",
+            free, floor, self.sudo().search_count(self._due_domain()), NO_ROOM_RETRY)
+        self._trigger_cron(at=fields.Datetime.now() + timedelta(minutes=NO_ROOM_RETRY))
+        return False
 
     @api.model
     def _batch(self):
