@@ -23,6 +23,9 @@
         grid-template-columns: minmax(280px, 380px) 1fr;
         gap: 16px;
         align-items: start;
+        // same rule one level up: a grid item that may not shrink makes its track wider
+        // than the template asks for, and both columns move
+        > * { min-width: 0; }
     }
 
     // ---------------------------------------------------------------- the tree
@@ -88,6 +91,10 @@
     }
     .o_azm_tree_name {
         flex: 1 1 auto;
+        // a flex item will not shrink below its content unless it is told it may, and
+        // nowrap makes that content the whole title — without this the ellipsis never
+        // engages, the row runs past the panel and the column grows to follow it
+        min-width: 0;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
