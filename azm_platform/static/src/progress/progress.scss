@@ -87,39 +87,6 @@
         box-shadow: inset 3px 0 0 rgba(249, 115, 22, .55);
     }
 
-    // -------------------------------------------- where an entity stands as a whole
-    .o_azm_entity_head {
-        flex-wrap: wrap;
-        h3 { flex: 1 1 auto; }
-    }
-    .o_azm_entity_facts {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-        flex: 0 0 auto;
-    }
-
-    // what a review sent back, read under the row it belongs to
-    .o_azm_returned_strip {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-        padding: 8px 16px 12px;
-    }
-    .o_azm_returned_item {
-        display: flex;
-        align-items: flex-start;
-        gap: 8px;
-        padding: 8px 12px;
-        border-radius: 10px;
-        background: rgba(249, 115, 22, .08);
-        /*rtl:ignore*/
-        box-shadow: inset 3px 0 0 rgba(249, 115, 22, .55);
-        .oi { color: #c2410c; font-size: 14px; }
-        b { display: block; font-size: 12.5px; }
-        small { display: block; font-size: 11.5px; }
-    }
-
     // ------------------------------------------- who is on a part, and what they wrote
     .o_azm_part_level {
         margin-inline-start: 6px;

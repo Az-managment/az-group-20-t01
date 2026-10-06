@@ -43,39 +43,6 @@ class AzmDashboard(models.AbstractModel):
         }
 
     @api.model
-    def _last_touched(self, key, assessments):
-        """``{assessment id: when somebody last wrote an answer to it}``.
-
-        Not the row's own write_date: a recompute touches that without anybody having
-        done any work, and "nothing has happened here for three weeks" is the whole
-        point of asking.
-        """
-        if not assessments:
-            return {}
-        model, field = (("azm.fin.qanswer", "assessment_id") if key == "financial"
-                        else ("azm.answer", "assessment_id"))
-        rows = self.env[model].sudo()._read_group(
-            [(field, "in", assessments.ids)], [field], ["write_date:max"])
-        return {record.id: when for record, when in rows}
-
-    @api.model
-    def _open_returns(self, key, assessments):
-        """``{assessment id: [{part, note, reviewer}]}`` still waiting to be dealt with."""
-        Return = self.env.get("azm.review.return")
-        if Return is None or not assessments or not Return.has_access("read"):
-            return {}
-        field = "fin_assessment_id" if key == "financial" else "proc_assessment_id"
-        out = {}
-        for item in Return.sudo().search([(field, "in", assessments.ids),
-                                          ("state", "=", "open")]):
-            out.setdefault(item[field].id, []).append({
-                "part": item.part_name, "note": item.note,
-                "reviewer": item.reviewer_id.name,
-                "user": item.user_id.name or "",
-            })
-        return out
-
-    @api.model
     def get_progress(self):
         """Every model of every entity in reach, with the people on it."""
         Entity = self.env.get("azm.entity")
@@ -118,11 +85,6 @@ class AzmDashboard(models.AbstractModel):
                                   ("state", "!=", "archived")],
                                  order="version desc, id desc")
             found.mapped("progress")   # one compute for the whole page
-            # Three things read once for the whole model rather than per assessment:
-            # when each was last touched, what is back with its preparer, and which
-            # parts nobody holds. All three are what somebody chasing work asks for.
-            touched = self._last_touched(spec["key"], found)
-            returned = self._open_returns(spec["key"], found)
             # Every live one, not the newest per entity. An entity holds a procurement
             # assessment per kind and scenario — أصناف/عاجل is not a newer version of
             # أصناف/قياسي — and keeping one hid the others: an approved assessment
@@ -173,15 +135,6 @@ class AzmDashboard(models.AbstractModel):
                 note(assessment.reviewer_id, "reviews",
                      entity=assessment.entity_id.name,
                      waiting=assessment.state == "review")
-                parts_held = (assessment.assignment_ids if may_see_parts
-                              else Assignment.browse())
-                if spec["key"] == "financial":
-                    everything = assessment.answer_ids.module_id
-                    covered = parts_held.module_id | parts_held.topic_id.module_id
-                else:
-                    everything = assessment.answer_ids.filtered("is_visible").stage_id
-                    covered = parts_held.stage_id
-                unheld = everything - covered
                 since = assessment.state_since
                 # how long it has sat where it is: the figure a tracking page is read
                 # for, because a draft untouched for a fortnight and one opened this
@@ -197,13 +150,6 @@ class AzmDashboard(models.AbstractModel):
                                     and assessment.state != "approved"),
                     "gaps": (assessment.gap_count if spec["key"] == "financial"
                              else assessment.finding_count),
-                    # what a review sent back and nobody has dealt with yet
-                    "returned": returned.get(assessment.id, []),
-                    # parts of the model nobody has been given: work with no owner is
-                    # the thing a tracking page exists to surface
-                    "unheld": unheld.mapped("name") if may_see_parts else [],
-                    # when somebody last wrote an answer to it, not when the row moved
-                    "touched": str(touched.get(assessment.id) or ""),
                     "res_model": spec["model"],
                     "key": spec["key"],
                     "label": spec["label"],
@@ -244,7 +190,5 @@ class AzmDashboard(models.AbstractModel):
                             if rows else 0,
                 "stalled": len([r for r in rows if r["stalled"]]),
                 "gaps": sum(r["gaps"] for r in rows),
-                "returned": sum(len(r["returned"]) for r in rows),
-                "unheld": sum(len(r["unheld"]) for r in rows),
             },
         }

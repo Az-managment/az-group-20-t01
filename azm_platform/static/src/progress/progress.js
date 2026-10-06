@@ -62,12 +62,6 @@ export class AzmProgress extends Component {
                 sub: `بلا حركة منذ ${STALE_AFTER}+ أيام` },
             { key: "gaps", label: "فجوات مفتوحة", en: "Open gaps", value: t.gaps,
                 icon: "report", tone: t.gaps ? "purple" : "slate", sub: "عبر النماذج كلها" },
-            // work that came back and work nobody holds: the two things that stop on
-            // their own if nobody is watching for them
-            { key: "returned", label: "أجزاء مُعادة", en: "Sent back", value: t.returned,
-                icon: "undo", tone: t.returned ? "orange" : "slate", sub: "بانتظار المعالجة" },
-            { key: "unheld", label: "بلا مسؤول", en: "Unassigned", value: t.unheld,
-                icon: "person_off", tone: t.unheld ? "orange" : "slate", sub: "أجزاء لم تُسند" },
             { key: "people", label: "الأشخاص", en: "People", value: t.people,
                 icon: "group", tone: "slate", sub: `على ${t.entities} كيانًا` },
         ];
@@ -87,35 +81,8 @@ export class AzmProgress extends Component {
             }
             block.rows.push(row);
         }
-        // each entity's own standing, so a block says where it is before it is opened
-        for (const block of blocks) {
-            const done = block.rows.filter((r) => r.progress !== null);
-            block.progress = done.length
-                ? Math.round(done.reduce((sum, r) => sum + r.progress, 0) / done.length)
-                : 0;
-            block.left = block.rows.reduce((sum, r) => sum + r.left, 0);
-            block.gaps = block.rows.reduce((sum, r) => sum + r.gaps, 0);
-            block.returned = block.rows.reduce((sum, r) => sum + r.returned.length, 0);
-            block.unheld = block.rows.reduce((sum, r) => sum + r.unheld.length, 0);
-            block.stalled = block.rows.filter((r) => r.stalled).length;
-        }
         return blocks;
     });
-
-    /** How long ago, in the words somebody chasing work would use. */
-    ago(value) {
-        if (!value) {
-            return "";
-        }
-        const days = Math.floor((Date.now() - new Date(value.replace(" ", "T") + "Z")) / 86400000);
-        if (days <= 0) {
-            return "اليوم";
-        }
-        if (days === 1) {
-            return "أمس";
-        }
-        return `منذ ${days} يومًا`;
-    }
 
     isOpen(row) {
         return !!this.state.open[`${row.res_model}-${row.id}`];
