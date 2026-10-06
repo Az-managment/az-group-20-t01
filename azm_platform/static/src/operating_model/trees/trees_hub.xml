@@ -94,8 +94,8 @@
                 </article>
             </section>
 
-            <!-- one entity opened: the trees it has, each opening its own page -->
             <t t-else="">
+                <!-- one entity opened: the trees it has, each opening its own page -->
                 <nav class="o_azm_trees_crumb">
                     <button type="button" class="btn btn-sm btn-light" t-on-click="() => this.closeEntity()">
                         <i class="oi" data-icon="chevron_right" title="Back"/>
