@@ -27,9 +27,9 @@ class TestFinTree(TransactionCase):
 
     def test_every_leaf_says_what_it_is_called(self):
         """The tree shows two codes against a requirement and they answer two questions:
-        FIN.GOV.01.01 is where it sits, AZM-FIN-DOA-000001 is what the deliverable is
-        called. A reader holding a document should be able to find it on the tree, and a
-        reader on the tree should know what to ask the library for.
+        FIN.GOV.01.01 is where it sits, FUE-FIN-DOA-000001 is what this entity's copy of
+        the deliverable is called. A reader holding a document should be able to find it
+        on the tree, and a reader on the tree should know what to ask the library for.
         """
         self.env['azm.artifact'].sudo()._register_all()
         tree = self.D.get_fin_tree(company_id=self.company.id)
@@ -39,7 +39,9 @@ class TestFinTree(TransactionCase):
         coded = [leaf for leaf in leaves if leaf.get('azm_code')]
         self.assertTrue(coded, 'the leaves carry the code of the deliverable they are')
         for leaf in coded[:8]:
-            self.assertRegex(leaf['azm_code'], r'^AZM-FIN-[A-Z]{2,4}-\d{6}$')
+            # the serial is the master's — what the entity changes is whose copy it is
+            self.assertRegex(leaf['azm_code'], rf'^{self.entity.code}-FIN-[A-Z]{{2,4}}-\d{{6}}$',
+                             "a tree is read for one entity, so it shows that entity's copy")
             self.assertNotEqual(leaf['azm_code'], leaf['code'],
                                 'the tree reference and the code are different things')
         self.assertEqual(len({leaf['azm_code'] for leaf in coded}), len(coded),

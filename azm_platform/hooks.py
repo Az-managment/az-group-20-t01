@@ -371,15 +371,19 @@ def _ensure_assessment_book(env, company):
         ('type', '=', 'folder'), ('name', '=', company.name), ('company_id', '=', company.id),
     ], limit=1)
     try:
-        content, _content_type = report._render(report.report_name, assessment.ids)
+        content, content_type = report._render(report.report_name, assessment.ids)
     except Exception:  # noqa: BLE001 - a missing pdf renderer must not fail the install
         _logger.warning("Could not render the operating model book of %s", company.name, exc_info=True)
         return
+    # Without a pdf renderer the report falls back to HTML. Calling that file .pdf makes
+    # it open as garbage and look like corruption, so the file is named and typed by what
+    # was actually produced — the same rule the published documents follow.
+    pdf = content_type == 'pdf'
     Document.create({
-        'name': f"{title}.pdf",
+        'name': f"{title}.{'pdf' if pdf else 'html'}",
         'type': 'binary',
         'raw': content,
-        'mimetype': 'application/pdf',
+        'mimetype': 'application/pdf' if pdf else 'text/html',
         'folder_id': folder.id if folder else False,
         'company_id': company.id,
         'access_internal': 'view',

@@ -12,6 +12,7 @@ entity's tree.
 from odoo import _, api, models
 from odoo.exceptions import UserError
 
+from .azm_coding import copy_code
 from .azm_documents import MODULE_OUTPUTS
 from .azm_proc_documents import PROC_OUTPUTS
 
@@ -71,14 +72,17 @@ class AzmDashboard(models.AbstractModel):
     # ------------------------------------------------------------------ documents
     @api.model
     def _tree_codes(self, company):
-        """``{ref: its code}`` for the whole registry.
+        """``{ref: the code this entity's copy of it carries}`` for the whole registry.
 
         Read once for the tree rather than per row: a tree of one model is a couple of
         hundred leaves and each would otherwise be a lookup. One artifact is held by
-        every entity it applies to, so the code is the same on all of their trees; which
-        entity is being read is the page's own business.
+        every entity it applies to and they all hold the same serial, so what changes
+        from one entity's tree to the next is only whose copy it is — and a tree is
+        always read for one entity, so it shows that entity's copy of each code.
         """
-        return {art.ref: art.code
+        entity = self.env["azm.entity"].sudo().with_context(active_test=False).search(
+            [("company_id", "=", company.id)], limit=1)
+        return {art.ref: copy_code(art.code, entity.code)
                 for art in self.env["azm.artifact"].sudo().search([])}
 
     @api.model
@@ -138,7 +142,8 @@ class AzmDashboard(models.AbstractModel):
         """The same document, described so the tree can show it without leaving the page.
 
         _open() is what builds it and checks who may read it; all this adds is the
-        name and the shelf it sits on, so the preview says what is being looked at.
+        code, the name and the shelf it sits on, so the preview says what is being
+        looked at without the reader having to open the file to find out.
         """
         pub = self._tree_publication(kind, node_id=node_id, tab=tab, company_id=company_id)
         action = pub._open(download=False)
@@ -147,6 +152,9 @@ class AzmDashboard(models.AbstractModel):
         return {
             "url": action["url"],
             "name": pub.name,
+            # what this entity's copy is called, and the one register entry behind it
+            "code": pub._scoped_code(),
+            "master_code": pub._artifact(create=False).code or "",
             "mimetype": document.mimetype or "",
             "folder": document.folder_id.name or "",
             "generated": str(pub.generated_on or ""),

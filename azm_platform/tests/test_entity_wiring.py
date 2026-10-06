@@ -156,17 +156,28 @@ class TestEntityWiring(TransactionCase):
         every seeded file looked right in the list, carried a plausible size,
         and opened as garbage. A PDF that does not start with %PDF is the
         cheapest way to catch that coming back.
+
+        A book may legitimately be HTML — without a pdf renderer the report falls back
+        to it — but then it has to be called .html. A file whose name disagrees with its
+        bytes is the same failure to a reader, whatever caused it.
         """
         if os.environ.get('ODOO_STAGE') != 'dev' or 'documents.document' not in self.env:
             self.skipTest("the entity sample data is only loaded on development builds")
         Document = self.env['documents.document'].sudo()
-        books = Document.search([('name', '=like', '% Operating Model Book.pdf')])
+        books = Document.search([('name', '=like', '% Operating Model Book.%')])
         self.assertTrue(books, "no operating model book was filed")
         for book in books:
-            self.assertTrue(
-                bytes(book.raw).startswith(b'%PDF'),
-                f"{book.name} is not a PDF: it holds {bytes(book.raw)[:12]!r}",
-            )
+            head = bytes(book.raw)[:12]
+            if book.name.endswith('.pdf'):
+                self.assertTrue(head.startswith(b'%PDF'),
+                                f"{book.name} is not a PDF: it holds {head!r}")
+                self.assertEqual(book.mimetype, 'application/pdf')
+            else:
+                self.assertTrue(book.name.endswith('.html'),
+                                f"{book.name} is neither a pdf nor an html fallback")
+                self.assertEqual(book.mimetype, 'text/html')
+                self.assertFalse(head.startswith(b'%PDF'),
+                                 f"{book.name} holds a PDF but is not called one")
         for xml_id, files in DEV_DOCUMENTS.items():
             company = self.env.ref(xml_id, raise_if_not_found=False)
             if not company:

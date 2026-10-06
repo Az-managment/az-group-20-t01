@@ -464,7 +464,7 @@ class AzmDocPublication(models.Model):
             # The body prints the code the cover prints, not a shorthand of its own —
             # and the cover prints this entity's copy, so the body does too.
             body = assessment._render(_engine_tab(self.tab), stage,
-                                      doc_code=self._artifact().code) if assessment else ""
+                                      doc_code=self._scoped_code()) if assessment else ""
             return {
                 "doc_type": (arabic, english),
                 "code": f"{code}-{stage.code}",

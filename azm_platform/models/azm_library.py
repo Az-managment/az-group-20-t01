@@ -11,7 +11,7 @@ is what the coverage figure counts.
 from odoo import _, api, models
 from odoo.exceptions import UserError
 
-from .azm_coding import DOMAINS, LIFECYCLE_LABELS, TYPE_LABELS, WHOLE_MODEL
+from .azm_coding import DOMAINS, LIFECYCLE_LABELS, TYPE_LABELS, WHOLE_MODEL, copy_code
 from .azm_documents import FIN_ARTIFACTS, FIN_KIND_ARTIFACTS, MODULE_OUTPUTS
 from .azm_proc_documents import PROC_ARTIFACTS, PROC_KIND_ARTIFACTS, PROC_OUTPUTS
 
@@ -193,6 +193,10 @@ class AzmDashboard(models.AbstractModel):
                 nodes_facet.setdefault(branch, [artifact.domain, 0])[1] += 1
 
         # ------------------------------------------------------------------ the rows
+        # A row is one artifact however many entities hold it, so it carries the master
+        # code. Narrowed to a single entity, the row *is* that entity's copy and names
+        # it the way that entity's document does.
+        holder = self._library_holder(companies)
         rows, total = [], 0
         for entry in scoped:
             if not passes(entry):
@@ -209,7 +213,8 @@ class AzmDashboard(models.AbstractModel):
             arabic, english = self._library_output_name(artifact)
             rows.append({
                 "id": artifact.id,
-                "code": artifact.code,
+                "code": copy_code(artifact.code, holder),
+                "master_code": artifact.code,
                 "atype": artifact.atype,
                 "type_label": TYPE_LABELS.get(artifact.atype, ("", ""))[0],
                 "type_en": TYPE_LABELS.get(artifact.atype, ("", ""))[1],
@@ -359,6 +364,7 @@ class AzmDashboard(models.AbstractModel):
                 ["company_id", "state", "generated_on", "source_state"]):
             by_company[pub["company_id"][0]] = pub
         doc = self._library_doc_ref(artifact)
+        codes = self._library_entity_codes(companies)
         rows = []
         for company in companies:
             found = by_company.get(company.id)
@@ -369,6 +375,8 @@ class AzmDashboard(models.AbstractModel):
             rows.append({
                 "company_id": company.id,
                 "name": company.name,
+                # one artifact, one serial, nine copies — the row says which copy it is
+                "code": copy_code(artifact.code, codes.get(company.id, "")),
                 "approval": source,
                 "approval_label": approval[1] if approval else "",
                 "approval_en": approval[2] if approval else "",
@@ -380,3 +388,19 @@ class AzmDashboard(models.AbstractModel):
                 "doc": {**doc, "company_id": company.id},
             })
         return {"available": True, "code": artifact.code, "rows": rows}
+
+    def _library_entity_codes(self, companies):
+        """``{company id: its entity code}``, read once for a list rather than per row."""
+        entities = self.env["azm.entity"].sudo().with_context(active_test=False).search(
+            [("company_id", "in", companies.ids)])
+        return {e.company_id.id: e.code or "" for e in entities}
+
+    def _library_holder(self, companies):
+        """The entity a listing belongs to, when it belongs to exactly one.
+
+        With several in scope there is no single copy to name and the master code
+        stands, which is also what the coverage columns are counting.
+        """
+        if len(companies) != 1:
+            return ""
+        return self._library_entity_codes(companies).get(companies.id, "")

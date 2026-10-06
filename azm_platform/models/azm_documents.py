@@ -31,7 +31,7 @@ from odoo.exceptions import UserError
 from odoo.addons.azm_operating_model.models import fin_engine
 
 from .azm_coding import (LIFECYCLE_LABELS, PROFILE_OUTPUT, REQUIREMENT_ASPECTS,
-                         TYPE_LABELS, WHOLE_MODEL)
+                         TYPE_LABELS, WHOLE_MODEL, copy_code)
 from odoo.addons.azm_operating_model.models.azm_fin_catalogue import PROFILES, SCOPES
 
 _logger = logging.getLogger(__name__)
@@ -463,9 +463,14 @@ class AzmDocPublication(models.Model):
 
     # ---------------------------------------------------------------- sources
     def _entity(self):
+        """The entity this document belongs to, archived or not.
+
+        Read off the company rather than searched for: the code is wanted once per
+        document and there are ten thousand of them, so this goes through the ORM's
+        cache of the company's own field instead of a query each time.
+        """
         self.ensure_one()
-        return self.env["azm.entity"].sudo().with_context(active_test=False).search(
-            [("company_id", "=", self.company_id.id)], limit=1)
+        return self.company_id.sudo().with_context(active_test=False).azm_entity_ids[:1]
 
     def _source_key(self):
         """What the source assessment depends on: the company, and which model asks.
@@ -538,7 +543,7 @@ class AzmDocPublication(models.Model):
             # the code a document prints is part of what it says, so one filed under an
             # older coding ages by itself and is rebuilt when next read; looked up and
             # not allocated, because this runs inside the `outdated` compute
-            "coding": [self._artifact(create=False).code or "", self._lifecycle()],
+            "coding": [self._scoped_code(), self._lifecycle()],
             "lines": {line.code: [line.applicable, line._snapshot()] for line in lines},
         }
         return hashlib.md5(json.dumps(data, sort_keys=True, ensure_ascii=False, default=str).encode()).hexdigest()
@@ -577,10 +582,16 @@ class AzmDocPublication(models.Model):
                 report, res_ids=pub._report_ids())
             pdf = fmt == "pdf"
             folder = self.env["azm.doc.folder"]._folder(company, *pub._folder_key())
+            # The file is named by what it is as well as by where it sits. A folder
+            # holds forty of these, and a reader who wants one of them has to be able to
+            # ask for it by number. A binding carries no number of its own and keeps the
+            # plain name.
+            code = pub._scoped_code()
+            stem = f"{code} · {pub.name}" if code else pub.name
             vals = {
                 # a question is coded PUR-GOV/model, and a slash is a path separator to
                 # every browser that downloads the file: it is filed with a dash
-                "name": f"{pub.name}.{'pdf' if pdf else 'html'}".replace("/", "-"),
+                "name": f"{stem}.{'pdf' if pdf else 'html'}".replace("/", "-"),
                 "raw": content,
                 "mimetype": "application/pdf" if pdf else "text/html",
                 "folder_id": folder.id,
@@ -754,17 +765,34 @@ class AzmDocPublication(models.Model):
         return Artifact._of(ref, "FIN", FIN_KIND_ARTIFACTS[self.kind][0],
                             node=WHOLE_MODEL, name=self.name)
 
-    def _scoped_code(self):
-        """The code this document prints: the deliverable's own, unqualified.
+    def _item_codes(self, requirements, tab):
+        """``{requirement id: what this entity's copy of its deliverable is called}``.
 
-        One artifact, held by every entity that it applies to — "store once, map many".
-        The entity is an *applicability* of it, which is why the registry keeps the
-        entity, the system, the version and the lifecycle stage outside the identity;
-        they are printed beside the code on the document, where they can change without
-        the thing changing its name.
+        A binding lists the deliverables filed under it. The tree reference says where
+        each one sits; it does not say what it is called, and a reader who wants one of
+        them on its own has to be able to name it. Looked up in one search for the whole
+        list rather than one per row.
         """
         self.ensure_one()
-        return self._artifact(create=False).code or ""
+        holder = self._entity().code
+        refs = {f"azm.fin.requirement,{req.id},{tab}": req.id for req in requirements}
+        found = self.env["azm.artifact"].sudo().search([("ref", "in", list(refs))])
+        return {refs[art.ref]: copy_code(art.code, holder) for art in found}
+
+    def _scoped_code(self):
+        """The code this document prints: this entity's copy of the master artifact.
+
+        One artifact, held by every entity it applies to — "store once, map many". The
+        registry assigns the serial once, so the same policy is 000001 everywhere; what
+        differs is whose copy a document is. The copy leads with the entity and prints
+        the master beside it, which keeps one register behind nine sets of documents and
+        still lets a reader tell a FUE policy from an MCE one at a glance.
+
+        The version and the lifecycle stage stay outside the identity either way: they
+        change without the thing changing its name.
+        """
+        self.ensure_one()
+        return copy_code(self._artifact(create=False).code, self._entity().code)
 
     def _tree_ref(self):
         """Where to find this document's node in the tree.
@@ -1053,8 +1081,9 @@ class AzmDocPublication(models.Model):
             parts = pub._book_parts()
             payload.update(pub._book_cover(parts, source))
             # the artifact knows the code; building each part's entire payload to read
-            # one key of it meant rendering the whole book twice
-            payload["summary"] = [{"code": part._artifact().code, "name": part.name}
+            # one key of it meant rendering the whole book twice. A book is one entity's
+            # book, so its contents are that entity's copies.
+            payload["summary"] = [{"code": part._scoped_code(), "name": part.name}
                                   for part in parts]
             payload["summary_columns"] = []
             payload["single"] = False
@@ -1087,7 +1116,12 @@ class AzmDocPublication(models.Model):
         elif pub.kind == "module":
             module = pub.module_id
             folder, arabic, english, code = MODULE_OUTPUTS[pub.tab]
-            items = [self._item(line.requirement_id, line, item) for line, item in pub._module_items(assessment)]
+            pairs = list(pub._module_items(assessment))
+            items = [self._item(line.requirement_id, line, item) for line, item in pairs]
+            # each row is a deliverable of its own, so each row says which one
+            codes = pub._item_codes([line.requirement_id for line, _item in pairs], pub.tab)
+            for row, (line, _item) in zip(items, pairs):
+                row["code"] = codes.get(line.requirement_id.id, "")
             payload.update({
                 "doc_type": (arabic, english),
                 "code": f"{code}-{module.code}",
@@ -1136,11 +1170,12 @@ class AzmDocPublication(models.Model):
         # entity — so the entity is the scope beside it, never part of it.
         artifact = pub._artifact()
         stage = pub._lifecycle()
+        copy = pub._scoped_code()
         payload.update({
             # A binding has no registry code — it is a collection of the deliverables
             # under it, and each of those carries its own. It still has to say what it
             # is, so it prints where it sits rather than a blank where a code goes.
-            "code": artifact.code or pub._tree_ref(),
+            "code": copy or pub._tree_ref(),
             "is_binding": not artifact,
             # where it hangs and whose copy this is — beside the code, never inside it
             "azm_node": artifact.node or "",
@@ -1153,7 +1188,7 @@ class AzmDocPublication(models.Model):
             "tree_ref": pub._tree_ref(),   # how the tree names it, for the reader
         })
         payload["verify"] = " · ".join(x for x in (
-            artifact.code or f"{pub._tree_ref()} · مجموعة",
+            copy or f"{pub._tree_ref()} · مجموعة",
             artifact.node or "",
             payload["entity_code"] or company.name,
             f"v{assessment.version}" if assessment else "",
@@ -1168,7 +1203,10 @@ class AzmDocPublication(models.Model):
         payload["groups"] = groups
         # the canonical code is the identity; the tree reference is how a reader finds
         # it again in the tree, so both are on the page
-        glance = payload["glance"] + [
+        # the copy is the document's name; the master is the one entry in the register
+        # behind every entity's copy of it, so both are on the page
+        master = [("المرجع الرئيسي", "Master code", artifact.code)] if artifact.code else []
+        glance = payload["glance"] + master + [
             ("مرجع الشجرة", "Tree reference", payload["tree_ref"]),
             ("المرحلة", "Lifecycle", f"{payload['stage']} · {payload['status'][1]}"),
         ]

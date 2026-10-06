@@ -60,7 +60,11 @@ class TestOperatingModelDocuments(TransactionCase):
         pub = self.Pub._get(self.company, 'requirement', requirement=self.requirement)
         pub._generate()
         self.assertEqual(pub.state, 'done')
-        self.assertTrue(pub.document_id.name.startswith(self.requirement.tree_ref))
+        # the file says what it is, then where it sits: a folder of forty is read by
+        # the number, not by hunting for the title
+        self.assertTrue(pub.document_id.name.startswith(pub._scoped_code()),
+                        pub.document_id.name)
+        self.assertIn(self.requirement.tree_ref, pub.document_id.name)
         self.assertEqual(pub.document_id.company_id, self.company)
         self.assertEqual(pub.document_id.folder_id, self.env['azm.doc.folder']._folder(
             self.company, 'FIN', (self.pur.code, f'FIN.{self.pur.code} · {self.pur.name}')))

@@ -45,7 +45,13 @@
             <table t-if="not single" class="azm_item_head">
                 <tr>
                     <td>
-                        <span class="azm_code" t-out="it['tree_ref']"/>
+                        <!--
+                            A binding lists deliverables, and each row is one of them:
+                            its own number first, then where it sits on the tree, so a
+                            reader can ask for any single row by name.
+                        -->
+                        <span t-if="it.get('code')" class="azm_code" t-out="it['code']"/>
+                        <span class="azm_code azm_code_dim" t-out="it['tree_ref']"/>
                         <span class="azm_item_title" t-out="it['title']"/>
                     </td>
                     <td class="azm_item_status">

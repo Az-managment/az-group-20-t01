@@ -54,18 +54,22 @@ class TestCoding(TransactionCase):
         ]
         for pub in cases:
             payload = pub._azm_payload()
-            azm, domain, atype, serial = payload['code'].split('-')
-            self.assertEqual(azm, 'AZM')
+            holder, domain, atype, serial = payload['code'].split('-')
+            self.assertEqual(holder, entity.code, 'the copy says whose it is')
             self.assertIn(domain, ('FIN', 'PUR'))
             self.assertIn(atype, types)
-            self.assertEqual(payload['code'],
+            # the serial is the master's: the group numbers the artifact once, and the
+            # entity's copy of it keeps that number rather than starting a count of
+            # its own, so the same deliverable is the same number everywhere
+            self.assertEqual(payload['master_code'],
                              CANONICAL.format(domain=domain, atype=atype,
                                               serial=int(serial)))
-            # the node, the entity, the version and the stage all sit beside it
+            self.assertEqual(payload['code'],
+                             f"{entity.code}-{domain}-{atype}-{serial}")
+            # the node, the version and the stage still sit beside it
             self.assertTrue(payload['azm_node'], 'the module or stage it hangs on')
             self.assertIn(payload['stage'], stages)
             self.assertEqual(payload['scope'], self.company.name)
-            self.assertNotIn(entity.code, payload['code'])
             self.assertNotIn(payload['azm_node'], payload['code'])
 
     def test_a_requirement_is_coded_as_the_deliverable_it_is(self):
@@ -94,13 +98,14 @@ class TestCoding(TransactionCase):
         self.assertTrue(requirement.req_id,
                         'and the registry id it came in with is still on the record')
 
-    def test_the_entity_is_an_applicability_not_an_identity(self):
+    def test_the_entity_names_the_copy_and_not_the_artifact(self):
         """One artifact, held by every entity it applies to — "store once, map many".
 
-        So the entity is not part of the code and neither is the module: both are
-        printed beside it, where they can change without the deliverable changing its
-        name. The registry's reason for the second one shows up later — an artifact may
-        map to many nodes without copies, which a code naming one node forbids.
+        The register holds one entry, numbered once, with no entity in it. What each
+        entity holds is a copy of that entry, and a copy has to say whose it is, so the
+        document leads with the entity and prints the master beside it. The module is
+        never in either: an artifact may map to many nodes without copies, which a code
+        naming one node forbids.
         """
         A = self.env['azm.artifact'].sudo()
         A._register_all()
@@ -113,10 +118,12 @@ class TestCoding(TransactionCase):
         self.assertTrue(entity.code)
 
         payload = pub._azm_payload()
-        self.assertEqual(payload['code'], artifact.code)
-        self.assertNotIn(entity.code, payload['code'], 'the entity is not in the code')
-        self.assertNotIn(artifact.node, payload['code'], 'and neither is the module')
-        self.assertEqual(payload['azm_node'], artifact.node, 'they are printed beside it')
+        self.assertNotIn(entity.code, artifact.code, 'the register entry names no entity')
+        self.assertEqual(payload['master_code'], artifact.code)
+        self.assertEqual(payload['code'], f"{entity.code}-{artifact.code.split('-', 1)[1]}",
+                         "the copy is the master under this entity's name")
+        self.assertNotIn(artifact.node, payload['code'], 'the module is in neither')
+        self.assertEqual(payload['azm_node'], artifact.node, 'it is printed beside them')
         self.assertEqual(payload['scope'], self.company.name)
         # and the next entity's copy of it is the same deliverable, not another one
         other = self.env['res.company'].create({'name': 'AZM Coding Campus Two'})
@@ -124,6 +131,11 @@ class TestCoding(TransactionCase):
         theirs = self.Pub._get(other, 'requirement', requirement=requirement)
         self.assertEqual(theirs._artifact(create=False), artifact,
                          'stored once, mapped to many')
+        # the two copies are plainly the same deliverable and plainly not the same copy
+        self.assertNotEqual(theirs._scoped_code(), pub._scoped_code())
+        self.assertEqual(theirs._scoped_code().split('-')[1:], pub._scoped_code().split('-')[1:],
+                         'one serial behind both, so the two entities can be compared')
+        self.assertTrue(theirs._scoped_code().startswith(other.azm_entity_ids[:1].code + '-'))
 
     def test_one_artifact_is_shared_by_every_entity(self):
         """Store once, map many: the same policy is one code for the whole group."""

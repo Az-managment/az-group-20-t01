@@ -31,6 +31,10 @@ class TestOutputsLibrary(TransactionCase):
     # ------------------------------------------------------------------ the shelf
     def test_every_deliverable_appears_once_however_many_entities_hold_it(self):
         """Store once, map many: one row per master artifact, not per copy."""
+        # a deliverable this entity holds ready, built here: what the database happens
+        # to have published already is not this test's subject
+        self.env['azm.doc.publication'].sudo().search(
+            [('company_id', '=', self.company.id), ('kind', '=', 'requirement')], limit=1)._generate()
         library = self.D.get_outputs_library()
         self.assertTrue(library['available'])
         codes = [r['code'] for r in library['rows']]

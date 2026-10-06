@@ -45,8 +45,29 @@ every requirement-level document is a deliverable.**
 from odoo import api, fields, models
 
 CANONICAL = "AZM-{domain}-{atype}-{serial:06d}"
+# Who holds the master register. The serial is assigned once, here, and every entity
+# that holds the artifact holds that same serial.
+HOLDER = "AZM"
 # what stands in for the node on the documents that belong to a whole model
 WHOLE_MODEL = "ALL"
+
+
+def copy_code(master, entity_code):
+    """The code an entity's copy of ``master`` prints.
+
+    The registry numbers an artifact once, as AZM-FIN-POL-000001, and the entities it
+    applies to all hold that same number — the serial names the artifact, not the copy.
+    What differs is whose copy a document is, so the copy leads with the entity and
+    keeps the rest of the master intact: FUE-FIN-POL-000001 beside AZM-FIN-POL-000001.
+
+    Without an entity to name there is no copy to name either, so the master stands.
+    """
+    if not master:
+        return ""
+    if not entity_code:
+        return master
+    domain_type_serial = master.split("-", 1)[1] if "-" in master else master
+    return f"{entity_code}-{domain_type_serial}"
 
 # Which deliverable a financial requirement *is*, from the profile it is answered under.
 # The engine already groups the module's outputs this way (fin_engine.TAB_PROFILES);

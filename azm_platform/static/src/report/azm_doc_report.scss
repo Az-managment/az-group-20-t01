@@ -38,6 +38,9 @@ $azm-doc-soft: #f6f8fb;
     font-size: 11.5px; color: $azm-doc-blue; background: #eef3ff; border-radius: 4px; padding: 0 6px;
 }
 .azm_code_big { font-size: 15px; padding: 1px 8px; vertical-align: middle; }
+// where a row carries both, the registry number leads and the tree reference follows
+// it quietly: the first says what the row is, the second only where it sits
+.azm_code_dim { color: $azm-doc-muted; background: #f4f5f7; }
 // A binding carries no registry number, so its cover is marked as the collection it is
 // rather than leaving the reader to wonder why the code looks unlike a deliverable's.
 .azm_binding {
