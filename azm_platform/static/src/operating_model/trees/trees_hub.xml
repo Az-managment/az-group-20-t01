@@ -18,10 +18,10 @@
                     <span class="o_azm_ring_wrap o_azm_ring_lg">
                         <svg class="o_azm_ring" viewBox="0 0 40 40" aria-hidden="true">
                             <circle class="o_azm_ring_track" cx="20" cy="20" r="15.9155"/>
-                            <circle t-if="this.overall" class="o_azm_ring_value" cx="20" cy="20" r="15.9155"
-                                    t-attf-stroke-dasharray="{{this.bar(this.overall)}} 100"/>
+                            <circle t-if="this.overall()" class="o_azm_ring_value" cx="20" cy="20" r="15.9155"
+                                    t-attf-stroke-dasharray="{{this.bar(this.overall())}} 100"/>
                         </svg>
-                        <b class="o_azm_ring_label" t-out="this.pct(this.overall)"/>
+                        <b class="o_azm_ring_label" t-out="this.pct(this.overall())"/>
                     </span>
                     <span class="o_azm_trees_hero_gauge_words">
                         تقدّم المجموعة
@@ -62,7 +62,7 @@
             </section>
 
             <!-- the entities; opening one shows the trees it has -->
-            <t t-if="!this.opened">
+            <t t-if="!this.opened()">
                 <div class="o_azm_trees_toolbar">
                     <label class="o_azm_trees_search">
                         <i class="oi" data-icon="search" title="Search"/>
@@ -81,17 +81,17 @@
                         </button>
                     </div>
                     <span class="o_azm_trees_count">
-                        <t t-out="this.entities.length"/> من <t t-out="this.all.length"/>
+                        <t t-out="this.entities().length"/> من <t t-out="this.all().length"/>
                         <em class="o_azm_en">shown</em>
                     </span>
                 </div>
 
-                <p t-if="!this.entities.length" class="o_azm_box o_azm_box_warn">
+                <p t-if="!this.entities().length" class="o_azm_box o_azm_box_warn">
                     لا كيان بهذا الاسم. <small class="o_azm_en">No entity by that name.</small>
                 </p>
 
                 <section class="o_azm_trees_grid o_azm_entities_grid">
-                    <article t-foreach="this.entities" t-as="e" t-key="e.company_id" role="button" tabindex="0"
+                    <article t-foreach="this.entities()" t-as="e" t-key="e.company_id" role="button" tabindex="0"
                              t-attf-class="o_azm_tree_card o_azm_entity_card o_azm_status_{{e.status}}"
                              t-att-aria-label="e.name"
                              t-on-click="() => this.openEntity(e)"
@@ -160,19 +160,19 @@
                         الكيانات <em class="o_azm_en">Entities</em>
                     </button>
                     <span class="o_azm_trees_crumb_here">
-                        <img t-if="this.opened.logoUrl" t-att-src="this.opened.logoUrl" t-att-alt="this.opened.name"/>
-                        <span t-else="" class="o_azm_tree_card_mono" t-out="this.opened.initials"/>
-                        <strong t-out="this.opened.name"/>
-                        <small t-if="this.opened.code" class="o_azm_code o_azm_code_dim" t-out="this.opened.code"/>
+                        <img t-if="this.opened().logoUrl" t-att-src="this.opened().logoUrl" t-att-alt="this.opened().name"/>
+                        <span t-else="" class="o_azm_tree_card_mono" t-out="this.opened().initials"/>
+                        <strong t-out="this.opened().name"/>
+                        <small t-if="this.opened().code" class="o_azm_code o_azm_code_dim" t-out="this.opened().code"/>
                     </span>
                 </nav>
 
                 <div class="o_azm_trees_grid">
-                    <article t-foreach="this.opened.trees" t-as="t" t-key="t.key" role="button" tabindex="0"
+                    <article t-foreach="this.opened().trees" t-as="t" t-key="t.key" role="button" tabindex="0"
                              t-attf-class="o_azm_tree_card o_azm_trees_{{t.key}} o_azm_status_{{t.status}} o_azm_tone_{{t.tone}}"
                              t-att-aria-label="t.name"
-                             t-on-click="() => this.openTree(this.opened, t)"
-                             t-on-keydown="(ev) => this.onCardKey(ev, () => this.openTree(this.opened, t))">
+                             t-on-click="() => this.openTree(this.opened(), t)"
+                             t-on-keydown="(ev) => this.onCardKey(ev, () => this.openTree(this.opened(), t))">
                         <span t-attf-class="o_azm_tree_card_ribbon o_azm_ribbon_{{t.status}}">
                             <t t-out="t.status_label"/>
                             <em class="o_azm_en" t-out="t.status_en"/>

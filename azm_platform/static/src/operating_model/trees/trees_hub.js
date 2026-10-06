@@ -1,4 +1,4 @@
-import { Component, onWillStart, proxy, useProps } from "@odoo/owl";
+import { Component, computed, onWillStart, proxy, useProps } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 import { standardActionServiceProps } from "@web/webclient/actions/action_plugin";
@@ -81,21 +81,21 @@ export class AzmTreesHub extends Component {
     }
 
     /** The entity being read, or null while the page is still showing all of them. */
-    get opened() {
+    opened = computed(() => {
         if (!this.state.opened) {
             return null;
         }
-        return this.all.find((e) => e.company_id === this.state.opened) || null;
-    }
+        return this.all().find((e) => e.company_id === this.state.opened) || null;
+    });
 
     /** How far the whole group has got — the one figure the page leads with. */
-    get overall() {
-        const done = this.all.filter((e) => e.completion !== null).map((e) => e.completion);
+    overall = computed(() => {
+        const done = this.all().filter((e) => e.completion !== null).map((e) => e.completion);
         return done.length ? done.reduce((a, b) => a + b, 0) / done.length : null;
-    }
+    });
 
     /** Every entity, dressed for the page. */
-    get all() {
+    all = computed(() => {
         return this.d.entities.map((e) => ({
             ...e,
             logoUrl: e.company && e.company.has_logo
@@ -118,14 +118,14 @@ export class AzmTreesHub extends Component {
             open: e.trees.reduce((n, t) => n + t.figures
                 .filter((f) => f.tone === "warn").reduce((m, f) => m + f.value, 0), 0),
         }));
-    }
+    });
 
     /** The entities the page is showing: what the search left, in the chosen order. */
-    get entities() {
+    entities = computed(() => {
         const needle = this.state.query.trim().toLowerCase();
         const rows = needle
-            ? this.all.filter((e) => `${e.name} ${e.code}`.toLowerCase().includes(needle))
-            : this.all;
+            ? this.all().filter((e) => `${e.name} ${e.code}`.toLowerCase().includes(needle))
+            : this.all();
         // a null completion is "not started", which sorts below nought per cent rather
         // than above it
         const score = (e) => (e.completion === null ? -1 : e.completion);
@@ -138,7 +138,7 @@ export class AzmTreesHub extends Component {
             }
             return score(b) - score(a) || a.name.localeCompare(b.name, "ar");
         });
-    }
+    });
 
     /** A card is a button: the keyboard opens it the way the pointer does. */
     onCardKey(ev, fn) {
