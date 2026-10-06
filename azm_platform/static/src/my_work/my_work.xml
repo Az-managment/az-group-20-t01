@@ -220,7 +220,8 @@
                 <div t-else="" class="o_azm_card">
                     <div t-foreach="this.d.reviews" t-as="review"
                          t-key="review.res_model + '-' + review.id"
-                         class="o_azm_review_row">
+                         class="o_azm_review_block">
+                      <div class="o_azm_review_row">
                         <span t-attf-class="o_azm_icon_badge o_azm_tone_{{review.tone}}">
                             <i class="oi" t-att-data-icon="review.icon" t-att-title="review.model_label"/>
                         </span>
@@ -303,6 +304,7 @@
                                 </button>
                             </div>
                         </t>
+                      </div>
                     </div>
                 </div>
             </section>

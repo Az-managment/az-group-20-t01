@@ -230,6 +230,7 @@ class AzmAssessment(models.Model):
                 "risks": len(engine.findings(sdict, qdicts, answers, rules)),
                 "status": engine.stage_status(sdict, answers),
             })
+        returns = self.env["azm.review.return"]._open_for(self)
         sdict, qdicts, answers, by_q = self._stage_payload(stage)
         visible = engine.visible_questions(sdict, qdicts, answers)
         questions = []
@@ -239,6 +240,8 @@ class AzmAssessment(models.Model):
                 continue   # a question the catalogue gained since this assessment was made
             q = line.question_id
             questions.append({
+                # a review that sent parts back leaves the rest as it was reviewed
+                "locked": bool(returns) and not returns._covers(line),
                 "id": q.id, "line_id": line.id, "code": q.code, "label": q.label, "qtype": q.qtype,
                 "group": q.group, "help": q.help_text or "",
                 "options": [{"id": o.id, "name": o.name, "kind": o.kind} for o in q.option_ids],
@@ -305,11 +308,17 @@ class AzmAssessment(models.Model):
             lambda line: line.is_visible and returns._covers(line))
         return len(lines) - len(lines.filtered("has_value"))
 
-    def action_open_workspace(self):
+    def action_open_workspace(self, focus=None):
+        """Open the workspace, on the stage that was asked for when one is named."""
         self.ensure_one()
+        params = {"assessment_id": self.id}
+        if focus and focus.get("level") == "stage":
+            params["stage_id"] = focus["id"]
+        elif focus and focus.get("level") == "question":
+            params["stage_id"] = self.env["azm.question"].browse(focus["id"]).stage_id.id
         return {
             "type": "ir.actions.client", "tag": "azm_workspace", "name": self.name,
-            "params": {"assessment_id": self.id},
+            "params": params,
         }
 
     def action_submit(self):

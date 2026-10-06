@@ -187,6 +187,7 @@ class AzmFinAssessment(models.Model):
         self.ensure_one()
         modules = self.env["azm.fin.module"].search([])
         module = modules.filtered(lambda m: m.code == module_code)[:1] or modules[:1]
+        returns = self.env["azm.review.return"]._open_for(self)
         lines = self.answer_ids.filtered(lambda a: a.module_id == module).sorted(
             lambda a: (a.topic_sequence, a.requirement_sequence, a.id))
         if not show_all:
@@ -200,7 +201,12 @@ class AzmFinAssessment(models.Model):
                                             "stage": p.stage, "question": p.question, "output": p.output or ""}
                                            for p in topic.prompt_ids],
                                "requirements": []})
-            topics[-1]["requirements"].append(line._workspace_dict())
+            row = line._workspace_dict()
+            # when a review has sent parts back, everything else stands as it was
+            # reviewed: the page says so rather than letting somebody type into a field
+            # the server will refuse
+            row["locked"] = bool(returns) and not returns._covers(line)
+            topics[-1]["requirements"].append(row)
         return {
             "header": self._header(),
             "modules": self._modules_nav(),
@@ -319,10 +325,25 @@ class AzmFinAssessment(models.Model):
         lines = self.answer_ids.filtered(lambda line: returns._covers(line))
         return sum(max(line.q_total - line.q_answered, 0) for line in lines)
 
-    def action_open_workspace(self):
+    def action_open_workspace(self, focus=None):
+        """Open the workspace, on a named part of it when one is asked for.
+
+        Somebody sent to fix a returned module should arrive at that module, not at
+        whichever one the workspace happens to open on first.
+        """
         self.ensure_one()
+        params = {"assessment_id": self.id}
+        if focus and focus.get("level") == "module":
+            params["module_code"] = self.env["azm.fin.module"].browse(focus["id"]).code
+        elif focus and focus.get("level") == "topic":
+            topic = self.env["azm.fin.topic"].browse(focus["id"])
+            params["module_code"] = topic.module_id.code
+        elif focus and focus.get("level") == "requirement":
+            requirement = self.env["azm.fin.requirement"].browse(focus["id"])
+            params["module_code"] = requirement.module_id.code
+            params["requirement_code"] = requirement.code
         return {"type": "ir.actions.client", "tag": "azm_fin_workspace", "name": self.name,
-                "params": {"assessment_id": self.id}}
+                "params": params}
 
     def action_submit(self):
         """Send the financial assessment to whoever reviews it."""

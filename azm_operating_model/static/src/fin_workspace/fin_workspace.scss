@@ -138,3 +138,18 @@ $fin-muted: #5b7380;
     color: #c2410c;
     .oi { font-size: 12px; }
 }
+
+// a requirement outside what came back: shown, but not open to answering
+.o_azm_fin_locked {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 6px 0 0;
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: 12.5px;
+    color: #8a4b00;
+    background: rgba(249, 115, 22, .09);
+    .oi { font-size: 14px; }
+    em { font-size: 11px; opacity: .75; }
+}

@@ -211,15 +211,17 @@ export class AzmMyWork extends Component {
         }
     }
 
-    /** Open the assessment a returned part belongs to, so it can be dealt with. */
-    openReturned(item) {
-        return this.action.doAction({
-            type: "ir.actions.act_window",
+    /** Open the answering workspace for a returned part — where the questions are.
+
+    Not the record's form: somebody told to fix something needs the page they answer
+    on, which is the same page every other way in opens. */
+    async openReturned(item) {
+        const action = await this.orm.call("azm.dashboard", "open_my_workspace", [], {
             res_model: item.res_model,
-            res_id: item.res_id,
-            views: [[false, "form"]],
-            target: "current",
+            assessment_id: item.res_id,
+            focus: { level: item.level, id: item.part_id },
         });
+        await this.action.doAction(action);
     }
 
     async openAssessment(row) {

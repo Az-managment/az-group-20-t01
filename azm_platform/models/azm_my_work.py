@@ -284,7 +284,7 @@ class AzmDashboard(models.AbstractModel):
         return record
 
     @api.model
-    def open_my_workspace(self, res_model, assessment_id):
+    def open_my_workspace(self, res_model, assessment_id, focus=None):
         """Open the answering workspace, which is where the questions actually are.
 
         "Open the answers" used to land on the assessment's form, from which the reader
@@ -293,7 +293,7 @@ class AzmDashboard(models.AbstractModel):
         """
         record = self._my_work_record(res_model, assessment_id)
         record.check_access("read")
-        return record.action_open_workspace()
+        return record.action_open_workspace(focus=focus)
 
     @api.model
     def review_parts(self, res_model, assessment_id):
@@ -469,6 +469,9 @@ class AzmDashboard(models.AbstractModel):
                 "id": item.id,
                 "part": item.part_name,
                 "level": item.level,
+                # which record the level names, so opening it can land on that part
+                "part_id": (item.module_id.id or item.topic_id.id or item.requirement_id.id
+                            or item.stage_id.id or item.question_id.id),
                 "level_label": dict(Return._fields["level"].selection).get(item.level, ""),
                 "note": item.note,
                 "reviewer": item.reviewer_id.name,

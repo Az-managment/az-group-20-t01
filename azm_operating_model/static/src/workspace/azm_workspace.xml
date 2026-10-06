@@ -125,12 +125,12 @@
                                     <t t-if="q.qtype === 'number'">
                                         <input type="number" class="form-control o_azm_number" min="0"
                                                t-att-value="q.value_number || ''"
-                                               t-att-disabled="d.header.readonly"
+                                               t-att-disabled="this.locked(q)"
                                                t-on-change="(ev) => this.setNumber(q, ev)"/>
                                     </t>
                                     <t t-elif="q.qtype === 'select' and this.mainOptions(q).length > 9">
                                         <div class="o_azm_select_row">
-                                            <select class="form-select o_azm_select" t-att-disabled="d.header.readonly"
+                                            <select class="form-select o_azm_select" t-att-disabled="this.locked(q)"
                                                     t-on-change="(ev) => this.pickSelect(q, ev)">
                                                 <option value="" t-att-selected="!q.option_id">اختار…</option>
                                                 <t t-foreach="this.mainOptions(q)" t-as="opt" t-key="opt.id">
@@ -139,7 +139,7 @@
                                             </select>
                                             <t t-foreach="this.fallbackOptions(q)" t-as="opt" t-key="opt.id">
                                                 <button t-attf-class="o_azm_chip o_azm_chip_soft {{this.isChosen(q, opt) ? 'o_azm_chip_on' : ''}}"
-                                                        t-att-disabled="d.header.readonly"
+                                                        t-att-disabled="this.locked(q)"
                                                         t-on-click="() => this.pick(q, opt)"
                                                         t-out="opt.name"/>
                                             </t>
@@ -149,13 +149,13 @@
                                         <div class="o_azm_chips">
                                             <t t-foreach="this.mainOptions(q)" t-as="opt" t-key="opt.id">
                                                 <button t-attf-class="o_azm_chip {{this.isChosen(q, opt) ? 'o_azm_chip_on' : ''}} {{q.qtype === 'multi' ? 'o_azm_chip_multi' : ''}}"
-                                                        t-att-disabled="d.header.readonly"
+                                                        t-att-disabled="this.locked(q)"
                                                         t-on-click="() => this.pick(q, opt)"
                                                         t-out="opt.name"/>
                                             </t>
                                             <t t-foreach="this.fallbackOptions(q)" t-as="opt" t-key="opt.id">
                                                 <button t-attf-class="o_azm_chip o_azm_chip_soft {{this.isChosen(q, opt) ? 'o_azm_chip_on' : ''}}"
-                                                        t-att-disabled="d.header.readonly"
+                                                        t-att-disabled="this.locked(q)"
                                                         t-on-click="() => this.pick(q, opt)"
                                                         t-out="opt.name"/>
                                             </t>

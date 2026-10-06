@@ -126,6 +126,9 @@
         + .o_azm_model_row,
         + .o_azm_review_row { border-top: 1px solid $azm-border; }
     }
+    // a review and the picker under it are one block now, so the line between reviews
+    // belongs to the block rather than to the row inside it
+    .o_azm_review_block + .o_azm_review_block { border-top: 1px solid $azm-border; }
     .o_azm_model_main {
         flex: 1 1 auto;
         min-width: 0;

@@ -38,6 +38,12 @@ export class AzmWorkspace extends Component {
         onWillStart(() => this.load());
     }
 
+    /** Whether this question may be answered now: the page may be read-only, or the
+    review may have sent other parts back and left this one as it was. */
+    locked(q) {
+        return this.state.data.header.readonly || !!q.locked;
+    }
+
     // ------------------------------------------------------------ review
     /** Start sending a part back: this stage, or one question of it. */
     startReturn(level, id, name) {

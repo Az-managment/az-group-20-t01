@@ -291,7 +291,14 @@
                                     <span t-if="!r.applicable" class="o_azm_fin_bad"> · غير منطبق على الكيان</span>
                                 </p>
 
-                                <div t-if="r.na" class="o_azm_fin_notebox">
+                                <!-- this requirement is not one of the parts that came
+                                     back, so it stands as it was reviewed -->
+                                <p t-if="r.locked" class="o_azm_fin_locked">
+                                    <i class="oi" data-icon="lock" title="مغلق"/>
+                                    مغلق — الإفادة عادت لأجزاء بعينها، وهذا ليس منها.
+                                    <em class="o_azm_en">Locked: only the parts sent back can be answered.</em>
+                                </p>
+                                <div t-elif="r.na" class="o_azm_fin_notebox">
                                     <span class="o_azm_fin_label">سبب عدم الانطباق <b>*</b></span>
                                     <div class="o_azm_chips">
                                         <t t-foreach="d.na_reasons" t-as="reason" t-key="reason">
