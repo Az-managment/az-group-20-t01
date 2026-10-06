@@ -1,9 +1,46 @@
 // AZM Platform · the شجر / Trees landing page.
-// A section per model, a card per entity in it. Each section carries its own tone
-// through a CSS variable (--azm-tone, set by o_azm_tone_*), so the band, the ring
-// and the hover state of its cards are all the colour of that model and nothing
-// has to be told twice.
+// The entities, and the trees of whichever one is opened. A tree card carries its
+// model's tone through a CSS variable (--azm-tone, set by o_azm_tone_*), so its edge,
+// its ring and its hover glow are all the colour of that model and nothing has to be
+// told twice.
+//
+// The surface is darker and deeper than the rest of the backend on purpose: this is a
+// page you look *into*, so the cards sit on a lit field rather than on paper, and the
+// light they catch is the colour of what they open.
 .o_azm_trees {
+    position: relative;
+    isolation: isolate;
+    // a lit field behind the cards: two soft pools of colour and a fine grid, all of it
+    // far enough back that nothing on top has to fight it for contrast
+    &::before {
+        content: "";
+        position: absolute;
+        inset: -40px -24px auto;
+        height: 420px;
+        z-index: -1;
+        pointer-events: none;
+        /*rtl:ignore*/
+        background:
+            radial-gradient(60% 70% at 18% 0%, rgba(47, 123, 245, .16), transparent 70%),
+            radial-gradient(50% 60% at 88% 10%, rgba(16, 185, 129, .13), transparent 70%),
+            linear-gradient(180deg, rgba(11, 31, 69, .05), transparent 85%);
+        mask-image: linear-gradient(180deg, #000 55%, transparent);
+    }
+    &::after {
+        content: "";
+        position: absolute;
+        inset: -40px -24px auto;
+        height: 300px;
+        z-index: -1;
+        pointer-events: none;
+        opacity: .5;
+        /*rtl:ignore*/
+        background-image:
+            linear-gradient(to right, rgba(15, 35, 71, .05) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(15, 35, 71, .05) 1px, transparent 1px);
+        background-size: 46px 46px;
+        mask-image: radial-gradient(70% 100% at 50% 0%, #000, transparent 75%);
+    }
 
     // ---------------------------------------------------------------- the mark
     .o_azm_trees_title {
@@ -14,10 +51,31 @@
         justify-content: flex-start;
         gap: 14px;
     }
+    .o_azm_trees_title_mark {
+        display: grid;
+        place-items: center;
+        width: 62px;
+        height: 62px;
+        border-radius: 18px;
+        background: linear-gradient(145deg, rgba(47, 123, 245, .14), rgba(16, 185, 129, .14));
+        border: 1px solid rgba(47, 123, 245, .22);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, .7), 0 10px 24px rgba(15, 35, 71, .10);
+    }
     .o_azm_trees_title_mark .o_azm_tree_mark {
-        width: 46px;
-        height: 46px;
+        width: 36px;
+        height: 36px;
         color: map-get($azm-tones, 'green');
+        filter: drop-shadow(0 2px 6px rgba(16, 185, 129, .45));
+    }
+    .o_azm_trees_title h1 {
+        font-weight: 800;
+        letter-spacing: -.4px;
+        // the word itself carries the gradient; the small English gloss stays plain
+        background: linear-gradient(100deg, $azm-ink 10%, $azm-blue 55%, #0ea5e9 90%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        small { -webkit-text-fill-color: $azm-muted; }
     }
 
     // two tiles only: let them keep a card's width instead of stretching to half the page
@@ -29,10 +87,21 @@
         display: flex;
         align-items: center;
         gap: 12px;
-        padding: 0 2px 10px;
-        margin-bottom: 16px;
-        border-bottom: 2px solid $azm-border;
-        .btn { display: inline-flex; align-items: center; gap: 4px; }
+        padding: 10px 14px;
+        margin-bottom: 18px;
+        border-radius: 16px;
+        border: 1px solid rgba(255, 255, 255, .8);
+        background: linear-gradient(170deg, rgba(255, 255, 255, .9), rgba(246, 250, 255, .78));
+        backdrop-filter: blur(10px);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9), 0 8px 22px rgba(15, 35, 71, .06);
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            border-radius: 10px;
+            background: rgba(241, 246, 252, .9);
+            border: 1px solid rgba(15, 35, 71, .06);
+        }
         em { font-size: 11px; }
     }
     .o_azm_trees_crumb_here {
@@ -55,7 +124,19 @@
     .o_azm_trees_grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(252px, 1fr));
-        gap: 16px;
+        gap: 18px;
+    }
+    // an entity card carries a line per tree under its ring, so it wants a little more
+    // width than a tree card, which carries two figures
+    .o_azm_entities_grid { grid-template-columns: repeat(auto-fill, minmax(274px, 1fr)); }
+
+    // the two tiles at the top, on the same glass as everything else on this page
+    .o_azm_trees_kpis .o_azm_kpi {
+        border: 1px solid rgba(255, 255, 255, .8);
+        border-radius: 16px;
+        background: linear-gradient(170deg, rgba(255, 255, 255, .92), rgba(246, 250, 255, .82));
+        backdrop-filter: blur(10px);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9), 0 10px 26px rgba(15, 35, 71, .07);
     }
 
     // ---------------------------------------------------------------- a card
@@ -64,31 +145,70 @@
         display: flex;
         flex-direction: column;
         gap: 12px;
-        padding: 16px;
-        border: 1px solid $azm-border;
-        border-radius: 12px;
-        background: $azm-card;
+        padding: 18px;
+        border: 1px solid rgba(255, 255, 255, .75);
+        border-radius: 18px;
+        // glass: the lit field behind the page shows through, so the card sits in the
+        // light rather than on top of it
+        background:
+            linear-gradient(170deg, rgba(255, 255, 255, .94), rgba(248, 251, 255, .88));
+        backdrop-filter: blur(10px);
+        box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, .9),
+            0 1px 2px rgba(15, 35, 71, .05),
+            0 12px 28px rgba(15, 35, 71, .07);
         cursor: pointer;
         overflow: hidden;
-        transition: box-shadow .15s ease, transform .15s ease, border-color .15s ease;
+        transition: box-shadow .28s cubic-bezier(.2, .8, .2, 1),
+                    transform .28s cubic-bezier(.2, .8, .2, 1),
+                    border-color .28s ease;
 
-        // a hairline of the model's colour along the top edge, filled in on hover
+        // an edge of the model's colour, lit along the top and fading down the side
         &::before {
             content: "";
             position: absolute;
-            inset-inline: 0;
-            top: 0;
-            height: 3px;
-            background: var(--azm-tone, $azm-border);
-            opacity: .35;
-            transition: opacity .15s ease;
+            inset: 0;
+            border-radius: inherit;
+            padding: 1px;
+            /*rtl:ignore*/
+            background: linear-gradient(160deg,
+                var(--azm-tone, #{$azm-blue}) 0%,
+                rgba(255, 255, 255, 0) 45%);
+            // draw the gradient as a border and nothing else
+            mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+            mask-composite: exclude;
+            -webkit-mask-composite: xor;
+            opacity: .55;
+            transition: opacity .28s ease;
+            pointer-events: none;
         }
+
+        // a sheen that crosses the card as it lifts
+        &::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            /*rtl:ignore*/
+            background: linear-gradient(105deg,
+                transparent 30%, rgba(255, 255, 255, .55) 48%, transparent 62%);
+            transform: translateX(-120%);
+            opacity: 0;
+            pointer-events: none;
+        }
+
         &:hover, &:focus-visible {
-            transform: translateY(-3px);
-            box-shadow: 0 10px 24px rgba(15, 23, 42, .12);
-            border-color: var(--azm-tone, $azm-blue);
+            transform: translateY(-5px);
+            border-color: rgba(255, 255, 255, .95);
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, .95),
+                0 18px 40px rgba(15, 35, 71, .14),
+                // the glow is the colour of what the card opens
+                0 0 0 1px color-mix(in srgb, var(--azm-tone, #{$azm-blue}) 35%, transparent),
+                0 10px 34px color-mix(in srgb, var(--azm-tone, #{$azm-blue}) 22%, transparent);
             outline: none;
             &::before { opacity: 1; }
+            &::after { animation: azm-tree-sheen .9s ease forwards; }
             // a nudge that does not care which way the page runs
             .o_azm_tree_card_go { opacity: 1; transform: scale(1.2); }
         }
@@ -108,9 +228,11 @@
             font-weight: 600;
             .o_azm_en { font-size: 9px; opacity: .8; }
 
-            &.o_azm_ribbon_approved { background: #e7f6ec; color: #17633a; }
-            &.o_azm_ribbon_in_progress { background: #fff4e0; color: #8a4b00; }
-            &.o_azm_ribbon_not_started { background: #f1f5f9; color: $azm-muted; }
+            backdrop-filter: blur(6px);
+            border: 1px solid rgba(255, 255, 255, .6);
+            &.o_azm_ribbon_approved { background: rgba(209, 243, 221, .85); color: #0f5132; }
+            &.o_azm_ribbon_in_progress { background: rgba(255, 237, 200, .85); color: #8a4b00; }
+            &.o_azm_ribbon_not_started { background: rgba(236, 241, 247, .85); color: $azm-muted; }
         }
 
         > header {
@@ -176,8 +298,12 @@
                 stroke-linecap: round;
             }
         }
-        .o_azm_ring_track { stroke: $azm-border; }
-        .o_azm_ring_value { stroke: var(--azm-tone, $azm-blue); }
+        .o_azm_ring_track { stroke: rgba(15, 35, 71, .08); stroke-width: 5; }
+        .o_azm_ring_value {
+            stroke: var(--azm-tone, $azm-blue);
+            stroke-width: 5;
+            filter: drop-shadow(0 0 4px color-mix(in srgb, var(--azm-tone, #{$azm-blue}) 55%, transparent));
+        }
         .o_azm_ring_label {
             position: absolute;
             font-size: 13px;
@@ -198,9 +324,10 @@
             // the markup pairs dt before dd, as a description list must; the value
             // still reads first
             flex-direction: column-reverse;
-            padding: 5px 8px;
-            border-radius: 8px;
-            background: #f6f8fb;
+            padding: 6px 10px;
+            border-radius: 11px;
+            background: rgba(241, 246, 252, .8);
+            border: 1px solid rgba(15, 35, 71, .05);
             min-width: 0;
             dd { margin: 0; font-size: 16px; font-weight: 700; line-height: 1.1; }
             dt {
@@ -211,7 +338,8 @@
                 .o_azm_en { font-size: 9px; }
             }
             &.o_azm_chip_warn {
-                background: #fff4e0;
+                background: rgba(255, 240, 214, .85);
+                border-color: rgba(180, 83, 9, .18);
                 dd { color: #b45309; }
                 dt { color: #8a4b00; }
             }
@@ -237,7 +365,7 @@
         // an entity that has not started is drawn quieter, but stays open-able:
         // the tree still shows what the model asks of it
         &.o_azm_status_not_started {
-            background: #fbfcfd;
+            background: linear-gradient(170deg, rgba(252, 253, 255, .9), rgba(246, 249, 253, .85));
             &::before { opacity: .15; }
             > header strong { color: $azm-muted; }
         }
@@ -246,4 +374,20 @@
     @media (max-width: 576px) {
         .o_azm_trees_crumb { flex-wrap: wrap; }
     }
+
+    // Nobody should have to watch the page move to use it.
+    @media (prefers-reduced-motion: reduce) {
+        .o_azm_tree_card {
+            transition: none;
+            &:hover, &:focus-visible { transform: none; }
+            &::after { animation: none; }
+        }
+    }
+}
+
+// the sheen that crosses a card as it lifts; it runs once and stays out of the way
+@keyframes azm-tree-sheen {
+    from { transform: translateX(-120%); opacity: 0; }
+    35%  { opacity: 1; }
+    to   { transform: translateX(120%); opacity: 0; }
 }
