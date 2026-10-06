@@ -162,7 +162,11 @@
                             · <t t-out="p['stage']"/>
                         </span>
                     </div>
-                    <h1><span class="azm_code azm_code_big" t-out="p['code']"/> <t t-out="p['title']"/></h1>
+                    <h1><span class="azm_code azm_code_big" t-out="p['code']"/>
+                        <!-- A binding collects the deliverables under a module; it carries
+                             their place, not a registry number of its own, and says so. -->
+                        <span class="azm_binding" t-if="p['is_binding']">مجموعة</span>
+                        <t t-out="p['title']"/></h1>
 
                     <t t-set="path" t-value="p['path']"/>
                     <t t-call="azm_platform.report_azm_document_path"/>

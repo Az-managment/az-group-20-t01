@@ -23,7 +23,7 @@ class AzmAssignment(models.Model):
     _rec_name = "part_name"
 
     user_id = fields.Many2one("res.users", "المسؤول", required=True, index=True,
-                              domain=[("share", "=", False)], tracking=True)
+                              domain=[("share", "=", False)])
     note = fields.Char("ملاحظة")
 
     # one side or the other, never both — see _check_one_side

@@ -38,6 +38,12 @@ $azm-doc-soft: #f6f8fb;
     font-size: 11.5px; color: $azm-doc-blue; background: #eef3ff; border-radius: 4px; padding: 0 6px;
 }
 .azm_code_big { font-size: 15px; padding: 1px 8px; vertical-align: middle; }
+// A binding carries no registry number, so its cover is marked as the collection it is
+// rather than leaving the reader to wonder why the code looks unlike a deliverable's.
+.azm_binding {
+    display: inline-block; font-size: 11.5px; color: $azm-doc-muted;
+    border: 1px solid $azm-doc-muted; border-radius: 4px; padding: 0 6px; vertical-align: middle;
+}
 .azm_muted { color: $azm-doc-muted; }
 .azm_note { color: $azm-doc-muted; font-size: 11.5px; }
 

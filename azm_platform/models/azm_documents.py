@@ -95,6 +95,10 @@ KINDS = [("requirement", "متطلب · Requirement"), ("module", "مخرج مو
          ("summary", "ملخص الكيان · Entity summary"), ("book", "كتاب النموذج · Model book")]
 TABS = [(k, f"{v[1]} · {v[2]}") for k, v in MODULE_OUTPUTS.items()]
 BATCH = 20
+# The setting that overrides it. Renumbering the registry queues the whole library at
+# once, and draining thousands of documents twenty at a time takes hours; a human doing
+# that drain raises this, then drops it back to the standing pace.
+BATCH_PARAM = "azm.documents.batch"
 # Minutes to wait before each retry of a document that failed to render. A failure is
 # usually transient (a registry reload mid-flight, a lock, a renderer hiccup), so the
 # first retry comes quickly; after the last one the document stays in error for a human.
@@ -430,13 +434,18 @@ class AzmDocPublication(models.Model):
             cron.sudo()._trigger(at)
 
     @api.model
-    def _cron_process(self, limit=BATCH):
-        pubs = self.sudo().search(self._due_domain(), limit=limit,
+    def _cron_process(self, limit=None):
+        pubs = self.sudo().search(self._due_domain(), limit=limit or self._batch(),
                                   order="company_id, kind desc, module_sequence, tree_ref, id")
         for pub in pubs:
             pub._generate_safe()
         self._schedule_next()
         return True
+
+    @api.model
+    def _batch(self):
+        """How many documents one pass of the queue renders."""
+        return max(1, self.env["ir.config_parameter"].sudo().get_int(BATCH_PARAM, BATCH))
 
     @api.model
     def _schedule_next(self):
@@ -1128,7 +1137,11 @@ class AzmDocPublication(models.Model):
         artifact = pub._artifact()
         stage = pub._lifecycle()
         payload.update({
-            "code": artifact.code,
+            # A binding has no registry code — it is a collection of the deliverables
+            # under it, and each of those carries its own. It still has to say what it
+            # is, so it prints where it sits rather than a blank where a code goes.
+            "code": artifact.code or pub._tree_ref(),
+            "is_binding": not artifact,
             # where it hangs and whose copy this is — beside the code, never inside it
             "azm_node": artifact.node or "",
             "master_code": artifact.code,
@@ -1140,7 +1153,7 @@ class AzmDocPublication(models.Model):
             "tree_ref": pub._tree_ref(),   # how the tree names it, for the reader
         })
         payload["verify"] = " · ".join(x for x in (
-            artifact.code,
+            artifact.code or f"{pub._tree_ref()} · مجموعة",
             artifact.node or "",
             payload["entity_code"] or company.name,
             f"v{assessment.version}" if assessment else "",
