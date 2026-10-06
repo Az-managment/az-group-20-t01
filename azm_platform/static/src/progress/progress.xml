@@ -141,6 +141,25 @@
                             <i class="oi" data-icon="business" title="Entity"/>
                         </span>
                         <h3 t-out="block.name"/>
+                        <!-- where this entity stands, before anything under it is read -->
+                        <span class="o_azm_entity_facts">
+                            <span class="o_azm_fact"><b t-out="block.progress"/>٪</span>
+                            <span t-if="block.left" class="o_azm_fact">
+                                بقي <b t-out="block.left"/>
+                            </span>
+                            <span t-if="block.gaps" class="o_azm_fact o_azm_fact_gap">
+                                <b t-out="block.gaps"/> فجوة
+                            </span>
+                            <span t-if="block.returned" class="o_azm_fact o_azm_fact_warn">
+                                <b t-out="block.returned"/> مُعاد
+                            </span>
+                            <span t-if="block.unheld" class="o_azm_fact o_azm_fact_warn">
+                                <b t-out="block.unheld"/> بلا مسؤول
+                            </span>
+                            <span t-if="block.stalled" class="o_azm_fact o_azm_fact_warn">
+                                <b t-out="block.stalled"/> متوقفة
+                            </span>
+                        </span>
                     </header>
 
                     <t t-foreach="block.rows" t-as="row" t-key="row.res_model + '-' + row.id">
@@ -189,6 +208,17 @@
                                         <i class="oi" data-icon="report" title="فجوات"/>
                                         <t t-out="row.gaps"/>
                                     </span>
+                                    <!-- when somebody last answered something in it -->
+                                    <span t-if="row.touched" class="o_azm_fact"
+                                          t-attf-title="آخر إجابة: {{row.touched}}">
+                                        <i class="oi" data-icon="edit_note" title="آخر عمل"/>
+                                        <t t-out="this.ago(row.touched)"/>
+                                    </span>
+                                    <span t-if="row.unheld.length" class="o_azm_fact o_azm_fact_warn"
+                                          t-attf-title="بلا مسؤول: {{row.unheld.join('، ')}}">
+                                        <i class="oi" data-icon="person_off" title="بلا مسؤول"/>
+                                        <t t-out="row.unheld.length"/> بلا مسؤول
+                                    </span>
                                 </span>
                             </div>
                             <div class="o_azm_model_actions">
@@ -205,6 +235,22 @@
                                         t-on-click="() => this.open(row)">
                                     <i class="oi" data-icon="open_in_new"/>
                                 </button>
+                            </div>
+                        </div>
+
+                        <!-- what a review sent back and nobody has dealt with yet -->
+                        <div t-if="row.returned.length" class="o_azm_returned_strip">
+                            <div t-foreach="row.returned" t-as="back" t-key="back_index"
+                                 class="o_azm_returned_item">
+                                <i class="oi" data-icon="undo" title="عاد"/>
+                                <span>
+                                    <b t-out="back.part"/>
+                                    <small t-out="back.note"/>
+                                    <small class="text-muted">
+                                        أعادها <t t-out="back.reviewer"/>
+                                        <t t-if="back.user"> · على <t t-out="back.user"/></t>
+                                    </small>
+                                </span>
                             </div>
                         </div>
 
