@@ -24,38 +24,32 @@
     .o_azm_trees_kpis { grid-template-columns: repeat(auto-fit, minmax(200px, 280px)); }
     .o_azm_icon_badge .o_azm_tree_mark { width: 24px; height: 24px; }
 
-    // ---------------------------------------------------------------- a section
-    .o_azm_trees_section + .o_azm_trees_section { margin-top: 30px; }
-
-    .o_azm_trees_head {
+    // ------------------------------------------------- which entity is being read
+    .o_azm_trees_crumb {
         display: flex;
         align-items: center;
         gap: 12px;
         padding: 0 2px 10px;
         margin-bottom: 16px;
-        // the band that says which model everything below belongs to
-        border-bottom: 2px solid var(--azm-tone, #{$azm-border});
+        border-bottom: 2px solid $azm-border;
+        .btn { display: inline-flex; align-items: center; gap: 4px; }
+        em { font-size: 11px; }
     }
-    .o_azm_trees_names {
+    .o_azm_trees_crumb_here {
         display: flex;
-        flex-direction: column;
-        flex: 1 1 auto;
+        align-items: center;
+        gap: 8px;
         min-width: 0;
-        strong {
-            font-size: 16px;
-            .o_azm_en { font-size: 11px; }
-        }
-        small { color: $azm-muted; }
+        img { width: 28px; height: 28px; object-fit: contain; border-radius: 6px; }
+        strong { font-size: 16px; }
     }
-    .o_azm_trees_structure {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-end;
-        text-align: end;
-        flex: 0 0 auto;
+
+    // what a tree is for, under its name on the card
+    .o_azm_trees_desc {
+        margin: 0 0 4px;
         font-size: 12px;
-        b { color: var(--azm-tone, $azm-ink); }
-        small { color: $azm-muted; }
+        color: $azm-muted;
+        .o_azm_en { display: block; font-size: 11px; }
     }
 
     .o_azm_trees_grid {
@@ -250,7 +244,6 @@
     }
 
     @media (max-width: 576px) {
-        .o_azm_trees_head { flex-wrap: wrap; }
-        .o_azm_trees_structure { align-items: flex-start; text-align: start; }
+        .o_azm_trees_crumb { flex-wrap: wrap; }
     }
 }

@@ -46,9 +46,9 @@ const STATUSES = {
 /**
  * AZM Platform · Trees (landing page).
  *
- * One section per model that can be walked as a tree, one card per entity under it.
- * A card carries that entity's own figures and opens that entity's tree — a tree is
- * always read for somebody, never in the abstract.
+ * The entities first, then the trees of whichever one is opened. A tree is always
+ * somebody's — there is no financial model in the abstract, only this entity's answers
+ * to it — so the reader picks who they are asking about before what they are asking.
  */
 export class AzmTreesHub extends Component {
     static template = "azm_platform.TreesHub";
@@ -59,7 +59,8 @@ export class AzmTreesHub extends Component {
         this.action = useService("action");
         this.pct = pct;
         this.bar = bar;
-        this.state = proxy({ loaded: false, data: null });
+        // `opened` is the company whose trees are on screen, or null for the entities
+        this.state = proxy({ loaded: false, data: null, opened: null });
         onWillStart(async () => {
             this.state.data = await this.orm.call("azm.dashboard", "get_trees_hub", []);
             this.state.loaded = true;
@@ -68,6 +69,14 @@ export class AzmTreesHub extends Component {
 
     get d() {
         return this.state.data;
+    }
+
+    /** The entity being read, or null while the page is still showing all of them. */
+    get opened() {
+        if (!this.state.opened) {
+            return null;
+        }
+        return this.entities.find((e) => e.company_id === this.state.opened) || null;
     }
 
     get totals() {
@@ -82,38 +91,50 @@ export class AzmTreesHub extends Component {
         ];
     }
 
-    get sections() {
-        return this.d.sections.map((s) => ({
-            ...s,
-            ...MODELS[s.key],
-            path: s.levels.map((l) => LEVELS[l][0]).join(" › "),
-            path_en: s.levels.map((l) => LEVELS[l][1]).join(" › "),
-            structure: `${s.units} ${LEVELS[s.levels[0]][0]} · ${s.leaves} ${LEVELS[s.levels[2]][0]}`,
-            cards: s.cards.map((c) => ({
-                ...c,
-                logoUrl: c.company && c.company.has_logo
-                    ? entityImageUrl(c.company.id, "logo", "64x64", c.company.unique)
-                    : false,
-                initials: (c.name || "?").trim().slice(0, 2),
-                status_label: STATUSES[c.status][0],
-                status_en: STATUSES[c.status][1],
-                figures: c.figures.map((f) => ({ ...f, label: FIGURES[f.key][0], en: FIGURES[f.key][1] })),
+    get entities() {
+        return this.d.entities.map((e) => ({
+            ...e,
+            logoUrl: e.company && e.company.has_logo
+                ? entityImageUrl(e.company.id, "logo", "64x64", e.company.unique)
+                : false,
+            initials: (e.name || "?").trim().slice(0, 2),
+            status_label: STATUSES[e.status][0],
+            status_en: STATUSES[e.status][1],
+            trees: e.trees.map((t) => ({
+                ...t,
+                ...MODELS[t.key],
+                path: t.levels.map((l) => LEVELS[l][0]).join(" › "),
+                path_en: t.levels.map((l) => LEVELS[l][1]).join(" › "),
+                structure: `${t.units} ${LEVELS[t.levels[0]][0]} · ${t.leaves} ${LEVELS[t.levels[2]][0]}`,
+                status_label: STATUSES[t.status][0],
+                status_en: STATUSES[t.status][1],
+                figures: t.figures.map((f) => ({ ...f, label: FIGURES[f.key][0], en: FIGURES[f.key][1] })),
             })),
         }));
     }
 
     /** A card is a button: the keyboard opens it the way the pointer does. */
-    onCardKey(ev, section, card) {
+    onCardKey(ev, fn) {
         if (ev.key === "Enter" || ev.key === " ") {
             ev.preventDefault();
-            this.open(section, card);
+            fn();
         }
     }
 
+    /** Show the trees of one entity. */
+    openEntity(entity) {
+        this.state.opened = entity.company_id;
+    }
+
+    /** Back to the entities. */
+    closeEntity() {
+        this.state.opened = null;
+    }
+
     /** Open one entity's tree of one model — the card is the way in. */
-    open(section, card) {
-        this.action.doAction(section.action, {
-            additionalContext: { azm_company_id: card.company_id },
+    openTree(entity, tree) {
+        this.action.doAction(tree.action, {
+            additionalContext: { azm_company_id: entity.company_id },
         });
     }
 }

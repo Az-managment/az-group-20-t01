@@ -1,15 +1,20 @@
 import { registry } from "@web/core/registry";
 
 /**
- * The Trees page and the two trees it opens: a card picks an entity, the tree walks
- * down to a leaf, and the way back lands on the list of trees again.
+ * The Trees page and the two trees it opens: the page lists the entities, opening one
+ * shows the trees it has, and a tree walks down to a leaf. The way back lands on the
+ * entities again.
  */
 registry.category("web_tour.tours").add("azm_trees_tour", {
     steps: () => [
-        // the landing page: a section per model, a card per entity under it
-        { trigger: ".o_azm_trees .o_azm_trees_financial .o_azm_trees_grid .o_azm_tree_card" },
-        { trigger: ".o_azm_trees .o_azm_trees_procurement .o_azm_trees_grid .o_azm_tree_card" },
-        { trigger: ".o_azm_trees .o_azm_trees_financial .o_azm_tree_card:first-child", run: "click" },
+        // the landing page: a card per entity, and no tree until one is picked
+        { trigger: ".o_azm_trees .o_azm_entities_grid .o_azm_tree_card" },
+        { trigger: ".o_azm_trees:not(:has(.o_azm_trees_financial))" },
+        { trigger: ".o_azm_trees .o_azm_entities_grid .o_azm_tree_card:first-child", run: "click" },
+        // that entity opened: the trees it has, named and counted
+        { trigger: ".o_azm_trees .o_azm_trees_crumb_here strong" },
+        { trigger: ".o_azm_trees .o_azm_trees_procurement" },
+        { trigger: ".o_azm_trees .o_azm_trees_financial", run: "click" },
 
         // the financial tree, opened on the entity whose card was clicked
         { trigger: ".o_azm_tree_financial .o_azm_tree_panel .o_azm_tree_l1" },
@@ -32,9 +37,10 @@ registry.category("web_tour.tours").add("azm_trees_tour", {
         { trigger: ".o_azm_tree_financial .o_azm_tree_l3", run: "click" },
         { trigger: ".o_azm_tree_financial .o_azm_tree_detail .o_azm_tree_facts" },
 
-        // back to the list of trees, then down the other one
+        // back to the entities, into the same one, and down its other tree
         { trigger: ".o_azm_tree_financial .o_azm_tree_back", run: "click" },
-        { trigger: ".o_azm_trees .o_azm_trees_procurement .o_azm_tree_card:first-child", run: "click" },
+        { trigger: ".o_azm_trees .o_azm_entities_grid .o_azm_tree_card:first-child", run: "click" },
+        { trigger: ".o_azm_trees .o_azm_trees_procurement", run: "click" },
         { trigger: ".o_azm_tree_procurement .o_azm_tree_panel .o_azm_tree_l1" },
         { trigger: ".o_azm_tree_procurement .o_azm_tree_branch:first-child .o_azm_tree_docs_btn", run: "click" },
         { trigger: ".o_azm_tree_procurement .o_azm_tree_docs .o_azm_doc_chip .o_azm_doc_open" },
