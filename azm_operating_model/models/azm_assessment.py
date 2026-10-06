@@ -255,6 +255,7 @@ class AzmAssessment(models.Model):
                 "state": self.state, "state_label": dict(self._fields["state"].selection)[self.state],
                 "version": self.version, "progress": round(self.progress), "is_demo": self.is_demo,
                 "outstanding": self._azm_outstanding(), "can_send": self._azm_can_send(),
+                **self._azm_review_header(),
                 "readonly": self.state != "draft",
             },
             "stages": nav,
@@ -295,6 +296,14 @@ class AzmAssessment(models.Model):
     def _azm_outstanding(self):
         self.ensure_one()
         return max(self.visible_count - self.answered_count, 0)
+
+    def _azm_returned_outstanding(self, returns):
+        self.ensure_one()
+        # counted the way the whole assessment is counted: a visible question with a
+        # value in it is answered
+        lines = self.answer_ids.filtered(
+            lambda line: line.is_visible and returns._covers(line))
+        return len(lines) - len(lines.filtered("has_value"))
 
     def action_open_workspace(self):
         self.ensure_one()

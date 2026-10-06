@@ -22,11 +22,53 @@
                         <div t-attf-style="width: {{d.header.progress}}%"/>
                     </div>
                     <span class="o_azm_muted"><t t-out="d.header.progress"/>٪</span>
+                    <button t-if="d.header.can_send" class="btn btn-primary btn-sm"
+                            t-att-disabled="this.state.busy"
+                            t-on-click="() => this.requestReview()">
+                        اطلب المراجعة <em class="o_azm_en">Request review</em>
+                    </button>
+                    <button t-if="d.header.can_return" class="btn btn-outline-warning btn-sm"
+                            t-att-disabled="this.state.busy"
+                            t-on-click="() => this.startReturn('stage', d.stage.id, d.stage.name)">
+                        أعد هذه المرحلة <em class="o_azm_en">Send this stage back</em>
+                    </button>
                     <button class="btn btn-secondary btn-sm" t-on-click="() => this.openRecord()">
                         <t t-out="d.header.name"/>
                     </button>
                 </div>
             </header>
+
+            <!-- why a part came back, read beside the questions -->
+            <div t-if="d.header.returns.length" class="o_azm_ws_returns">
+                <div t-foreach="d.header.returns" t-as="item" t-key="item.id" class="o_azm_ws_return">
+                    <i class="oi" data-icon="undo" title="عاد"/>
+                    <div>
+                        <b><t t-out="item.part"/></b>
+                        <p t-out="item.note"/>
+                        <small>أعادها <t t-out="item.reviewer"/></small>
+                    </div>
+                </div>
+            </div>
+
+            <div t-if="this.state.returning" class="o_azm_ws_compose">
+                <label>
+                    سبب الإعادة — <b t-out="this.state.returning.name"/>
+                    <em class="o_azm_en">Why it is coming back</em>
+                </label>
+                <textarea class="form-control" rows="3" placeholder="ما الذي يحتاج معالجة؟"
+                          t-att-value="this.state.returnNote"
+                          t-on-input="(ev) => this.state.returnNote = ev.target.value"/>
+                <div class="o_azm_ws_compose_actions">
+                    <button class="btn btn-sm btn-light" t-on-click="() => this.cancelReturn()">
+                        تراجع
+                    </button>
+                    <button class="btn btn-sm btn-warning"
+                            t-att-disabled="this.state.busy or !this.state.returnNote.trim()"
+                            t-on-click="() => this.confirmReturn()">
+                        أعدها مع الملاحظة
+                    </button>
+                </div>
+            </div>
 
             <div class="o_azm_ws_body">
                 <!-- stage rail -->

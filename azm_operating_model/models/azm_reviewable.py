@@ -227,7 +227,47 @@ class AzmReviewable(models.AbstractModel):
         if preparer.id != self.env.uid \
                 and not self.env.user.has_group("azm_operating_model.azm_group_manager"):
             return False
+        returns = self.env["azm.review.return"]._open_for(self)
+        if returns:
+            # It came back for named parts, and nothing outside them can even be
+            # written. Asking for the whole assessment here would strand work that was
+            # sent back with a question unanswered somewhere else: unable to answer it,
+            # unable to send what was fixed.
+            return not self._azm_returned_outstanding(returns)
         return not self._azm_outstanding()
+
+    def _azm_returned_outstanding(self, returns):
+        """Unanswered questions inside the parts that came back. Per model."""
+        self.ensure_one()
+        return 0
+
+    def _azm_review_header(self):
+        """What a workspace needs to show the review side of the work.
+
+        Whether this reader may send a part back, and what is already back with its
+        note — so somebody fixing a return reads the reason beside the questions rather
+        than having to remember it from another page.
+        """
+        self.ensure_one()
+        reviewing = self.state == "review" and (
+            self.env.user.has_group("azm_operating_model.azm_group_reviewer")
+            or self.env.user.has_group("azm_operating_model.azm_group_manager"))
+        returns = self.env["azm.review.return"]._open_for(self)
+        return {
+            "can_return": reviewing and self.user_id != self.env.user,
+            "returns": [{
+                "id": item.id,
+                "level": item.level,
+                "part": item.part_name,
+                "note": item.note,
+                "reviewer": item.reviewer_id.name,
+                "module_id": item.module_id.id,
+                "topic_id": item.topic_id.id,
+                "requirement_id": item.requirement_id.id,
+                "stage_id": item.stage_id.id,
+                "question_id": item.question_id.id,
+            } for item in returns],
+        }
 
     def _submit_for_review(self, summary=None):
         """Hand the work to whoever reviews it, or say why it cannot be handed over."""

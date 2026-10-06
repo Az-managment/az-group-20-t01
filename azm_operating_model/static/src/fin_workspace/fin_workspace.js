@@ -37,10 +37,58 @@ export class AzmFinWorkspace extends Component {
             saving: 0,
             openPrompts: {},
             otherReason: {},
+            // the part a reviewer is sending back, and the reason being typed for it
+            returning: null,
+            returnNote: "",
         });
         this.timers = {};
         onWillStart(() => this.load());
         onWillUnmount(() => this.flushAll());
+    }
+
+    // ------------------------------------------------------------ review
+    /** Start sending a part back: the current module, or one requirement of it. */
+    startReturn(level, id, name) {
+        this.state.returning = { level, id, name };
+        this.state.returnNote = "";
+    }
+
+    cancelReturn() {
+        this.state.returning = null;
+        this.state.returnNote = "";
+    }
+
+    async confirmReturn() {
+        const note = (this.state.returnNote || "").trim();
+        if (!note || !this.state.returning) {
+            return;
+        }
+        this.state.busy = true;
+        try {
+            await this.orm.call("azm.dashboard", "return_review_part", [], {
+                res_model: MODEL,
+                assessment_id: this.assessmentId,
+                level: this.state.returning.level,
+                part_id: this.state.returning.id,
+                note,
+            });
+            this.cancelReturn();
+            await this.load();
+        } finally {
+            this.state.busy = false;
+        }
+    }
+
+    /** Ask for the work to be reviewed. */
+    async requestReview() {
+        this.state.busy = true;
+        try {
+            await this.flushAll();
+            await this.orm.call(MODEL, "action_submit", [[this.assessmentId]]);
+            await this.load();
+        } finally {
+            this.state.busy = false;
+        }
     }
 
     // ------------------------------------------------------------ data

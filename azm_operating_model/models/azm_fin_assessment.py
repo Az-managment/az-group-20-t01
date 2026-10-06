@@ -155,6 +155,8 @@ class AzmFinAssessment(models.Model):
             "applicable": self.applicable_count, "done": self.done_count, "progress": round(self.progress),
             "questions": self.question_count, "answered": self.answered_count,
             "outstanding": self._azm_outstanding(), "can_send": self._azm_can_send(),
+            # the review side: who may send a part back, and what is already back
+            **self._azm_review_header(),
             "counts": {key: self[f"{key}_count"] for key, _label in STATES},
             "scopes": [{"code": "ALL", "name": SCOPES["ALL"]}] + [
                 {"code": s.code, "name": s.name} for s in self.scope_ids],
@@ -202,7 +204,7 @@ class AzmFinAssessment(models.Model):
         return {
             "header": self._header(),
             "modules": self._modules_nav(),
-            "module": {"code": module.code, "name": module.name,
+            "module": {"id": module.id, "code": module.code, "name": module.name,
                        "total": len(self.answer_ids.filtered(lambda a: a.module_id == module))},
             "topics": topics,
             "states": [{"key": k, "name": n} for k, n in STATES],
@@ -311,6 +313,11 @@ class AzmFinAssessment(models.Model):
     def _azm_outstanding(self):
         self.ensure_one()
         return max(self.question_count - self.answered_count, 0)
+
+    def _azm_returned_outstanding(self, returns):
+        self.ensure_one()
+        lines = self.answer_ids.filtered(lambda line: returns._covers(line))
+        return sum(max(line.q_total - line.q_answered, 0) for line in lines)
 
     def action_open_workspace(self):
         self.ensure_one()
@@ -632,7 +639,8 @@ class AzmFinAnswer(models.Model):
             questions.append(data)
         prof = PROFILES[req.profile]
         return {
-            "answer_id": self.id, "code": req.code, "req_id": req.req_id or "", "title": req.title,
+            "answer_id": self.id, "requirement_id": req.id,
+            "code": req.code, "req_id": req.req_id or "", "title": req.title,
             "tree_ref": req.tree_ref or "",
             "question": req.question, "profile": req.profile, "profile_name": prof[0],
             "scope_code": req.scope_code, "scope_name": SCOPES.get(req.scope_code, ""), "source": req.source,

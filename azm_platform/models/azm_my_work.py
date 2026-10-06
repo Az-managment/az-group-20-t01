@@ -296,6 +296,21 @@ class AzmDashboard(models.AbstractModel):
         return record.action_open_workspace()
 
     @api.model
+    def return_review_part(self, res_model, assessment_id, level, part_id, note):
+        """Send one named part back to be done again, with the reason why.
+
+        Reached from the review workspace. The record's own action does the checking —
+        that this reader reviews rather than prepares, that the work is under review,
+        that the part is named and the reason given — so this adds only the access
+        check every entry point owes.
+        """
+        record = self._my_work_record(res_model, assessment_id)
+        record.check_access("write")
+        record.action_return_parts([{"level": level, "id": part_id, "note": note}])
+        return {"done": True, "state": record.state,
+                "open_returns": record.open_return_count}
+
+    @api.model
     def accept_my_review(self, res_model, assessment_id):
         """Accept the answers that were sent for review, and hand the page back."""
         record = self._my_work_record(res_model, assessment_id)

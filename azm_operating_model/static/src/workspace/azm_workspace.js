@@ -31,8 +31,55 @@ export class AzmWorkspace extends Component {
             output: markup(""),
             busy: false,
             showHelp: {},
+            // the part a reviewer is sending back, and the reason being typed for it
+            returning: null,
+            returnNote: "",
         });
         onWillStart(() => this.load());
+    }
+
+    // ------------------------------------------------------------ review
+    /** Start sending a part back: this stage, or one question of it. */
+    startReturn(level, id, name) {
+        this.state.returning = { level, id, name };
+        this.state.returnNote = "";
+    }
+
+    cancelReturn() {
+        this.state.returning = null;
+        this.state.returnNote = "";
+    }
+
+    async confirmReturn() {
+        const note = (this.state.returnNote || "").trim();
+        if (!note || !this.state.returning) {
+            return;
+        }
+        this.state.busy = true;
+        try {
+            await this.orm.call("azm.dashboard", "return_review_part", [], {
+                res_model: MODEL,
+                assessment_id: this.assessmentId,
+                level: this.state.returning.level,
+                part_id: this.state.returning.id,
+                note,
+            });
+            this.cancelReturn();
+            await this.load();
+        } finally {
+            this.state.busy = false;
+        }
+    }
+
+    /** Ask for the work to be reviewed. */
+    async requestReview() {
+        this.state.busy = true;
+        try {
+            await this.orm.call(MODEL, "action_submit", [[this.assessmentId]]);
+            await this.load();
+        } finally {
+            this.state.busy = false;
+        }
     }
 
     apply(data) {
