@@ -305,6 +305,23 @@
 // Pieces this page needs that the shared sheets do not define on their own.
 .o_azm_tree_page {
 
+    // The deliverable's own code — what the document in this entity's folders is
+    // called. The code beside it is the tree reference: where the thing sits, not what
+    // it is called, and the two are different questions.
+    .o_azm_azm_code {
+        margin-inline-start: auto;
+        padding: 1px 7px;
+        border-radius: 5px;
+        background: rgba($azm-blue, .08);
+        color: $azm-blue;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 9.5px;
+        letter-spacing: .2px;
+        white-space: nowrap;
+        flex: 0 0 auto;
+    }
+
+
 
     .o_azm_banner {
         border-radius: 8px;

@@ -70,6 +70,27 @@ class AzmDashboard(models.AbstractModel):
 
     # ------------------------------------------------------------------ documents
     @api.model
+    def _tree_codes(self, company):
+        """``{ref: the code this entity's copy of it carries}`` for the whole registry.
+
+        Read once for the tree rather than per row: a tree of one model is a couple of
+        hundred leaves and each would otherwise be a lookup. The entity's own prefix is
+        put on here for the same reason the documents carry it — what the reader is
+        looking at is their copy, not the group's master.
+        """
+        entity = company.azm_entity_ids[:1]
+        prefix = (entity.code or "").strip() if entity else ""
+        codes = {}
+        for art in self.env["azm.artifact"].sudo().search([]):
+            code = art.code
+            if prefix:
+                _group, _sep, rest = code.partition("-")
+                if rest:
+                    code = f"{prefix}-{rest}"
+            codes[art.ref] = code
+        return codes
+
+    @api.model
     def _tree_publication(self, kind, node_id=None, tab=None, company_id=None):
         """The document a tree node stands for, whoever is asking and for whatever.
 

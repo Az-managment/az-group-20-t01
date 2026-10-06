@@ -140,10 +140,12 @@
                     <div t-if="this.docsOpen(n.id) and this.docsAvailable" class="o_azm_tree_docs">
                         <span t-foreach="this.docsOf(n)" t-as="d" t-key="d.tab" class="o_azm_doc_chip">
                             <button type="button" class="o_azm_doc_open"
-                                    t-attf-title="{{d.en}} · {{d.atype}} · {{d.stage}}"
+                                    t-attf-title="{{d.azm_code or d.en}} · {{d.atype}} · {{d.stage}}"
                                     t-on-click="() => this.previewDoc(d)">
                                 <span class="o_azm_doc_type" t-out="d.atype"/>
                                 <t t-out="d.label"/>
+                                <span t-if="d.azm_code" class="o_azm_azm_code"
+                                      t-out="d.azm_code"/>
                             </button>
                             <button type="button" class="o_azm_doc_get" title="تنزيل · Download"
                                     t-on-click="() => this.openDoc(d, true)">
@@ -171,6 +173,10 @@
                                           t-att-title="i.status.label"/>
                                     <span class="o_azm_code o_azm_code_dim" t-out="i.code"/>
                                     <span class="o_azm_tree_name" t-out="i.title"/>
+                                    <!-- what this entity's copy of the deliverable is
+                                         called; the code above is where it sits -->
+                                    <span t-if="i.azm_code" class="o_azm_azm_code"
+                                          t-att-title="i.azm_code" t-out="i.azm_code"/>
                                     <span t-if="i.flag" class="o_azm_tree_gap" t-att-title="'ملاحظات خطر مفتوحة'"
                                           t-out="i.flag"/>
                                 </button>

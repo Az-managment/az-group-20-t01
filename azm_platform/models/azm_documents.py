@@ -497,10 +497,12 @@ class AzmDocPublication(models.Model):
             "assessment": [assessment.id, assessment.version, assessment.state, assessment.is_demo,
                            str(assessment.approved_date or "")] if assessment else None,
             "catalogue": [req.tree_ref, req.title, req.question, req.owner, module.code, module.name],
-            # the code a document prints is part of what it says, so a document filed
-            # under an older coding ages by itself and is rebuilt when next read
-            # looked up, not allocated: this runs inside the `outdated` compute
-            "coding": [self._artifact(create=False).code or "", self._lifecycle()],
+            # The code a document prints is part of what it says, so one filed under an
+            # older coding ages by itself and is rebuilt when next read. It is the
+            # *scoped* code that is printed — the entity's own — so renaming an entity
+            # ages that entity's documents and nobody else's. Looked up and not
+            # allocated: this runs inside the `outdated` compute.
+            "coding": [self._scoped_code(), self._lifecycle()],
             "lines": {line.code: [line.applicable, line._snapshot()] for line in lines},
         }
         return hashlib.md5(json.dumps(data, sort_keys=True, ensure_ascii=False, default=str).encode()).hexdigest()

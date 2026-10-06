@@ -25,6 +25,27 @@ class TestFinTree(TransactionCase):
     def _tree(self):
         return self.D.with_company(self.company).get_fin_tree(company_id=self.company.id)
 
+    def test_every_leaf_says_what_it_is_called(self):
+        """The tree shows two codes against a requirement and they answer two questions:
+        FIN.GOV.01.01 is where it sits, FUE-FIN-GOV-DOA-000001 is what this entity's copy
+        of the deliverable is called. A reader holding a document should be able to find
+        it on the tree, and a reader on the tree should know what to ask the library for.
+        """
+        self.env['azm.artifact'].sudo()._register_all()
+        tree = self.D.get_fin_tree(company_id=self.company.id)
+        entity = self.company.azm_entity_ids[:1]
+        self.assertTrue(entity.code)
+        leaves = [item for node in tree['nodes'] for child in node['children']
+                  for item in child['items']]
+        self.assertTrue(leaves)
+        coded = [leaf for leaf in leaves if leaf.get('azm_code')]
+        self.assertTrue(coded, 'the leaves carry the code of the deliverable they are')
+        for leaf in coded[:8]:
+            self.assertTrue(leaf['azm_code'].startswith(f"{entity.code}-FIN-"),
+                            "this entity's own copy of it, not the group's master")
+            self.assertNotEqual(leaf['azm_code'], leaf['code'],
+                                'the tree reference and the code are different things')
+
     def test_tree_nests_module_topic_requirement(self):
         tree = self._tree()
         self.assertTrue(tree['available'])

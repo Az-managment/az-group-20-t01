@@ -74,12 +74,17 @@ class AzmDashboard(models.AbstractModel):
         Artifact = env["azm.artifact"]
         empty = self._tree_known_empty(company, "module")
 
+        codes = self._tree_codes(company)
+
         def module_outputs(module):
             """What this entity actually has here: an output the module can have, and
             that its own answers put something in."""
             return [{"kind": "module", "id": module.id, "tab": tab,
                      "label": MODULE_OUTPUTS[tab][1], "en": MODULE_OUTPUTS[tab][2],
-                     "atype": FIN_ARTIFACTS[tab][0], "stage": FIN_ARTIFACTS[tab][1]}
+                     "atype": FIN_ARTIFACTS[tab][0], "stage": FIN_ARTIFACTS[tab][1],
+                     # the compiled outputs are a binding of the deliverables under
+                     # them, so only the module-wide ones carry a code of their own
+                     "azm_code": codes.get(f"azm.fin.module,{module.id},{tab}", "")}
                     for tab in module._azm_outputs() if (module.id, tab) not in empty]
 
         nodes = []
@@ -107,6 +112,9 @@ class AzmDashboard(models.AbstractModel):
                     "scope": SCOPES.get(req.scope_code, ""),
                     "questions": len(req.question_ids),
                     "status": self._fin_tree_status(state),
+                    # the requirement *is* the deliverable, so the tree says what it is
+                    # called as well as where it sits
+                    "azm_code": codes.get(f"azm.fin.requirement,{req.id}", ""),
                     "doc": {"kind": "requirement", "id": req.id},
                 }
                 topic = req.topic_id

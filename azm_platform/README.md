@@ -301,7 +301,14 @@ Documents folders is their copy of it, and it is called so:
 | `AMD-FIN-GOV-POL-000001` | AZ Management's copy |
 
 The master travels on the document beside it, so one always reads back to the other. The
-version and the lifecycle stage stay outside the code, as the registry insists.
+version and the lifecycle stage stay outside the code, as the registry insists. Changing
+an entity's code re-codes its documents and ages them, so they reissue under the new one
+— and only that entity's.
+
+**It shows wherever the deliverable does.** On the tree a requirement carries two codes
+and they answer two questions: `FIN.GOV.01.01` is *where it sits*, `FUE-FIN-GOV-DOA-000001`
+is *what this entity's copy is called*. So somebody holding a document can find it on the
+tree, and somebody on the tree knows what to ask the library for.
 
 ## مكتبة المخرجات · Outputs Library
 

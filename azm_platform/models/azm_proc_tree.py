@@ -103,12 +103,17 @@ class AzmDashboard(models.AbstractModel):
         # document is resolved — and built, if this is the first time — when opened.
         empty = self._tree_known_empty(company, "stage")
 
+        codes = self._tree_codes(company)
+
         def stage_outputs(stage):
             """What this entity actually has here — a governance stage has no procedure,
             and an output its answers put nothing in is not offered."""
             return [{"kind": "stage", "id": stage.id, "tab": tab,
                      "label": PROC_OUTPUTS[tab][1], "en": PROC_OUTPUTS[tab][2],
-                     "atype": PROC_ARTIFACTS[tab][0], "stage": PROC_ARTIFACTS[tab][1]}
+                     "atype": PROC_ARTIFACTS[tab][0], "stage": PROC_ARTIFACTS[tab][1],
+                     # a stage's output is written for the stage as a whole, so this is
+                     # where the cycle's deliverables are numbered
+                     "azm_code": codes.get(f"azm.stage,{stage.id},{tab}", "")}
                     for tab in stage._azm_outputs() if (stage.id, tab) not in empty]
 
         nodes = []
@@ -142,6 +147,7 @@ class AzmDashboard(models.AbstractModel):
                     "title": q.label,
                     "status": self._proc_status(state),
                     "flag": risks,
+                    "azm_code": codes.get(f"azm.question,{q.id}", ""),
                     "doc": {"kind": "question", "id": q.id},
                 }
                 key = q.group or "0"
