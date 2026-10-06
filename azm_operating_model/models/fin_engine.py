@@ -60,6 +60,55 @@ NOT_A_PERSON = {"لا يوجد", "لا أعرف", "غير مدرج", ""}
 STEP_COLUMNS = ("الخطوة", "المرحلة", "الحدث", "بعد (يوم)")
 
 
+# Who does what, read off the answers that name a role. The labels in this catalogue are
+# verbs — يُعد, يراجع, يعتمد — so a cycle can be put together from them where a
+# requirement holds no table of steps of its own.
+ROLE_VERBS = (
+    (("يُعد", "يعد ", "يُنشئ", "ينشئ", "ينفّذ", "ينفذ", "يسجل", "يُسجل"), "التنفيذ", "Execute"),
+    (("يراجع", "يفحص", "يطابق", "المطابقة"), "المراجعة", "Review"),
+    (("يعتمد", "يوافق", "اعتماد"), "الاعتماد", "Approve"),
+)
+# said beside the first step rather than as a step of its own: how often is not a thing
+# somebody does
+RHYTHM_LABELS = ("الدورية", "دورية", "التوقيت", "المهلة")
+
+
+def generic_cycle(item):
+    """The cycle a requirement describes when it holds no table of steps.
+
+    Who does the work, who checks it, who signs it off — taken from the answers that
+    name each. Nothing is invented: a step appears only where its answer was given, and
+    where none of them was the cycle is not drawn at all, because three empty boxes say
+    less than the facts printed underneath them.
+    """
+    answers = [qa for qa in item.get("qa", []) if qa.get("qtype") in ("select", "multi")]
+
+    def value_for(verbs):
+        for qa in answers:
+            label = (qa.get("label") or "").strip()
+            if any(label.startswith(verb) for verb in verbs) and qa.get("display"):
+                return str(qa["display"]), label
+        return None, None
+
+    rhythm = next((str(qa["display"]) for qa in answers
+                   if any((qa.get("label") or "").startswith(word) for word in RHYTHM_LABELS)
+                   and qa.get("display")), "")
+
+    steps = []
+    for verbs, title, english in ROLE_VERBS:
+        who, label = value_for(verbs)
+        if not who and title == "التنفيذ" and item.get("owner"):
+            # the requirement names an owner even when no answer does
+            who, label = item["owner"], "المسؤول"
+        if not who:
+            continue
+        sub = f"{label}: {who}" if label else who
+        if not steps and rhythm:
+            sub = f"{sub} · الدورية: {rhythm}"
+        steps.append({"title": title, "sub": sub})
+    return steps if len(steps) > 1 else []
+
+
 def step_rows(qa):
     """``[{"title", "sub"}]`` for a table that reads as a sequence.
 
@@ -274,9 +323,18 @@ def _by_profile(tab, module, items):
             continue
         body = [_title(item), _state_line(item)]
         if tab == "workflow":
+            drawn = False
             for qa in item["qa"]:
                 if qa["qtype"] == "table" and qa["rows"] and qa["columns"] and qa["columns"][0]["label"] in STEP_COLUMNS:
                     body.append(_steps(qa))
+                    drawn = True
+            if not drawn:
+                # no table of steps, but the answers still say who does the work, who
+                # checks it and who signs it off — which is a cycle
+                cycle = generic_cycle(item)
+                if cycle:
+                    body.append(f'<p class="o_azm_fin_tablecap">{_e("دورة العمل")}</p>'
+                                + flow(cycle, label="دورة العمل"))
             body.append(_facts({**item, "qa": [q for q in item["qa"] if not (
                 q["qtype"] == "table" and q["columns"] and q["columns"][0]["label"] in STEP_COLUMNS)]}))
         else:

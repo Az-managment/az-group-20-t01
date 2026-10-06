@@ -1023,6 +1023,16 @@ class AzmDocPublication(models.Model):
                 # the main question is already the "what is required" line: do not print it twice
                 label = "الإجابة" if qa["label"].strip() == (req.question or "").strip() else qa["label"]
                 data["answers"].append({"label": label, "value": qa["display"], "muted": qa["fallback"]})
+        # no table of steps in the answers, but they may still say who does the work,
+        # who checks it and who signs it off — the same cycle the screen draws
+        if not data["steps"] and req.profile == "W":
+            cycle = fin_engine.generic_cycle(item)
+            if cycle:
+                data["steps"].append({
+                    "label": "دورة العمل",
+                    "items": [{"title": step["title"], "detail": step["sub"]} for step in cycle],
+                    "flow": Markup(azm_svg.flow(cycle, label="دورة العمل")),
+                })
         data.update({
             "impl": "، ".join(item["impl"]), "rule": item["rule"], "target": item["target"],
             "problems": item["issues"], "target_note": item["target_note"],
