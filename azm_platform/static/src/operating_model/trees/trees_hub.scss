@@ -8,39 +8,7 @@
 // page you look *into*, so the cards sit on a lit field rather than on paper, and the
 // light they catch is the colour of what they open.
 .o_azm_trees {
-    position: relative;
-    isolation: isolate;
-    // a lit field behind the cards: two soft pools of colour and a fine grid, all of it
-    // far enough back that nothing on top has to fight it for contrast
-    &::before {
-        content: "";
-        position: absolute;
-        inset: -40px -24px auto;
-        height: 420px;
-        z-index: -1;
-        pointer-events: none;
-        /*rtl:ignore*/
-        background:
-            radial-gradient(60% 70% at 18% 0%, rgba(47, 123, 245, .16), transparent 70%),
-            radial-gradient(50% 60% at 88% 10%, rgba(16, 185, 129, .13), transparent 70%),
-            linear-gradient(180deg, rgba(11, 31, 69, .05), transparent 85%);
-        mask-image: linear-gradient(180deg, #000 55%, transparent);
-    }
-    &::after {
-        content: "";
-        position: absolute;
-        inset: -40px -24px auto;
-        height: 300px;
-        z-index: -1;
-        pointer-events: none;
-        opacity: .5;
-        /*rtl:ignore*/
-        background-image:
-            linear-gradient(to right, rgba(15, 35, 71, .05) 1px, transparent 1px),
-            linear-gradient(to bottom, rgba(15, 35, 71, .05) 1px, transparent 1px);
-        background-size: 46px 46px;
-        mask-image: radial-gradient(70% 100% at 50% 0%, #000, transparent 75%);
-    }
+    @include azm-lit-field;
 
     // ---------------------------------------------------------------- the hero
     .o_azm_trees_hero {
@@ -245,25 +213,9 @@
 
     // ------------------------------------------------------------- a progress bar
     .o_azm_meter {
-        position: relative;
-        display: block;
+        @include azm-meter;
         flex: 1 1 auto;
-        height: 6px;
-        border-radius: 99px;
-        background: rgba(15, 35, 71, .08);
-        overflow: hidden;
         &.o_azm_meter_lg { height: 9px; }
-    }
-    .o_azm_meter_fill {
-        display: block;
-        height: 100%;
-        border-radius: inherit;
-        /*rtl:ignore*/
-        background: linear-gradient(90deg,
-            color-mix(in srgb, var(--azm-tone, #{$azm-blue}) 65%, white),
-            var(--azm-tone, #{$azm-blue}));
-        box-shadow: 0 0 10px color-mix(in srgb, var(--azm-tone, #{$azm-blue}) 45%, transparent);
-        transition: width .5s cubic-bezier(.2, .8, .2, 1);
     }
 
     .o_azm_trees_grid {

@@ -28,6 +28,14 @@ class AzmReviewable(models.AbstractModel):
     # So every state change goes through the buttons, which carry this flag.
     AZM_WORKFLOW = "azm_workflow"
 
+    # When the work last changed hands. A tracking page wants to know how long something
+    # has been sitting where it is — a draft nobody has touched for a fortnight and one
+    # opened this morning read the same without it — and write_date cannot answer that,
+    # because a recompute touches the row without the work having moved at all.
+    state_since = fields.Datetime(
+        "منذ", readonly=True, copy=False,
+        help="متى انتقلت هذه الإفادة إلى حالتها الحالية.")
+
     def _workflow(self):
         """This record, with the right to move itself along."""
         return self.with_context(**{self.AZM_WORKFLOW: True})
@@ -40,6 +48,12 @@ class AzmReviewable(models.AbstractModel):
                     raise UserError(_(
                         "The state of an assessment is changed with its buttons — "
                         "send for review, approve, send back — not by writing to it."))
+        if "state" in vals and "state_since" not in vals:
+            moved = self.filtered(lambda record: record.state != vals["state"])
+            if moved:
+                # stamped on the ones that actually move, so re-saving a record in the
+                # state it is already in does not look like fresh movement
+                super(AzmReviewable, moved).write({"state_since": fields.Datetime.now()})
         return super().write(vals)
 
     # Who may be put on this, for the two Many2ones to choose from. Assigning somebody

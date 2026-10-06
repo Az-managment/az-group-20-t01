@@ -24,3 +24,78 @@ $azm-tones: (
     'indigo': #4f46e5,
     'slate': #64748b,
 );
+
+// ---------------------------------------------------------------- surfaces
+// The look the working pages share: a lit field behind them, and cards of glass over
+// it rather than paper on top of it. Defined once here so the trees, the progress page
+// and a person's own work are plainly the same product, and so changing the light is
+// one edit rather than three.
+
+// A pool of colour and a fine grid behind the top of a page. Both are masked away
+// before they reach anything that has to stay readable.
+@mixin azm-lit-field($first: rgba(47, 123, 245, .16), $second: rgba(16, 185, 129, .13)) {
+    position: relative;
+    isolation: isolate;
+    &::before {
+        content: "";
+        position: absolute;
+        inset: -40px -24px auto;
+        height: 420px;
+        z-index: -1;
+        pointer-events: none;
+        /*rtl:ignore*/
+        background:
+            radial-gradient(60% 70% at 18% 0%, #{$first}, transparent 70%),
+            radial-gradient(50% 60% at 88% 10%, #{$second}, transparent 70%),
+            linear-gradient(180deg, rgba(11, 31, 69, .05), transparent 85%);
+        mask-image: linear-gradient(180deg, #000 55%, transparent);
+    }
+    &::after {
+        content: "";
+        position: absolute;
+        inset: -40px -24px auto;
+        height: 300px;
+        z-index: -1;
+        pointer-events: none;
+        opacity: .5;
+        /*rtl:ignore*/
+        background-image:
+            linear-gradient(to right, rgba(15, 35, 71, .05) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(15, 35, 71, .05) 1px, transparent 1px);
+        background-size: 46px 46px;
+        mask-image: radial-gradient(70% 100% at 50% 0%, #000, transparent 75%);
+    }
+}
+
+// A card that sits in that light.
+@mixin azm-glass($radius: 18px) {
+    border: 1px solid rgba(255, 255, 255, .8);
+    border-radius: $radius;
+    background: linear-gradient(170deg, rgba(255, 255, 255, .93), rgba(246, 250, 255, .85));
+    backdrop-filter: blur(10px);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, .92),
+        0 1px 2px rgba(15, 35, 71, .05),
+        0 12px 30px rgba(15, 35, 71, .07);
+}
+
+// A progress bar that glows in whatever tone it is given.
+@mixin azm-meter($height: 6px) {
+    position: relative;
+    display: block;
+    height: $height;
+    border-radius: 99px;
+    background: rgba(15, 35, 71, .08);
+    overflow: hidden;
+    > span, .o_azm_progress_bar, .o_azm_meter_fill {
+        display: block;
+        height: 100%;
+        border-radius: inherit;
+        /*rtl:ignore*/
+        background: linear-gradient(90deg,
+            color-mix(in srgb, var(--azm-tone, #{$azm-blue}) 65%, white),
+            var(--azm-tone, #{$azm-blue}));
+        box-shadow: 0 0 10px color-mix(in srgb, var(--azm-tone, #{$azm-blue}) 45%, transparent);
+        transition: width .5s cubic-bezier(.2, .8, .2, 1);
+    }
+}

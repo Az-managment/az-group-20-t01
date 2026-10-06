@@ -4,16 +4,19 @@
 <t t-name="azm_platform.MyWork">
     <div class="o_action o_azm_dashboard o_azm_om o_azm_mywork" dir="rtl">
 
-        <div class="o_azm_om_title">
-            <div>
-                <h1>مساحتي <small class="text-muted">My work</small></h1>
-                <p class="text-muted mb-0">
+        <header class="o_azm_mywork_hero">
+            <span class="o_azm_mywork_hero_mark">
+                <i class="oi" data-icon="person" title="My work"/>
+            </span>
+            <div class="o_azm_mywork_hero_words">
+                <h1>مساحتي <small>My work</small></h1>
+                <p>
                     <t t-out="this.d and this.d.user ? this.d.user.name : ''"/>
                     — ما عليك الإجابة عنه، وأين وصل عملك.
                     <small class="o_azm_en">What you owe, and where your work stands.</small>
                 </p>
             </div>
-        </div>
+        </header>
 
         <div t-if="!this.state.loaded" class="o_azm_loading">
             <i class="oi oi-spin" data-icon="progress_activity" title="Loading"/>

@@ -1,8 +1,11 @@
-import { Component, onWillStart, proxy, useProps } from "@odoo/owl";
+import { Component, computed, onWillStart, proxy, useProps } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { KeepLast } from "@web/core/utils/concurrency";
 import { useService } from "@web/core/utils/hooks";
 import { standardActionServiceProps } from "@web/webclient/actions/action_plugin";
+
+// mirrors STALE_AFTER in azm_progress.py: the page says the same number it counts by
+const STALE_AFTER = 7;
 
 /**
  * AZM Platform · التقدّم — who is doing what, and how far they have got.
@@ -46,22 +49,29 @@ export class AzmProgress extends Component {
         return this.state.data;
     }
 
-    get kpis() {
+    kpis = computed(() => {
         const t = this.d.totals;
         return [
-            { key: "progress", label: "متوسط الاكتمال", en: "Completion", value: `${t.progress}%`,
-                icon: "donut_large", tone: "indigo", sub: `${t.models} نموذجًا قيد العمل` },
             { key: "left", label: "أسئلة متبقية", en: "Questions left", value: t.left,
                 icon: "help", tone: t.left ? "orange" : "green", sub: "عبر الكيانات كلها" },
             { key: "review", label: "تحت المراجعة", en: "In review", value: t.in_review,
                 icon: "fact_check", tone: "blue", sub: `${t.approved} معتمدة` },
+            // what has stopped moving, which is the thing a tracking page is read for
+            { key: "stalled", label: "متوقفة", en: "Stalled", value: t.stalled,
+                icon: "schedule", tone: t.stalled ? "orange" : "slate",
+                sub: `بلا حركة منذ ${STALE_AFTER}+ أيام` },
+            { key: "gaps", label: "فجوات مفتوحة", en: "Open gaps", value: t.gaps,
+                icon: "report", tone: t.gaps ? "purple" : "slate", sub: "عبر النماذج كلها" },
             { key: "people", label: "الأشخاص", en: "People", value: t.people,
                 icon: "group", tone: "slate", sub: `على ${t.entities} كيانًا` },
         ];
-    }
+    });
+
+    /** How far everything in reach has got, for the gauge the page opens with. */
+    overall = computed(() => (this.state.data ? this.d.totals.progress : null));
 
     /** The models grouped by the entity they belong to. */
-    get byEntity() {
+    byEntity = computed(() => {
         const blocks = [];
         for (const row of this.d.rows) {
             let block = blocks.find((b) => b.id === row.entity_id);
@@ -72,7 +82,7 @@ export class AzmProgress extends Component {
             block.rows.push(row);
         }
         return blocks;
-    }
+    });
 
     isOpen(row) {
         return !!this.state.open[`${row.res_model}-${row.id}`];

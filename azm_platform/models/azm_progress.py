@@ -9,9 +9,13 @@ far each of them has got.
 Read through the record rules like everything else, so an administrator sees the
 entities they have, not every entity there is.
 """
-from odoo import api, models
+from odoo import api, fields, models
 
 from .azm_my_work import MODELS
+
+# How long work may sit in one state before the page says so. A week is a reporting
+# cycle: anything that has not moved in one is something somebody has stopped chasing.
+STALE_AFTER = 7
 
 
 class AzmDashboard(models.AbstractModel):
@@ -121,9 +125,21 @@ class AzmDashboard(models.AbstractModel):
                 note(assessment.reviewer_id, "reviews",
                      entity=assessment.entity_id.name,
                      waiting=assessment.state == "review")
+                since = assessment.state_since
+                # how long it has sat where it is: the figure a tracking page is read
+                # for, because a draft untouched for a fortnight and one opened this
+                # morning say the same thing without it
+                waiting = (fields.Datetime.now() - since).days if since else None
                 rows.append({
                     "id": assessment.id,
                     "ref": assessment.name,
+                    "since": str(since or ""),
+                    "waiting": waiting,
+                    # settled work is not late, however long it has been settled
+                    "stalled": bool(waiting is not None and waiting >= STALE_AFTER
+                                    and assessment.state != "approved"),
+                    "gaps": (assessment.gap_count if spec["key"] == "financial"
+                             else assessment.finding_count),
                     "res_model": spec["model"],
                     "key": spec["key"],
                     "label": spec["label"],
@@ -162,5 +178,7 @@ class AzmDashboard(models.AbstractModel):
                 "approved": len([r for r in rows if r["state"] == "approved"]),
                 "progress": round(sum(r["progress"] for r in rows) / len(rows))
                             if rows else 0,
+                "stalled": len([r for r in rows if r["stalled"]]),
+                "gaps": sum(r["gaps"] for r in rows),
             },
         }
