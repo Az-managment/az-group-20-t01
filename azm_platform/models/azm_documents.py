@@ -546,6 +546,13 @@ class AzmDocPublication(models.Model):
             "coding": [self._scoped_code(), self._lifecycle()],
             "lines": {line.code: [line.applicable, line._snapshot()] for line in lines},
         }
+        if self.kind == "module":
+            # A binding carries no number of its own but prints the number of every
+            # deliverable it lists, so it ages when any one of those changes — without
+            # this it looks unchanged while its contents are renumbered underneath it.
+            pairs = self._module_items(assessment) if assessment else []
+            data["listed"] = sorted(self._item_codes(
+                [line.requirement_id for line, _item in pairs], self.tab).values())
         return hashlib.md5(json.dumps(data, sort_keys=True, ensure_ascii=False, default=str).encode()).hexdigest()
 
     # ---------------------------------------------------------------- generation
