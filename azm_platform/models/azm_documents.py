@@ -614,6 +614,15 @@ class AzmDocPublication(models.Model):
                         "file_size = 0 WHERE id = %s", (document.attachment_id.id,))
                     document.attachment_id.invalidate_recordset()
                 document.write({**vals, "active": True})
+                # Documents keeps the file it replaced as a version. These documents are
+                # re-rendered whenever the answers behind them change, so every rebuild
+                # would leave another copy on the disk and another row in the history of
+                # something nobody versions by hand. The assessment is the source of
+                # truth; the PDF is derived from it and has no past worth keeping.
+                superseded = document.previous_attachment_ids - document.attachment_id
+                if superseded:
+                    document.previous_attachment_ids = [(5, 0, 0)]
+                    superseded.sudo().unlink()
             else:
                 document = self.env["documents.document"].sudo().with_company(company).create({
                     **vals, "type": "binary", "company_id": company.id, "access_internal": "view",
