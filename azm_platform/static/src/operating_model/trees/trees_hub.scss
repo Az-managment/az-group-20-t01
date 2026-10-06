@@ -42,15 +42,86 @@
         mask-image: radial-gradient(70% 100% at 50% 0%, #000, transparent 75%);
     }
 
-    // ---------------------------------------------------------------- the mark
-    .o_azm_trees_title {
+    // ---------------------------------------------------------------- the hero
+    .o_azm_trees_hero {
+        display: flex;
+        flex-direction: column;
+        gap: 22px;
+        padding: 26px 26px 22px;
+        margin-bottom: 26px;
+        border-radius: 22px;
+        border: 1px solid rgba(255, 255, 255, .8);
+        background: linear-gradient(165deg, rgba(255, 255, 255, .92), rgba(244, 249, 255, .8));
+        backdrop-filter: blur(12px);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, .95), 0 14px 36px rgba(15, 35, 71, .08);
+    }
+    .o_azm_trees_hero_head {
         display: flex;
         align-items: center;
-        // o_azm_om_title spreads its children apart; here the mark belongs beside
-        // the words, not at the far edge of the page
-        justify-content: flex-start;
-        gap: 14px;
+        gap: 18px;
     }
+    .o_azm_trees_hero_words {
+        flex: 1 1 auto;
+        min-width: 0;
+        p { margin: 4px 0 0; color: $azm-muted; font-size: 13px; }
+        .o_azm_en { display: block; font-size: 11px; }
+    }
+    // how far the group has got, beside the name of the page
+    .o_azm_trees_hero_gauge {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex: 0 0 auto;
+        padding-inline-start: 18px;
+        border-inline-start: 1px solid rgba(15, 35, 71, .08);
+        --azm-tone: #{$azm-blue};
+    }
+    .o_azm_trees_hero_gauge_words {
+        display: flex;
+        flex-direction: column;
+        font-size: 13px;
+        font-weight: 600;
+        color: $azm-ink;
+        .o_azm_en { font-size: 11px; font-weight: 400; color: $azm-muted; }
+    }
+
+    // the figures of the group, in one even row
+    .o_azm_trees_stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 14px;
+        margin: 0;
+        padding-top: 20px;
+        border-top: 1px solid rgba(15, 35, 71, .07);
+    }
+    .o_azm_trees_stat {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding-inline-start: 14px;
+        border-inline-start: 3px solid rgba(29, 99, 224, .25);
+        dd {
+            margin: 0;
+            font-size: 30px;
+            font-weight: 800;
+            line-height: 1.05;
+            letter-spacing: -.5px;
+            color: $azm-ink;
+        }
+        dt {
+            font-size: 13px;
+            font-weight: 600;
+            color: $azm-ink;
+            .o_azm_en { font-size: 11px; font-weight: 400; color: $azm-muted; margin-inline-start: 5px; }
+        }
+        small { font-size: 11px; color: $azm-muted; .o_azm_en { margin-inline-start: 5px; } }
+
+        &.o_azm_trees_stat_warn {
+            border-inline-start-color: rgba(234, 88, 12, .45);
+            dd { color: #b45309; }
+        }
+    }
+
     .o_azm_trees_title_mark {
         display: grid;
         place-items: center;
@@ -67,7 +138,7 @@
         color: map-get($azm-tones, 'green');
         filter: drop-shadow(0 2px 6px rgba(16, 185, 129, .45));
     }
-    .o_azm_trees_title h1 {
+    .o_azm_trees_hero h1 {
         font-weight: 800;
         letter-spacing: -.4px;
         // the word itself carries the gradient; the small English gloss stays plain
@@ -78,8 +149,6 @@
         small { -webkit-text-fill-color: $azm-muted; }
     }
 
-    // two tiles only: let them keep a card's width instead of stretching to half the page
-    .o_azm_trees_kpis { grid-template-columns: repeat(auto-fit, minmax(200px, 280px)); }
     .o_azm_icon_badge .o_azm_tree_mark { width: 24px; height: 24px; }
 
     // ------------------------------------------------- which entity is being read
@@ -121,6 +190,122 @@
         .o_azm_en { display: block; font-size: 11px; }
     }
 
+    // ------------------------------------------------- searching and ordering
+    .o_azm_trees_toolbar {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+    .o_azm_trees_search {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex: 1 1 240px;
+        max-width: 340px;
+        padding: 9px 14px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, .85);
+        background: rgba(255, 255, 255, .85);
+        backdrop-filter: blur(8px);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9), 0 6px 18px rgba(15, 35, 71, .05);
+        transition: box-shadow .2s ease;
+        .oi { color: $azm-muted; font-size: 15px; }
+        input {
+            flex: 1 1 auto;
+            min-width: 0;
+            border: 0;
+            background: none;
+            outline: none;
+            font-size: 13px;
+            color: $azm-ink;
+            &::placeholder { color: $azm-muted; }
+        }
+        &:focus-within {
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9),
+                        0 0 0 3px rgba(29, 99, 224, .14),
+                        0 6px 18px rgba(15, 35, 71, .06);
+        }
+    }
+    .o_azm_trees_sort {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px;
+        border-radius: 12px;
+        background: rgba(241, 246, 252, .8);
+        border: 1px solid rgba(15, 35, 71, .05);
+    }
+    .o_azm_trees_sort_label {
+        font-size: 11px;
+        color: $azm-muted;
+        padding-inline: 6px;
+        .o_azm_en { margin-inline-start: 4px; }
+    }
+    .o_azm_trees_sort_btn {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 5px;
+        border: 0;
+        border-radius: 9px;
+        padding: 6px 12px;
+        font-size: 12px;
+        font-weight: 600;
+        color: $azm-muted;
+        background: transparent;
+        cursor: pointer;
+        transition: background .18s ease, color .18s ease, box-shadow .18s ease;
+        .o_azm_en { font-size: 10px; font-weight: 400; opacity: .75; }
+        &:hover { color: $azm-ink; background: rgba(255, 255, 255, .7); }
+        &.o_azm_active {
+            color: $azm-blue;
+            background: #fff;
+            box-shadow: 0 2px 8px rgba(15, 35, 71, .10);
+        }
+    }
+    .o_azm_trees_count {
+        margin-inline-start: auto;
+        font-size: 12px;
+        color: $azm-muted;
+        .o_azm_en { margin-inline-start: 4px; }
+    }
+
+    // the gauge in the hero sits outside any card, so it carries its own size
+    .o_azm_ring_wrap {
+        position: relative;
+        display: grid;
+        place-items: center;
+        flex: 0 0 auto;
+        width: 62px;
+        height: 62px;
+        &.o_azm_ring_lg { width: 78px; height: 78px; .o_azm_ring { width: 78px; height: 78px; } }
+        .o_azm_ring_label { position: absolute; font-size: 15px; font-weight: 800; color: $azm-ink; }
+    }
+
+    // ------------------------------------------------------------- a progress bar
+    .o_azm_meter {
+        position: relative;
+        display: block;
+        flex: 1 1 auto;
+        height: 6px;
+        border-radius: 99px;
+        background: rgba(15, 35, 71, .08);
+        overflow: hidden;
+        &.o_azm_meter_lg { height: 9px; }
+    }
+    .o_azm_meter_fill {
+        display: block;
+        height: 100%;
+        border-radius: inherit;
+        /*rtl:ignore*/
+        background: linear-gradient(90deg,
+            color-mix(in srgb, var(--azm-tone, #{$azm-blue}) 65%, white),
+            var(--azm-tone, #{$azm-blue}));
+        box-shadow: 0 0 10px color-mix(in srgb, var(--azm-tone, #{$azm-blue}) 45%, transparent);
+        transition: width .5s cubic-bezier(.2, .8, .2, 1);
+    }
+
     .o_azm_trees_grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(252px, 1fr));
@@ -130,14 +315,6 @@
     // width than a tree card, which carries two figures
     .o_azm_entities_grid { grid-template-columns: repeat(auto-fill, minmax(274px, 1fr)); }
 
-    // the two tiles at the top, on the same glass as everything else on this page
-    .o_azm_trees_kpis .o_azm_kpi {
-        border: 1px solid rgba(255, 255, 255, .8);
-        border-radius: 16px;
-        background: linear-gradient(170deg, rgba(255, 255, 255, .92), rgba(246, 250, 255, .82));
-        backdrop-filter: blur(10px);
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9), 0 10px 26px rgba(15, 35, 71, .07);
-    }
 
     // ---------------------------------------------------------------- a card
     .o_azm_tree_card {
@@ -360,6 +537,84 @@
             > span { flex: 1 1 auto; }
             .o_azm_en { font-size: 10px; font-weight: 400; color: $azm-muted; }
             .o_azm_tree_card_go { font-size: 14px; opacity: .55; transition: transform .15s ease, opacity .15s ease; }
+        }
+
+        // ------------------------------------------------ an entity, led by its progress
+        &.o_azm_entity_card {
+            --azm-tone: #{$azm-blue};
+            gap: 10px;
+            > header { padding-inline-end: 0; }
+            // the status sits in the flow here rather than over the corner
+            .o_azm_tree_card_ribbon { position: static; margin-inline-start: auto; flex: 0 0 auto; }
+        }
+        .o_azm_entity_card_who {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+            flex: 1 1 auto;
+            strong { font-size: 15px; }
+            .o_azm_code { align-self: flex-start; font-size: 10px; }
+        }
+        .o_azm_entity_overall {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            margin-top: 4px;
+            > b {
+                font-size: 34px;
+                font-weight: 800;
+                line-height: 1;
+                letter-spacing: -1px;
+                color: $azm-ink;
+            }
+        }
+        .o_azm_entity_overall_words {
+            display: flex;
+            flex-direction: column;
+            line-height: 1.15;
+            font-size: 12px;
+            font-weight: 600;
+            color: $azm-muted;
+            .o_azm_en { font-size: 10px; font-weight: 400; }
+        }
+        .o_azm_entity_open {
+            margin-inline-start: auto;
+            align-self: center;
+            padding: 4px 10px;
+            border-radius: 99px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #8a4b00;
+            background: rgba(255, 240, 214, .9);
+            border: 1px solid rgba(180, 83, 9, .18);
+            .o_azm_en { font-weight: 400; margin-inline-start: 4px; opacity: .8; }
+        }
+        // the same figure again, once per tree
+        .o_azm_entity_trees {
+            list-style: none;
+            margin: 6px 0 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 9px;
+            li {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                font-size: 12px;
+                > b { flex: 0 0 auto; min-width: 38px; text-align: end; font-weight: 700; color: $azm-ink; }
+            }
+            &.o_azm_status_not_started b { color: $azm-muted; }
+        }
+        .o_azm_entity_tree_name {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            flex: 0 0 96px;
+            min-width: 0;
+            color: $azm-ink;
+            .oi { font-size: 14px; color: var(--azm-tone, $azm-blue); }
         }
 
         // an entity that has not started is drawn quieter, but stays open-able:

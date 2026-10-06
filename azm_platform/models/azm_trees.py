@@ -295,5 +295,9 @@ class AzmDashboard(models.AbstractModel):
                 "entities_covered": sum(1 for e in entities if e["started"]),
                 "leaves": sum(d["meta"]["leaves"] for d in definitions),
                 "units": sum(d["meta"]["units"] for d in definitions),
+                # what the group still owes itself: every figure a tree marks as
+                # wanting work, added up across the entities
+                "open": sum(figure["value"] for entity in entities for tree in entity["trees"]
+                            for figure in tree["figures"] if figure.get("tone") == "warn"),
             },
         }

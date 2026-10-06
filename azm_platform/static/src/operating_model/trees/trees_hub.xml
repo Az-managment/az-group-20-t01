@@ -3,16 +3,48 @@
 
 <t t-name="azm_platform.TreesHub">
     <div class="o_action o_azm_dashboard o_azm_om o_azm_trees" dir="rtl">
-        <div class="o_azm_om_title o_azm_trees_title">
-            <span class="o_azm_trees_title_mark"><t t-call="azm_platform.TreeMark"/></span>
-            <div>
-                <h1>شجر <small class="text-muted">Trees</small></h1>
-                <p class="text-muted mb-0">
-                    كل نموذج يمكن السير فيه فرعًا بفرع — اختر كيانًا لتفتح شجرته.
-                    <small class="o_azm_en">Every model the group can walk branch by branch — pick an entity to open its own tree.</small>
-                </p>
+        <header class="o_azm_trees_hero">
+            <div class="o_azm_trees_hero_head">
+                <span class="o_azm_trees_title_mark"><t t-call="azm_platform.TreeMark"/></span>
+                <div class="o_azm_trees_hero_words">
+                    <h1>شجر <small>Trees</small></h1>
+                    <p>
+                        كل نموذج يمكن السير فيه فرعًا بفرع — اختر كيانًا لتفتح شجرته.
+                        <small class="o_azm_en">Every model the group can walk branch by branch — pick an entity to open its own tree.</small>
+                    </p>
+                </div>
+                <!-- the one figure the page leads with: how far the group has got -->
+                <div t-if="this.state.loaded and this.d.available" class="o_azm_trees_hero_gauge">
+                    <span class="o_azm_ring_wrap o_azm_ring_lg">
+                        <svg class="o_azm_ring" viewBox="0 0 40 40" aria-hidden="true">
+                            <circle class="o_azm_ring_track" cx="20" cy="20" r="15.9155"/>
+                            <circle t-if="this.overall" class="o_azm_ring_value" cx="20" cy="20" r="15.9155"
+                                    t-attf-stroke-dasharray="{{this.bar(this.overall)}} 100"/>
+                        </svg>
+                        <b class="o_azm_ring_label" t-out="this.pct(this.overall)"/>
+                    </span>
+                    <span class="o_azm_trees_hero_gauge_words">
+                        تقدّم المجموعة
+                        <em class="o_azm_en">Group progress</em>
+                    </span>
+                </div>
             </div>
-        </div>
+
+            <dl t-if="this.state.loaded and this.d.available" class="o_azm_trees_stats">
+                <div t-foreach="this.totals" t-as="k" t-key="k.key"
+                     t-attf-class="o_azm_trees_stat {{k.tone === 'warn' ? 'o_azm_trees_stat_warn' : ''}}">
+                    <dd t-out="k.value"/>
+                    <dt>
+                        <t t-out="k.label"/>
+                        <em class="o_azm_en" t-out="k.en"/>
+                    </dt>
+                    <small>
+                        <t t-out="k.sub"/>
+                        <em class="o_azm_en" t-out="k.sub_en"/>
+                    </small>
+                </div>
+            </dl>
+        </header>
 
         <div t-if="!this.state.loaded" class="o_azm_loading">
             <i class="oi oi-spin" data-icon="progress_activity" title="Loading"/>
@@ -44,55 +76,95 @@
             </section>
 
             <!-- the entities; opening one shows the trees it has -->
-            <section t-if="!this.opened" class="o_azm_trees_grid o_azm_entities_grid">
-                <article t-foreach="this.entities" t-as="e" t-key="e.company_id" role="button" tabindex="0"
-                         t-attf-class="o_azm_tree_card o_azm_status_{{e.status}}"
-                         t-att-aria-label="e.name"
-                         t-on-click="() => this.openEntity(e)"
-                         t-on-keydown="(ev) => this.onCardKey(ev, () => this.openEntity(e))">
-                    <span t-attf-class="o_azm_tree_card_ribbon o_azm_ribbon_{{e.status}}">
-                        <t t-out="e.status_label"/>
-                        <em class="o_azm_en" t-out="e.status_en"/>
-                    </span>
-
-                    <header>
-                        <img t-if="e.logoUrl" t-att-src="e.logoUrl" t-att-alt="e.name"/>
-                        <span t-else="" class="o_azm_tree_card_mono" t-out="e.initials"/>
-                        <strong t-out="e.name"/>
-                        <small t-if="e.code" class="o_azm_code o_azm_code_dim" t-out="e.code"/>
-                    </header>
-
-                    <div class="o_azm_tree_card_body">
-                        <span class="o_azm_ring_wrap">
-                            <svg class="o_azm_ring" viewBox="0 0 40 40" aria-hidden="true">
-                                <circle class="o_azm_ring_track" cx="20" cy="20" r="15.9155"/>
-                                <circle t-if="e.completion" class="o_azm_ring_value" cx="20" cy="20" r="15.9155"
-                                        t-attf-stroke-dasharray="{{this.bar(e.completion)}} 100"/>
-                            </svg>
-                            <b class="o_azm_ring_label" t-out="this.pct(e.completion)"/>
-                        </span>
-
-                        <dl class="o_azm_tree_card_figures">
-                            <div t-foreach="e.trees" t-as="t" t-key="t.key" class="o_azm_chip">
-                                <dt>
-                                    <t t-out="t.name"/>
-                                    <em class="o_azm_en" t-out="t.en"/>
-                                </dt>
-                                <dd t-out="this.pct(t.completion)"/>
-                            </div>
-                        </dl>
+            <t t-if="!this.opened">
+                <div class="o_azm_trees_toolbar">
+                    <label class="o_azm_trees_search">
+                        <i class="oi" data-icon="search" title="Search"/>
+                        <input type="search" placeholder="ابحث عن كيان…" aria-label="ابحث عن كيان"
+                               t-att-value="this.state.query"
+                               t-on-input="(ev) => this.state.query = ev.target.value"/>
+                    </label>
+                    <div class="o_azm_trees_sort" role="group" aria-label="الترتيب">
+                        <span class="o_azm_trees_sort_label">الترتيب <em class="o_azm_en">Sort</em></span>
+                        <button t-foreach="this.SORTS" t-as="o" t-key="o.key" type="button"
+                                t-attf-class="o_azm_trees_sort_btn {{this.state.sort === o.key ? 'o_azm_active' : ''}}"
+                                t-att-aria-pressed="this.state.sort === o.key"
+                                t-on-click="() => this.state.sort = o.key">
+                            <t t-out="o.label"/>
+                            <em class="o_azm_en" t-out="o.en"/>
+                        </button>
                     </div>
+                    <span class="o_azm_trees_count">
+                        <t t-out="this.entities.length"/> من <t t-out="this.all.length"/>
+                        <em class="o_azm_en">shown</em>
+                    </span>
+                </div>
 
-                    <footer>
-                        <t t-call="azm_platform.TreeMark"/>
-                        <span>
-                            <t t-out="e.started"/> من <t t-out="e.trees.length"/> شجرة بدأت
-                            <em class="o_azm_en"><t t-out="e.started"/> of <t t-out="e.trees.length"/> trees started</em>
-                        </span>
-                        <i class="oi o_azm_tree_card_go" data-icon="chevron_left" title="Open"/>
-                    </footer>
-                </article>
-            </section>
+                <p t-if="!this.entities.length" class="o_azm_box o_azm_box_warn">
+                    لا كيان بهذا الاسم. <small class="o_azm_en">No entity by that name.</small>
+                </p>
+
+                <section class="o_azm_trees_grid o_azm_entities_grid">
+                    <article t-foreach="this.entities" t-as="e" t-key="e.company_id" role="button" tabindex="0"
+                             t-attf-class="o_azm_tree_card o_azm_entity_card o_azm_status_{{e.status}}"
+                             t-att-aria-label="e.name"
+                             t-on-click="() => this.openEntity(e)"
+                             t-on-keydown="(ev) => this.onCardKey(ev, () => this.openEntity(e))">
+                        <header>
+                            <img t-if="e.logoUrl" t-att-src="e.logoUrl" t-att-alt="e.name"/>
+                            <span t-else="" class="o_azm_tree_card_mono" t-out="e.initials"/>
+                            <span class="o_azm_entity_card_who">
+                                <strong t-out="e.name"/>
+                                <small t-if="e.code" class="o_azm_code o_azm_code_dim" t-out="e.code"/>
+                            </span>
+                            <span t-attf-class="o_azm_tree_card_ribbon o_azm_ribbon_{{e.status}}">
+                                <t t-out="e.status_label"/>
+                                <em class="o_azm_en" t-out="e.status_en"/>
+                            </span>
+                        </header>
+
+                        <!-- progress leads: the entity's own figure, large, then the
+                             same figure for each tree under it -->
+                        <div class="o_azm_entity_overall">
+                            <b t-out="this.pct(e.completion)"/>
+                            <span class="o_azm_entity_overall_words">
+                                مُنجز
+                                <em class="o_azm_en">complete</em>
+                            </span>
+                            <span t-if="e.open" class="o_azm_entity_open">
+                                <t t-out="e.open"/> تحتاج معالجة
+                                <em class="o_azm_en">open</em>
+                            </span>
+                        </div>
+                        <div class="o_azm_meter o_azm_meter_lg">
+                            <span class="o_azm_meter_fill" t-attf-style="width: {{this.bar(e.completion)}}%"/>
+                        </div>
+
+                        <ul class="o_azm_entity_trees">
+                            <li t-foreach="e.trees" t-as="t" t-key="t.key"
+                                t-attf-class="o_azm_tone_{{t.tone}} o_azm_status_{{t.status}}">
+                                <span class="o_azm_entity_tree_name">
+                                    <i class="oi" t-att-data-icon="t.icon" t-att-title="t.name"/>
+                                    <t t-out="t.name"/>
+                                </span>
+                                <span class="o_azm_meter">
+                                    <span class="o_azm_meter_fill" t-attf-style="width: {{this.bar(t.completion)}}%"/>
+                                </span>
+                                <b t-out="this.pct(t.completion)"/>
+                            </li>
+                        </ul>
+
+                        <footer>
+                            <t t-call="azm_platform.TreeMark"/>
+                            <span>
+                                <t t-out="e.started"/> من <t t-out="e.trees.length"/> شجرة بدأت
+                                <em class="o_azm_en"><t t-out="e.started"/> of <t t-out="e.trees.length"/> trees started</em>
+                            </span>
+                            <i class="oi o_azm_tree_card_go" data-icon="chevron_left" title="Open"/>
+                        </footer>
+                    </article>
+                </section>
+            </t>
 
             <t t-else="">
                 <!-- one entity opened: the trees it has, each opening its own page -->
