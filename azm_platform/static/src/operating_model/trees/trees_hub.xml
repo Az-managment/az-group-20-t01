@@ -30,20 +30,6 @@
                 </div>
             </div>
 
-            <dl t-if="this.state.loaded and this.d.available" class="o_azm_trees_stats">
-                <div t-foreach="this.totals" t-as="k" t-key="k.key"
-                     t-attf-class="o_azm_trees_stat {{k.tone === 'warn' ? 'o_azm_trees_stat_warn' : ''}}">
-                    <dd t-out="k.value"/>
-                    <dt>
-                        <t t-out="k.label"/>
-                        <em class="o_azm_en" t-out="k.en"/>
-                    </dt>
-                    <small>
-                        <t t-out="k.sub"/>
-                        <em class="o_azm_en" t-out="k.sub_en"/>
-                    </small>
-                </div>
-            </dl>
         </header>
 
         <div t-if="!this.state.loaded" class="o_azm_loading">

@@ -88,21 +88,6 @@ export class AzmTreesHub extends Component {
         return this.all.find((e) => e.company_id === this.state.opened) || null;
     }
 
-    /** The figures of the group, across every entity and every tree. */
-    get totals() {
-        const t = this.d.totals;
-        return [
-            { key: "entities", label: "كيانات", en: "Entities", value: t.entities,
-                sub: `${t.entities_covered} بدأت`, sub_en: `${t.entities_covered} started` },
-            { key: "trees", label: "شجر", en: "Trees", value: t.trees,
-                sub: `${t.units} فرعًا`, sub_en: `${t.units} branches` },
-            { key: "leaves", label: "ورقة", en: "Leaves", value: t.leaves,
-                sub: "على كل كيان", sub_en: "asked of each entity" },
-            { key: "open", label: "تحتاج معالجة", en: "Open", value: t.open, tone: "warn",
-                sub: "فجوة ومُلاحظة", sub_en: "gaps and findings" },
-        ];
-    }
-
     /** How far the whole group has got — the one figure the page leads with. */
     get overall() {
         const done = this.all.filter((e) => e.completion !== null).map((e) => e.completion);

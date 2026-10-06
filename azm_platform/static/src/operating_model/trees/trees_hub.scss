@@ -44,10 +44,7 @@
 
     // ---------------------------------------------------------------- the hero
     .o_azm_trees_hero {
-        display: flex;
-        flex-direction: column;
-        gap: 22px;
-        padding: 26px 26px 22px;
+        padding: 22px 26px;
         margin-bottom: 26px;
         border-radius: 22px;
         border: 1px solid rgba(255, 255, 255, .8);
@@ -83,43 +80,6 @@
         font-weight: 600;
         color: $azm-ink;
         .o_azm_en { font-size: 11px; font-weight: 400; color: $azm-muted; }
-    }
-
-    // the figures of the group, in one even row
-    .o_azm_trees_stats {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-        gap: 14px;
-        margin: 0;
-        padding-top: 20px;
-        border-top: 1px solid rgba(15, 35, 71, .07);
-    }
-    .o_azm_trees_stat {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-        padding-inline-start: 14px;
-        border-inline-start: 3px solid rgba(29, 99, 224, .25);
-        dd {
-            margin: 0;
-            font-size: 30px;
-            font-weight: 800;
-            line-height: 1.05;
-            letter-spacing: -.5px;
-            color: $azm-ink;
-        }
-        dt {
-            font-size: 13px;
-            font-weight: 600;
-            color: $azm-ink;
-            .o_azm_en { font-size: 11px; font-weight: 400; color: $azm-muted; margin-inline-start: 5px; }
-        }
-        small { font-size: 11px; color: $azm-muted; .o_azm_en { margin-inline-start: 5px; } }
-
-        &.o_azm_trees_stat_warn {
-            border-inline-start-color: rgba(234, 88, 12, .45);
-            dd { color: #b45309; }
-        }
     }
 
     .o_azm_trees_title_mark {
