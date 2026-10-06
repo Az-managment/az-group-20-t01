@@ -42,25 +42,6 @@
         </div>
 
         <t t-else="">
-            <section class="o_azm_kpis o_azm_trees_kpis">
-                <div t-foreach="this.totals" t-as="kpi" t-key="kpi.key"
-                     t-attf-class="o_azm_kpi o_azm_kpi_static o_azm_tone_{{kpi.tone}}">
-                    <span class="o_azm_kpi_text">
-                        <span class="o_azm_kpi_label">
-                            <t t-out="kpi.label"/>
-                            <em class="o_azm_kpi_en" t-out="kpi.en"/>
-                        </span>
-                        <strong class="o_azm_kpi_value" t-out="kpi.value"/>
-                        <small t-out="kpi.sub"/>
-                        <small class="o_azm_en" t-out="kpi.sub_en"/>
-                    </span>
-                    <span class="o_azm_icon_badge">
-                        <t t-if="kpi.mark" t-call="azm_platform.TreeMark"/>
-                        <i t-else="" class="oi" t-att-data-icon="kpi.icon" t-att-title="kpi.label"/>
-                    </span>
-                </div>
-            </section>
-
             <!-- the entities; opening one shows the trees it has -->
             <t t-if="!this.opened()">
                 <div class="o_azm_trees_toolbar">
