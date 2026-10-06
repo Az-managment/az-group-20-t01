@@ -28,7 +28,9 @@ import pytz
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
-from odoo.addons.azm_operating_model.models import fin_engine
+from markupsafe import Markup
+
+from odoo.addons.azm_operating_model.models import azm_svg, fin_engine
 
 from .azm_coding import (LIFECYCLE_LABELS, PROFILE_OUTPUT, REQUIREMENT_ASPECTS,
                          TYPE_LABELS, WHOLE_MODEL, copy_code)
@@ -1004,11 +1006,19 @@ class AzmDocPublication(models.Model):
             columns = qa["columns"]
             if qa["qtype"] == "table" and qa["rows"]:
                 if columns and columns[0]["label"] in fin_engine.STEP_COLUMNS:
-                    data["steps"].append({"label": qa["label"], "items": [{
+                    steps = [{
                         "title": (row[0] if row else "") or "[لم يُحدد]",
                         "detail": " · ".join(f"{columns[i]['label']}: {row[i]}"
                                              for i in range(1, min(len(columns), len(row))) if row[i]),
-                    } for row in qa["rows"]]})
+                    } for row in qa["rows"]]
+                    # a work cycle is drawn, here as on the screen the answers were
+                    # given on and as the procurement cycle has always been
+                    data["steps"].append({
+                        "label": qa["label"], "items": steps,
+                        "flow": Markup(azm_svg.flow(
+                            [{"title": step["title"], "sub": step["detail"]} for step in steps],
+                            label=qa["label"])),
+                    })
                 else:
                     data["tables"].append({
                         "label": qa["label"], "columns": [c["label"] for c in columns],

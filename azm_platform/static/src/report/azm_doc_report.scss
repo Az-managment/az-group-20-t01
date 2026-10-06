@@ -122,3 +122,10 @@ $azm-doc-soft: #f6f8fb;
 .azm_ftr_mid { text-align: center; direction: ltr; }
 .azm_ftr_page { text-align: left; white-space: nowrap; }
 /*rtl:end:ignore*/
+
+// a work cycle, drawn. wkhtmltopdf lays an svg out like any block, so it only needs
+// its width bounded and a little air around it.
+.azm_flow {
+    margin: 6px 0 12px;
+    svg { width: 100%; height: auto; }
+}

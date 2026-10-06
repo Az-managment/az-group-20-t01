@@ -101,7 +101,10 @@
                     </table>
                     <t t-foreach="it['steps']" t-as="s">
                         <p class="azm_caption" t-out="s['label']"/>
-                        <ol class="azm_steps">
+                        <!-- a cycle is an order of work, so it is drawn as one; the list
+                             stands in only where there was nothing to draw -->
+                        <div t-if="s.get('flow')" class="azm_flow" t-out="s['flow']"/>
+                        <ol t-else="" class="azm_steps">
                             <li t-foreach="s['items']" t-as="step">
                                 <b t-out="step['title']"/>
                                 <div t-if="step['detail']" class="azm_muted" t-out="step['detail']"/>
