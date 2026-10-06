@@ -13,6 +13,8 @@ item   = {"code", "req_id", "title", "question", "profile", "profile_name", "sco
 
 from html import escape
 
+from .azm_svg import flow
+
 STATE_LABELS = {
     "full": "مطبّق بالكامل",
     "partial": "مطبّق جزئيًا",
@@ -213,13 +215,22 @@ def _sod_warning(item):
 
 
 def _steps(qa):
+    """A work cycle, drawn as the flow it is.
+
+    The answers arrive as a table — a row per step, the columns saying who does it and
+    when — and a table makes the reader reconstruct the order for themselves. The same
+    rows read top to bottom with an arrow between them say it outright, and match the
+    procurement cycle, which has always been drawn this way.
+    """
     cols = qa["columns"]
     steps = []
     for row in qa["rows"]:
         head = row[0] if row else ""
-        rest = " · ".join(f"{cols[i]['label']}: {row[i]}" for i in range(1, min(len(cols), len(row))) if row[i])
-        steps.append(f"<li><b>{_e(head or '[لم يُحدد]')}</b><br/><span class='o_azm_muted'>{_e(rest)}</span></li>")
-    return f'<p class="o_azm_fin_tablecap">{_e(qa["label"])}</p><ol class="o_azm_steps">{"".join(steps)}</ol>'
+        rest = " · ".join(f"{cols[i]['label']}: {row[i]}"
+                          for i in range(1, min(len(cols), len(row))) if row[i])
+        steps.append({"title": head or "[لم يُحدد]", "sub": rest})
+    return (f'<p class="o_azm_fin_tablecap">{_e(qa["label"])}</p>'
+            + flow(steps, label=qa["label"]))
 
 
 def _by_profile(tab, module, items):

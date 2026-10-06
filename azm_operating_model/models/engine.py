@@ -15,6 +15,8 @@ rule    = {"code", "stage", "key", "trigger", "fact", "risk", "control", "owner"
 
 from html import escape
 
+from .azm_svg import DEFS as SVG_DEFS, arrow as _arrow, box as _svg_box
+
 UNKNOWN = "لا أعرف"
 NOT_LISTED = "غير مدرج"
 NONE = "لا يوجد"
@@ -284,33 +286,7 @@ def render_procedure(stage, questions, answers):
 
 
 # ---------------------------------------------------------------- svg
-def _svg_box(x, y, w, h, title, sub="", accent=False, dashed=False):
-    stroke = "#1f5f73" if accent else "#8aa1ad"
-    fill = "#e6f1f4" if accent else "#ffffff"
-    dash = ' stroke-dasharray="5 4"' if dashed else ""
-    out = (f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="10" fill="{fill}" '
-           f'stroke="{stroke}" stroke-width="{2 if accent else 1.2}"{dash}/>')
-    cy = y + (h / 2 if not sub else h / 2 - 6)
-    out += (f'<text x="{x + w / 2}" y="{cy + 5}" text-anchor="middle" font-size="13" '
-            f'font-weight="600" fill="#17323d">{_e(title)}</text>')
-    if sub:
-        out += (f'<text x="{x + w / 2}" y="{cy + 23}" text-anchor="middle" font-size="11" '
-                f'fill="#5b7380">{_e(sub)}</text>')
-    return out
-
-
-def _arrow(x1, y1, x2, y2, label=""):
-    out = (f'<path d="M{x1} {y1} L{x2} {y2}" stroke="#8aa1ad" stroke-width="1.3" '
-           f'fill="none" marker-end="url(#azm-arrow)"/>')
-    if label:
-        out += (f'<text x="{(x1 + x2) / 2}" y="{(y1 + y2) / 2 - 6}" text-anchor="middle" '
-                f'font-size="11" fill="#5b7380">{_e(label)}</text>')
-    return out
-
-
-SVG_DEFS = ('<defs><marker id="azm-arrow" viewBox="0 0 10 10" refX="9" refY="5" '
-            'markerWidth="7" markerHeight="7" orient="auto-start-reverse">'
-            '<path d="M0 0L10 5L0 10z" fill="#8aa1ad"/></marker></defs>')
+# the drawing primitives live apart, because the financial engine draws with them too
 
 
 def render_workflow(stage, questions, answers):
