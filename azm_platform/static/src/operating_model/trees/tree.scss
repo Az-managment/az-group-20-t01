@@ -174,11 +174,13 @@
         background: rgba(255, 255, 255, .72);
         backdrop-filter: blur(8px);
     }
+    // the bar holds chips two lines tall, so its own rows need room between them
+    .o_azm_tree_outputs { row-gap: 14px; }
     .o_azm_outputs_filters {
         display: flex;
         align-items: center;
         flex-wrap: wrap;
-        gap: 7px;
+        gap: 8px;
         flex: 1 1 auto;
         min-width: 0;
     }
@@ -203,8 +205,15 @@
         text-align: start;
         transition: border-color .14s ease, background .14s ease, color .14s ease;
 
-        > span { display: flex; flex-direction: column; line-height: 1.2; font-size: 11.5px; font-weight: 600; }
-        .o_azm_en { font-size: 9.5px; font-weight: 400; color: $azm-muted; }
+        > span {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            line-height: 1.25;
+            font-size: 11.5px;
+            font-weight: 600;
+        }
+        .o_azm_en { margin-top: 0; font-size: 9.5px; font-weight: 400; color: $azm-muted; }
         > b {
             flex: 0 0 auto;
             min-width: 22px;
@@ -536,12 +545,16 @@
 // The mark is a drawing, not a letter: no baseline descender under it.
 .o_azm_tree_mark { display: block; }
 
+// The English line under an Arabic one is a second line, not a wrapped continuation
+// of the first: it is given the space to be read as one, and isolated so the bidi
+// algorithm never folds it into the line above.
 .o_azm_en, .o_azm_kpi_en {
     display: block;
+    margin-top: 3px;
     font-style: normal;
     font-weight: 400;
     font-size: .82em;
-    line-height: 1.3;
+    line-height: 1.35;
     color: $azm-muted;
     unicode-bidi: isolate;
 }

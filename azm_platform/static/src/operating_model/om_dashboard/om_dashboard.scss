@@ -310,7 +310,10 @@
             font-variant-numeric: tabular-nums;
         }
         .o_azm_kpi_label { font-size: 12px; font-weight: 600; }
-        .o_azm_kpi_text { gap: 7px; }
+        .o_azm_kpi_text { gap: 9px; }
+        // the line under the value qualifies it; it is not part of it
+        .o_azm_kpi_text > small { margin-top: 1px; line-height: 1.5; }
+        .o_azm_kpi_label { line-height: 1.35; }
         .o_azm_progress { margin: 2px 0 1px; }
         small { font-size: 10.5px; line-height: 1.5; }
         .o_azm_icon_badge {
