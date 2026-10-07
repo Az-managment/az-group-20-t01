@@ -211,6 +211,32 @@
         .o_azm_ring_label { position: absolute; font-size: 15px; font-weight: 800; color: $azm-ink; }
     }
 
+    // How a ring is drawn, said once for the page.
+    //
+    // This lived inside a tree card, so the two rings outside one — the hero's, and
+    // the one on every entity card — never got `fill: none` and were drawn with the
+    // SVG default: a black disk, with the percentage sitting unreadable on top of it.
+    .o_azm_ring {
+        width: 62px;
+        height: 62px;
+        // the gauge starts at twelve o'clock, not at three — and a ring is not a
+        // direction-sensitive drawing, so rtlcss must not mirror it for Arabic
+        /*rtl:ignore*/transform: rotate(-90deg);
+        circle {
+            fill: none;
+            stroke-width: 5;
+            // r is 15.9155: the circumference is exactly 100, so the dash array the
+            // template writes is already a percentage
+            stroke-linecap: round;
+        }
+    }
+    .o_azm_ring_track { stroke: rgba(15, 35, 71, .08); }
+    .o_azm_ring_value {
+        stroke: var(--azm-tone, #{$azm-blue});
+        filter: drop-shadow(0 0 4px color-mix(in srgb, var(--azm-tone, #{$azm-blue}) 55%, transparent));
+        transition: stroke-dasharray .6s cubic-bezier(.2, .8, .2, 1);
+    }
+
     // ------------------------------------------------------------- a progress bar
     .o_azm_meter {
         @include azm-meter;

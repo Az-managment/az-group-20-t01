@@ -24,6 +24,7 @@ export class AzmDashboard extends Component {
     setup() {
         this.orm = useService("orm");
         this.action = useService("action");
+        this.notification = useService("notification");
         this.state = proxy({
             loaded: false,
             data: null,
@@ -154,9 +155,19 @@ export class AzmDashboard extends Component {
     }
 
     openAction(xmlid) {
-        if (xmlid && this.canOpen(xmlid)) {
-            this.action.doAction(xmlid);
+        if (!xmlid) {
+            return;
         }
+        if (!this.canOpen(xmlid)) {
+            // it used to do nothing at all, which from the outside is the same as a
+            // broken tile: the figure is there, the card takes the click, nothing
+            // happens and nothing says why
+            this.notification.add(
+                _t("You do not have access to open this from here."),
+                { type: "warning" });
+            return;
+        }
+        this.action.doAction(xmlid);
     }
 
     openEntity(id) {

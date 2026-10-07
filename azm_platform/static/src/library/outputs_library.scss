@@ -18,8 +18,8 @@
     }
     .o_azm_library_search {
         position: relative;
-        flex: 1 1 320px;
-        max-width: 420px;
+        flex: 1 1 340px;
+        max-width: 460px;
         .oi {
             position: absolute;
             inset-inline-start: 10px;
@@ -29,6 +29,14 @@
             pointer-events: none;
         }
         .form-control { padding-inline-start: 32px; border-radius: 10px; }
+        // the examples live under the field rather than inside it, where they were
+        // longer than the box and clipped
+        .o_azm_library_search_hint {
+            display: block;
+            margin-top: 4px;
+            font-size: 10.5px;
+            color: $azm-muted;
+        }
     }
     .o_azm_library_kpis { grid-template-columns: repeat(auto-fit, minmax(200px, 280px)); }
 

@@ -347,3 +347,26 @@ class AzmDashboard(models.AbstractModel):
         except Exception as error:  # noqa: BLE001
             _logger.warning('AZM assistant call failed: %s', error)
             return {'ok': False, 'answer': _('The assistant could not answer right now (%s).', error)}
+
+    @api.model
+    def azm_rights(self):
+        """What this reader may actually open, asked as access rather than membership.
+
+        The screens used to decide by group — "is this user in project's user group" —
+        and hide or deaden a link when the answer was no. That is the wrong question:
+        access to a model comes from whatever groups and rules a deployment happens to
+        use, and a reader who reaches Projects from the sidebar every day was being
+        told by the same product that they could not. It asks the model instead.
+        """
+        def can(model):
+            return model in self.env and self.env[model].has_access("read")
+
+        return {
+            "hr": can("hr.employee"),
+            "project": can("project.project"),
+            "tasks": can("project.task"),
+            "documents": True,
+            # these two are about changing configuration, where the group is the point
+            "editCompany": self.env.user.has_group("base.group_erp_manager"),
+            "settings": self.env.user.has_group("base.group_system"),
+        }

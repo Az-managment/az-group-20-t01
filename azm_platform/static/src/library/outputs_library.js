@@ -2,6 +2,7 @@ import { Component, onWillStart, proxy, useProps } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { KeepLast } from "@web/core/utils/concurrency";
 import { useService } from "@web/core/utils/hooks";
+import { useDebounced } from "@web/core/utils/timing";
 import { standardActionServiceProps } from "@web/webclient/actions/action_plugin";
 import { closeDocument, deliver, openDocument, previewDocument } from "@azm_platform/components/doc_preview";
 
@@ -22,6 +23,7 @@ export class AzmOutputsLibrary extends Component {
 
     setup() {
         this.orm = useService("orm");
+        this.queryLater = useDebounced(() => this.load(), 300);
         this.action = useService("action");
         this.keepRows = new KeepLast();
         this.keepPreview = new KeepLast();
@@ -102,6 +104,13 @@ export class AzmOutputsLibrary extends Component {
     async setQuery(value) {
         this.state.filters.query = value;
         await this.load();
+    }
+
+    /** Search as it is typed, but not once per keystroke: the list is fetched from
+     * the server, and a request per letter would have them arriving out of order. */
+    onQueryInput(value) {
+        this.state.filters.query = value;
+        this.queryLater();
     }
 
     async toggleSheets() {

@@ -374,6 +374,22 @@ class TestOmDetail(TransactionCase):
         self.assertLess(len(scoped['rows']), len(every['rows']),
                         'a stage is narrower than the catalogue')
 
+    def test_rights_are_asked_of_the_models_not_of_the_groups(self):
+        """A reader who can open Projects from the sidebar must not be told by the
+        Home tiles that they cannot. Access comes from whatever groups and rules a
+        deployment uses, so membership of one group is the wrong question."""
+        user = new_test_user(self.env, 'azm_rights_probe', groups='base.group_user')
+        rights = self.env['azm.dashboard'].with_user(user).azm_rights()
+        for key in ('hr', 'project', 'tasks', 'documents', 'editCompany', 'settings'):
+            self.assertIn(key, rights, f'the screens read rights["{key}"]')
+
+        # whatever the answer is, it is the same answer the model itself gives
+        for key, model in (('project', 'project.project'), ('tasks', 'project.task')):
+            if model in self.env:
+                self.assertEqual(
+                    rights[key], self.env[model].with_user(user).has_access('read'),
+                    f'{key} must follow access to {model}, not group membership')
+
     def test_an_unknown_kind_is_refused(self):
         """The kind arrives from a browser; without this it names any model at all."""
         with self.assertRaises(UserError):

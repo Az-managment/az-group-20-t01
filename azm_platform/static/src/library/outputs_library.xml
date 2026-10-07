@@ -5,6 +5,9 @@
     <div class="o_action o_azm_dashboard o_azm_om o_azm_library" dir="rtl">
 
         <div class="o_azm_om_title o_azm_library_title">
+            <!-- the wrapper the model pages use: o_azm_om_title is a column of rows,
+                 and its top row is what lays a title out beside its controls -->
+            <div class="o_azm_om_title_top">
             <div class="o_azm_library_head">
                 <span class="o_azm_library_mark"><t t-call="azm_platform.TreeMark"/></span>
                 <div>
@@ -17,10 +20,14 @@
             </div>
             <div t-if="this.d" class="o_azm_library_search">
                 <i class="oi" data-icon="search"/>
+                <!-- on input, not on change: change fires when the field is left, so a
+                     code typed and watched did nothing until you clicked away -->
                 <input type="text" class="form-control form-control-sm"
-                       placeholder="ابحث بالكود أو العقدة… مثل AZM-FIN-POL أو FIN.GOV"
+                       placeholder="ابحث بالكود أو العقدة"
                        t-att-value="this.state.filters.query"
-                       t-on-change="(ev) => this.setQuery(ev.target.value)"/>
+                       t-on-input="(ev) => this.onQueryInput(ev.target.value)"/>
+                <small class="o_azm_library_search_hint">مثل AZM-FIN-POL أو FIN.GOV</small>
+            </div>
             </div>
         </div>
 

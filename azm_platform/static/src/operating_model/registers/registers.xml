@@ -4,6 +4,9 @@
     <t t-name="azm_platform.UnifiedList">
         <div class="o_action o_azm_dashboard o_azm_om o_azm_unified">
             <div class="o_azm_om_title">
+                <!-- the wrapper o_azm_om_title expects: it is a column of rows, and
+                     this is the row that lays a title out beside its actions -->
+                <div class="o_azm_om_title_top">
                 <div>
                     <h1 t-out="this.title"/>
                     <p t-out="this.subtitle"/>
@@ -17,6 +20,7 @@
                             <i class="oi" data-icon="add" title="New"/> New financial assessment
                         </button>
                     </t>
+                </div>
                 </div>
             </div>
 
