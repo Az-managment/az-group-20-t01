@@ -28,8 +28,6 @@ export class AzmDashboard extends Component {
         this.state = proxy({
             loaded: false,
             data: null,
-            // what is waiting for this reader, fetched beside the figures
-            attention: null,
             taskFilter: "all",
             question: "",
             answer: "",
@@ -55,12 +53,10 @@ export class AzmDashboard extends Component {
     }
 
     async load() {
-        const [data, attention, rights] = await Promise.all([
+        const [data, rights] = await Promise.all([
             this.orm.call("azm.dashboard", "get_dashboard_data", []),
-            this.orm.call("azm.dashboard", "home_attention", []),
             loadAzmRights(),
         ]);
-        this.state.attention = attention;
         this.state.rights = rights;
         this.state.data = data;
         this.state.loaded = true;
@@ -69,103 +65,6 @@ export class AzmDashboard extends Component {
     /** Whether the current user may open a target (hides links to apps they have no rights on). */
     canOpen(target) {
         return canOpen(this.state.rights, target);
-    }
-
-    // ---------------------------------------------------------------- the header
-    /** The time of day, so the page opens by speaking to the person reading it. */
-    get greeting() {
-        const hour = new Date().getHours();
-        if (hour < 12) {
-            return _t("Good morning");
-        }
-        return hour < 18 ? _t("Good afternoon") : _t("Good evening");
-    }
-
-    get userName() {
-        return (this.state.data && this.state.data.user && this.state.data.user.name) || "";
-    }
-
-    /** What the figures on this page are counted over, said rather than assumed. */
-    get scopeLabel() {
-        const scope = this.state.attention && this.state.attention.scope;
-        if (!scope) {
-            return "";
-        }
-        return scope.entities === 1 && scope.label
-            ? scope.label
-            : _t("%s entities in scope", scope.entities);
-    }
-
-    // ------------------------------------------------- what is waiting, in order
-    /** The lists that actually have something in them, each with where it is acted on.
-     * A reader with nothing waiting sees that said plainly rather than three empty
-     * headings. */
-    get attentionGroups() {
-        const a = this.state.attention;
-        if (!a) {
-            return [];
-        }
-        const groups = [
-            { key: "returned", label: _t("Sent back to you"), icon: "undo", tone: "orange",
-                hint: _t("Answer these before the rest of the assessment reopens"),
-                ...a.returned, action: "azm_platform.action_azm_my_work" },
-            { key: "reviews", label: _t("Waiting for your review"), icon: "fact_check", tone: "blue",
-                hint: _t("Sent to you by whoever prepared them"),
-                ...a.reviews, action: "azm_platform.action_azm_my_work" },
-            { key: "overdue", label: _t("Overdue tasks"), icon: "schedule", tone: "red",
-                hint: _t("Assigned to you, past their deadline"),
-                ...a.overdue, action: ACTIONS.tasks },
-        ];
-        return groups.filter((group) => group.count > 0);
-    }
-
-    get nothingWaiting() {
-        return !!this.state.attention && this.attentionGroups.length === 0;
-    }
-
-    // -------------------------------------------------------- where the work lives
-    /** The product grouped by what somebody came to do, rather than one flat row of
-     * every destination the platform has. */
-    get workspaces() {
-        const groups = [
-            {
-                key: "organisation", label: _t("Organization"), icon: "business",
-                links: [
-                    { label: _t("Entities"), hint: _t("Every entity of the group"), action: ACTIONS.entities },
-                    { label: _t("Group Structure"), hint: _t("How the entities relate"), action: ACTIONS.structure },
-                    { label: _t("Employees"), hint: _t("People across the group"), action: ACTIONS.employees },
-                    { label: _t("Departments & Teams"), hint: _t("How people are organised"), action: ACTIONS.departments },
-                ],
-            },
-            {
-                key: "models", label: _t("Operating models"), icon: "view_module",
-                links: [
-                    { label: _t("Operating Models"), hint: _t("Procurement and financial models"), action: "azm_platform.action_azm_om_hub" },
-                    { label: _t("Assessments"), hint: _t("What each entity has answered"), action: "azm_platform.action_azm_om_assessments" },
-                    { label: _t("Risk Register"), hint: _t("Findings and financial gaps"), action: "azm_platform.action_azm_om_register" },
-                    { label: _t("Progress"), hint: _t("Who is doing what, and how far"), action: "azm_platform.action_azm_progress" },
-                ],
-            },
-            {
-                key: "execution", label: _t("Execution"), icon: "rocket_launch",
-                links: [
-                    { label: _t("Projects"), hint: _t("Initiatives in progress"), action: ACTIONS.projects },
-                    { label: _t("Tasks"), hint: _t("Work to be delivered"), action: ACTIONS.tasks },
-                ],
-            },
-            {
-                key: "knowledge", label: _t("Knowledge"), icon: "menu_book",
-                links: [
-                    { label: _t("Documents"), hint: _t("What the group has on file"), action: ACTIONS.documents },
-                    { label: _t("Outputs Library"), hint: _t("Every deliverable produced"), action: "azm_platform.action_azm_library" },
-                    { label: _t("Trees"), hint: _t("The models read as a tree"), action: "azm_platform.action_azm_trees" },
-                ],
-            },
-        ];
-        // a group whose every destination is closed to this reader is not shown empty
-        return groups
-            .map((group) => ({ ...group, links: group.links.filter((l) => this.canOpen(l.action)) }))
-            .filter((group) => group.links.length);
     }
 
     get visibleQuickLinks() {

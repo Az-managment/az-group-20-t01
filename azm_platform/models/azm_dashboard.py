@@ -197,8 +197,6 @@ class AzmDashboard(models.AbstractModel):
             'active': len([r for r in rows if r['status'] == 'active']),
         }
         return {
-            # the page greets the person reading it, so it has to know who that is
-            'user': {'id': self.env.user.id, 'name': self.env.user.name},
             'kpis': kpis,
             'entities': rows[:8],
             'departments': self._employees_by_department(company_ids),
