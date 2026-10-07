@@ -24,9 +24,28 @@
     <t t-name="azm_platform.FinDashboard">
         <div class="o_action o_azm_dashboard o_azm_om o_azm_fin_page">
             <div class="o_azm_om_title">
-                <div>
+                <div class="o_azm_om_title_words">
+                    <span class="o_azm_om_eyebrow">
+                        <i class="oi" data-icon="view_module" title="Operating model"/>
+                        Unified financial model
+                    </span>
                     <h1>Unified Financial Model</h1>
                     <p>Inventory of the financial requirements of each entity and design of the target model</p>
+                </div>
+                <div t-if="this.state.loaded and this.d.available" class="o_azm_om_title_gauge">
+                    <span class="o_azm_ring_wrap">
+                        <svg class="o_azm_ring" viewBox="0 0 40 40" aria-hidden="true">
+                            <circle class="o_azm_ring_track" cx="20" cy="20" r="15.9155"/>
+                            <circle t-if="this.bar(this.k.completion)" class="o_azm_ring_value"
+                                    cx="20" cy="20" r="15.9155"
+                                    t-attf-stroke-dasharray="{{this.bar(this.k.completion)}} 100"/>
+                        </svg>
+                        <b class="o_azm_ring_label" t-out="this.pct(this.k.completion)"/>
+                    </span>
+                    <span class="o_azm_title_gauge_words">
+                        Inventory completion
+                        <em>across the assessments in scope</em>
+                    </span>
                 </div>
                 <div t-if="this.state.loaded and this.d.available" class="o_azm_om_title_actions">
                     <button type="button" class="btn btn-light" t-on-click="() => this.openUnified('assessments')">
