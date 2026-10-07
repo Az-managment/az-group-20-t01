@@ -179,7 +179,7 @@
                             <button type="button" class="btn btn-sm btn-primary"
                                     t-on-click="() => this.openAssessment(row)">
                                 <i class="oi me-1" data-icon="edit_note"/>
-                                <t t-if="row.started">افتح الإجابة</t>
+                                <t t-if="row.started">افتح مساحة الاسئلة</t>
                                 <t t-else="">ابدأ</t>
                             </button>
                             <!-- only once there is nothing left to answer -->
@@ -242,7 +242,7 @@
                             <button type="button" class="btn btn-sm btn-light"
                                     title="اقرأ الإجابات في مساحة الإجابة"
                                     t-on-click="() => this.openReviewWorkspace(review)">
-                                <i class="oi me-1" data-icon="fact_check"/>راجعها
+                                <i class="oi me-1" data-icon="fact_check"/>راجع الاجابات
                             </button>
                             <button type="button" class="btn btn-sm o_azm_send"
                                     t-att-disabled="this.state.deciding ? 'disabled' : undefined"
