@@ -70,7 +70,9 @@ export class AzmProgress extends Component {
     /** How far everything in reach has got, for the gauge the page opens with. */
     overall = computed(() => (this.state.data ? this.d.totals.progress : null));
 
-    /** The models grouped by the entity they belong to. */
+    /** The models grouped by the entity they belong to, each block carrying the few
+     * figures its header states — counted here rather than in the template, which
+     * would recount them on every render. */
     byEntity = computed(() => {
         const blocks = [];
         for (const row of this.d.rows) {
@@ -81,8 +83,52 @@ export class AzmProgress extends Component {
             }
             block.rows.push(row);
         }
+        for (const block of blocks) {
+            const answered = block.rows.reduce((n, r) => n + (r.answered || 0), 0);
+            const total = block.rows.reduce((n, r) => n + (r.total || 0), 0);
+            block.models = block.rows.length;
+            block.left = block.rows.reduce((n, r) => n + (r.left || 0), 0);
+            block.stalled = block.rows.filter((r) => r.stalled).length;
+            block.progress = total ? Math.round((100 * answered) / total) : 0;
+        }
         return blocks;
     });
+
+    /** Somebody's initials, for the disc that stands in for a face.
+
+    Arabic names carry no case, so the usual uppercase() does nothing and is left off.
+    Two words give two letters; anything else gives one, because three letters of an
+    Arabic name read as a word rather than a monogram. */
+    initials(name) {
+        const words = (name || "").trim().split(/\s+/).filter(Boolean);
+        if (!words.length) {
+            return "؟";
+        }
+        return words.length > 1 ? words[0][0] + words[1][0] : words[0][0];
+    }
+
+    /** A stable colour per person: the same face keeps the same disc between loads,
+     * which is what makes it worth having a colour at all. */
+    personTone(person) {
+        const tones = ["indigo", "blue", "teal", "purple", "orange", "green", "slate"];
+        return tones[Math.abs(person.id || 0) % tones.length];
+    }
+
+    /** What somebody is on, as separate words the template lays out rather than one
+     * sentence it has to punctuate with nested conditionals. */
+    personRoles(person) {
+        const roles = [];
+        if (person.parts) {
+            roles.push({ key: "parts", text: `يجيب ${person.parts} جزءًا` });
+        }
+        if (person.preparing) {
+            roles.push({ key: "prep", text: `يُعدّ ${person.preparing} إفادة` });
+        }
+        if (person.reviewing) {
+            roles.push({ key: "rev", text: `يراجع ${person.reviewing} إفادة` });
+        }
+        return roles;
+    }
 
     isOpen(row) {
         return !!this.state.open[`${row.res_model}-${row.id}`];

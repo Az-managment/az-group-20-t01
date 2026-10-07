@@ -4,33 +4,37 @@
 <t t-name="azm_platform.Progress">
     <div class="o_action o_azm_dashboard o_azm_om o_azm_progress_page" dir="rtl">
 
-        <header class="o_azm_progress_hero">
-            <div class="o_azm_progress_hero_words">
+        <!-- ========================================================== the hero -->
+        <header class="o_azm_pg_hero">
+            <div class="o_azm_pg_hero_words">
+                <span class="o_azm_pg_eyebrow">متابعة العمل <em>Tracking</em></span>
                 <h1>التقدّم <small>Progress</small></h1>
                 <p>
                     من يعمل على ماذا، وأين وصل.
                     <small class="o_azm_en">Who is doing what, and how far they have got.</small>
                 </p>
             </div>
-            <div t-if="this.state.loaded and this.d and this.d.available" class="o_azm_progress_hero_gauge">
-                <span class="o_azm_ring_wrap">
-                    <svg class="o_azm_ring" viewBox="0 0 40 40" aria-hidden="true">
-                        <circle class="o_azm_ring_track" cx="20" cy="20" r="15.9155"/>
-                        <circle t-if="this.overall()" class="o_azm_ring_value" cx="20" cy="20" r="15.9155"
-                                t-attf-stroke-dasharray="{{this.overall()}} 100"/>
-                    </svg>
-                    <b class="o_azm_ring_label"><t t-out="this.overall()"/>%</b>
-                </span>
-                <span class="o_azm_progress_hero_gauge_words">
-                    متوسط الاكتمال
-                    <em class="o_azm_en">Average completion</em>
-                </span>
-            </div>
-            <button t-if="this.state.loaded and this.d and this.d.available" type="button"
-                    class="btn btn-sm btn-light o_azm_progress_hero_btn"
-                    t-on-click="() => this.openAssignments()">
-                <i class="oi me-1" data-icon="assignment"/>وزّع الأجزاء
-            </button>
+
+            <t t-if="this.state.loaded and this.d and this.d.available">
+                <div class="o_azm_pg_hero_gauge">
+                    <span class="o_azm_ring_wrap">
+                        <svg class="o_azm_ring" viewBox="0 0 40 40" aria-hidden="true">
+                            <circle class="o_azm_ring_track" cx="20" cy="20" r="15.9155"/>
+                            <circle t-if="this.overall()" class="o_azm_ring_value" cx="20" cy="20" r="15.9155"
+                                    t-attf-stroke-dasharray="{{this.overall()}} 100"/>
+                        </svg>
+                        <b class="o_azm_ring_label"><t t-out="this.overall()"/><i>%</i></b>
+                    </span>
+                    <span class="o_azm_pg_hero_gauge_words">
+                        متوسط الاكتمال
+                        <em class="o_azm_en">Average completion</em>
+                    </span>
+                </div>
+                <button type="button" class="btn o_azm_pg_hero_btn"
+                        t-on-click="() => this.openAssignments()">
+                    <i class="oi me-1" data-icon="assignment"/>وزّع الأجزاء
+                </button>
+            </t>
         </header>
 
         <div t-if="!this.state.loaded" class="o_azm_loading">
@@ -47,137 +51,173 @@
         </div>
 
         <t t-else="">
-            <section class="o_azm_kpis">
+            <!-- ======================================================= figures -->
+            <section class="o_azm_pg_kpis">
                 <div t-foreach="this.kpis()" t-as="kpi" t-key="kpi.key"
-                     t-attf-class="o_azm_kpi o_azm_kpi_static o_azm_tone_{{kpi.tone}}">
-                    <span class="o_azm_kpi_text">
-                        <span class="o_azm_kpi_label">
-                            <t t-out="kpi.label"/><em class="o_azm_kpi_en" t-out="kpi.en"/>
+                     t-attf-class="o_azm_pg_kpi o_azm_tone_{{kpi.tone}}">
+                    <span class="o_azm_pg_kpi_top">
+                        <span class="o_azm_pg_kpi_label">
+                            <t t-out="kpi.label"/><em t-out="kpi.en"/>
                         </span>
-                        <strong class="o_azm_kpi_value" t-out="kpi.value"/>
-                        <small t-out="kpi.sub"/>
+                        <span class="o_azm_pg_kpi_icon">
+                            <i class="oi" t-att-data-icon="kpi.icon" t-att-title="kpi.label"/>
+                        </span>
                     </span>
-                    <span class="o_azm_icon_badge">
-                        <i class="oi" t-att-data-icon="kpi.icon" t-att-title="kpi.label"/>
-                    </span>
+                    <strong class="o_azm_pg_kpi_value" t-out="kpi.value"/>
+                    <small class="o_azm_pg_kpi_sub" t-out="kpi.sub"/>
                 </div>
             </section>
 
             <!-- ====================================================== by person -->
-            <section t-if="this.d.people.length">
-                <h2 class="o_azm_section_title">
+            <section t-if="this.d.people.length" class="o_azm_pg_section">
+                <h2 class="o_azm_pg_title">
                     الأشخاص <em class="o_azm_en">People</em>
+                    <span class="o_azm_pg_title_count" t-out="this.d.people.length"/>
                 </h2>
-                <div class="o_azm_card">
+
+                <div class="o_azm_pg_panel">
+                    <!-- the column headings the rows below line up under -->
+                    <div class="o_azm_pg_head o_azm_pg_person_grid">
+                        <span/>
+                        <span>الشخص</span>
+                        <span>ما أنجزه</span>
+                        <span class="o_azm_pg_head_end">الحالة</span>
+                    </div>
+
                     <div t-foreach="this.d.people" t-as="person" t-key="person.id"
-                         class="o_azm_person_row">
-                        <span class="o_azm_icon_badge o_azm_tone_slate">
-                            <i class="oi" data-icon="person" title="Person"/>
-                        </span>
-                        <div class="o_azm_model_main">
+                         class="o_azm_pg_row o_azm_pg_person_grid">
+                        <span t-attf-class="o_azm_pg_face o_azm_tone_{{this.personTone(person)}}"
+                              t-att-title="person.name"
+                              t-out="this.initials(person.name)"/>
+
+                        <span class="o_azm_pg_cell_main">
                             <b t-out="person.name"/>
-                            <small>
-                                <!-- what they are on, in their own words rather than
-                                     the engine's role keys -->
-                                <t t-if="person.parts">
-                                    يجيب <t t-out="person.parts"/> جزءًا
-                                </t>
-                                <t t-if="person.preparing">
-                                    <t t-if="person.parts"> · </t>
-                                    يُعدّ <t t-out="person.preparing"/> إفادة
-                                </t>
-                                <t t-if="person.reviewing">
-                                    <t t-if="person.parts or person.preparing"> · </t>
-                                    يراجع <t t-out="person.reviewing"/> إفادة
-                                </t>
-                                · <t t-out="person.entities.join('، ')"/>
-                            </small>
-                        </div>
+                            <span class="o_azm_pg_tags">
+                                <em t-foreach="this.personRoles(person)" t-as="role"
+                                    t-key="role.key" class="o_azm_pg_tag" t-out="role.text"/>
+                                <em class="o_azm_pg_tag o_azm_pg_tag_quiet"
+                                    t-out="person.entities.join('، ')"/>
+                            </span>
+                        </span>
+
                         <!-- somebody who answers parts is measured on them -->
-                        <div t-if="person.parts" class="o_azm_model_meter">
+                        <span t-if="person.parts" class="o_azm_pg_cell_meter">
+                            <span class="o_azm_pg_meter_line">
+                                <b t-out="person.answered"/>
+                                <small>/ <t t-out="person.total"/></small>
+                            </span>
                             <span class="o_azm_progress o_azm_om_meter o_azm_tone_indigo">
                                 <span class="o_azm_progress_bar"
                                       t-attf-style="width: {{person.progress}}%"/>
                             </span>
-                            <small>
-                                <t t-out="person.answered"/>/<t t-out="person.total"/>
-                                <t t-if="person.left"> · بقي <b t-out="person.left"/></t>
-                            </small>
-                        </div>
-                        <!-- a reviewer answers nothing, so measuring them on parts said
-                             they had nothing. What they carry is what is waiting. -->
-                        <span t-elif="person.awaiting" class="o_azm_standing o_azm_standing_info">
-                            <t t-out="person.awaiting"/> بانتظار مراجعته
                         </span>
-                        <!-- and somebody preparing undivided assessments carries what
-                             is still unanswered in them -->
-                        <span t-elif="person.outstanding" class="o_azm_standing o_azm_standing_warn">
-                            بقي <t t-out="person.outstanding"/> سؤالًا
+                        <span t-else="" class="o_azm_pg_cell_meter o_azm_pg_cell_empty">—</span>
+
+                        <span class="o_azm_pg_cell_end">
+                            <!-- a reviewer answers nothing, so measuring them on parts
+                                 said they had nothing. What they carry is what waits. -->
+                            <span t-if="person.left" class="o_azm_standing o_azm_standing_warn">
+                                بقي <t t-out="person.left"/>
+                            </span>
+                            <span t-elif="person.awaiting" class="o_azm_standing o_azm_standing_info">
+                                <t t-out="person.awaiting"/> بانتظار مراجعته
+                            </span>
+                            <span t-elif="person.outstanding" class="o_azm_standing o_azm_standing_warn">
+                                بقي <t t-out="person.outstanding"/> سؤالًا
+                            </span>
+                            <span t-elif="person.parts or person.preparing"
+                                  class="o_azm_standing o_azm_standing_ok">مكتمل</span>
+                            <span t-elif="person.reviewing"
+                                  class="o_azm_standing o_azm_standing_muted">لا شيء بانتظاره</span>
+                            <span t-else="" class="o_azm_standing o_azm_standing_muted">بلا إسناد</span>
                         </span>
-                        <small t-elif="person.reviewing" class="text-muted">
-                            لا شيء بانتظاره الآن
-                        </small>
-                        <small t-elif="person.preparing" class="text-muted">
-                            إفاداته مكتملة
-                        </small>
-                        <small t-else="" class="text-muted">لا شيء مُسند إليه</small>
                     </div>
                 </div>
             </section>
 
             <!-- ====================================================== by entity -->
-            <section>
-                <h2 class="o_azm_section_title">
+            <section class="o_azm_pg_section">
+                <h2 class="o_azm_pg_title">
                     الكيانات والنماذج <em class="o_azm_en">Entities and models</em>
+                    <span class="o_azm_pg_title_count" t-out="this.byEntity().length"/>
                 </h2>
+
                 <div t-if="!this.byEntity().length" class="o_azm_card o_azm_empty">
                     <i class="oi" data-icon="inbox" title="Nothing"/>
                     <strong>لا توجد إفادات بعد</strong>
                 </div>
+
                 <div t-foreach="this.byEntity()" t-as="block" t-key="block.id"
-                     class="o_azm_card o_azm_entity_block">
-                    <header class="o_azm_entity_head">
+                     class="o_azm_pg_panel o_azm_pg_entity">
+                    <header class="o_azm_pg_entity_head">
                         <span class="o_azm_icon_badge o_azm_tone_slate">
                             <i class="oi" data-icon="business" title="Entity"/>
                         </span>
-                        <h3 t-out="block.name"/>
+                        <span class="o_azm_pg_entity_words">
+                            <h3 t-out="block.name"/>
+                            <small>
+                                <t t-out="block.models"/> نموذج
+                                <t t-if="block.left"> · بقي <b t-out="block.left"/> سؤالًا</t>
+                                <t t-if="block.stalled"> · <b t-out="block.stalled"/> متوقف</t>
+                            </small>
+                        </span>
+                        <span class="o_azm_pg_entity_gauge">
+                            <span class="o_azm_progress o_azm_om_meter o_azm_tone_blue">
+                                <span class="o_azm_progress_bar"
+                                      t-attf-style="width: {{block.progress}}%"/>
+                            </span>
+                            <b><t t-out="block.progress"/>%</b>
+                        </span>
                     </header>
 
                     <t t-foreach="block.rows" t-as="row" t-key="row.res_model + '-' + row.id">
-                        <div t-attf-class="o_azm_model_row {{row.stalled ? 'o_azm_model_stalled' : ''}}">
+                        <div t-attf-class="o_azm_pg_row o_azm_pg_model_grid {{row.stalled ? 'o_azm_pg_stalled' : ''}} {{this.isOpen(row) ? 'o_azm_pg_row_open' : ''}}">
                             <span t-attf-class="o_azm_icon_badge o_azm_tone_{{row.tone}}">
                                 <i class="oi" t-att-data-icon="row.icon" t-att-title="row.label"/>
                             </span>
-                            <div class="o_azm_model_main">
+
+                            <span class="o_azm_pg_cell_main">
                                 <b>
                                     <t t-out="row.label"/>
                                     <!-- an entity holds one per kind and scenario, so
                                          two rows of the same model are told apart -->
                                     <span class="o_azm_ref" t-out="row.ref"/>
                                 </b>
-                                <small>
-                                    يُعدّها <t t-out="row.preparer"/>
-                                    <t t-if="row.reviewer"> · يراجعها <t t-out="row.reviewer"/></t>
-                                    <t t-else=""> · بلا مراجع محدد</t>
-                                </small>
-                                <div class="o_azm_model_meter">
-                                    <span t-attf-class="o_azm_progress o_azm_om_meter o_azm_tone_{{row.tone}}">
-                                        <span class="o_azm_progress_bar"
-                                              t-attf-style="width: {{row.progress}}%"/>
-                                    </span>
-                                    <small>
-                                        <t t-out="row.answered"/>/<t t-out="row.total"/>
-                                        <t t-if="row.left"> · بقي <b t-out="row.left"/></t>
+                                <span class="o_azm_pg_tags">
+                                    <em class="o_azm_pg_tag">
+                                        <i class="oi" data-icon="edit_note" title="يُعدّها"/>
+                                        <t t-out="row.preparer"/>
+                                    </em>
+                                    <em t-if="row.reviewer" class="o_azm_pg_tag">
+                                        <i class="oi" data-icon="fact_check" title="يراجعها"/>
+                                        <t t-out="row.reviewer"/>
+                                    </em>
+                                    <em t-else="" class="o_azm_pg_tag o_azm_pg_tag_quiet">
+                                        بلا مراجع محدد
+                                    </em>
+                                </span>
+                            </span>
+
+                            <span class="o_azm_pg_cell_meter">
+                                <span class="o_azm_pg_meter_line">
+                                    <b t-out="row.answered"/>
+                                    <small>/ <t t-out="row.total"/></small>
+                                    <small t-if="row.left" class="o_azm_pg_meter_left">
+                                        بقي <t t-out="row.left"/>
                                     </small>
-                                </div>
-                            </div>
-                            <div class="o_azm_model_side">
+                                </span>
+                                <span t-attf-class="o_azm_progress o_azm_om_meter o_azm_tone_{{row.tone}}">
+                                    <span class="o_azm_progress_bar"
+                                          t-attf-style="width: {{row.progress}}%"/>
+                                </span>
+                            </span>
+
+                            <span class="o_azm_pg_cell_end">
                                 <span t-attf-class="o_azm_standing o_azm_standing_{{row.css}}"
                                       t-out="row.standing"/>
-                                <small class="text-muted">نسخة <t t-out="row.version"/></small>
                                 <!-- how long it has sat where it is, and what it still
                                      owes: the two things somebody tracking it chases -->
-                                <span class="o_azm_row_facts">
+                                <span class="o_azm_pg_facts">
                                     <span t-if="row.waiting !== null"
                                           t-attf-class="o_azm_fact {{row.stalled ? 'o_azm_fact_warn' : ''}}"
                                           t-attf-title="في هذه الحالة منذ {{row.since}}">
@@ -189,46 +229,52 @@
                                         <i class="oi" data-icon="report" title="فجوات"/>
                                         <t t-out="row.gaps"/>
                                     </span>
+                                    <span class="o_azm_fact o_azm_fact_quiet"
+                                          t-attf-title="النسخة {{row.version}}">
+                                        ن<t t-out="row.version"/>
+                                    </span>
                                 </span>
-                            </div>
-                            <div class="o_azm_model_actions">
+                            </span>
+
+                            <span class="o_azm_pg_cell_actions">
                                 <button t-if="row.parts.length" type="button"
-                                        class="btn btn-sm btn-light"
+                                        class="btn o_azm_pg_btn o_azm_pg_btn_parts"
+                                        t-att-aria-expanded="this.isOpen(row) ? 'true' : 'false'"
                                         t-attf-title="{{row.parts.length}} جزء مُسند"
                                         t-on-click="() => this.toggle(row)">
                                     <i t-attf-class="oi {{this.isOpen(row) ? 'o_azm_open' : ''}}"
                                        data-icon="chevron_left"/>
                                     <t t-out="row.parts.length"/>
                                 </button>
-                                <button type="button" class="btn btn-sm btn-light"
+                                <button type="button" class="btn o_azm_pg_btn"
                                         title="افتح الإفادة"
                                         t-on-click="() => this.open(row)">
                                     <i class="oi" data-icon="open_in_new"/>
                                 </button>
-                            </div>
+                            </span>
                         </div>
 
-                        <div t-if="this.isOpen(row)" class="o_azm_part_rows">
+                        <div t-if="this.isOpen(row)" class="o_azm_pg_parts">
                             <div t-foreach="row.parts" t-as="part" t-key="part.name"
-                                 class="o_azm_part_row">
+                                 class="o_azm_pg_part">
                                 <span t-attf-class="o_azm_dot {{part.left ? 'o_azm_dot_muted' : 'o_azm_dot_ok'}}"/>
-                                <span class="o_azm_line_main">
+                                <span class="o_azm_pg_cell_main">
                                     <b>
                                         <t t-out="part.name"/>
                                         <span t-if="part.level === 'topic'" class="o_azm_part_level">موضوع</span>
                                     </b>
                                     <!-- who is on it, and what each of them has written -->
-                                    <span class="o_azm_part_people">
-                                        <span t-foreach="part.people" t-as="person" t-key="person.id"
-                                              t-attf-class="o_azm_part_person {{person.off ? 'o_azm_part_person_off' : ''}}"
-                                              t-attf-title="{{person.off ? 'أجاب هنا ثم رُفع من الجزء' : ''}}">
+                                    <span class="o_azm_pg_tags">
+                                        <em t-foreach="part.people" t-as="person" t-key="person.id"
+                                            t-attf-class="o_azm_pg_tag o_azm_pg_tag_person {{person.off ? 'o_azm_pg_tag_off' : ''}}"
+                                            t-attf-title="{{person.off ? 'أجاب هنا ثم رُفع من الجزء' : ''}}">
                                             <t t-out="person.user"/>
                                             <b t-out="person.answers"/>
-                                        </span>
+                                        </em>
                                     </span>
                                 </span>
-                                <small>
-                                    <t t-out="part.answered"/>/<t t-out="part.total"/>
+                                <small class="o_azm_pg_part_count">
+                                    <b t-out="part.answered"/>/<t t-out="part.total"/>
                                     <t t-if="part.left"> · بقي <t t-out="part.left"/></t>
                                 </small>
                             </div>
