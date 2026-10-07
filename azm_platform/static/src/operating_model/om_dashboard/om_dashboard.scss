@@ -949,6 +949,153 @@
 }
 
 // ---------------------------------------------------------------- financial block on Home / entity page
+// ------------------------------------- the operating model, summarised on Home
+//
+// These styles were deleted by accident when the model switch was rewritten, and
+// without them the block has no layout at all: its label, value and sub-line are
+// three inline elements, so they render as one run of text — "Assessments72
+// approved", "Answer completion96%". They are back, and drawn as cards.
+.o_azm_om_home {
+    --omh-gap: 12px;
+
+    // a figure is a label, a value and what qualifies it — three lines, not one
+    .o_azm_om_home_kpis {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: var(--omh-gap);
+        margin-bottom: 18px;
+
+        > div {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-width: 0;
+            padding: 14px 16px;
+            border: 1px solid rgba(20, 43, 61, .08);
+            border-radius: 12px;
+            background: #fff;
+        }
+        // the label above, the value under it, the qualifier last
+        small {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            line-height: 1.35;
+            color: rgba(20, 43, 61, .58);
+        }
+        strong {
+            display: block;
+            font-size: 24px;
+            font-weight: 800;
+            line-height: 1.1;
+            letter-spacing: -.6px;
+            color: #142b3d;
+            font-variant-numeric: tabular-nums;
+        }
+        small.fw-normal { font-weight: 500; font-size: 10.5px; }
+        .o_azm_progress { margin-top: 2px; height: 5px; }
+    }
+
+    // one card per domain, with its figures in a column of rows that line up
+    .o_azm_om_home_domains {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+        gap: var(--omh-gap);
+    }
+    .o_azm_om_home_domain {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        text-align: start;
+        padding: 16px;
+        border: 1px solid rgba(20, 43, 61, .08);
+        border-radius: 14px;
+        background: linear-gradient(180deg,
+            color-mix(in srgb, var(--azm-tone) 7%, transparent), #fff 58%);
+        color: #142b3d;
+        overflow: hidden;
+        transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+
+        &::before {
+            content: "";
+            position: absolute;
+            inset-block-start: 0;
+            inset-inline: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--azm-tone),
+                color-mix(in srgb, var(--azm-tone) 28%, transparent));
+        }
+        &:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 26px rgba(20, 43, 61, .1);
+            border-color: color-mix(in srgb, var(--azm-tone) 35%, transparent);
+        }
+        &:focus-visible { outline: 2px solid var(--azm-tone); outline-offset: 2px; }
+
+        header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            strong { font-size: 13.5px; font-weight: 700; letter-spacing: -.2px; }
+        }
+        // the completion, said once and large, above the rows it summarises
+        .o_azm_mini_progress {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            .o_azm_progress { flex: 1 1 auto; height: 6px; }
+            small { font-size: 13px; font-weight: 800; color: #142b3d; font-variant-numeric: tabular-nums; }
+        }
+        // name on one edge, figure on the other, with a hairline between rows so four
+        // of them read as four
+        .o_azm_om_home_line {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 7px 0;
+            font-size: 11.5px;
+            color: rgba(20, 43, 61, .58);
+            + .o_azm_om_home_line { border-top: 1px solid rgba(20, 43, 61, .06); }
+            b { font-weight: 700; color: #142b3d; font-variant-numeric: tabular-nums; }
+        }
+    }
+
+    .o_azm_om_home_lists {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 18px;
+        margin-top: 20px;
+        h4 {
+            margin: 0 0 8px;
+            font-size: 10.5px;
+            font-weight: 700;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            color: rgba(20, 43, 61, .58);
+        }
+    }
+    .o_azm_om_score {
+        flex: 0 0 auto;
+        width: 32px;
+        height: 32px;
+        border-radius: 9px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        font-size: 13px;
+        background: #eef2f7;
+        color: #475569;
+        font-variant-numeric: tabular-nums;
+        &.o_high { background: #fee2e2; color: #b91c1c; }
+        &.o_mid { background: #fef3c7; color: #b45309; }
+        &.o_low { background: #dcfce7; color: #15803d; }
+    }
+}
+.o_azm_overview .o_azm_om_entity { grid-column: 1 / -1; }
+
 .o_azm_om_home .o_azm_fin_home_mods {
     display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px;
 }
