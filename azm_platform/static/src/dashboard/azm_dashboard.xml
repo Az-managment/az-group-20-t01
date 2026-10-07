@@ -3,16 +3,130 @@
 
     <t t-name="azm_platform.Dashboard">
         <div class="o_action o_azm_dashboard">
-            <div class="o_azm_page_title">
-                <h1>AZM Enterprise Operating Model Platform</h1>
-                <p>From Current Reality to a Unified, Governed and Impactful Future</p>
-            </div>
+            <!-- ===================================================== A · welcome -->
+            <header class="o_azm_home_hero">
+                <div class="o_azm_home_hero_words">
+                    <span class="o_azm_home_eyebrow">
+                        <i class="oi" data-icon="dashboard" title="Workspace"/>
+                        AZM Operating Model Platform
+                    </span>
+                    <h1>
+                        <t t-out="this.greeting"/><t t-if="this.userName">, <t t-out="this.userName"/></t>
+                    </h1>
+                    <p>
+                        From current reality to a unified, governed operating model.
+                        <span t-if="this.scopeLabel" class="o_azm_home_scope">
+                            <i class="oi" data-icon="business" title="Scope"/>
+                            <t t-out="this.scopeLabel"/>
+                        </span>
+                    </p>
+                </div>
+
+                <!-- the one thing this reader most likely came to do, then the rest -->
+                <div t-if="this.state.loaded" class="o_azm_home_hero_actions">
+                    <button type="button" class="btn o_azm_home_primary"
+                            t-on-click="() => this.openAction('azm_platform.action_azm_my_work')">
+                        <i class="oi me-1" data-icon="assignment_turned_in"/>Open my workspace
+                    </button>
+                    <button t-foreach="this.visibleQuickLinks.slice(0, 3)" t-as="link"
+                            t-key="link.action" type="button" class="btn o_azm_home_secondary"
+                            t-on-click="() => this.openAction(link.action)">
+                        <i class="oi me-1" t-att-data-icon="link.icon"/>
+                        <t t-out="link.label"/>
+                    </button>
+                </div>
+            </header>
 
             <div t-if="!this.state.loaded" class="o_azm_loading">
                 <i class="oi oi-spin" data-icon="progress_activity" title="Loading"/>
             </div>
 
-            <div t-else="" class="o_azm_dash_grid">
+            <!-- ============================================ C · what needs you -->
+            <t t-else="">
+            <section class="o_azm_home_attention">
+                <h2 class="o_azm_home_title">
+                    <span>Your attention is needed</span>
+                    <em>What is waiting on you, before anything else on this page</em>
+                </h2>
+
+                <div t-if="this.nothingWaiting" class="o_azm_home_clear">
+                    <i class="oi" data-icon="task_alt" title="Nothing waiting"/>
+                    <div>
+                        <strong>Nothing is waiting on you</strong>
+                        <small>No work sent back, nothing awaiting your review, no overdue tasks.</small>
+                    </div>
+                </div>
+
+                <div t-else="" class="o_azm_home_attention_grid">
+                    <article t-foreach="this.attentionGroups" t-as="group" t-key="group.key"
+                             t-attf-class="o_azm_home_att o_azm_tone_{{group.tone}}">
+                        <header>
+                            <span class="o_azm_home_att_icon">
+                                <i class="oi" t-att-data-icon="group.icon" t-att-title="group.label"/>
+                            </span>
+                            <span class="o_azm_home_att_words">
+                                <b t-out="group.label"/>
+                                <small t-out="group.hint"/>
+                            </span>
+                            <span class="o_azm_home_att_count" t-out="group.count"/>
+                        </header>
+
+                        <ul class="o_azm_home_att_rows">
+                            <li t-foreach="group.rows" t-as="row" t-key="row.res_model + '-' + row.id + '-' + row_index">
+                                <span class="o_azm_home_att_main">
+                                    <b t-out="row.title"/>
+                                    <small>
+                                        <t t-if="row.where"><t t-out="row.where"/></t>
+                                        <t t-if="row.who"> · <t t-out="row.who"/></t>
+                                    </small>
+                                </span>
+                                <span t-if="row.when" class="o_azm_home_att_when" t-out="row.when"/>
+                            </li>
+                        </ul>
+
+                        <footer>
+                            <button type="button" class="o_azm_home_att_go"
+                                    t-attf-aria-label="Open {{group.label}}"
+                                    t-on-click="() => this.openAction(group.action)">
+                                <t t-if="group.count > group.rows.length">
+                                    See all <t t-out="group.count"/>
+                                </t>
+                                <t t-else="">Open</t>
+                                <i class="oi" data-icon="arrow_forward" title="Open"/>
+                            </button>
+                        </footer>
+                    </article>
+                </div>
+            </section>
+
+            <!-- ======================================== D · where the work lives -->
+            <section class="o_azm_home_spaces">
+                <h2 class="o_azm_home_title">
+                    <span>Workspace</span>
+                    <em>Everything this platform holds, grouped by what you came to do</em>
+                </h2>
+                <div class="o_azm_home_spaces_grid">
+                    <article t-foreach="this.workspaces" t-as="space" t-key="space.key"
+                             class="o_azm_home_space">
+                        <header>
+                            <i class="oi" t-att-data-icon="space.icon" t-att-title="space.label"/>
+                            <b t-out="space.label"/>
+                        </header>
+                        <ul>
+                            <li t-foreach="space.links" t-as="link" t-key="link.action">
+                                <button type="button" class="o_azm_home_space_link"
+                                        t-on-click="() => this.openAction(link.action)">
+                                    <span class="o_azm_home_space_name" t-out="link.label"/>
+                                    <small t-out="link.hint"/>
+                                    <i class="oi" data-icon="chevron_right" title="Open"/>
+                                </button>
+                            </li>
+                        </ul>
+                    </article>
+                </div>
+            </section>
+
+            <div class="o_azm_dash_grid">
                 <!-- ============================== MAIN COLUMN -->
                 <div class="o_azm_dash_main">
                     <!-- Hero -->
@@ -238,6 +352,7 @@
                     </section>
                 </aside>
             </div>
+            </t>
         </div>
     </t>
 

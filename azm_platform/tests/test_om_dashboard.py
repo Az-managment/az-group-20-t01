@@ -424,6 +424,31 @@ class TestOmDetail(TransactionCase):
                     rights[key], self.env[model].with_user(user).has_access('read'),
                     f'{key} must follow access to {model}, not group membership')
 
+    def test_the_home_page_knows_what_is_waiting_for_each_reader(self):
+        """The home page leads with work that needs a decision, so it has to be that
+        reader's work — counted through their own rights, not the database's."""
+        D = self.env['azm.dashboard']
+        out = D.home_attention()
+        for key in ('returned', 'reviews', 'overdue'):
+            self.assertIn(key, out)
+            self.assertIn('count', out[key])
+            self.assertIn('rows', out[key])
+            self.assertLessEqual(len(out[key]['rows']), out[key]['count'],
+                                 f'{key} shows a sample of its own count')
+        self.assertEqual(out['total'],
+                         out['returned']['count'] + out['reviews']['count']
+                         + out['overdue']['count'])
+        self.assertEqual(out['scope']['entities'], len(self.env.companies.ids),
+                         'the page says what its figures are counted over')
+
+        # a user with no rights to projects is told nothing about tasks rather than
+        # being shown a figure they could not open
+        plain = new_test_user(self.env, 'azm_home_plain', groups='base.group_user')
+        theirs = D.with_user(plain).home_attention()
+        self.assertIsInstance(theirs['overdue']['count'], int)
+        self.assertEqual(theirs['overdue']['rows'], [],
+                         'a reader with no tasks of their own has no overdue list')
+
     def test_an_unknown_kind_is_refused(self):
         """The kind arrives from a browser; without this it names any model at all."""
         with self.assertRaises(UserError):
