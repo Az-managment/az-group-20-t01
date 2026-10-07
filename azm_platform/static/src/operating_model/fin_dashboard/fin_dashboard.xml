@@ -27,9 +27,9 @@
                 <div class="o_azm_om_title_words">
                     <span class="o_azm_om_eyebrow">
                         <i class="oi" data-icon="view_module" title="Operating model"/>
-                        Unified financial model
+                        Operating Model
                     </span>
-                    <h1>Unified Financial Model</h1>
+                    <h1>Unified financial model</h1>
                     <p>Inventory of the financial requirements of each entity and design of the target model</p>
                 </div>
                 <div t-if="this.state.loaded and this.d.available" class="o_azm_om_title_gauge">

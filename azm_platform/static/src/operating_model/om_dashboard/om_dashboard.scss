@@ -32,8 +32,9 @@
         flex-wrap: wrap;
         padding: 26px 28px;
         h1 {
-            margin: 3px 0 0;
-            font-size: 27px;
+            margin: 7px 0 0;
+            font-size: 28px;
+            line-height: 1.15;
             font-weight: 800;
             letter-spacing: -.6px;
             background: linear-gradient(100deg, $azm-ink 8%, $azm-blue 52%, #0d9488 92%);
@@ -41,7 +42,7 @@
             background-clip: text;
             color: transparent;
         }
-        p { margin: 6px 0 0; max-width: 68ch; color: $azm-muted; font-size: 13px; line-height: 1.65; }
+        p { margin: 9px 0 0; max-width: 62ch; color: $azm-muted; font-size: 12.5px; line-height: 1.7; }
     }
     .o_azm_om_title_words { flex: 1 1 320px; min-width: 0; }
     .o_azm_om_eyebrow {
@@ -65,8 +66,10 @@
         display: flex;
         align-items: center;
         gap: 13px;
-        padding-inline: 20px;
-        border-inline: 1px solid rgba(15, 35, 71, .08);
+        padding-inline-start: 22px;
+        // one rule, between the words and the figure; the actions after it are
+        // already separated by their own shapes
+        border-inline-start: 1px solid rgba(15, 35, 71, .08);
         --azm-tone: #{map-get($azm-tones, 'teal')};
 
         .o_azm_ring_wrap { position: relative; display: grid; place-items: center; width: 76px; height: 76px; }
@@ -98,6 +101,7 @@
             display: flex;
             gap: 8px;
             flex-wrap: wrap;
+            margin-inline-start: 22px;
             .btn {
                 display: inline-flex;
                 align-items: center;
@@ -660,114 +664,69 @@
     .o_azm_om .o_azm_om_kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .o_azm_om .o_azm_om_row_3 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
     .o_azm_om .o_azm_om_row_2 { grid-template-columns: minmax(0, 1fr); }
-    .o_azm_om .o_azm_om_models { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-    .o_azm_om .o_azm_om_model_back { grid-column: 1 / -1; }
-}
-@media (max-width: 768px) {
-    .o_azm_om .o_azm_om_title { padding: 18px 18px 20px; }
-    .o_azm_om .o_azm_om_title h1 { font-size: 22px; }
-    .o_azm_om .o_azm_om_title_actions { width: 100%; .btn { flex: 1 1 auto; justify-content: center; } }
-}
-@media (max-width: 640px) {
-    .o_azm_om .o_azm_om_kpis { grid-template-columns: minmax(0, 1fr); }
-    .o_azm_om .o_azm_om_stage_stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .o_azm_om .o_azm_om_selects { flex-wrap: wrap; }
-    .o_azm_om .o_azm_om_selects .form-select { min-width: 0; max-width: none; flex: 1 1 100%; }
-    .o_azm_om .o_azm_om_cards_tools { flex-wrap: wrap; > * { flex: 1 1 100%; } }
-    .o_azm_om .o_azm_om_figures { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    // the switch wraps to two rows before it squeezes either model's name
+    .o_azm_om .o_azm_om_models { flex-wrap: wrap; }
 }
 
-// ---------------------------------------------------------------- Home page & entity page sections
-.o_azm_om_home {
-    .o_azm_om_home_kpis {
-        display: grid; grid-template-columns: repeat(auto-fit, minmax(105px, 1fr)); gap: 10px; margin-bottom: 14px;
-        > div { background: $azm-bg; border-radius: 10px; padding: 10px 12px; }
-        small { display: block; font-size: 12px; color: $azm-muted; font-weight: 600; }
-        strong { font-size: 22px; font-weight: 800; color: $azm-ink; }
-        .o_azm_progress { margin-top: 4px; height: 5px; }
-    }
-    .o_azm_om_home_domains {
-        display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;
-    }
-    .o_azm_om_home_domain {
-        display: flex; flex-direction: column; gap: 8px; text-align: start; padding: 12px 14px;
-        border: 1px solid $azm-border; border-top: 3px solid var(--azm-tone); border-radius: 12px; background: #fff; color: $azm-ink;
-        transition: transform .15s ease, box-shadow .15s ease;
-        &:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(15, 35, 71, .1); }
-        header { display: flex; align-items: center; gap: 10px; strong { font-size: 14px; } }
-        .o_azm_om_home_line { display: flex; justify-content: space-between; font-size: 12px; color: $azm-muted; b { color: $azm-ink; } }
-    }
-    .o_azm_om_home_lists { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-top: 14px; }
-    .o_azm_om_home_lists h4 { font-size: 13px; font-weight: 700; color: $azm-muted; margin: 0 0 4px; text-transform: uppercase; letter-spacing: .03em; }
-    .o_azm_om_score {
-        flex: 0 0 auto; width: 30px; height: 30px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center;
-        font-weight: 800; font-size: 13px; background: #eef2f7; color: #475569;
-        &.o_high { background: #fee2e2; color: #b91c1c; }
-        &.o_mid { background: #fef3c7; color: #b45309; }
-        &.o_low { background: #dcfce7; color: #15803d; }
-    }
-}
-.o_azm_overview .o_azm_om_entity { grid-column: 1 / -1; }
-
-// ---------------------------------------------------------------- model switch (procurement / financial)
+// Switching between the two models is navigation, not content: it was three cards
+// the size of panels, stacked under a hero that had just said the same name. It is a
+// single slim bar now, sitting directly under the heading as part of the same block.
 .o_azm_om .o_azm_om_models {
-    display: grid;
-    grid-template-columns: minmax(0, .7fr) repeat(2, minmax(0, 1fr));
-    gap: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 6px;
+    margin-top: calc(var(--om-section) * -1 + 10px);
+    padding: 5px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, .7);
+    border: 1px solid rgba(15, 35, 71, .08);
+    backdrop-filter: blur(8px);
 
     .o_azm_om_model {
         position: relative;
-        display: flex;
+        display: inline-flex;
         align-items: center;
-        gap: 12px;
-        padding: 12px 15px;
+        gap: 9px;
+        padding: 8px 14px;
         text-align: start;
-        border: 1px solid rgba(15, 35, 71, .09);
-        border-radius: 14px;
-        background: rgba(255, 255, 255, .72);
-        backdrop-filter: blur(8px);
-        color: $azm-ink;
-        overflow: hidden;
-        transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
-        .oi { font-size: 24px; color: $azm-muted; transition: color .15s ease; }
-        b { display: block; font-size: 13.5px; font-weight: 700; letter-spacing: -.2px; }
-        small { color: $azm-muted; font-size: 11px; }
-        &:hover {
-            border-color: rgba($azm-blue, .4);
-            box-shadow: 0 10px 22px rgba(15, 35, 71, .09);
-            transform: translateY(-1px);
-            .oi { color: $azm-blue; }
-        }
-        // the page you are on: stated by a filled edge and a lifted surface rather
-        // than by a 2px border that shifts every neighbour by a pixel
+        border: 0;
+        border-radius: 10px;
+        background: transparent;
+        color: $azm-muted;
+        transition: color .14s ease, background .14s ease, box-shadow .14s ease;
+        .oi { font-size: 19px; color: inherit; }
+        b { display: block; font-size: 12.5px; font-weight: 650; line-height: 1.25; color: inherit; }
+        small { display: block; font-size: 10.5px; color: rgba($azm-muted, .9); line-height: 1.3; }
+        &:hover { color: $azm-ink; background: rgba(15, 35, 71, .05); }
+        // the page you are on is lifted out of the rail, the way the tabs below it are
         &.active {
             cursor: default;
+            color: $azm-ink;
             background: #fff;
-            border-color: transparent;
             box-shadow:
-                inset 0 0 0 1.5px rgba($azm-blue, .5),
-                0 8px 20px rgba($azm-blue, .14);
-            transform: none;
+                0 1px 2px rgba(15, 35, 71, .06),
+                0 4px 12px rgba(15, 35, 71, .09),
+                inset 0 0 0 1px rgba($azm-blue, .35);
             .oi { color: $azm-blue; }
-            &::before {
-                content: "";
-                position: absolute;
-                inset-block: 0;
-                inset-inline-start: 0;
-                width: 3px;
-                background: linear-gradient(180deg, $azm-blue, #4f46e5);
-            }
+            small { color: $azm-muted; }
         }
     }
-    // the way back out, said more quietly than the two models themselves
+    // the way out, said as a quiet step back rather than a third model
     .o_azm_om_model_back {
-        background: rgba(15, 35, 71, .03);
-        border-style: dashed;
-        b { font-size: 12.5px; font-weight: 600; }
-        .oi { font-size: 20px; }
+        margin-inline-end: 4px;
+        padding-inline: 11px;
+        border-inline-end: 1px solid rgba(15, 35, 71, .09);
+        border-radius: 10px 0 0 10px;
+        small { display: none; }
+        b { font-size: 11.5px; font-weight: 600; }
+        .oi { font-size: 17px; }
     }
 }
-@media (max-width: 640px) { .o_azm_om .o_azm_om_models { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 640px) {
+    .o_azm_om .o_azm_om_models { flex-direction: column; align-items: stretch; }
+    .o_azm_om .o_azm_om_model_back { border-inline-end: 0; border-block-end: 1px solid rgba(15, 35, 71, .09); margin: 0 0 4px; }
+}
 
 // ---------------------------------------------------------------- financial page specifics
 .o_azm_fin_page {

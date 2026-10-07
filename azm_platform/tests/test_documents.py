@@ -171,7 +171,12 @@ class TestOperatingModelDocuments(TransactionCase):
         on a full disk marks thousands of good documents as broken. It waits instead."""
         Pub = self.env['azm.doc.publication'].sudo()
         self.assertGreater(Pub._free_mb(), 0, 'it can see the disk at all')
-        self.assertTrue(Pub._room_to_work(), 'there is room right now')
+
+        # Both answers are asked for by moving the floor, not by hoping the machine
+        # has a particular amount of disk: this test failed once because the build it
+        # ran on happened to be fuller than the floor it ships with.
+        self.env['ir.config_parameter'].sudo().set_int('azm.documents.disk_floor_mb', 1)
+        self.assertTrue(Pub._room_to_work(), 'a floor of 1 MB is met by any disk')
 
         # a floor nothing could satisfy: the queue must decline rather than render
         self.env['ir.config_parameter'].sudo().set_int('azm.documents.disk_floor_mb', 10 ** 9)

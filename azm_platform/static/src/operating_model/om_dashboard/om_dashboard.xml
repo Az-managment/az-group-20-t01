@@ -7,9 +7,9 @@
                 <div class="o_azm_om_title_words">
                     <span class="o_azm_om_eyebrow">
                         <i class="oi" data-icon="view_module" title="Operating model"/>
-                        Procurement cycle
+                        Operating Model
                     </span>
-                    <h1>Operating Model</h1>
+                    <h1>Procurement cycle</h1>
                     <p>From answers to policy, procedure, authority and risk, per entity and per domain</p>
                 </div>
                 <div t-if="this.state.loaded and this.d.available" class="o_azm_om_title_gauge">
