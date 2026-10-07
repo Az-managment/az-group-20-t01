@@ -6,13 +6,13 @@
             title="'توزيع الأجزاء · Assign parts'">
         <div dir="rtl" class="o_azm_assign">
 
-            <div t-if="state.error" class="o_azm_assign_error">
+            <div t-if="this.state.error" class="o_azm_assign_error">
                 <i class="oi me-1" data-icon="error" title="Error"/>
-                <span t-out="state.error"/>
+                <span t-out="this.state.error"/>
             </div>
 
             <!-- ============================================ which model to divide -->
-            <t t-if="!state.model">
+            <t t-if="!this.state.model">
                 <p class="o_azm_assign_lead">
                     اختر النموذج الذي تريد توزيع أجزائه.
                     <small class="o_azm_en">Pick the model whose parts you want to hand out.</small>
@@ -48,12 +48,12 @@
                     <button type="button" class="o_azm_assign_back"
                             t-on-click="() => this.backToModels()">
                         <i class="oi" data-icon="chevron_right" title="رجوع"/>
-                        <t t-if="!props.row">كل النماذج</t>
+                        <t t-if="!this.props.row">كل النماذج</t>
                         <t t-else="">رجوع</t>
                     </button>
                     <span class="o_azm_assign_head_words">
-                        <b t-out="state.model.label"/>
-                        <small t-out="state.model.entity"/>
+                        <b t-out="this.state.model.label"/>
+                        <small t-out="this.state.model.entity"/>
                     </span>
                 </div>
 
@@ -64,17 +64,17 @@
                         it; what is not assigned stays with the preparer.</small>
                 </p>
 
-                <div t-if="state.loading" class="o_azm_assign_loading">
+                <div t-if="this.state.loading" class="o_azm_assign_loading">
                     <i class="oi oi-spin" data-icon="progress_activity" title="Loading"/>
                 </div>
 
                 <t t-else="">
-                    <div t-if="!state.canWrite" class="o_azm_assign_readonly">
+                    <div t-if="!this.state.canWrite" class="o_azm_assign_readonly">
                         <i class="oi me-1" data-icon="lock" title="للقراءة"/>
                         لا تملك صلاحية تغيير التوزيع — هذه قراءة فقط.
                     </div>
 
-                    <div t-foreach="state.parts" t-as="part"
+                    <div t-foreach="this.state.parts" t-as="part"
                          t-key="part.level + '-' + part.id"
                          t-attf-class="o_azm_assign_part o_azm_assign_d{{part.depth}} {{this.isEditing(part) ? 'o_azm_assign_part_on' : ''}}">
 
@@ -85,14 +85,16 @@
                                     <em t-if="!part.users.length" class="o_azm_assign_free">
                                         مع مُعدّ الإفادة
                                     </em>
-                                    <em t-foreach="part.users" t-as="who" t-key="who"
+                                    <!-- keyed by position: two people can share a name,
+                                         and two identical keys collide -->
+                                    <em t-foreach="part.users" t-as="who" t-key="who_index"
                                         class="o_azm_assign_holder" t-out="who"/>
                                 </span>
                             </span>
                             <small t-if="part.total" class="o_azm_assign_count">
                                 <b t-out="part.answered"/>/<t t-out="part.total"/>
                             </small>
-                            <button t-if="state.canWrite" type="button"
+                            <button t-if="this.state.canWrite" type="button"
                                     class="o_azm_assign_edit"
                                     t-att-aria-expanded="this.isEditing(part) ? 'true' : 'false'"
                                     t-on-click="() => this.editPart(part)">
@@ -105,10 +107,10 @@
 
                         <!-- who it goes to -->
                         <div t-if="this.isEditing(part)" class="o_azm_assign_people">
-                            <div t-if="!state.candidates.length" class="o_azm_assign_empty">
+                            <div t-if="!this.state.candidates.length" class="o_azm_assign_empty">
                                 لا يوجد أشخاص على هذا الكيان بعد.
                             </div>
-                            <label t-foreach="state.candidates" t-as="user" t-key="user.id"
+                            <label t-foreach="this.state.candidates" t-as="user" t-key="user.id"
                                    t-attf-class="o_azm_assign_person {{this.isPicked(user) ? 'o_azm_assign_person_on' : ''}}">
                                 <input type="checkbox" t-att-checked="this.isPicked(user)"
                                        t-on-change="() => this.togglePerson(user)"/>
@@ -125,9 +127,9 @@
                                 <button type="button" class="btn btn-sm btn-light"
                                         t-on-click="() => this.editPart(part)">تراجع</button>
                                 <button type="button" class="btn btn-sm o_azm_assign_save"
-                                        t-att-disabled="state.busy ? 'disabled' : undefined"
+                                        t-att-disabled="this.state.busy ? 'disabled' : undefined"
                                         t-on-click="() => this.savePart(part)">
-                                    <t t-if="state.busy">…</t>
+                                    <t t-if="this.state.busy">…</t>
                                     <t t-else="">احفظ</t>
                                 </button>
                             </div>
@@ -138,7 +140,7 @@
         </div>
 
         <t t-set-slot="footer">
-            <button type="button" class="btn btn-light" t-on-click="() => props.close()">
+            <button type="button" class="btn btn-light" t-on-click="() => this.props.close()">
                 أغلق
             </button>
         </t>
