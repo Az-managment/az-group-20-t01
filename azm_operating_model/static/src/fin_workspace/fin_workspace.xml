@@ -209,6 +209,14 @@
                         <input type="checkbox" t-att-checked="this.state.onlyOpen" t-on-change="() => this.toggleOnlyOpen()"/>
                         غير المكتمل فقط
                     </label>
+                    <!-- offered only when something actually came back, so it cannot be
+                         switched on to reveal an empty page for no reason -->
+                    <label t-if="d.returns_open" class="o_azm_fin_showall o_azm_fin_returned_filter">
+                        <input type="checkbox" t-att-checked="this.state.onlyReturned"
+                               t-on-change="() => this.toggleOnlyReturned()"/>
+                        المُعاد من المراجع فقط
+                        <span class="o_azm_returned_count" t-out="d.returns_open"/>
+                    </label>
                     <t t-foreach="d.modules" t-as="mod" t-key="mod.code">
                         <button t-attf-class="o_azm_rail_item o_azm_status_{{this.moduleStatus(mod)}} {{mod.code === this.state.moduleCode ? 'o_azm_active' : ''}}"
                                 t-on-click="() => this.selectModule(mod)">
@@ -239,6 +247,13 @@
                         </div>
                         <div t-if="!d.topics.length" class="o_azm_note">
                             لا توجد متطلبات منطبقة على أنشطة هذا الكيان في هذا الموديول.
+                        </div>
+                        <!-- what came back may be under another module: say where it is
+                             rather than leaving a page that looks empty by mistake -->
+                        <div t-if="this.state.onlyReturned and d.topics.length and !this.returnedHere()"
+                             class="o_azm_note">
+                            لا شيء مُعاد في هذا الموديول — المُعاد (<t t-out="d.returns_open"/>)
+                            في موديولات أخرى، اختر منها من القائمة.
                         </div>
                     </div>
 

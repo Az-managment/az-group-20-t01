@@ -205,10 +205,19 @@ class AzmFinAssessment(models.Model):
             # when a review has sent parts back, everything else stands as it was
             # reviewed: the page says so rather than letting somebody type into a field
             # the server will refuse
-            row["locked"] = bool(returns) and not returns._covers(line)
+            covered = bool(returns) and returns._covers(line)
+            row["locked"] = bool(returns) and not covered
+            # said outright rather than left to be read off "locked", which is false
+            # both for a returned requirement and for every requirement when nothing
+            # was returned at all
+            row["returned"] = covered
             topics[-1]["requirements"].append(row)
         return {
             "header": self._header(),
+            # how many parts are waiting to be answered again, across the whole
+            # assessment: the filter is worth offering only when there are some, and
+            # what came back may be under a module the reader is not looking at
+            "returns_open": len(returns),
             "modules": self._modules_nav(),
             "module": {"id": module.id, "code": module.code, "name": module.name,
                        "total": len(self.answer_ids.filtered(lambda a: a.module_id == module))},

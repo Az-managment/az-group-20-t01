@@ -85,6 +85,26 @@ class TestReviewReturn(TransactionCase):
         self.outside.with_user(self.preparer).write({'na': True, 'reason': 'تجربة'})
         self.assertTrue(self.outside.na)
 
+    def test_the_workspace_can_show_only_what_came_back(self):
+        """The filter needs each row to say whether it is one of the returned ones —
+        which cannot be read off `locked`, false both for a returned requirement and
+        for every requirement when nothing was returned at all."""
+        before = self.assessment.workspace_data(module_code=self.module.code)
+        self.assertEqual(before['returns_open'], 0)
+        self.assertFalse([r for t in before['topics'] for r in t['requirements']
+                          if r['returned']],
+                         'nothing is marked as returned before anything is sent back')
+
+        self._return_the_module()
+        after = self.assessment.workspace_data(module_code=self.module.code)
+        self.assertEqual(after['returns_open'], 1, 'the page can offer the filter')
+        rows = [r for t in after['topics'] for r in t['requirements']]
+        self.assertTrue(rows, 'the module has requirements to judge')
+        self.assertTrue(all(r['returned'] for r in rows),
+                        'a module came back, so everything under it did')
+        self.assertFalse(any(r['returned'] and r['locked'] for r in rows),
+                         'a row is either to be answered again or held, never both')
+
     def test_it_shows_up_on_the_page_of_whoever_must_fix_it(self):
         self._return_the_module()
         rows = self.env['azm.dashboard'].with_user(self.preparer).with_company(

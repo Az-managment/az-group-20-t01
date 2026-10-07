@@ -33,6 +33,7 @@ export class AzmFinWorkspace extends Component {
             output: markup(""),
             showAll: false,
             onlyOpen: false,
+            onlyReturned: false,
             busy: false,
             saving: 0,
             openPrompts: {},
@@ -448,6 +449,11 @@ export class AzmFinWorkspace extends Component {
         this.state.onlyOpen = !this.state.onlyOpen;
     }
 
+    /** Show only what the reviewer sent back to be answered again. */
+    toggleOnlyReturned() {
+        this.state.onlyReturned = !this.state.onlyReturned;
+    }
+
     togglePrompts(topic) {
         this.state.openPrompts[topic.id] = !this.state.openPrompts[topic.id];
     }
@@ -478,15 +484,35 @@ export class AzmFinWorkspace extends Component {
     }
 
     // ------------------------------------------------------------ view helpers
+    get filtering() {
+        return this.state.onlyOpen || this.state.onlyReturned;
+    }
+
     visibleTopics() {
-        if (!this.state.onlyOpen) {
+        if (!this.filtering) {
             return this.d.topics;
         }
-        return this.d.topics.filter((t) => t.requirements.some((r) => !r.done));
+        // a topic earns its place by what survives the filters, so the two can be
+        // used together without one of them quietly winning
+        return this.d.topics.filter((t) => this.topicRequirements(t).length);
     }
 
     topicRequirements(topic) {
-        return this.state.onlyOpen ? topic.requirements.filter((r) => !r.done) : topic.requirements;
+        let requirements = topic.requirements;
+        if (this.state.onlyReturned) {
+            requirements = requirements.filter((r) => r.returned);
+        }
+        if (this.state.onlyOpen) {
+            requirements = requirements.filter((r) => !r.done);
+        }
+        return requirements;
+    }
+
+    /** How many returned parts are in the module being looked at, as against the
+     * whole assessment — what came back may be under a module the reader is not on. */
+    returnedHere() {
+        return this.d.topics.reduce(
+            (n, topic) => n + topic.requirements.filter((r) => r.returned).length, 0);
     }
 
     specific(req) {
