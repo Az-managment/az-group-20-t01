@@ -15,7 +15,10 @@
     inset-block: 0;
     inset-inline-end: 0;
     z-index: 1041;
-    width: min(560px, 100vw);
+    // not min(560px, 100vw): sass evaluates min() itself and refuses to compare px
+    // with vw, which fails the whole bundle rather than this one rule
+    width: 560px;
+    max-width: 100vw;
     display: flex;
     flex-direction: column;
     background: linear-gradient(180deg, #fbfdff, #f4f8fd);

@@ -7,18 +7,65 @@
 .o_azm_om {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    // one scale, so every gap on these pages is a multiple of something
+    --om-gap: 10px;
+    --om-pad: 18px;
+    --om-section: 18px;
+    --om-radius: 16px;
+    gap: var(--om-section);
     > * { flex-shrink: 0; }
 
+    // the hub carries its own light; this is for the pages that do not
+    &:not(.o_azm_hub) {
+        @include azm-lit-field(rgba(47, 123, 245, .15), rgba(13, 148, 136, .12));
+    }
+
+    // -------------------------------------------------------------- the hero
     .o_azm_om_title {
+        @include azm-glass(22px);
         display: flex;
-        align-items: flex-end;
+        align-items: center;
         justify-content: space-between;
-        gap: 12px;
+        gap: 18px;
         flex-wrap: wrap;
-        h1 { font-size: 26px; font-weight: 800; margin: 0; color: $azm-navy; }
-        p { margin: 2px 0 0; color: $azm-muted; }
-        .o_azm_om_title_actions { display: flex; gap: 8px; .btn { display: inline-flex; align-items: center; gap: 6px; border-radius: 10px; } }
+        padding: 22px 24px;
+        h1 {
+            margin: 0;
+            font-size: 26px;
+            font-weight: 800;
+            letter-spacing: -.6px;
+            background: linear-gradient(100deg, $azm-ink 8%, $azm-blue 52%, #0d9488 92%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        p { margin: 5px 0 0; max-width: 70ch; color: $azm-muted; font-size: 13px; line-height: 1.6; }
+        .o_azm_om_title_actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            .btn {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                border-radius: 11px;
+                padding: 8px 14px;
+                font-size: 12.5px;
+                font-weight: 600;
+            }
+            // the one that makes something new leads; the rest are quiet beside it
+            .btn-light {
+                border: 1px solid rgba(15, 35, 71, .1);
+                background: rgba(255, 255, 255, .75);
+                &:hover { background: #fff; border-color: rgba($azm-blue, .4); color: $azm-blue; }
+            }
+            .btn-primary {
+                border: 0;
+                background: linear-gradient(135deg, $azm-blue, #4f46e5);
+                box-shadow: 0 6px 16px rgba($azm-blue, .3);
+                &:hover { filter: brightness(1.06); box-shadow: 0 10px 22px rgba($azm-blue, .36); }
+            }
+        }
     }
 
     // ---------------------------------------------------------------- toolbar
@@ -33,30 +80,50 @@
     }
     .o_azm_om_tabs {
         display: flex;
-        gap: 6px;
+        gap: 4px;
         flex-wrap: wrap;
-        background: #fff;
-        border: 1px solid $azm-border;
-        border-radius: 12px;
+        background: rgba(255, 255, 255, .72);
+        border: 1px solid rgba(15, 35, 71, .09);
+        border-radius: 13px;
         padding: 4px;
+        backdrop-filter: blur(8px);
     }
     .o_azm_om_tab {
         display: inline-flex;
         align-items: center;
         gap: 6px;
         border: 0;
-        border-radius: 9px;
+        border-radius: 10px;
         background: transparent;
-        padding: 7px 12px;
+        padding: 7px 13px;
+        font-size: 12.5px;
         font-weight: 600;
         color: $azm-muted;
-        .oi { font-size: 18px; }
-        &:hover { color: $azm-ink; background: $azm-bg; }
-        &.active { color: var(--azm-tone); background: var(--azm-tone-bg); }
-        .o_azm_om_count {
-            min-width: 22px; padding: 0 6px; border-radius: 99px; font-size: 11px; line-height: 20px;
-            background: rgba(15, 35, 71, .06); color: inherit; text-align: center;
+        transition: color .14s ease, background .14s ease, box-shadow .14s ease;
+        .oi { font-size: 17px; }
+        &:hover { color: $azm-ink; background: rgba(15, 35, 71, .05); }
+        // the chosen one is lifted off the rail rather than merely tinted
+        &.active {
+            color: var(--azm-tone);
+            background: #fff;
+            box-shadow:
+                0 1px 2px rgba(15, 35, 71, .06),
+                0 4px 12px rgba(15, 35, 71, .08),
+                inset 0 0 0 1px color-mix(in srgb, var(--azm-tone) 28%, transparent);
         }
+        .o_azm_om_count {
+            min-width: 22px;
+            padding: 0 6px;
+            border-radius: 99px;
+            font-size: 10.5px;
+            font-weight: 700;
+            line-height: 19px;
+            background: rgba(15, 35, 71, .07);
+            color: inherit;
+            text-align: center;
+            font-variant-numeric: tabular-nums;
+        }
+        &.active .o_azm_om_count { background: color-mix(in srgb, var(--azm-tone) 14%, transparent); }
     }
     .o_azm_om_selects {
         display: flex;
@@ -78,8 +145,38 @@
     }
 
     // ---------------------------------------------------------------- KPIs
-    .o_azm_om_kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .o_azm_om_kpis { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 13px; }
     .o_azm_om_kpi { align-items: flex-start; }
+    // the figures, in the language the rest of the platform now uses: glass, a line of
+    // the tone along the top edge, and a numeral that does not shift between tiles
+    .o_azm_kpi {
+        @include azm-glass(var(--om-radius));
+        position: relative;
+        overflow: hidden;
+        padding: 15px 16px;
+        &::before {
+            content: "";
+            position: absolute;
+            inset-block-start: 0;
+            inset-inline: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--azm-tone, #{$azm-blue}),
+                color-mix(in srgb, var(--azm-tone, #{$azm-blue}) 25%, transparent));
+        }
+        .o_azm_kpi_value {
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: -1px;
+            font-variant-numeric: tabular-nums;
+        }
+        .o_azm_kpi_label { font-size: 12px; font-weight: 600; }
+        .o_azm_icon_badge {
+            width: 32px;
+            height: 32px;
+            border-radius: 9px;
+            .oi { font-size: 17px; }
+        }
+    }
     .o_azm_om_meter { margin: 2px 0; height: 6px; .o_azm_progress_bar { background: var(--azm-tone); } }
 
     // ---------------------------------------------------------------- domains
@@ -89,19 +186,35 @@
         gap: 14px;
     }
     .o_azm_om_domain {
+        position: relative;
         display: flex;
         flex-direction: column;
         gap: 12px;
+        padding: var(--om-pad);
         text-align: start;
         color: $azm-ink;
-        border-top: 4px solid var(--azm-tone);
+        overflow: hidden;
         transition: transform .15s ease, box-shadow .15s ease;
-        &:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(15, 35, 71, .1); }
-        &.active { outline: 2px solid var(--azm-tone); outline-offset: -1px; }
+        // the tone as an edge of light, not a 4px slab
+        &::before {
+            content: "";
+            position: absolute;
+            inset-block-start: 0;
+            inset-inline: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--azm-tone),
+                color-mix(in srgb, var(--azm-tone) 28%, transparent));
+        }
+        &:hover { transform: translateY(-2px); box-shadow: 0 14px 30px rgba(15, 35, 71, .11); }
+        &.active {
+            box-shadow:
+                inset 0 0 0 2px color-mix(in srgb, var(--azm-tone) 55%, transparent),
+                0 14px 30px rgba(15, 35, 71, .1);
+        }
         header { display: flex; gap: 12px; align-items: center; }
         .o_azm_om_domain_title { display: flex; flex-direction: column; min-width: 0; }
-        strong { font-size: 16px; }
-        small { color: $azm-muted; font-size: 12px; }
+        strong { font-size: 15px; font-weight: 750; letter-spacing: -.2px; }
+        small { color: $azm-muted; font-size: 11.5px; }
     }
     .o_azm_om_codes { display: flex; flex-wrap: wrap; gap: 4px; }
     .o_azm_om_code {
@@ -111,11 +224,22 @@
     .o_azm_om_figures {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 8px;
+        gap: var(--om-gap);
         margin: 0;
-        > div { background: $azm-bg; border-radius: 10px; padding: 8px 10px; }
-        dt { font-size: 11px; font-weight: 600; color: $azm-muted; }
-        dd { margin: 0; font-size: 20px; font-weight: 800; }
+        > div {
+            background: rgba(15, 35, 71, .035);
+            border-radius: 11px;
+            padding: 9px 11px;
+            min-width: 0;
+        }
+        dt { font-size: 10.5px; font-weight: 600; color: $azm-muted; }
+        dd {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 800;
+            letter-spacing: -.5px;
+            font-variant-numeric: tabular-nums;
+        }
     }
     .o_azm_om_meters { display: flex; flex-direction: column; gap: 8px; width: 100%; }
     .o_azm_om_meter_label {
@@ -141,34 +265,71 @@
         gap: 14px;
     }
     .o_azm_om_stage {
+        position: relative;
         display: flex;
         flex-direction: column;
-        border: 1px solid $azm-border;
-        border-inline-start: 4px solid var(--azm-tone);
-        border-radius: 12px;
+        border: 1px solid rgba(15, 35, 71, .09);
+        border-radius: 14px;
         background: #fff;
         overflow: hidden;
-        transition: box-shadow .15s ease, transform .15s ease;
-        &:hover { box-shadow: 0 10px 24px rgba(15, 35, 71, .1); transform: translateY(-2px); }
+        transition: box-shadow .16s ease, transform .16s ease, border-color .16s ease;
+        // the stage's tone runs down its leading edge, inside the card rather than as
+        // a border that fights the radius
+        &::before {
+            content: "";
+            position: absolute;
+            inset-block: 0;
+            inset-inline-start: 0;
+            width: 3px;
+            background: linear-gradient(180deg, var(--azm-tone),
+                color-mix(in srgb, var(--azm-tone) 35%, transparent));
+        }
+        &:hover {
+            box-shadow: 0 14px 30px rgba(15, 35, 71, .11);
+            transform: translateY(-2px);
+            border-color: color-mix(in srgb, var(--azm-tone) 35%, transparent);
+        }
         footer {
-            display: flex; flex-wrap: wrap; border-top: 1px solid #eef2f7; padding: 2px 6px; background: #fbfcfe;
-            .btn { font-size: 12.5px; padding: 6px 8px; display: inline-flex; align-items: center; gap: 4px; text-decoration: none; }
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2px;
+            border-top: 1px solid rgba(15, 35, 71, .06);
+            padding: 5px 8px;
+            background: rgba(15, 35, 71, .022);
+            .btn {
+                font-size: 11.5px;
+                font-weight: 600;
+                padding: 5px 9px;
+                border-radius: 8px;
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                text-decoration: none;
+                color: $azm-muted;
+                &:hover { color: var(--azm-tone); background: color-mix(in srgb, var(--azm-tone) 10%, transparent); }
+            }
         }
     }
     .o_azm_om_stage_main {
         display: flex;
         flex-direction: column;
-        gap: 10px;
+        gap: 11px;
         flex: 1 1 auto;
-        padding: 14px 16px;
+        padding: 15px 16px 15px 18px;
         border: 0;
         background: transparent;
         text-align: start;
         color: $azm-ink;
         header { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-        h4 { margin: 0; font-size: 16px; font-weight: 700; line-height: 1.35; }
+        h4 { margin: 0; font-size: 15px; font-weight: 700; line-height: 1.4; letter-spacing: -.2px; }
     }
-    .o_azm_om_stage_code { font: 700 12px/1 $font-family-monospace; color: $azm-navy; background: $azm-bg; padding: 5px 7px; border-radius: 6px; }
+    .o_azm_om_stage_code {
+        font: 700 11px/1 $font-family-monospace;
+        color: var(--azm-tone);
+        background: color-mix(in srgb, var(--azm-tone) 11%, transparent);
+        padding: 5px 8px;
+        border-radius: 7px;
+    }
     .o_azm_om_pill { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 99px; color: var(--azm-tone); background: var(--azm-tone-bg); }
     .o_azm_om_status {
         font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 99px; margin-inline-start: auto;
@@ -188,12 +349,24 @@
         grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: 6px;
         > div {
-            display: flex; flex-direction: column; align-items: center; padding: 6px 4px;
-            background: $azm-bg; border-radius: 9px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1px;
+            padding: 7px 4px;
+            background: rgba(15, 35, 71, .035);
+            border-radius: 10px;
+            min-width: 0;
         }
-        strong { font-size: 18px; font-weight: 800; line-height: 1.1; }
-        small { font-size: 10.5px; color: $azm-muted; text-align: center; }
-        .o_azm_om_alert { background: #fef2f2; strong { color: #dc2626; } }
+        strong {
+            font-size: 17px;
+            font-weight: 800;
+            line-height: 1.1;
+            letter-spacing: -.4px;
+            font-variant-numeric: tabular-nums;
+        }
+        small { font-size: 10px; color: $azm-muted; text-align: center; line-height: 1.3; }
+        .o_azm_om_alert { background: rgba(239, 68, 68, .09); strong { color: #dc2626; } }
     }
     .o_azm_om_composition { display: flex; flex-direction: column; gap: 4px; }
     .o_azm_om_stack {
@@ -211,13 +384,23 @@
     .o_azm_om_row_3 {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 16px;
+        gap: 14px;
     }
     .o_azm_om_row_2 {
         display: grid;
         grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
-        gap: 16px;
+        gap: 14px;
         align-items: start;
+    }
+    // every panel on these pages sits on the same glass
+    .o_azm_card { @include azm-glass(var(--om-radius)); }
+    .o_azm_card_header {
+        h3 {
+            font-size: 13.5px;
+            font-weight: 700;
+            letter-spacing: -.2px;
+            small { color: $azm-muted; font-weight: 500; }
+        }
     }
     .o_azm_om_bars { display: flex; flex-direction: column; gap: 6px; }
     .o_azm_om_bar_row {
@@ -233,10 +416,30 @@
     // ---------------------------------------------------------------- tables / lists
     .o_azm_om_table {
         width: 100%;
-        th { font-size: 12px; color: $azm-muted; font-weight: 600; padding: 8px; border-bottom: 1px solid $azm-border; white-space: nowrap; }
-        td { padding: 10px 8px; border-bottom: 1px solid #eef2f7; vertical-align: middle; font-size: 13px; }
-        tbody tr { cursor: pointer; &:hover { background: #f8fafd; } }
+        border-collapse: separate;
+        border-spacing: 0;
+        th {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            color: $azm-muted;
+            padding: 9px 10px;
+            background: rgba(15, 35, 71, .025);
+            border-bottom: 1px solid rgba(15, 35, 71, .07);
+            white-space: nowrap;
+        }
+        td {
+            padding: 11px 10px;
+            border-bottom: 1px solid rgba(15, 35, 71, .05);
+            vertical-align: middle;
+            font-size: 12.5px;
+        }
+        tbody tr:last-child td { border-bottom: 0; }
+        tbody tr { cursor: pointer; transition: background .12s ease; &:hover { background: rgba($azm-blue, .035); } }
         .o_azm_mini_progress { min-width: 120px; }
+        // figures in a column are compared down it, so they keep one width
+        b, strong { font-variant-numeric: tabular-nums; }
     }
     .o_azm_om_state {
         font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 8px; white-space: nowrap;
@@ -259,9 +462,17 @@
     .o_azm_om .o_azm_om_kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .o_azm_om .o_azm_om_row_3 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
     .o_azm_om .o_azm_om_row_2 { grid-template-columns: minmax(0, 1fr); }
+    .o_azm_om .o_azm_om_models { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+    .o_azm_om .o_azm_om_model_back { grid-column: 1 / -1; }
+}
+@media (max-width: 768px) {
+    .o_azm_om .o_azm_om_title { padding: 18px 18px 20px; }
+    .o_azm_om .o_azm_om_title h1 { font-size: 22px; }
+    .o_azm_om .o_azm_om_title_actions { width: 100%; .btn { flex: 1 1 auto; justify-content: center; } }
 }
 @media (max-width: 640px) {
     .o_azm_om .o_azm_om_kpis { grid-template-columns: minmax(0, 1fr); }
+    .o_azm_om .o_azm_om_stage_stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .o_azm_om .o_azm_om_selects { flex-wrap: wrap; }
     .o_azm_om .o_azm_om_selects .form-select { min-width: 0; max-width: none; flex: 1 1 100%; }
     .o_azm_om .o_azm_om_cards_tools { flex-wrap: wrap; > * { flex: 1 1 100%; } }
@@ -302,16 +513,60 @@
 
 // ---------------------------------------------------------------- model switch (procurement / financial)
 .o_azm_om .o_azm_om_models {
-    display: grid; grid-template-columns: minmax(0, .8fr) repeat(2, minmax(0, 1fr)); gap: 12px;
-    .o_azm_om_model_back { background: $azm-bg; border-style: dashed; }
+    display: grid;
+    grid-template-columns: minmax(0, .7fr) repeat(2, minmax(0, 1fr));
+    gap: 10px;
+
     .o_azm_om_model {
-        display: flex; align-items: center; gap: 12px; padding: 12px 16px; text-align: start;
-        border: 1px solid $azm-border; border-radius: $azm-radius; background: #fff; color: $azm-ink;
-        .oi { font-size: 26px; color: $azm-muted; }
-        b { display: block; font-size: 15px; }
-        small { color: $azm-muted; }
-        &:hover { border-color: rgba($azm-blue, .5); }
-        &.active { border: 2px solid $azm-blue; background: rgba($azm-blue, .05); cursor: default; .oi { color: $azm-blue; } }
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 15px;
+        text-align: start;
+        border: 1px solid rgba(15, 35, 71, .09);
+        border-radius: 14px;
+        background: rgba(255, 255, 255, .72);
+        backdrop-filter: blur(8px);
+        color: $azm-ink;
+        overflow: hidden;
+        transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+        .oi { font-size: 24px; color: $azm-muted; transition: color .15s ease; }
+        b { display: block; font-size: 13.5px; font-weight: 700; letter-spacing: -.2px; }
+        small { color: $azm-muted; font-size: 11px; }
+        &:hover {
+            border-color: rgba($azm-blue, .4);
+            box-shadow: 0 10px 22px rgba(15, 35, 71, .09);
+            transform: translateY(-1px);
+            .oi { color: $azm-blue; }
+        }
+        // the page you are on: stated by a filled edge and a lifted surface rather
+        // than by a 2px border that shifts every neighbour by a pixel
+        &.active {
+            cursor: default;
+            background: #fff;
+            border-color: transparent;
+            box-shadow:
+                inset 0 0 0 1.5px rgba($azm-blue, .5),
+                0 8px 20px rgba($azm-blue, .14);
+            transform: none;
+            .oi { color: $azm-blue; }
+            &::before {
+                content: "";
+                position: absolute;
+                inset-block: 0;
+                inset-inline-start: 0;
+                width: 3px;
+                background: linear-gradient(180deg, $azm-blue, #4f46e5);
+            }
+        }
+    }
+    // the way back out, said more quietly than the two models themselves
+    .o_azm_om_model_back {
+        background: rgba(15, 35, 71, .03);
+        border-style: dashed;
+        b { font-size: 12.5px; font-weight: 600; }
+        .oi { font-size: 20px; }
     }
 }
 @media (max-width: 640px) { .o_azm_om .o_azm_om_models { grid-template-columns: minmax(0, 1fr); } }
@@ -365,3 +620,10 @@
     }
 }
 @media (max-width: 1200px) { .o_azm_unified .o_azm_unified_kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+@media (prefers-reduced-motion: reduce) {
+    .o_azm_om .o_azm_om_stage,
+    .o_azm_om .o_azm_om_domain,
+    .o_azm_om .o_azm_om_model,
+    .o_azm_om .o_azm_om_tab { transition: none; }
+}
