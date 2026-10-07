@@ -1133,7 +1133,7 @@
     // The page is four blocks — its name, the filters, the figures, the table — and
     // they sat on the default sixteen pixels, which read as one stack rather than
     // four things. Each gets room to be its own.
-    &.o_azm_om { gap: 26px; }
+    &.o_azm_om { gap: 36px; }
 
     .o_azm_unified_kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
 
