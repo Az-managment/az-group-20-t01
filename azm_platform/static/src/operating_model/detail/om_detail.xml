@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="azm_platform.OmDetail">
+        <!-- the sheet sits over the page it was opened from, not instead of it -->
+        <div class="o_azm_detail_scrim" t-on-click="() => this.props.onClose()"/>
+        <aside t-attf-class="o_azm_detail o_azm_tone_{{this.state.data and this.state.data.rows.length ? this.state.data.rows[0].tone : 'blue'}}"
+               role="dialog" aria-modal="false">
+
+            <header class="o_azm_detail_head">
+                <span class="o_azm_detail_titles">
+                    <strong t-out="this.title"/>
+                    <small t-if="this.state.data">
+                        <t t-out="this.rows.length"/>
+                        <t t-if="this.state.query"> of <t t-out="this.state.data.rows.length"/></t>
+                        shown
+                    </small>
+                </span>
+                <button type="button" class="o_azm_detail_close" title="Close"
+                        t-on-click="() => this.props.onClose()">
+                    <i class="oi" data-icon="close" title="Close"/>
+                </button>
+            </header>
+
+            <div t-if="this.state.data and this.state.data.rows.length" class="o_azm_detail_search">
+                <i class="oi" data-icon="search" title="Search"/>
+                <input type="text" class="form-control" placeholder="Filter by code, name or entity"
+                       t-att-value="this.state.query"
+                       t-on-input="(ev) => this.state.query = ev.target.value"/>
+            </div>
+
+            <div class="o_azm_detail_body">
+                <div t-if="this.state.loading" class="o_azm_detail_loading">
+                    <i class="oi oi-spin" data-icon="progress_activity" title="Loading"/>
+                </div>
+
+                <div t-elif="this.state.error" class="o_azm_detail_note o_azm_detail_note_bad">
+                    <i class="oi me-1" data-icon="error" title="Error"/>
+                    <span t-out="this.state.error"/>
+                </div>
+
+                <div t-elif="!this.rows.length" class="o_azm_detail_empty">
+                    <i class="oi" data-icon="inbox" title="Nothing"/>
+                    <strong t-if="this.state.query">Nothing matches that filter</strong>
+                    <strong t-else="">Nothing here yet</strong>
+                </div>
+
+                <t t-else="">
+                    <article t-foreach="this.rows" t-as="row" t-key="row.id"
+                             t-attf-class="o_azm_detail_row o_azm_tone_{{row.tone}} {{row.detail ? 'o_azm_detail_row_more' : ''}} {{this.isOpen(row) ? 'o_azm_detail_row_on' : ''}}"
+                             t-on-click="() => this.toggle(row)">
+                        <span class="o_azm_detail_row_top">
+                            <span class="o_azm_detail_code" t-out="row.code"/>
+                            <span class="o_azm_detail_title" t-out="row.title"/>
+                            <b t-if="row.score" class="o_azm_detail_score"
+                               t-attf-title="Score {{row.score}}" t-out="row.score"/>
+                            <i t-if="row.detail" class="oi o_azm_detail_caret"
+                               data-icon="expand_more" title="More"/>
+                        </span>
+                        <span t-if="row.meta.length" class="o_azm_detail_meta">
+                            <em t-foreach="row.meta" t-as="bit" t-key="bit_index" t-out="bit"/>
+                        </span>
+                        <p t-if="this.isOpen(row)" class="o_azm_detail_more" t-out="row.detail"/>
+                    </article>
+
+                    <!-- said outright rather than left to be inferred from a list
+                         that simply stops -->
+                    <div t-if="this.state.data.limited" class="o_azm_detail_note">
+                        Showing the first <t t-out="this.state.data.limit"/> — narrow the
+                        filter to see the rest.
+                    </div>
+                </t>
+            </div>
+        </aside>
+    </t>
+
+</templates>

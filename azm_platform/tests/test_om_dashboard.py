@@ -1,3 +1,4 @@
+from odoo.exceptions import UserError
 from odoo.tests import HttpCase, TransactionCase, new_test_user, tagged
 
 
@@ -338,3 +339,42 @@ class TestAzmGroupComposition(TransactionCase):
                          "a cockpit user is not automatically an assessment preparer")
         self.assertNotIn(platform, model.implied_ids,
                          "and working on assessments does not hand out the cockpit")
+
+
+@tagged('post_install', '-at_install')
+class TestOmDetail(TransactionCase):
+    """The operating model pages show what is behind a figure in place, so the rows
+    they used to reach through a backend list view come from one method instead."""
+
+    def test_each_kind_comes_back_with_rows_it_can_show(self):
+        D = self.env['azm.dashboard']
+        procs = self.env['azm.assessment'].search([]).ids
+        fins = self.env['azm.fin.assessment'].search([]).ids
+        for kind, scope in (('questions', {}),
+                            ('findings', {'assessment_ids': procs}),
+                            ('requirements', {}),
+                            ('gaps', {'assessment_ids': fins})):
+            out = D.om_detail(kind, **scope)
+            self.assertEqual(out['kind'], kind)
+            self.assertIn('rows', out)
+            for row in out['rows'][:5]:
+                # the panel draws exactly these, so a missing one is a blank row
+                self.assertEqual(
+                    sorted(set(('code', 'title', 'meta', 'detail', 'tone')) - set(row)), [],
+                    f'{kind} row is missing what the panel draws')
+
+    def test_a_scope_narrows_what_comes_back(self):
+        D = self.env['azm.dashboard']
+        stage = self.env['azm.stage'].search([], limit=1)
+        if not stage:
+            self.skipTest('no stages in this database')
+        every = D.om_detail('questions')
+        scoped = D.om_detail('questions', stage_id=stage.id)
+        self.assertTrue(scoped['rows'], 'the stage has questions')
+        self.assertLess(len(scoped['rows']), len(every['rows']),
+                        'a stage is narrower than the catalogue')
+
+    def test_an_unknown_kind_is_refused(self):
+        """The kind arrives from a browser; without this it names any model at all."""
+        with self.assertRaises(UserError):
+            self.env['azm.dashboard'].om_detail('res.users')

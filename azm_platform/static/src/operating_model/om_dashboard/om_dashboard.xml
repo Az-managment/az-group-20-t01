@@ -418,7 +418,15 @@
                     </div>
                 </section>
             </t>
-        </div>
+        
+            <!-- what is behind a figure, keyed so asking for something else reloads it -->
+            <AzmOmDetail t-if="this.state.detail"
+                         t-key="this.state.detail.kind + '-' + this.state.detail.heading"
+                         kind="this.state.detail.kind"
+                         scope="this.state.detail.scope"
+                         heading="this.state.detail.heading"
+                         onClose="() => this.closeDetail()"/>
+</div>
     </t>
 
 </templates>

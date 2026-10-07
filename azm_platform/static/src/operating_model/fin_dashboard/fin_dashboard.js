@@ -8,6 +8,7 @@ import { AzmDonutChart } from "@azm_platform/components/donut_chart";
 import { entityImageUrl } from "@azm_platform/components/utils";
 import { bar, pct } from "../om_utils";
 import { FIN_ASSESSMENT_ACTION, FIN_STATE_COLORS, finStateLabel, openFinWorkspace } from "../fin_utils";
+import { AzmOmDetail } from "../detail/om_detail";
 
 /**
  * AZM Platform · Unified Financial Model page (النموذج المالي الموحد).
@@ -16,7 +17,7 @@ import { FIN_ASSESSMENT_ACTION, FIN_STATE_COLORS, finStateLabel, openFinWorkspac
  */
 export class AzmFinDashboard extends Component {
     static template = "azm_platform.FinDashboard";
-    static components = { AzmDonutChart };
+    static components = { AzmDonutChart, AzmOmDetail };
     props = useProps(standardActionServiceProps);
 
     setup() {
@@ -34,6 +35,8 @@ export class AzmFinDashboard extends Component {
             assessmentId: false,
             companyId: ctx.azm_om_company_id || false,
             search: "",
+            // what is behind a figure, shown beside the page
+            detail: null,
         });
         this.pct = pct;
         this.bar = bar;
@@ -234,40 +237,28 @@ export class AzmFinDashboard extends Component {
             this.openRequirements(module);
         }
     }
+    // ------------------------------------------------- what is behind a figure
+    /** Show rows beside the page rather than swapping the page for a list view. */
+    showDetail(kind, scope, heading) {
+        this.state.detail = { kind, scope, heading };
+    }
+
+    closeDetail() {
+        this.state.detail = null;
+    }
+
     openRequirements(module) {
-        const domain = [];
-        if (module) {
-            domain.push(["module_id.code", "=", module.code]);
-        }
-        if (this.state.source) {
-            domain.push(["source", "=", this.state.source]);
-        }
-        if (this.state.profile) {
-            domain.push(["profile", "=", this.state.profile]);
-        }
-        this.action.doAction({
-            type: "ir.actions.act_window",
-            name: module ? `${_t("Requirements")} · ${module.name}` : _t("Financial requirements"),
-            res_model: "azm.fin.requirement",
-            views: [[false, "list"], [false, "form"]],
-            domain,
-            context: module ? {} : { search_default_by_module: 1 },
-        });
+        this.showDetail("requirements", {
+            module_code: module ? module.code : false,
+            source: this.state.source || false,
+            profile: this.state.profile || false,
+        }, module ? `${_t("Requirements")} · ${module.name}` : _t("Financial requirements"));
     }
     openGaps(module) {
-        const domain = [["assessment_id", "in", this.scopeAssessmentIds], ["applicable", "=", true],
-            ["state", "in", ["partial", "unavailable"]]];
-        if (module) {
-            domain.push(["module_id.code", "=", module.code]);
-        }
-        this.action.doAction({
-            type: "ir.actions.act_window",
-            name: module ? `${_t("Gaps")} · ${module.name}` : _t("Financial gaps"),
-            res_model: "azm.fin.answer",
-            views: [[false, "list"], [false, "form"]],
-            domain,
-            context: { create: false, search_default_by_module: module ? 0 : 1 },
-        });
+        this.showDetail("gaps", {
+            assessment_ids: this.scopeAssessmentIds,
+            module_code: module ? module.code : false,
+        }, module ? `${_t("Gaps")} · ${module.name}` : _t("Financial gaps"));
     }
     openGap(gap) {
         openFinWorkspace(this.action, gap.assessment_id, gap.module_code, gap.entity, gap.code);
