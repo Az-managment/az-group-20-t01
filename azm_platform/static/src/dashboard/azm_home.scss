@@ -1,0 +1,262 @@
+// AZM home — the look of the landing page.
+//
+// Styling only: the page keeps the structure it has (title, hero, journey, figures,
+// entities, side column). What changes is how much room each part gets and how it is
+// drawn, so the page reads as part of the same product as التقدّم, مساحتي and the
+// operating model pages.
+//
+// Every selector here is one of the five classes only this page uses — o_azm_page_title,
+// o_azm_hero, o_azm_journey, o_azm_phase, o_azm_dash_grid — or is nested inside one of
+// them, so no other AZM screen and no Odoo screen is touched.
+.o_azm_dashboard {
+    // the palette, as tokens
+    --home-ink: #142b3d;
+    --home-primary: #245fdb;
+    --home-accent: #087e79;
+    --home-line: #{rgba(#142b3d, .09)};
+    --home-muted: #{rgba(#142b3d, .58)};
+    // one spacing scale, in eights
+    --home-3: 12px;
+    --home-4: 16px;
+    --home-5: 24px;
+    --home-6: 32px;
+    --home-radius: 16px;
+
+    // ------------------------------------------------------------- the title
+    // a page title rather than a line of text above a banner: the same hand the
+    // other working pages are titled in
+    .o_azm_page_title {
+        position: relative;
+        margin-bottom: var(--home-5);
+        padding-bottom: var(--home-4);
+        border-bottom: 1px solid var(--home-line);
+
+        h1 {
+            font-size: 27px;
+            font-weight: 800;
+            letter-spacing: -.6px;
+            line-height: 1.15;
+            background: linear-gradient(100deg, var(--home-ink) 8%, var(--home-primary) 55%, var(--home-accent) 95%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        p {
+            margin: var(--home-3) 0 0;
+            max-width: 72ch;
+            color: var(--home-muted);
+            font-size: 13px;
+            line-height: 1.65;
+        }
+    }
+
+    // ------------------------------------------------------------- the layout
+    .o_azm_dash_grid {
+        grid-template-columns: minmax(0, 1fr) 320px;
+        gap: var(--home-5);
+    }
+    .o_azm_dash_main { gap: var(--home-5); }
+    .o_azm_dash_side { gap: var(--home-4); }
+
+    // -------------------------------------------------------------- the banner
+    .o_azm_hero {
+        min-height: 0;
+        padding: var(--home-6) 36px;
+        border-radius: 20px;
+        // deeper and quieter: one light from the top corner rather than three
+        // competing washes
+        background:
+            radial-gradient(70% 130% at 88% 0%, rgba(36, 95, 219, .55), transparent 62%),
+            radial-gradient(50% 100% at 4% 100%, rgba(8, 126, 121, .34), transparent 70%),
+            linear-gradient(125deg, #0b1f45 0%, #11336f 52%, #1a4a96 100%);
+        box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, .14),
+            0 18px 40px rgba(11, 31, 69, .22);
+
+        h2 {
+            font-size: 25px;
+            font-weight: 800;
+            letter-spacing: -.5px;
+            line-height: 1.25;
+            margin: 0 0 var(--home-3);
+        }
+        p {
+            margin: 0 0 var(--home-5);
+            max-width: 56ch;
+            color: rgba(255, 255, 255, .8);
+            font-size: 13px;
+            line-height: 1.65;
+        }
+
+        // the pillars as chips on the glass, not a run-on line of bold words
+        .o_azm_hero_pillars {
+            gap: var(--home-3);
+            li {
+                gap: 7px;
+                padding: 7px 13px;
+                border-radius: 99px;
+                font-size: 12px;
+                font-weight: 600;
+                color: #fff;
+                background: rgba(255, 255, 255, .12);
+                border: 1px solid rgba(255, 255, 255, .16);
+                backdrop-filter: blur(6px);
+                .oi { font-size: 15px; opacity: .9; }
+            }
+        }
+        .o_azm_hero_quote {
+            max-width: 280px;
+            padding-inline-start: var(--home-5);
+            border-inline-start: 1px solid rgba(255, 255, 255, .18);
+            p { font-size: 17px; font-weight: 700; line-height: 1.5; }
+            cite { display: block; margin-top: var(--home-3); font-size: 12px; color: rgba(255, 255, 255, .72); }
+        }
+    }
+
+    // -------------------------------------------------------------- the journey
+    .o_azm_journey {
+        gap: var(--home-3);
+
+        .o_azm_phase {
+            gap: 7px;
+            padding: 26px var(--home-3) var(--home-4);
+            margin-top: var(--home-4);
+            border: 1px solid var(--home-line);
+            border-radius: 14px;
+            // the step's tone as a wash from the top, not a block of colour behind it
+            background: linear-gradient(180deg,
+                color-mix(in srgb, var(--azm-tone) 9%, transparent), #fff 62%);
+            box-shadow: 0 1px 2px rgba(20, 43, 61, .04);
+            transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+
+            &:hover {
+                transform: translateY(-3px);
+                box-shadow: 0 14px 28px rgba(20, 43, 61, .1);
+                border-color: color-mix(in srgb, var(--azm-tone) 38%, transparent);
+            }
+            &:focus-visible { outline: 2px solid var(--azm-tone); outline-offset: 2px; }
+
+            .o_azm_phase_num {
+                top: -13px;
+                width: 26px;
+                height: 26px;
+                font-size: 12.5px;
+                font-weight: 800;
+                box-shadow: 0 0 0 4px #fff, 0 4px 10px color-mix(in srgb, var(--azm-tone) 40%, transparent);
+            }
+            .o_azm_phase_icon { font-size: 26px; }
+            strong { font-size: 12.5px; font-weight: 700; line-height: 1.35; color: var(--home-ink); }
+            small { font-size: 11px; line-height: 1.45; color: var(--home-muted); }
+            .o_azm_phase_value {
+                font-size: 22px;
+                letter-spacing: -.5px;
+                font-variant-numeric: tabular-nums;
+            }
+        }
+        .o_azm_phase_arrow { color: rgba(20, 43, 61, .22); }
+    }
+
+    // --------------------------------------------------- the figures and panels
+    // the same tiles the rest of the platform uses: a line of the tone along the top
+    // edge, a numeral that does not shift between tiles, and room to breathe
+    .o_azm_dash_grid .o_azm_kpi {
+        position: relative;
+        overflow: hidden;
+        padding: 18px 20px;
+        border-radius: var(--home-radius);
+        border-color: var(--home-line);
+        &::before {
+            content: "";
+            position: absolute;
+            inset-block-start: 0;
+            inset-inline: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--azm-tone, #245fdb),
+                color-mix(in srgb, var(--azm-tone, #245fdb) 25%, transparent));
+        }
+        .o_azm_kpi_text { gap: 6px; }
+        .o_azm_kpi_value {
+            font-size: 27px;
+            letter-spacing: -1px;
+            font-variant-numeric: tabular-nums;
+        }
+        .o_azm_kpi_label { font-size: 12px; }
+        .o_azm_icon_badge { width: 32px; height: 32px; border-radius: 9px; .oi { font-size: 17px; } }
+    }
+
+    .o_azm_dash_grid .o_azm_card {
+        padding: var(--home-5);
+        border-radius: var(--home-radius);
+        border-color: var(--home-line);
+    }
+    .o_azm_dash_grid .o_azm_card_header {
+        margin-bottom: var(--home-4);
+        padding-bottom: var(--home-3);
+        border-bottom: 1px solid var(--home-line);
+        h3 {
+            margin: 0;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            color: var(--home-muted);
+            small { text-transform: none; letter-spacing: 0; font-weight: 500; }
+        }
+    }
+    // a table inside a panel runs to the panel's edges rather than being inset twice
+    .o_azm_dash_grid .o_azm_card > .table-responsive,
+    .o_azm_dash_grid .o_azm_card > .o_azm_table {
+        margin: 0 calc(var(--home-5) * -1) calc(var(--home-5) * -1);
+    }
+    .o_azm_dash_grid .o_azm_table {
+        th {
+            padding: 11px var(--home-5);
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            background: rgba(20, 43, 61, .025);
+            border-bottom: 1px solid var(--home-line);
+        }
+        td {
+            padding: 15px var(--home-5);
+            border-bottom: 1px solid rgba(20, 43, 61, .05);
+            font-variant-numeric: tabular-nums;
+        }
+        tbody tr:last-child td { border-bottom: 0; }
+        tbody tr { transition: background .12s ease; &:hover { background: rgba(36, 95, 219, .035); } }
+    }
+
+    // the lists in the side column
+    .o_azm_dash_side .o_azm_list li,
+    .o_azm_dash_main .o_azm_list li {
+        padding: 11px 0;
+        + li { border-top: 1px solid rgba(20, 43, 61, .05); }
+    }
+
+    // --------------------------------------------------------------- narrow views
+    @media (max-width: 1200px) {
+        .o_azm_dash_grid { grid-template-columns: minmax(0, 1fr); }
+    }
+    @media (max-width: 768px) {
+        --home-5: 18px;
+        --home-6: 22px;
+        .o_azm_page_title h1 { font-size: 22px; }
+        .o_azm_hero {
+            flex-wrap: wrap;
+            padding: var(--home-5);
+            h2 { font-size: 20px; }
+        }
+        .o_azm_hero .o_azm_hero_quote {
+            max-width: none;
+            padding-inline-start: 0;
+            border-inline-start: 0;
+            text-align: start;
+        }
+        .o_azm_journey .o_azm_phase { padding: 24px 10px var(--home-3); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .o_azm_journey .o_azm_phase { transition: none; }
+    }
+}
