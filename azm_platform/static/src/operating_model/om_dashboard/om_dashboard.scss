@@ -1130,14 +1130,51 @@
 
 // ---------------------------------------------------------------- unified Assessments / Risk Register
 .o_azm_unified {
-    .o_azm_unified_kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-    .o_azm_om_selects .form-control { max-width: 240px; border-radius: 10px; }
+    // The page is four blocks — its name, the filters, the figures, the table — and
+    // they sat on the default sixteen pixels, which read as one stack rather than
+    // four things. Each gets room to be its own.
+    &.o_azm_om { gap: 26px; }
+
+    .o_azm_unified_kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+
+    // the filters belong to the list below them, so they sit nearer it than the
+    // heading above
+    .o_azm_om_toolbar { gap: 14px; }
+    .o_azm_om_selects .form-control {
+        max-width: 240px;
+        border-radius: 11px;
+        border-color: rgba(15, 35, 71, .1);
+        background-color: rgba(255, 255, 255, .78);
+        font-size: 12.5px;
+        &:focus { border-color: rgba($azm-blue, .5); box-shadow: 0 0 0 3px rgba($azm-blue, .12); }
+    }
+
+    // the table is the page: it runs to the edges of the card that holds it, and its
+    // rows are tall enough to carry two lines of Arabic without crowding
+    .o_azm_om_table td { padding-block: 18px; }
+    .o_azm_om_table td:first-child { font-weight: 600; }
     .o_azm_unified_model {
-        font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 99px; white-space: nowrap;
+        display: inline-block;
+        font-size: 10.5px; font-weight: 700; padding: 3px 10px; border-radius: 99px; white-space: nowrap;
         &.o_procurement { color: #1d4ed8; background: #dbeafe; }
         &.o_financial { color: #15803d; background: #dcfce7; }
     }
-    .o_azm_unified_title { max-width: 420px; strong, small { display: block; } small { color: $azm-muted; } }
+    // a row's subject: its name, and under it where it came from — two lines with
+    // room between them, not one wrapped one
+    .o_azm_unified_title {
+        max-width: 460px;
+        strong, small { display: block; }
+        strong { font-size: 12.5px; line-height: 1.45; }
+        small { margin-top: 3px; font-size: 10.5px; line-height: 1.5; color: $azm-muted; }
+    }
+    // a state is read down its column, so every badge is the same size whatever it says
+    .o_azm_om_state {
+        display: inline-block;
+        min-width: 86px;
+        text-align: center;
+        font-size: 10.5px;
+        padding: 4px 10px;
+    }
     .o_azm_om_state {
         &.o_azm_unified_state_candidate { color: #b45309; background: #fef3c7; }
         &.o_azm_unified_state_confirmed { color: #b91c1c; background: #fee2e2; }
