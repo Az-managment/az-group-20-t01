@@ -5,6 +5,36 @@
 .o_azm_mywork {
     @include azm-lit-field(rgba(22, 163, 74, .14), rgba(47, 123, 245, .13));
 
+    // one scale, so every gap on the page is a multiple of something
+    --mw-gap: 14px;
+    --mw-pad: 22px;
+    --mw-section: 34px;
+    --mw-row: 16px;
+    --mw-radius: 18px;
+
+    // This page is not a dashboard: it keeps its own spacing, and its card headings
+    // name a list rather than labelling a panel of figures.
+    //
+    // Said against both of its own classes, because the dashboards' rules carry the
+    // same weight and are loaded after these: at equal specificity the later file
+    // wins, and this one is not it.
+    &.o_azm_om {
+        --om-section: var(--mw-section);
+        --om-pad: var(--mw-pad);
+    }
+    &.o_azm_om .o_azm_card_header {
+        margin-bottom: 14px;
+        padding-bottom: 12px;
+        h3 {
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: -.2px;
+            text-transform: none;
+            color: $azm-ink;
+            small { font-size: 11px; font-weight: 500; color: $azm-muted; }
+        }
+    }
+
     // ---------------------------------------------------------------- the hero
     .o_azm_mywork_hero {
         @include azm-glass(22px);
@@ -43,9 +73,9 @@
     .o_azm_returned_row {
         display: flex;
         align-items: flex-start;
-        gap: 12px;
-        padding: 14px 16px;
-        + .o_azm_returned_row { border-top: 1px solid $azm-border; }
+        gap: var(--mw-gap);
+        padding: var(--mw-row) var(--mw-pad);
+        + .o_azm_returned_row { border-top: 1px solid rgba(15, 35, 71, .06); }
         /*rtl:ignore*/
         box-shadow: inset 3px 0 0 rgba(249, 115, 22, .55);
     }
@@ -77,17 +107,56 @@
     }
 
     // the same glass and the same meter as the pages either side of it
-    .o_azm_card { @include azm-glass; }
-    .o_azm_kpi { @include azm-glass(16px); }
+    .o_azm_card { @include azm-glass(var(--mw-radius)); padding: var(--mw-pad); }
+    .o_azm_kpi {
+        @include azm-glass(16px);
+        position: relative;
+        overflow: hidden;
+        padding: 18px 20px;
+        // a line of the tone along the top edge, as on every other page
+        &::before {
+            content: "";
+            position: absolute;
+            inset-block-start: 0;
+            inset-inline: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--azm-tone, #{$azm-blue}),
+                color-mix(in srgb, var(--azm-tone, #{$azm-blue}) 25%, transparent));
+        }
+        .o_azm_kpi_text { gap: 7px; }
+        .o_azm_kpi_value { font-size: 27px; letter-spacing: -1px; font-variant-numeric: tabular-nums; }
+        .o_azm_kpi_label { font-size: 12px; }
+        .o_azm_icon_badge { width: 32px; height: 32px; border-radius: 9px; .oi { font-size: 17px; } }
+    }
+    .o_azm_kpis { gap: var(--mw-gap); }
     .o_azm_om_meter, .o_azm_progress { @include azm-meter; }
 
-
+    // the page is a stack of unlike lists — what came back, what you prepare, what you
+    // review, who is beside you. Each is announced over a rule, so one ends plainly
+    // where the next begins.
     .o_azm_section_title {
-        margin: 22px 0 10px;
-        font-size: 13px;
+        display: flex;
+        align-items: baseline;
+        gap: 9px;
+        margin: var(--mw-section) 0 12px;
+        padding-top: 8px;
+        border-top: 1px solid rgba(15, 35, 71, .09);
+        font-size: 12px;
         font-weight: 700;
+        letter-spacing: .04em;
+        text-transform: uppercase;
         color: $azm-ink;
-        em { font-style: normal; font-size: 10.5px; color: $azm-muted; margin-inline-start: 7px; }
+        em {
+            font-style: normal;
+            font-size: 11px;
+            font-weight: 400;
+            letter-spacing: 0;
+            text-transform: none;
+            color: $azm-muted;
+            margin-inline-start: 0;
+        }
+        // the first one follows the figures, which are a part of their own already
+        &:first-of-type { margin-top: calc(var(--mw-section) - 6px); }
     }
 
     // ---------------------------------------------------------------- what just happened
@@ -107,24 +176,32 @@
     }
 
     // ---------------------------------------------------------------- an entity's models
-    .o_azm_entity_block { padding: 0; }
+    .o_azm_entity_block { padding: 0; overflow: hidden; }
+    // a block that holds rows lets them run to its edges; an empty state is a message
+    // and keeps the padding that makes it one
+    .o_azm_mywork_returned > .o_azm_card:not(.o_azm_empty),
+    .o_azm_mywork_models > .o_azm_card:not(.o_azm_empty),
+    .o_azm_mywork_reviews > .o_azm_card:not(.o_azm_empty) { padding: 0; overflow: hidden; }
     .o_azm_entity_head {
         display: flex;
         align-items: center;
-        gap: 10px;
-        padding: 12px 16px;
-        border-bottom: 1px solid $azm-border;
-        h3 { margin: 0; font-size: 13px; font-weight: 700; }
-        small { font-size: 10.5px; }
+        gap: 12px;
+        padding: 14px var(--mw-pad);
+        border-bottom: 1px solid rgba(15, 35, 71, .07);
+        background: linear-gradient(180deg, rgba(15, 35, 71, .025), transparent);
+        h3 { margin: 0; font-size: 13px; font-weight: 700; letter-spacing: -.2px; }
+        small { font-size: 10.5px; color: $azm-muted; }
     }
     .o_azm_model_row,
     .o_azm_review_row {
         display: flex;
         align-items: center;
-        gap: 12px;
-        padding: 12px 16px;
+        gap: var(--mw-gap);
+        padding: var(--mw-row) var(--mw-pad);
+        transition: background .14s ease;
         + .o_azm_model_row,
-        + .o_azm_review_row { border-top: 1px solid $azm-border; }
+        + .o_azm_review_row { border-top: 1px solid rgba(15, 35, 71, .06); }
+        &:hover { background: rgba($azm-blue, .03); }
     }
     // a review and the picker under it are one block now, so the line between reviews
     // belongs to the block rather than to the row inside it
@@ -259,14 +336,14 @@
     .o_azm_line {
         display: flex;
         align-items: center;
-        gap: 9px;
+        gap: 10px;
         width: 100%;
-        padding: 9px 14px;
+        padding: 13px var(--mw-pad);
         text-align: start;
         border: 0;
         background: transparent;
-        + .o_azm_line { border-top: 1px solid $azm-border; }
-        &:not(.o_azm_line_flat):hover { background: rgba($azm-blue, .05); }
+        + .o_azm_line { border-top: 1px solid rgba(15, 35, 71, .06); }
+        &:not(.o_azm_line_flat):hover { background: rgba($azm-blue, .04); }
         small { font-size: 10.5px; color: $azm-muted; white-space: nowrap; }
     }
     .o_azm_line_main {
