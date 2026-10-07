@@ -20,8 +20,10 @@
 
     .o_azm_tree_split {
         display: grid;
-        grid-template-columns: minmax(280px, 380px) 1fr;
-        gap: 16px;
+        // the tree is the instrument of this page, so it is given a column it can
+        // hold three levels of names in without clipping every one of them
+        grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+        gap: 18px;
         align-items: start;
         // same rule one level up: a grid item that may not shrink makes its track wider
         // than the template asks for, and both columns move
@@ -33,6 +35,11 @@
         position: sticky;
         top: 12px;
         padding-bottom: 8px;
+        max-height: calc(100vh - 32px);
+        display: flex;
+        flex-direction: column;
+        // a tree is read by scrolling it, not the page around it
+        overflow: hidden;
     }
     .o_azm_tree_tools {
         display: flex;
@@ -41,7 +48,13 @@
     }
     .o_azm_tree_search {
         position: relative;
-        padding: 8px 12px 10px;
+        padding: 10px 14px 12px;
+        .form-control {
+            border-radius: 10px;
+            border-color: rgba(15, 35, 71, .12);
+            font-size: 12.5px;
+            &:focus { border-color: rgba($azm-blue, .5); box-shadow: 0 0 0 3px rgba($azm-blue, .12); }
+        }
         .oi {
             position: absolute;
             inset-inline-start: 22px;
@@ -53,31 +66,57 @@
         .form-control { padding-inline-start: 30px; }
     }
     .o_azm_tree_scroll {
-        max-height: 62vh;
+        // the panel is sticky and already sized to the viewport; this fills it rather
+        // than stopping at a second, shorter fraction of the same screen
+        flex: 1 1 auto;
+        min-height: 0;
         overflow-y: auto;
-        padding: 0 6px 6px;
+        padding: 0 8px 8px;
     }
     .o_azm_tree_module + .o_azm_tree_module { border-top: 1px solid $azm-border; }
 
     .o_azm_tree_row {
+        position: relative;
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 7px;
         width: 100%;
         border: 0;
         background: transparent;
         text-align: start;
-        padding: 6px 8px;
-        border-radius: 6px;
-        font-size: 13px;
-        line-height: 1.35;
+        padding: 8px 10px;
+        border-radius: 9px;
+        font-size: 12.5px;
+        line-height: 1.4;
+        transition: background .12s ease, color .12s ease;
         &:hover { background: rgba($azm-blue, .07); }
     }
-    .o_azm_tree_l1 { font-weight: 600; }
-    .o_azm_tree_l2 { padding-inline-start: 22px; color: $azm-ink; }
-    .o_azm_tree_l3 { padding-inline-start: 42px; }
+    .o_azm_tree_l1 { font-weight: 650; font-size: 13px; }
+    .o_azm_tree_l2 { padding-inline-start: 24px; color: $azm-ink; }
+    .o_azm_tree_l3 { padding-inline-start: 46px; font-size: 12px; }
+    // a rail down the indent, so a leaf three levels deep is plainly under its branch
+    // rather than merely further from the edge
+    .o_azm_tree_l2::before,
+    .o_azm_tree_l3::before {
+        content: "";
+        position: absolute;
+        inset-block: 0;
+        inset-inline-start: 14px;
+        width: 1px;
+        background: rgba(15, 35, 71, .09);
+    }
+    .o_azm_tree_l3::after {
+        content: "";
+        position: absolute;
+        inset-block: 0;
+        inset-inline-start: 34px;
+        width: 1px;
+        background: rgba(15, 35, 71, .07);
+    }
     .o_azm_tree_l3.o_azm_selected {
-        background: rgba($azm-blue, .13);
+        background: linear-gradient(90deg, rgba($azm-blue, .16), rgba($azm-blue, .06));
+        font-weight: 600;
+        /*rtl:ignore*/
         box-shadow: inset 2px 0 0 $azm-blue;
     }
     .o_azm_tree_caret {
@@ -102,9 +141,11 @@
     .o_azm_tree_meta {
         flex: 0 0 auto;
         display: flex;
-        gap: 4px;
-        font-size: 11px;
+        align-items: center;
+        gap: 5px;
+        font-size: 10.5px;
         color: $azm-muted;
+        font-variant-numeric: tabular-nums;
     }
     .o_azm_tree_gap {
         background: rgba(#f59e0b, .16);
@@ -125,14 +166,25 @@
     .o_azm_output_tile {
         display: inline-flex;
         align-items: center;
-        gap: 8px;
-        padding: 7px 12px;
-        border: 1px solid $azm-border;
-        border-radius: 10px;
-        background: $azm-card;
+        gap: 10px;
+        padding: 10px 14px;
+        border: 1px solid rgba(15, 35, 71, .09);
+        border-radius: 12px;
+        background: rgba(255, 255, 255, .74);
+        backdrop-filter: blur(8px);
         text-align: start;
-        transition: border-color .15s ease, background .15s ease;
-        b { font-size: 17px; font-weight: 800; line-height: 1; color: $azm-ink; }
+        transition: border-color .15s ease, background .15s ease, transform .15s ease,
+                    box-shadow .15s ease;
+        &:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 18px rgba(15, 35, 71, .08); }
+        &:disabled { opacity: .5; }
+        b {
+            font-size: 18px;
+            font-weight: 800;
+            line-height: 1;
+            letter-spacing: -.5px;
+            color: $azm-ink;
+            font-variant-numeric: tabular-nums;
+        }
         span { display: flex; flex-direction: column; font-size: 11px; color: $azm-muted; }
         .o_azm_en { font-size: 9.5px; }
         &:hover:not(:disabled) { border-color: $azm-blue; background: rgba($azm-blue, .05); }
@@ -419,4 +471,53 @@
     font-size: .85em;
     opacity: .75;
     unicode-bidi: isolate;
+}
+
+
+// ---------------------------------------------------------------------------------
+// What the model pages' design must not do to a tree page.
+//
+// Both carry .o_azm_om, so the dashboards' rules reach here too. Most of them should:
+// the header, the figures and the cards are meant to look like one product. These few
+// cannot, because a tree page uses the same classes for different things — its card
+// header holds the title of the question being read, not the label of a panel.
+.o_azm_tree_page {
+    // a tree page is a workspace, not a report: its parts sit closer together
+    --om-section: 20px;
+    --om-pad: 18px;
+
+    // five figures, not four: the dashboards fix their row at four columns because
+    // they have exactly four to show
+    .o_azm_om_kpis { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+
+    // the question's own title, which the dashboards' panel-label treatment would
+    // set as 11px uppercase muted — the smallest text on a page written about it
+    .o_azm_tree_detail_head {
+        margin-bottom: 14px;
+        padding-bottom: 12px;
+        h3 {
+            margin: 4px 0 0;
+            font-size: 17px;
+            font-weight: 700;
+            line-height: 1.4;
+            letter-spacing: -.2px;
+            text-transform: none;
+            color: $azm-ink;
+        }
+    }
+
+    // the panel's heading is a label, but it still names the tree being read
+    .o_azm_tree_panel > .o_azm_card_header h3 {
+        font-size: 12.5px;
+        letter-spacing: 0;
+        text-transform: none;
+        color: $azm-ink;
+    }
+
+    // the panel and the detail hold a list and a document; they manage their own
+    // insides and do not want the dashboards' card padding around them
+    .o_azm_tree_panel,
+    .o_azm_tree_detail { padding: 0; }
+    .o_azm_tree_panel > .o_azm_card_header,
+    .o_azm_tree_detail > .o_azm_card_header { margin: 0; padding: 14px 16px; }
 }

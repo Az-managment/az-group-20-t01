@@ -9,6 +9,9 @@
 
 <t t-name="azm_platform.TreeHead">
     <div class="o_azm_om_title o_azm_tree_title">
+        <!-- the same wrapper the model pages use: o_azm_om_title is a column of rows
+             now, and its top row is what lays a title out beside its controls -->
+        <div class="o_azm_om_title_top">
         <div class="o_azm_tree_title_group">
             <span class="o_azm_tree_title_mark"><t t-call="azm_platform.TreeMark"/></span>
             <div>
@@ -44,6 +47,7 @@
                         t-att-value="opt.id" t-att-selected="opt.id === sel.value"
                         t-out="opt.name"/>
             </select>
+        </div>
         </div>
     </div>
 </t>
