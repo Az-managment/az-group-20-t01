@@ -342,60 +342,7 @@
     &.o_azm_fin_hs_not_applicable { opacity: .55; }
 }
 
-// ---------------------------------------------------------------- Operating models hub (files)
-.o_azm_hub {
-    .o_azm_hub_kpis { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-    .o_azm_hub_files { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 22px; padding-top: 14px; }
-    .o_azm_hub_file {
-        position: relative; display: flex; flex-direction: column; gap: 14px; text-align: start; color: $azm-ink;
-        background: #fff; border: 1px solid $azm-border; border-top: 4px solid var(--azm-tone);
-        border-radius: 4px $azm-radius $azm-radius $azm-radius; padding: 18px 20px 0; box-shadow: $azm-shadow;
-        transition: transform .15s ease, box-shadow .15s ease;
-        &:hover { transform: translateY(-3px); box-shadow: 0 14px 30px rgba(15, 35, 71, .12); }
-        header { display: flex; gap: 14px; align-items: flex-start; }
-        footer { display: flex; justify-content: space-between; align-items: center; margin: 0 -20px; padding: 10px 20px;
-            border-top: 1px solid $azm-border; color: var(--azm-tone); font-weight: 700; background: var(--azm-tone-bg);
-            border-radius: 0 0 $azm-radius $azm-radius; }
-    }
-    .o_azm_hub_tab {
-        position: absolute; top: -30px; inset-inline-start: -1px; display: inline-flex; align-items: center; gap: 6px;
-        padding: 4px 14px; font-size: 12px; font-weight: 700; color: #fff; background: var(--azm-tone);
-        border-radius: 10px 10px 0 0;
-    }
-    .o_azm_hub_names {
-        display: flex; flex-direction: column; min-width: 0;
-        strong { font-size: 19px; }
-        .o_azm_hub_ar { font-size: 15px; color: $azm-muted; font-weight: 600; }
-        small { color: $azm-muted; margin-top: 2px; }
-    }
-    .o_azm_hub_kpis_grid {
-        display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin: 0;
-        > div { background: $azm-bg; border-radius: 10px; padding: 8px 10px; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-        dt { font-size: 11px; color: $azm-muted; font-weight: 600; }
-        dd { margin: 0; font-size: 20px; font-weight: 800; }
-        small { font-size: 10.5px; color: $azm-muted; }
-        .o_azm_progress { height: 5px; min-width: 0; }
-        .o_azm_hub_alert { background: #fff7ed; dd { color: #c2410c; } }
-    }
-    .o_azm_hub_file { cursor: pointer; }
-    .o_azm_hub_parts { display: flex; flex-direction: column; gap: 6px; }
-    .o_azm_hub_links { display: flex; gap: 8px; flex-wrap: wrap; padding-bottom: 6px; }
-    .o_azm_hub_link {
-        display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 10px;
-        border: 1px solid $azm-border; background: #fff; color: $azm-ink; font-weight: 600; font-size: 13px;
-        .oi { color: var(--azm-tone); font-size: 18px; }
-        b { padding: 0 7px; border-radius: 99px; background: var(--azm-tone-bg); color: var(--azm-tone); font-size: 12px; }
-        &:hover { border-color: var(--azm-tone); }
-    }
-    .o_azm_hub_table td { cursor: pointer; }
-    .o_azm_hub_cell { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; .o_azm_mini_progress { width: 160px; } }
-}
-@media (max-width: 1200px) { .o_azm_hub .o_azm_hub_kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 640px) {
-    .o_azm_hub .o_azm_hub_kpis { grid-template-columns: minmax(0, 1fr); }
-    .o_azm_hub .o_azm_hub_files { grid-template-columns: minmax(0, 1fr); }
-    .o_azm_hub .o_azm_hub_kpis_grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
+// The Operating Models hub has its own stylesheet: om_hub/om_hub.scss
 
 // ---------------------------------------------------------------- unified Assessments / Risk Register
 .o_azm_unified {

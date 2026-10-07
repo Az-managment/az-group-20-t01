@@ -1,0 +1,469 @@
+// Operating Models — the landing page for the group's models.
+//
+// It used to be drawn as paper folders: a tab sticking out above each card, a square
+// top-start corner, a shadow under it. The metaphor cost more than it paid — the tab
+// overlapped whatever sat above it, and the figures inside were squeezed into five
+// cells narrow enough to clip a four-digit number. The models are presented as cards
+// now, in the same light the rest of the platform uses, with the figures grouped by
+// what they are: the counts together, the rates together.
+.o_azm_hub {
+    @include azm-lit-field(rgba(13, 148, 136, .14), rgba(47, 123, 245, .14));
+
+    // one scale, so every gap on the page is a multiple of something
+    --hub-gap: 10px;
+    --hub-pad: 20px;
+    --hub-section: 30px;
+    --hub-radius: 18px;
+
+    // ---------------------------------------------------------------- the hero
+    .o_azm_hub_hero {
+        @include azm-glass(22px);
+        display: flex;
+        align-items: center;
+        gap: 22px;
+        padding: 24px 26px;
+        margin-bottom: 26px;
+
+        h1 {
+            margin: 2px 0 0;
+            font-weight: 800;
+            letter-spacing: -.5px;
+            background: linear-gradient(100deg, $azm-ink 10%, #0d9488 55%, $azm-blue 92%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        p { margin: 6px 0 0; max-width: 62ch; color: $azm-muted; font-size: 13px; line-height: 1.6; }
+    }
+    .o_azm_hub_hero_words { flex: 1 1 auto; min-width: 0; }
+    .o_azm_hub_eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 3px 10px;
+        border-radius: 99px;
+        font-size: 10.5px;
+        font-weight: 700;
+        letter-spacing: .03em;
+        text-transform: uppercase;
+        color: #0f766e;
+        background: rgba(13, 148, 136, .12);
+        .oi { font-size: 13px; }
+    }
+    .o_azm_hub_hero_gauge {
+        flex: 0 0 auto;
+        display: flex;
+        align-items: center;
+        gap: 13px;
+        padding-inline-start: 22px;
+        border-inline-start: 1px solid rgba(15, 35, 71, .08);
+        --azm-tone: #{map-get($azm-tones, 'teal')};
+
+        .o_azm_ring_wrap { position: relative; display: grid; place-items: center; width: 78px; height: 78px; }
+        .o_azm_ring { width: 78px; height: 78px; /*rtl:ignore*/transform: rotate(-90deg); }
+        .o_azm_ring circle { fill: none; stroke-width: 4.5; stroke-linecap: round; }
+        .o_azm_ring_track { stroke: rgba(15, 35, 71, .08); }
+        .o_azm_ring_value {
+            stroke: var(--azm-tone);
+            filter: drop-shadow(0 0 5px color-mix(in srgb, var(--azm-tone) 55%, transparent));
+            transition: stroke-dasharray .7s cubic-bezier(.2, .8, .2, 1);
+        }
+        .o_azm_ring_label {
+            position: absolute;
+            font-size: 17px;
+            font-weight: 800;
+            letter-spacing: -.5px;
+            color: $azm-ink;
+        }
+    }
+    .o_azm_hub_hero_gauge_words {
+        display: flex;
+        flex-direction: column;
+        font-size: 13px;
+        font-weight: 600;
+        em { font-style: normal; font-size: 11px; font-weight: 400; color: $azm-muted; }
+    }
+
+    // ------------------------------------------------------------- the figures
+    .o_azm_hub_kpis {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        gap: 13px;
+        margin-bottom: var(--hub-section);
+    }
+    .o_azm_hub_kpi {
+        @include azm-glass(16px);
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+        padding: 15px 16px 14px;
+        overflow: hidden;
+        // the tone reads as a line of light along the top edge rather than a block of
+        // colour, which at five tiles side by side becomes a stripe of noise
+        &::before {
+            content: "";
+            position: absolute;
+            inset-block-start: 0;
+            inset-inline: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--azm-tone, #{$azm-blue}),
+                color-mix(in srgb, var(--azm-tone, #{$azm-blue}) 25%, transparent));
+        }
+        .o_azm_progress { margin-top: 1px; }
+    }
+    .o_azm_hub_kpi_top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 8px;
+    }
+    .o_azm_hub_kpi_label { font-size: 12px; font-weight: 600; color: $azm-ink; }
+    .o_azm_hub_kpi_icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 auto;
+        width: 30px;
+        height: 30px;
+        border-radius: 9px;
+        color: var(--azm-tone, #{$azm-blue});
+        background: color-mix(in srgb, var(--azm-tone, #{$azm-blue}) 12%, transparent);
+        .oi { font-size: 16px; }
+    }
+    .o_azm_hub_kpi_value {
+        font-size: 29px;
+        font-weight: 800;
+        line-height: 1;
+        letter-spacing: -1px;
+        color: $azm-ink;
+        font-variant-numeric: tabular-nums;
+    }
+    .o_azm_hub_kpi_sub { font-size: 10.5px; color: $azm-muted; line-height: 1.45; }
+
+    // --------------------------------------------------------- one per model
+    .o_azm_hub_files {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(440px, 1fr));
+        gap: 18px;
+        margin-bottom: var(--hub-section);
+    }
+    .o_azm_hub_file {
+        @include azm-glass(var(--hub-radius));
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        padding: var(--hub-pad) var(--hub-pad) 0;
+        text-align: start;
+        color: $azm-ink;
+        cursor: pointer;
+        overflow: hidden;
+        transition: transform .16s ease, box-shadow .16s ease;
+        // the model's tone, as an edge of light rather than a folder tab
+        &::before {
+            content: "";
+            position: absolute;
+            inset-block-start: 0;
+            inset-inline: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--azm-tone),
+                color-mix(in srgb, var(--azm-tone) 30%, transparent));
+        }
+        &:hover {
+            transform: translateY(-3px);
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, .92),
+                0 18px 38px rgba(15, 35, 71, .13);
+        }
+        &:focus-visible { outline: 2px solid var(--azm-tone); outline-offset: 2px; }
+
+        header { display: flex; gap: 13px; align-items: flex-start; }
+        footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 0 calc(var(--hub-pad) * -1);
+            padding: 11px var(--hub-pad);
+            border-top: 1px solid rgba(15, 35, 71, .07);
+            color: var(--azm-tone);
+            font-weight: 700;
+            font-size: 12.5px;
+            background: color-mix(in srgb, var(--azm-tone) 7%, transparent);
+            .oi { transition: transform .16s ease; }
+        }
+        &:hover footer .oi { /*rtl:ignore*/ transform: translateX(3px); }
+    }
+    .o_azm_hub_names {
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        strong { font-size: 17px; font-weight: 750; letter-spacing: -.3px; }
+        .o_azm_hub_ar { font-size: 13.5px; color: $azm-muted; font-weight: 600; }
+        small { margin-top: 4px; font-size: 11.5px; color: $azm-muted; line-height: 1.5; }
+    }
+    // what the model is made of, beside its name rather than on a tab above the card
+    .o_azm_hub_structure {
+        flex: 0 0 auto;
+        padding: 4px 10px;
+        border-radius: 99px;
+        font-size: 10.5px;
+        font-weight: 600;
+        white-space: nowrap;
+        color: var(--azm-tone);
+        background: color-mix(in srgb, var(--azm-tone) 12%, transparent);
+    }
+
+    // the counts, together
+    .o_azm_hub_counts {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: var(--hub-gap);
+    }
+    .o_azm_hub_count {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+        padding: 10px 12px;
+        border-radius: 12px;
+        background: rgba(15, 35, 71, .035);
+        > b {
+            font-size: 22px;
+            font-weight: 800;
+            line-height: 1.1;
+            letter-spacing: -.5px;
+            font-variant-numeric: tabular-nums;
+            small { font-size: 13px; font-weight: 600; color: $azm-muted; }
+        }
+        > small { font-size: 10.5px; color: $azm-muted; font-weight: 600; }
+    }
+    .o_azm_hub_split {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+        margin-top: 3px;
+        em {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            font-style: normal;
+            font-size: 10.5px;
+            font-weight: 600;
+            color: $azm-muted;
+            font-variant-numeric: tabular-nums;
+            .oi { font-size: 12px; }
+        }
+        .o_azm_hub_split_ok { color: #15803d; }
+    }
+    // a model with something open says so; one with nothing does not shout
+    .o_azm_hub_issues_on {
+        background: rgba(249, 115, 22, .1);
+        > b { color: #c2410c; }
+        .o_azm_hub_split em { color: #c2410c; }
+    }
+
+    // the rates, together
+    .o_azm_hub_rates {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: var(--hub-gap);
+    }
+    .o_azm_hub_rate { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+    // quality is not completion, so it does not wear completion's colour — said as a
+    // tone of its own rather than left to the old .o_azm_om_alt rule, which the meter
+    // mixin now outranks
+    .o_azm_om_alt { --azm-tone: #{map-get($azm-tones, 'purple')}; }
+    .o_azm_hub_rate_line {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 6px;
+        font-size: 11px;
+        font-weight: 600;
+        color: $azm-muted;
+        b { font-size: 13px; font-weight: 800; color: $azm-ink; font-variant-numeric: tabular-nums; }
+    }
+
+    // what the model is divided into
+    .o_azm_hub_parts { display: flex; flex-direction: column; gap: 6px; }
+    .o_azm_hub_parts_label {
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+        color: $azm-muted;
+    }
+    .o_azm_hub_part {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 1.3fr auto;
+        align-items: center;
+        gap: 9px;
+        font-size: 11.5px;
+        b { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 38px; text-align: end; }
+    }
+    .o_azm_hub_part_name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: $azm-muted; }
+    .o_azm_hub_part_bar {
+        display: block;
+        height: 6px;
+        border-radius: 99px;
+        background: rgba(15, 35, 71, .08);
+        overflow: hidden;
+        > span {
+            display: block;
+            height: 100%;
+            border-radius: inherit;
+            /*rtl:ignore*/
+            background: linear-gradient(90deg,
+                color-mix(in srgb, var(--azm-tone) 60%, white), var(--azm-tone));
+        }
+    }
+
+    .o_azm_hub_links { display: flex; gap: 8px; flex-wrap: wrap; }
+    .o_azm_hub_link {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 12px;
+        border-radius: 10px;
+        border: 1px solid rgba(15, 35, 71, .1);
+        background: rgba(255, 255, 255, .7);
+        color: $azm-ink;
+        font-weight: 600;
+        font-size: 12px;
+        transition: border-color .14s ease, background .14s ease;
+        .oi { color: var(--azm-tone); font-size: 16px; }
+        b {
+            padding: 0 7px;
+            border-radius: 99px;
+            background: color-mix(in srgb, var(--azm-tone) 14%, transparent);
+            color: var(--azm-tone);
+            font-size: 11px;
+            font-variant-numeric: tabular-nums;
+        }
+        &:hover { border-color: var(--azm-tone); background: #fff; }
+    }
+
+    // ---------------------------------------------------- entity × model
+    .o_azm_hub_title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0 0 11px;
+        font-size: 13px;
+        font-weight: 700;
+        color: $azm-ink;
+    }
+    .o_azm_hub_title_count {
+        min-width: 20px;
+        padding: 1px 7px;
+        border-radius: 99px;
+        font-size: 10.5px;
+        font-weight: 700;
+        text-align: center;
+        color: $azm-muted;
+        background: rgba(15, 35, 71, .07);
+    }
+    .o_azm_hub_matrix { margin-bottom: var(--hub-section); }
+    .o_azm_hub_matrix_panel { @include azm-glass(var(--hub-radius)); overflow: hidden; }
+    .o_azm_hub_table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 12.5px;
+
+        th {
+            padding: 10px 14px;
+            text-align: start;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            color: $azm-muted;
+            background: rgba(15, 35, 71, .025);
+            border-bottom: 1px solid rgba(15, 35, 71, .07);
+            white-space: nowrap;
+        }
+        td {
+            padding: 11px 14px;
+            vertical-align: middle;
+            border-bottom: 1px solid rgba(15, 35, 71, .05);
+        }
+        tbody tr:last-child td { border-bottom: 0; }
+        tbody tr:hover td { background: rgba($azm-blue, .03); }
+    }
+    // only the model cells open a model; the entity column is not a link
+    .o_azm_hub_td_cell {
+        cursor: pointer;
+        &:hover { background: rgba($azm-blue, .06) !important; }
+    }
+    .o_azm_hub_th_entity, .o_azm_hub_td_entity { min-width: 220px; }
+    .o_azm_entity_cell {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        img, .o_azm_code_avatar {
+            flex: 0 0 auto;
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            object-fit: contain;
+            background: #fff;
+            border: 1px solid rgba(15, 35, 71, .08);
+        }
+        .o_azm_code_avatar {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 800;
+            color: $azm-muted;
+        }
+    }
+    .o_azm_entity_words {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        strong { font-size: 12.5px; }
+        small { font-size: 10.5px; color: $azm-muted; }
+    }
+    .o_azm_hub_cell {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        min-width: 150px;
+        .o_azm_progress { width: 100%; }
+    }
+    .o_azm_hub_cell_top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        b { font-size: 12px; font-weight: 800; font-variant-numeric: tabular-nums; }
+    }
+    .o_azm_hub_cell_issues { font-size: 10.5px; font-weight: 700; color: #c2410c; }
+    .o_azm_hub_cell_none { color: rgba(15, 35, 71, .22); font-weight: 700; }
+
+    .o_azm_om_meter { @include azm-meter; }
+    .o_azm_card { @include azm-glass(var(--hub-radius)); }
+
+    // ------------------------------------------------------------ narrow views
+    @media (max-width: 1200px) {
+        .o_azm_hub_files { grid-template-columns: minmax(0, 1fr); }
+    }
+    @media (max-width: 768px) {
+        .o_azm_hub_hero { flex-wrap: wrap; padding: 20px; gap: 16px; }
+        .o_azm_hub_hero_gauge { padding-inline-start: 0; border-inline-start: 0; }
+        .o_azm_hub_counts { grid-template-columns: minmax(0, 1fr); }
+        .o_azm_hub_rates { grid-template-columns: minmax(0, 1fr); }
+        .o_azm_hub_file header { flex-wrap: wrap; }
+        .o_azm_hub_kpi_value { font-size: 25px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .o_azm_hub_file,
+        .o_azm_hub_file footer .oi,
+        .o_azm_ring_value { transition: none; }
+    }
+}
