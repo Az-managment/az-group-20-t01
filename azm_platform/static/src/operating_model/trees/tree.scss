@@ -167,6 +167,8 @@
         justify-content: space-between;
         flex-wrap: wrap;
         gap: 12px;
+        // the whole bar sits ten pixels lower, off what is above it
+        margin-top: 10px;
         margin-bottom: 18px;
         padding: 12px 14px;
         border: 1px solid rgba(15, 35, 71, .08);
