@@ -157,43 +157,123 @@
     // ---------------------------------------------------------------- what is on file
     // How many policies, how many SOPs, how many authority maps. Each tile is also
     // the way to them: it unfolds every branch showing just that family.
+    // ---------------------------------------------------- the outputs filter bar
+    // What narrows the tree sits in a bar of its own, as chips that read as pressed
+    // or not. What cannot be narrowed by is a count, and what is a document opens
+    // one — neither is drawn as a filter any more.
     .o_azm_tree_outputs {
         display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
         flex-wrap: wrap;
-        gap: 8px;
-        margin-bottom: 16px;
+        gap: 12px;
+        margin-bottom: 18px;
+        padding: 12px 14px;
+        border: 1px solid rgba(15, 35, 71, .08);
+        border-radius: 14px;
+        background: rgba(255, 255, 255, .72);
+        backdrop-filter: blur(8px);
     }
-    .o_azm_output_tile {
+    .o_azm_outputs_filters {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 7px;
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+    .o_azm_outputs_label {
+        display: flex;
+        flex-direction: column;
+        margin-inline-end: 4px;
+        font-size: 11px;
+        font-weight: 700;
+        color: $azm-ink;
+        .o_azm_en { font-size: 9.5px; font-weight: 400; color: $azm-muted; }
+    }
+    .o_azm_output_chip {
         display: inline-flex;
         align-items: center;
-        gap: 10px;
-        padding: 10px 14px;
-        border: 1px solid rgba(15, 35, 71, .09);
-        border-radius: 12px;
-        background: rgba(255, 255, 255, .74);
-        backdrop-filter: blur(8px);
+        gap: 8px;
+        padding: 7px 12px;
+        border-radius: 99px;
+        border: 1px solid rgba(15, 35, 71, .1);
+        background: #fff;
+        color: $azm-ink;
         text-align: start;
-        transition: border-color .15s ease, background .15s ease, transform .15s ease,
-                    box-shadow .15s ease;
-        &:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 18px rgba(15, 35, 71, .08); }
-        &:disabled { opacity: .5; }
-        b {
-            font-size: 18px;
+        transition: border-color .14s ease, background .14s ease, color .14s ease;
+
+        > span { display: flex; flex-direction: column; line-height: 1.2; font-size: 11.5px; font-weight: 600; }
+        .o_azm_en { font-size: 9.5px; font-weight: 400; color: $azm-muted; }
+        > b {
+            flex: 0 0 auto;
+            min-width: 22px;
+            padding: 1px 7px;
+            border-radius: 99px;
+            font-size: 11px;
             font-weight: 800;
-            line-height: 1;
-            letter-spacing: -.5px;
-            color: $azm-ink;
+            text-align: center;
+            color: $azm-muted;
+            background: rgba(15, 35, 71, .06);
             font-variant-numeric: tabular-nums;
         }
-        span { display: flex; flex-direction: column; font-size: 11px; color: $azm-muted; }
-        .o_azm_en { font-size: 9.5px; }
-        &:hover:not(:disabled) { border-color: $azm-blue; background: rgba($azm-blue, .05); }
+        &:hover { border-color: rgba($azm-blue, .45); color: $azm-blue; }
+        &:focus-visible { outline: 2px solid $azm-blue; outline-offset: 2px; }
+
+        // pressed, and plainly so: the filter in force is the one thing on this bar
+        // that has to be readable at a glance
         &.o_azm_active {
-            border-color: $azm-blue;
-            background: rgba($azm-blue, .1);
-            b, span { color: $azm-blue; }
+            border-color: transparent;
+            color: #fff;
+            background: linear-gradient(135deg, $azm-blue, #1b4bb4);
+            box-shadow: 0 4px 12px rgba(29, 99, 224, .3);
+            .o_azm_en { color: rgba(255, 255, 255, .75); }
+            > b { color: #fff; background: rgba(255, 255, 255, .22); }
         }
-        &:disabled { cursor: default; opacity: .75; }
+    }
+    .o_azm_output_all.o_azm_active {
+        background: linear-gradient(135deg, #475569, #334155);
+        box-shadow: 0 4px 12px rgba(51, 65, 85, .26);
+    }
+
+    .o_azm_outputs_aside {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 7px;
+        flex: 0 0 auto;
+        padding-inline-start: 12px;
+        border-inline-start: 1px solid rgba(15, 35, 71, .09);
+    }
+    // a figure the page holds, which nothing can be filtered to
+    .o_azm_output_stat {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 6px 11px;
+        border-radius: 10px;
+        background: rgba(15, 35, 71, .045);
+        > b { font-size: 12.5px; font-weight: 800; color: $azm-ink; font-variant-numeric: tabular-nums; }
+        > span { display: flex; flex-direction: column; line-height: 1.2; font-size: 11px; color: $azm-muted; }
+        .o_azm_en { font-size: 9.5px; }
+    }
+    // and a document, which opens
+    .o_azm_output_doc {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 7px 12px;
+        border-radius: 10px;
+        border: 1px solid rgba(15, 35, 71, .1);
+        background: #fff;
+        color: $azm-ink;
+        text-align: start;
+        transition: border-color .14s ease, color .14s ease;
+        .oi { font-size: 15px; color: map-get($azm-tones, 'green'); }
+        > span { display: flex; flex-direction: column; line-height: 1.2; font-size: 11.5px; font-weight: 600; }
+        .o_azm_en { font-size: 9.5px; font-weight: 400; color: $azm-muted; }
+        &:hover { border-color: rgba(map-get($azm-tones, 'green'), .5); }
+        &:focus-visible { outline: 2px solid map-get($azm-tones, 'green'); outline-offset: 2px; }
     }
 
     // ---------------------------------------------------------------- the outputs

@@ -20,7 +20,11 @@
     // the two headings that carry no card of their own it subtracted enough to pull
     // the cards across them. Every gap here is a margin between siblings; the heading
     // simply does not get one before the thing it names.
-    gap: 0;
+    // Every page carrying this class spaces its sections with a gap, as it always
+    // did. Only the two model pages below trade that for margins, and they are the
+    // only ones that may: setting gap: 0 for everybody left the tree pages, the
+    // library and the register with no space between their sections at all.
+    gap: 16px;
     > * { flex-shrink: 0; }
 
     // Only the two model pages are laid out this way. Every other page carrying
@@ -28,6 +32,7 @@
     // children, and adding this on top of theirs gave the trees hub 62px between its
     // header and the rest: its own 26 and this 36.
     &.o_azm_om_page {
+        gap: 0;
         > * + * { margin-top: var(--om-section); }
         .o_azm_om_block_title + section { margin-top: 0; }
     }

@@ -270,6 +270,41 @@ export class AzmTreePage extends Component {
      * — policies, SOPs, authority … — unfolds every branch showing just that one,
      * which is what "how many policies" is really asking to see.
      */
+    // ------------------------------------------------- the outputs, sorted by job
+    // The row used to draw nine identical tiles for three different things: seven
+    // that filter the tree, one that opens a document, and one that is permanently
+    // disabled because there is nothing to filter by. They are separated now, so a
+    // thing that looks like a filter is one.
+
+    /** The families that narrow the tree to one kind of output. */
+    get outputFilters() {
+        const families = (this.d && this.d.outputs && this.d.outputs.families) || [];
+        return families.filter((f) => this.outputsOpen(f)
+            && !["summary", "cycle"].includes(f.tab));
+    }
+
+    /** The families that are a document in themselves, opened rather than filtered. */
+    get outputDocs() {
+        const families = (this.d && this.d.outputs && this.d.outputs.families) || [];
+        return families.filter((f) => ["summary", "cycle"].includes(f.tab));
+    }
+
+    /** What the tree holds that cannot be filtered by — a count, not a control. */
+    get outputStats() {
+        const families = (this.d && this.d.outputs && this.d.outputs.families) || [];
+        return families.filter((f) => !this.outputsOpen(f));
+    }
+
+    get outputsTotal() {
+        return this.outputFilters.reduce((n, f) => n + (f.count || 0), 0);
+    }
+
+    /** Back to every output, which is where the tree starts. */
+    clearFamily() {
+        this.state.family = null;
+        this.state.docs = {};
+    }
+
     openOutputs(family) {
         if (!this.docsAvailable) {
             return;

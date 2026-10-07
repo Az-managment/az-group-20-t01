@@ -53,21 +53,50 @@
 </t>
 
 <t t-name="azm_platform.TreeOutputs">
-    <!-- how many policies, how many SOPs, how many authority maps … each one a way in -->
+    <!-- Three different things, told apart: what narrows the tree, what the tree
+         holds that cannot be narrowed by, and what is a document in itself. -->
     <section t-if="this.d.outputs.families.length and this.docsAvailable" class="o_azm_tree_outputs">
-        <t t-foreach="this.d.outputs.families" t-as="f" t-key="f.tab">
+
+        <div class="o_azm_outputs_filters" role="group" aria-label="تصفية المخرجات · Filter outputs">
+            <span class="o_azm_outputs_label">
+                المخرجات <em class="o_azm_en">Outputs</em>
+            </span>
+
+            <!-- where the tree starts, and the way back to it -->
             <button type="button"
-                    t-attf-class="o_azm_output_tile {{this.state.family === f.tab ? 'o_azm_active' : ''}}"
-                    t-att-disabled="!this.outputsOpen(f)"
+                    t-attf-class="o_azm_output_chip o_azm_output_all {{!this.state.family ? 'o_azm_active' : ''}}"
+                    t-att-aria-pressed="!this.state.family ? 'true' : 'false'"
+                    t-on-click="() => this.clearFamily()">
+                <span>الكل<em class="o_azm_en">All</em></span>
+                <b t-out="this.outputsTotal"/>
+            </button>
+
+            <button t-foreach="this.outputFilters" t-as="f" t-key="f.tab" type="button"
+                    t-attf-class="o_azm_output_chip {{this.state.family === f.tab ? 'o_azm_active' : ''}}"
+                    t-att-aria-pressed="this.state.family === f.tab ? 'true' : 'false'"
                     t-attf-title="{{f.label}} · {{f.en}}"
                     t-on-click="() => this.openOutputs(f)">
+                <span><t t-out="f.label"/><em class="o_azm_en" t-out="f.en"/></span>
                 <b t-out="f.count"/>
-                <span>
-                    <t t-out="f.label"/>
-                    <em class="o_azm_en" t-out="f.en"/>
-                </span>
             </button>
-        </t>
+        </div>
+
+        <div t-if="this.outputStats.length or this.outputDocs.length" class="o_azm_outputs_aside">
+            <!-- a count, not a control: there is nothing to narrow the tree to -->
+            <span t-foreach="this.outputStats" t-as="f" t-key="f.tab"
+                  class="o_azm_output_stat" t-attf-title="{{f.label}} · {{f.en}}">
+                <b t-out="f.count"/>
+                <span><t t-out="f.label"/><em class="o_azm_en" t-out="f.en"/></span>
+            </span>
+
+            <!-- these open a document rather than filtering anything -->
+            <button t-foreach="this.outputDocs" t-as="f" t-key="f.tab" type="button"
+                    class="o_azm_output_doc" t-attf-title="{{f.label}} · {{f.en}}"
+                    t-on-click="() => this.openOutputs(f)">
+                <i class="oi" data-icon="description" title="Open"/>
+                <span><t t-out="f.label"/><em class="o_azm_en" t-out="f.en"/></span>
+            </button>
+        </div>
     </section>
 </t>
 
