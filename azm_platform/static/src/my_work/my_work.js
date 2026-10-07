@@ -29,7 +29,7 @@ export class AzmMyWork extends Component {
                              sendError: "",
                              // the review whose parts are being chosen, what is ticked,
                              // and the reason they are going back
-                             picking: null, parts: [], chosen: {}, pickNote: "",
+                             picking: null, parts: [], chosen: {}, pickNote: "", pickScope: "parts",
                              loadingParts: false });
         onWillStart(async () => {
             await this.load();
@@ -142,11 +142,22 @@ export class AzmMyWork extends Component {
      */
     // ------------------------------------------------------------ returning parts
     /** Offer the parts of one review to choose from, without opening the work first. */
-    async openPicker(review) {
-        if (this.state.picking && this.state.picking.id === review.id) {
+    async openPicker(review, scope = "parts") {
+        if (this.state.picking && this.state.picking.id === review.id
+                && this.state.pickScope === scope) {
             return this.closePicker();
         }
-        this.state.picking = { id: review.id, res_model: review.res_model, entity: review.entity };
+        // already open on the other scope: switch it rather than close and reopen,
+        // which would throw away a reason half typed
+        const switching = !!this.state.picking && this.state.picking.id === review.id;
+        this.state.pickScope = scope;
+        if (switching) {
+            return;
+        }
+        this.state.picking = {
+            id: review.id, res_model: review.res_model, entity: review.entity,
+            model_label: review.model_label,
+        };
         this.state.parts = [];
         this.state.chosen = {};
         this.state.pickNote = "";
@@ -167,6 +178,21 @@ export class AzmMyWork extends Component {
         this.state.parts = [];
         this.state.chosen = {};
         this.state.pickNote = "";
+        this.state.pickScope = "parts";
+    }
+
+    /** Whether the panel is set to send the whole model back rather than parts of it. */
+    get returningAll() {
+        return this.state.pickScope === "all";
+    }
+
+    /** Whether the panel has what it needs to send: a reason always, and, when parts
+     * were chosen rather than the whole model, at least one of them. */
+    get canConfirmReturn() {
+        if (!this.state.picking || !(this.state.pickNote || "").trim()) {
+            return false;
+        }
+        return this.returningAll || this.chosenCount() > 0;
     }
 
     partKey(part) {
@@ -190,22 +216,39 @@ export class AzmMyWork extends Component {
         return Object.keys(this.state.chosen).length;
     }
 
-    /** Send every chosen part back, each carrying the reason typed for them. */
+    /** Send back what was chosen — the whole model, or the ticked parts — with the
+     * reason typed for it. Both ways go through here so neither can skip the reason. */
     async confirmPicker() {
-        const note = (this.state.pickNote || "").trim();
-        const chosen = Object.values(this.state.chosen);
-        if (!note || !chosen.length || !this.state.picking) {
+        if (!this.canConfirmReturn) {
             return;
         }
-        this.state.deciding = this.state.picking.id;
+        const note = (this.state.pickNote || "").trim();
+        const picking = this.state.picking;
+        const chosen = Object.values(this.state.chosen);
+        this.state.deciding = picking.id;
+        this.state.sendError = "";
         try {
-            const result = await this.orm.call("azm.dashboard", "return_review_parts", [], {
-                res_model: this.state.picking.res_model,
-                assessment_id: this.state.picking.id,
-                parts: chosen.map((part) => ({ level: part.level, id: part.id, note })),
-            });
+            const whole = this.returningAll;
+            const result = await this.orm.call(
+                "azm.dashboard", whole ? "return_my_review" : "return_review_parts", [],
+                whole
+                    ? { res_model: picking.res_model, assessment_id: picking.id, note }
+                    : {
+                        res_model: picking.res_model,
+                        assessment_id: picking.id,
+                        parts: chosen.map((part) => ({ level: part.level, id: part.id, note })),
+                    });
             this.closePicker();
             this.state.data = result.work;
+            if (whole) {
+                this.state.sent = {
+                    entity: picking.entity, model: picking.model_label, reviewers: [],
+                    note: "أُعيد النموذج كله للمُعد مع سبب الإعادة.",
+                };
+            }
+        } catch (error) {
+            this.state.sendError = (error && error.data && error.data.message)
+                || (error && error.message) || "تعذّر إتمام المراجعة.";
         } finally {
             this.state.deciding = false;
         }

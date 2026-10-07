@@ -11,6 +11,8 @@ produced, and the projects and tasks around it. Everything it reads is already n
 by the record rules — azm.entity is readable only where ``user_ids`` contains the
 reader — so a manager opening it sees their own work, not everybody's.
 """
+from markupsafe import Markup
+
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
@@ -376,19 +378,35 @@ class AzmDashboard(models.AbstractModel):
         return {"done": True, "state": record.state, "work": self.get_my_work()}
 
     @api.model
-    def return_my_review(self, res_model, assessment_id):
-        """Send it back for more work, rather than accepting it."""
+    def return_my_review(self, res_model, assessment_id, note=None):
+        """Send the whole thing back for more work, rather than accepting it.
+
+        The reason is required, as it is when single parts come back. A preparer told
+        only that the work returned has to guess what to change, and guesses wrong —
+        and returning everything says less about what is wrong than returning a part
+        does, so the reason is the only thing they have to work from.
+        """
         record = self._my_work_record(res_model, assessment_id)
         record.check_access("write")
         if record.state != "review":
             raise UserError(_("Only work that is under review can be sent back."))
+        reason = (note or "").strip()
+        if not reason:
+            raise UserError(_("Say why the work is coming back."))
         record.action_back_to_draft()
+        # written where the preparer reads it, not only into the activity, which is
+        # ticked off and gone. sudo because the work has just become the preparer's
+        # again and the reviewer can no longer see it — the message is still theirs,
+        # since the author is taken from the acting user either way.
+        record.sudo().message_post(
+            body=Markup("<p>%s</p>") % _("Sent back for more work: %s", reason))
         preparer = record.user_id or record.create_uid
         if preparer:
             # they are not watching this page; put it on their list
             record.sudo().activity_schedule(
                 "mail.mail_activity_data_todo", user_id=preparer.id,
-                summary=_("Your assessment was sent back for more work"))
+                summary=_("Your assessment was sent back for more work"),
+                note=Markup("<p>%s</p>") % reason)
         return {"done": True, "state": record.state, "work": self.get_my_work()}
 
     @api.model

@@ -295,6 +295,36 @@
     border: 1px solid rgba(249, 115, 22, .3);
     background: rgba(255, 247, 237, .9);
 }
+// the two ways work can come back, as a choice rather than two buttons that look
+// alike and do very different amounts of damage
+.o_azm_picker_scope {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+
+    .o_azm_scope_option {
+        flex: 1;
+        text-align: start;
+        padding: 8px 10px;
+        border: 1px solid var(--border-color, #dee2e6);
+        border-radius: 6px;
+        background: var(--o-view-background-color, #fff);
+        font-size: 13px;
+        line-height: 1.35;
+        cursor: pointer;
+
+        small {
+            font-size: 11px;
+        }
+
+        &.o_azm_scope_on {
+            border-color: var(--warning, #e5a53c);
+            box-shadow: inset 0 0 0 1px var(--warning, #e5a53c);
+            font-weight: 600;
+        }
+    }
+}
+
 .o_azm_picker_list {
     max-height: 260px;
     overflow-y: auto;

@@ -261,9 +261,9 @@
                             </button>
                             <button type="button" class="btn btn-sm btn-light o_azm_return"
                                     t-att-disabled="this.state.deciding ? 'disabled' : undefined"
-                                    title="أعدها كلها للمُعد"
-                                    t-on-click="() => this.decide(review, false)">
-                                <i class="oi" data-icon="undo"/>
+                                    title="أعد النموذج كله للمُعد مع سبب الإعادة"
+                                    t-on-click="() => this.openPicker(review, 'all')">
+                                <i class="oi me-1" data-icon="undo"/>أعد الكل
                             </button>
                         </div>
                     </div>
@@ -275,7 +275,28 @@
                             <i class="oi oi-spin" data-icon="progress_activity" title="Loading"/>
                         </div>
                         <t t-else="">
-                            <div class="o_azm_picker_list">
+                            <div class="o_azm_picker_scope" role="radiogroup"
+                                 aria-label="ما الذي يعود للمُعد">
+                                <button type="button" role="radio"
+                                        t-att-aria-checked="this.returningAll ? 'false' : 'true'"
+                                        t-attf-class="o_azm_scope_option {{this.returningAll ? '' : 'o_azm_scope_on'}}"
+                                        t-on-click="() => this.state.pickScope = 'parts'">
+                                    <i class="oi me-1" data-icon="checklist"/>أجزاء مختارة
+                                    <small class="d-block text-muted">
+                                        يعود ما تختاره فقط، ويبقى الباقي كما هو
+                                    </small>
+                                </button>
+                                <button type="button" role="radio"
+                                        t-att-aria-checked="this.returningAll ? 'true' : 'false'"
+                                        t-attf-class="o_azm_scope_option {{this.returningAll ? 'o_azm_scope_on' : ''}}"
+                                        t-on-click="() => this.state.pickScope = 'all'">
+                                    <i class="oi me-1" data-icon="undo"/>النموذج كله
+                                    <small class="d-block text-muted">
+                                        يعود النموذج بأكمله للمُعد من جديد
+                                    </small>
+                                </button>
+                            </div>
+                            <div t-if="!this.returningAll" class="o_azm_picker_list">
                                 <label t-foreach="this.state.parts" t-as="part"
                                        t-key="part.level + '-' + part.id"
                                        t-attf-class="o_azm_picker_row o_azm_picker_d{{part.depth}} {{this.isChosen(part) ? 'o_azm_picker_on' : ''}}">
@@ -293,14 +314,16 @@
                             </label>
                             <div class="o_azm_picker_actions">
                                 <small class="text-muted">
-                                    اخترت <t t-out="this.chosenCount()"/> جزءًا
+                                    <t t-if="this.returningAll">يعود النموذج كله</t>
+                                    <t t-else="">اخترت <t t-out="this.chosenCount()"/> جزءًا</t>
                                 </small>
                                 <button type="button" class="btn btn-sm btn-light"
                                         t-on-click="() => this.closePicker()">تراجع</button>
                                 <button type="button" class="btn btn-sm btn-warning"
-                                        t-att-disabled="!this.chosenCount() or !this.state.pickNote.trim() or this.state.deciding ? 'disabled' : undefined"
+                                        t-att-disabled="!this.canConfirmReturn or this.state.deciding ? 'disabled' : undefined"
                                         t-on-click="() => this.confirmPicker()">
-                                    أعدها مع الملاحظة
+                                    <t t-if="this.returningAll">أعد النموذج كله</t>
+                                    <t t-else="">أعدها مع الملاحظة</t>
                                 </button>
                             </div>
                         </t>

@@ -379,6 +379,29 @@ class TestMyWork(TransactionCase):
                 self.company).submit_my_work('azm.assessment', self.assessment.id)
         self.assertFalse(enqueue.called)
 
+    def test_sending_the_whole_model_back_has_to_say_why(self):
+        """Returning everything says less about what is wrong than returning one part
+        does, so the reason is the only thing the preparer has to work from."""
+        self.assessment.with_user(self.answerer).action_fill_demo()
+        D = self.env['azm.dashboard']
+        D.with_user(self.answerer).with_company(self.company).submit_my_work(
+            'azm.assessment', self.assessment.id)
+
+        with self.assertRaises(UserError):
+            D.with_user(self.reviewer).with_company(self.company).return_my_review(
+                'azm.assessment', self.assessment.id, note='   ')
+        self.assertEqual(self.assessment.state, 'review',
+                         'a blank reason leaves the work where it was')
+
+        D.with_user(self.reviewer).with_company(self.company).return_my_review(
+            'azm.assessment', self.assessment.id, note='الأرقام لا تطابق الميزانية')
+        self.assertEqual(self.assessment.state, 'draft')
+        self.assertIn('الأرقام لا تطابق الميزانية',
+                      ' '.join(self.assessment.message_ids.mapped('body')),
+                      'the reason is written where the preparer reads it')
+        self.assertEqual(self.assessment.open_return_count, 0,
+                         'the whole model came back, not a list of invented parts')
+
     def test_the_reviewer_can_send_it_back_instead(self):
         self.assessment.with_user(self.answerer).action_fill_demo()
         D = self.env['azm.dashboard']
@@ -386,7 +409,8 @@ class TestMyWork(TransactionCase):
         activities = self.env['mail.activity'].search_count(
             [('user_id', '=', self.answerer.id)])
 
-        out = D.with_user(self.reviewer).with_company(self.company).return_my_review('azm.assessment', self.assessment.id)
+        out = D.with_user(self.reviewer).with_company(self.company).return_my_review(
+            'azm.assessment', self.assessment.id, note='الأرقام لا تطابق الميزانية')
         self.assertEqual(out['state'], 'draft')
         self.assertGreater(self.env['mail.activity'].search_count(
             [('user_id', '=', self.answerer.id)]), activities,
