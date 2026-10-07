@@ -113,6 +113,10 @@
 
             <t t-else="">
                 <!-- ============================== KPIs -->
+                <h2 class="o_azm_om_block_title">
+                    <span>At a glance</span>
+                    <em>The model in figures</em>
+                </h2>
                 <section class="o_azm_kpis o_azm_om_kpis">
                     <t t-foreach="this.kpis" t-as="kpi" t-key="kpi.key">
                         <button type="button" t-attf-class="o_azm_kpi o_azm_om_kpi {{kpi.onClick ? '' : 'o_azm_kpi_static'}}"
@@ -234,6 +238,10 @@
                 </section>
 
                 <!-- ============================== Charts -->
+                <h2 class="o_azm_om_block_title">
+                    <span>Breakdown</span>
+                    <em>Requirements by status, template and scope</em>
+                </h2>
                 <section class="o_azm_om_row_3">
                     <div class="o_azm_card o_azm_donut_card">
                         <header class="o_azm_card_header"><h3>Requirements by status</h3></header>
@@ -273,6 +281,10 @@
                 </section>
 
                 <!-- ============================== Entities + top gaps -->
+                <h2 class="o_azm_om_block_title">
+                    <span>Entities and gaps</span>
+                    <em>Where the work stands, and what is still open</em>
+                </h2>
                 <section class="o_azm_om_row_2">
                     <div class="o_azm_card">
                         <header class="o_azm_card_header">

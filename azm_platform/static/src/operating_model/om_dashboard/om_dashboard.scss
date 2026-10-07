@@ -140,6 +140,36 @@
         }
     }
 
+    // ------------------------------------------------------- separating the parts
+    // The page is a stack of unlike things — a band of figures, three domain strips,
+    // thirteen stage cards, three charts, two tables. Read straight down it they ran
+    // into one another, because only the ones built as cards had an edge of their own
+    // and only those had a name. Every part is announced now, over a rule, so the eye
+    // can find where one ends and the next begins.
+    .o_azm_om_block_title {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        margin: 0;
+        padding-top: 6px;
+        border-top: 1px solid rgba(15, 35, 71, .09);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+        color: $azm-ink;
+        em {
+            font-style: normal;
+            font-size: 11px;
+            font-weight: 400;
+            letter-spacing: 0;
+            text-transform: none;
+            color: $azm-muted;
+        }
+        // the part it names follows it directly; the gap belongs above the title
+        + section { margin-top: calc(var(--om-section) * -1 + 14px); }
+    }
+
     // ---------------------------------------------------------------- toolbar
     .o_azm_om_toolbar {
         display: flex;
@@ -280,7 +310,7 @@
     .o_azm_om_domains {
         display: flex;
         flex-direction: column;
-        gap: 10px;
+        gap: 12px;
     }
     .o_azm_om_domain {
         position: relative;
@@ -325,10 +355,20 @@
         gap: 10px;
         margin: 0;
         > div {
-            background: rgba(15, 35, 71, .035);
-            border-radius: 11px;
-            padding: 9px 11px;
+            position: relative;
+            padding: 4px 14px 4px 0;
             min-width: 0;
+            // a hairline between one figure and the next, rather than six numbers in
+            // a row with nothing to say where each one stops
+            + div { padding-inline-start: 14px; }
+            + div::before {
+                content: "";
+                position: absolute;
+                inset-block: 2px;
+                inset-inline-start: 0;
+                width: 1px;
+                background: rgba(15, 35, 71, .09);
+            }
         }
         dt { font-size: 10.5px; font-weight: 600; color: $azm-muted; }
         dd {
@@ -520,6 +560,11 @@
     }
     // the cards carry the page's new padding, and their table runs to their edges
     .o_azm_card { padding: var(--om-pad); }
+    // a card section is its own part too, and gets the same rule above it as the
+    // parts that need a title of their own
+    > section.o_azm_card { border-top: 0; }
+    > section.o_azm_card::before { content: none; }
+
     // every panel on these pages sits on the same glass, and is given room to be a
     // panel rather than a box drawn tightly round its contents
     .o_azm_card {

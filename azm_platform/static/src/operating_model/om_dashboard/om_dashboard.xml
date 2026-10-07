@@ -83,6 +83,10 @@
 
             <t t-else="">
                 <!-- ============================== KPIs -->
+                <h2 class="o_azm_om_block_title">
+                    <span>At a glance</span>
+                    <em>The cycle in nine figures</em>
+                </h2>
                 <section class="o_azm_kpis o_azm_om_kpis">
                     <t t-foreach="this.kpis" t-as="kpi" t-key="kpi.key">
                         <button type="button"
@@ -104,6 +108,10 @@
                 </section>
 
                 <!-- ============================== Domains -->
+                <h2 class="o_azm_om_block_title">
+                    <span>Domains</span>
+                    <em>The three parts of the cycle, and what each one carries</em>
+                </h2>
                 <section class="o_azm_om_domains">
                     <button type="button" t-foreach="this.domains" t-as="dom" t-key="dom.key"
                             t-attf-class="o_azm_card o_azm_om_domain o_azm_tone_{{dom.tone}} {{this.state.domain === dom.key ? 'active' : ''}}"
@@ -242,6 +250,10 @@
                 </section>
 
                 <!-- ============================== Charts -->
+                <h2 class="o_azm_om_block_title">
+                    <span>Breakdown</span>
+                    <em>Findings, assessments and the shape of the question set</em>
+                </h2>
                 <section class="o_azm_om_row_3">
                     <div class="o_azm_card o_azm_donut_card">
                         <header class="o_azm_card_header">
@@ -310,6 +322,10 @@
                 </section>
 
                 <!-- ============================== Entities + top risks -->
+                <h2 class="o_azm_om_block_title">
+                    <span>Entities and risks</span>
+                    <em>Where the work stands, and what is still open</em>
+                </h2>
                 <section class="o_azm_om_row_2">
                     <div class="o_azm_card">
                         <header class="o_azm_card_header">
