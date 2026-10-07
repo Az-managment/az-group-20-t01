@@ -1,4 +1,4 @@
-import { Component, onWillStart, proxy } from "@odoo/owl";
+import { Component, onWillStart, proxy, t, useProps } from "@odoo/owl";
 import { Dialog } from "@web/core/dialog/dialog";
 import { useService } from "@web/core/utils/hooks";
 
@@ -18,12 +18,14 @@ import { useService } from "@web/core/utils/hooks";
 export class AzmAssignDialog extends Component {
     static template = "azm_platform.AssignDialog";
     static components = { Dialog };
-    static props = {
-        rows: { type: Array },
-        row: { type: [Object, { value: null }], optional: true },
-        onChanged: { type: Function, optional: true },
-        close: { type: Function },
-    };
+    // Owl 3 takes the schema here, not through a static field, which it ignores
+    props = useProps({
+        rows: t.array(),
+        // the model to go straight into; without one the form asks which
+        row: t.any().optional(null),
+        onChanged: t.function().optional(),
+        close: t.function(),
+    });
 
     setup() {
         this.orm = useService("orm");
