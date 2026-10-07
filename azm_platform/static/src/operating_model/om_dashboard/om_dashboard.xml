@@ -2,7 +2,7 @@
 <templates xml:space="preserve">
 
     <t t-name="azm_platform.OmDashboard">
-        <div class="o_action o_azm_dashboard o_azm_om">
+        <div class="o_action o_azm_dashboard o_azm_om o_azm_om_page">
             <div class="o_azm_om_title">
                 <div class="o_azm_om_title_top">
                 <div class="o_azm_om_title_words">

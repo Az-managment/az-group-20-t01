@@ -22,7 +22,7 @@
     </t>
 
     <t t-name="azm_platform.FinDashboard">
-        <div class="o_action o_azm_dashboard o_azm_om o_azm_fin_page">
+        <div class="o_action o_azm_dashboard o_azm_om o_azm_om_page o_azm_fin_page">
             <div class="o_azm_om_title">
                 <div class="o_azm_om_title_top">
                 <div class="o_azm_om_title_words">
