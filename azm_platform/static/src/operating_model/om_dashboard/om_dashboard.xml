@@ -85,7 +85,8 @@
                 <!-- ============================== KPIs -->
                 <h2 class="o_azm_om_block_title">
                     <span>At a glance</span>
-                    <em>The cycle in nine figures</em>
+                    <!-- counted, so the words cannot disagree with the tiles again -->
+                    <em>The cycle in <t t-out="this.kpis.length"/> figures</em>
                 </h2>
                 <section class="o_azm_kpis o_azm_om_kpis">
                     <t t-foreach="this.kpis" t-as="kpi" t-key="kpi.key">

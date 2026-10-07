@@ -67,11 +67,16 @@
                 <!-- the tour walks these by position, so the section holds the
                      articles and nothing else -->
                 <section class="o_azm_hub_files">
-                    <article t-foreach="this.models" t-as="m" t-key="m.key" role="button"
-                             t-attf-class="o_azm_hub_file o_azm_tone_{{m.tone}}"
-                             t-on-click="() => this.open(m)">
+                    <article t-foreach="this.models" t-as="m" t-key="m.key"
+                             t-attf-class="o_azm_hub_file o_azm_tone_{{m.tone}}">
 
-                        <header>
+                        <!-- the way in is this header and the button at the foot; the
+                             card around them is not itself a control, so the links it
+                             holds are not controls inside a control -->
+                        <header role="button" tabindex="0"
+                                t-attf-aria-label="Open {{m.label}}"
+                                t-on-click="() => this.open(m)"
+                                t-on-keydown="(ev) => this.openOnKey(ev, m)">
                             <span t-attf-class="o_azm_icon_badge o_azm_tone_{{m.tone}}">
                                 <i class="oi" t-att-data-icon="m.icon" t-att-title="m.label"/>
                             </span>
@@ -157,8 +162,12 @@
                         </div>
 
                         <footer>
-                            <span>Open the model</span>
-                            <i class="oi" data-icon="arrow_forward" title="Open"/>
+                            <button type="button" class="o_azm_hub_open"
+                                    t-attf-aria-label="Open {{m.label}}"
+                                    t-on-click="() => this.open(m)">
+                                <span>Open the model</span>
+                                <i class="oi" data-icon="arrow_forward" title="Open"/>
+                            </button>
                         </footer>
                     </article>
                 </section>

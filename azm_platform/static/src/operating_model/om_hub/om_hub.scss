@@ -178,7 +178,15 @@
         }
         &:focus-visible { outline: 2px solid var(--azm-tone); outline-offset: 2px; }
 
-        header { display: flex; gap: 13px; align-items: flex-start; }
+        // the header is the way into the model, so it looks and behaves like one
+        header {
+            display: flex;
+            gap: 13px;
+            align-items: flex-start;
+            cursor: pointer;
+            border-radius: 10px;
+            &:focus-visible { outline: 2px solid var(--azm-tone); outline-offset: 3px; }
+        }
         footer {
             display: flex;
             justify-content: space-between;
@@ -191,6 +199,22 @@
             font-size: 12.5px;
             background: color-mix(in srgb, var(--azm-tone) 7%, transparent);
             .oi { transition: transform .16s ease; }
+        }
+        // the foot is a real button now rather than a line of text that looked like one
+        .o_azm_hub_open {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            width: 100%;
+            padding: 0;
+            border: 0;
+            background: transparent;
+            color: inherit;
+            font: inherit;
+            font-weight: 700;
+            cursor: pointer;
+            &:focus-visible { outline: 2px solid var(--azm-tone); outline-offset: 3px; border-radius: 6px; }
         }
         &:hover footer .oi { /*rtl:ignore*/ transform: translateX(3px); }
     }

@@ -10,10 +10,11 @@
             <header class="o_azm_detail_head">
                 <span class="o_azm_detail_titles">
                     <strong t-out="this.title"/>
+                    <!-- what is shown, out of how many there are: the panel pages
+                         through the whole catalogue rather than one window of it -->
                     <small t-if="this.state.data">
-                        <t t-out="this.rows.length"/>
-                        <t t-if="this.state.query"> of <t t-out="this.state.data.rows.length"/></t>
-                        shown
+                        <t t-out="this.rows.length"/> of <t t-out="this.state.total"/>
+                        <t t-if="this.state.query"> matching</t>
                     </small>
                 </span>
                 <button type="button" class="o_azm_detail_close" title="Close"
@@ -22,11 +23,14 @@
                 </button>
             </header>
 
-            <div t-if="this.state.data and this.state.data.rows.length" class="o_azm_detail_search">
+            <!-- offered whenever there is a catalogue to search, not only when the
+                 first page happened to come back with rows in it -->
+            <div t-if="this.state.data" class="o_azm_detail_search">
                 <i class="oi" data-icon="search" title="Search"/>
-                <input type="text" class="form-control" placeholder="Filter by code, name or entity"
+                <input type="text" class="form-control"
+                       placeholder="Search the whole catalogue — code, name or entity"
                        t-att-value="this.state.query"
-                       t-on-input="(ev) => this.state.query = ev.target.value"/>
+                       t-on-input="(ev) => this.onQueryInput(ev.target.value)"/>
             </div>
 
             <div class="o_azm_detail_body">
@@ -41,8 +45,9 @@
 
                 <div t-elif="!this.rows.length" class="o_azm_detail_empty">
                     <i class="oi" data-icon="inbox" title="Nothing"/>
-                    <strong t-if="this.state.query">Nothing matches that filter</strong>
+                    <strong t-if="this.state.query">Nothing matches “<t t-out="this.state.query"/>”</strong>
                     <strong t-else="">Nothing here yet</strong>
+                    <small t-if="this.state.query">Searched every one of the <t t-out="this.state.total === 0 ? '' : this.state.total"/> records in scope.</small>
                 </div>
 
                 <t t-else="">
@@ -63,12 +68,18 @@
                         <p t-if="this.isOpen(row)" class="o_azm_detail_more" t-out="row.detail"/>
                     </article>
 
-                    <!-- said outright rather than left to be inferred from a list
-                         that simply stops -->
-                    <div t-if="this.state.data.limited" class="o_azm_detail_note">
-                        Showing the first <t t-out="this.state.data.limit"/> — narrow the
-                        filter to see the rest.
-                    </div>
+                    <!-- the rest of them, on request, rather than a list that stops
+                         without saying that it has -->
+                    <button t-if="this.state.hasMore" type="button"
+                            class="o_azm_detail_more_btn"
+                            t-att-disabled="this.state.loadingMore ? 'disabled' : undefined"
+                            t-on-click="() => this.loadMore()">
+                        <t t-if="this.state.loadingMore">Loading…</t>
+                        <t t-else="">
+                            Load more
+                            <small><t t-out="this.state.total - this.rows.length"/> left</small>
+                        </t>
+                    </button>
                 </t>
             </div>
         </aside>

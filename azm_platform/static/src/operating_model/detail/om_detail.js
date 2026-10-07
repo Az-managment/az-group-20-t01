@@ -1,5 +1,6 @@
 import { Component, onWillStart, proxy, t, useProps } from "@odoo/owl";
 import { useService } from "@web/core/utils/hooks";
+import { useDebounced } from "@web/core/utils/timing";
 
 /**
  * What is behind a figure on an operating model page — shown beside it.
@@ -29,40 +30,77 @@ export class AzmOmDetail extends Component {
 
     setup() {
         this.orm = useService("orm");
-        this.state = proxy({ loading: true, error: "", data: null, query: "", open: {} });
+        this.state = proxy({
+            loading: true, error: "", data: null, query: "", open: {},
+            rows: [], total: 0, hasMore: false, loadingMore: false,
+        });
+        // searched as it is typed, but not once per keystroke: the catalogue is
+        // searched on the server now, and a request per letter would have the answers
+        // arriving out of order
+        this.searchLater = useDebounced(() => this.load(), 300);
         onWillStart(() => this.load());
     }
 
+    /** Fetch from the start, with whatever is typed. */
     async load() {
         this.state.loading = true;
         this.state.error = "";
         try {
-            this.state.data = await this.orm.call("azm.dashboard", "om_detail", [], {
-                kind: this.props.kind,
-                ...(this.props.scope || {}),
-            });
+            const out = await this.fetch(0);
+            this.state.data = out;
+            this.state.rows = out.rows;
+            this.state.total = out.total;
+            this.state.hasMore = out.has_more;
         } catch (error) {
-            this.state.error = (error && error.data && error.data.message)
-                || (error && error.message) || "Could not load the details.";
+            this.state.error = this.messageOf(error);
         } finally {
             this.state.loading = false;
         }
+    }
+
+    /** Fetch the next page and add it to what is already shown. */
+    async loadMore() {
+        if (this.state.loadingMore || !this.state.hasMore) {
+            return;
+        }
+        this.state.loadingMore = true;
+        try {
+            const out = await this.fetch(this.state.rows.length);
+            this.state.rows = [...this.state.rows, ...out.rows];
+            this.state.total = out.total;
+            this.state.hasMore = out.has_more;
+        } catch (error) {
+            this.state.error = this.messageOf(error);
+        } finally {
+            this.state.loadingMore = false;
+        }
+    }
+
+    fetch(offset) {
+        return this.orm.call("azm.dashboard", "om_detail", [], {
+            kind: this.props.kind,
+            query: this.state.query,
+            offset,
+            ...(this.props.scope || {}),
+        });
+    }
+
+    onQueryInput(value) {
+        this.state.query = value;
+        this.searchLater();
+    }
+
+    messageOf(error) {
+        return (error && error.data && error.data.message)
+            || (error && error.message) || "Could not load the details.";
     }
 
     get title() {
         return this.props.heading || (this.state.data ? this.state.data.title : "");
     }
 
-    /** The rows that match what is typed, matched across everything on show rather
-     * than the title alone — a code and an entity are what people actually type. */
     get rows() {
-        const rows = this.state.data ? this.state.data.rows : [];
-        const query = this.state.query.trim().toLowerCase();
-        if (!query) {
-            return rows;
-        }
-        return rows.filter((row) =>
-            `${row.code} ${row.title} ${(row.meta || []).join(" ")}`.toLowerCase().includes(query));
+        return this.state.rows;
     }
 
     isOpen(row) {

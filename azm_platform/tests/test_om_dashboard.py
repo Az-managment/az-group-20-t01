@@ -363,6 +363,40 @@ class TestOmDetail(TransactionCase):
                     sorted(set(('code', 'title', 'meta', 'detail', 'tone')) - set(row)), [],
                     f'{kind} row is missing what the panel draws')
 
+    def test_the_catalogue_is_searched_whole_not_one_page_of_it(self):
+        """PUR-CLS is the last stage of the cycle, so all 31 of its questions sat
+        outside the first window the panel was given — and searching for them found
+        nothing. The search runs over the catalogue, not over what was already sent."""
+        D = self.env['azm.dashboard']
+        everything = D.om_detail('questions')
+        self.assertEqual(everything['total'],
+                         self.env['azm.question'].search_count([]),
+                         'the panel is told how many there are, not how many it got')
+        self.assertLessEqual(len(everything['rows']), everything['total'])
+
+        last = self.env['azm.stage'].search([], order='sequence desc', limit=1)
+        if not last:
+            self.skipTest('no stages in this database')
+        owed = self.env['azm.question'].search_count([('stage_id', '=', last.id)])
+        if not owed:
+            self.skipTest('the last stage has no questions')
+        found = D.om_detail('questions', query=last.code)
+        self.assertEqual(found['total'], owed,
+                         f'searching {last.code} must reach every one of its questions')
+        self.assertTrue(found['rows'], 'and must return them, not an empty first page')
+
+    def test_paging_reaches_the_end_of_the_catalogue(self):
+        D = self.env['azm.dashboard']
+        seen, offset, guard = 0, 0, 0
+        while guard < 50:
+            page = D.om_detail('questions', offset=offset)
+            seen += len(page['rows'])
+            if not page['has_more']:
+                break
+            offset += page['limit']
+            guard += 1
+        self.assertEqual(seen, page['total'], 'every page is reachable')
+
     def test_a_scope_narrows_what_comes_back(self):
         D = self.env['azm.dashboard']
         stage = self.env['azm.stage'].search([], limit=1)
@@ -371,7 +405,7 @@ class TestOmDetail(TransactionCase):
         every = D.om_detail('questions')
         scoped = D.om_detail('questions', stage_id=stage.id)
         self.assertTrue(scoped['rows'], 'the stage has questions')
-        self.assertLess(len(scoped['rows']), len(every['rows']),
+        self.assertLess(scoped['total'], every['total'],
                         'a stage is narrower than the catalogue')
 
     def test_rights_are_asked_of_the_models_not_of_the_groups(self):
