@@ -10,9 +10,9 @@
     // one scale, so every gap on these pages is a multiple of something. The page is
     // dense by nature — five figures, thirteen stage cards, three charts and two
     // tables — so the air between its parts is what separates them into parts.
-    --om-gap: 12px;
-    --om-pad: 20px;
-    --om-section: 26px;
+    --om-gap: 18px;
+    --om-pad: 26px;
+    --om-section: 36px;
     --om-radius: 18px;
     gap: var(--om-section);
     > * { flex-shrink: 0; }
@@ -26,11 +26,17 @@
     .o_azm_om_title {
         @include azm-glass(22px);
         display: flex;
+        flex-direction: column;
+        gap: 20px;
+        padding: 28px 28px 20px;
+    }
+    // the name, the figure and the actions: one row across the top of the header
+    .o_azm_om_title_top {
+        display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 20px;
         flex-wrap: wrap;
-        padding: 26px 28px;
         h1 {
             margin: 7px 0 0;
             font-size: 28px;
@@ -45,6 +51,14 @@
         p { margin: 9px 0 0; max-width: 62ch; color: $azm-muted; font-size: 12.5px; line-height: 1.7; }
     }
     .o_azm_om_title_words { flex: 1 1 320px; min-width: 0; }
+
+    // the filters are part of the header, under a rule rather than in a block of
+    // their own: they say what the page below is showing, so they belong to its name
+    .o_azm_om_toolbar {
+        padding-top: 18px;
+        border-top: 1px solid rgba(15, 35, 71, .08);
+        gap: 14px;
+    }
     .o_azm_om_eyebrow {
         display: inline-flex;
         align-items: center;
@@ -221,7 +235,7 @@
     }
 
     // ---------------------------------------------------------------- KPIs
-    .o_azm_om_kpis { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 13px; }
+    .o_azm_om_kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--om-gap); }
     .o_azm_om_kpi { align-items: flex-start; }
     // the figures, in the language the rest of the platform now uses: glass, a line of
     // the tone along the top edge, and a numeral that does not shift between tiles
@@ -229,7 +243,8 @@
         @include azm-glass(var(--om-radius));
         position: relative;
         overflow: hidden;
-        padding: 15px 16px;
+        padding: 20px 22px;
+        gap: 16px;
         &::before {
             content: "";
             position: absolute;
@@ -256,30 +271,34 @@
     .o_azm_om_meter { margin: 2px 0; height: 6px; .o_azm_progress_bar { background: var(--azm-tone); } }
 
     // ---------------------------------------------------------------- domains
+    // Three domain cards stood between the figures and the work, each carrying six
+    // more figures in a grid of its own. They are strips now: one line per domain,
+    // read across rather than down, so the page gets to the stages sooner.
     .o_azm_om_domains {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
-        gap: var(--om-gap);
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
     }
     .o_azm_om_domain {
         position: relative;
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        padding: var(--om-pad);
+        display: grid;
+        grid-template-columns: minmax(200px, 1.1fr) auto minmax(0, 2fr) minmax(190px, 1fr);
+        align-items: center;
+        gap: 22px;
+        padding: 16px var(--om-pad);
         text-align: start;
         color: $azm-ink;
         overflow: hidden;
         transition: transform .15s ease, box-shadow .15s ease;
-        // the tone as an edge of light, not a 4px slab
+        // the tone as an edge of light down the side the line starts from
         &::before {
             content: "";
             position: absolute;
-            inset-block-start: 0;
-            inset-inline: 0;
-            height: 3px;
-            background: linear-gradient(90deg, var(--azm-tone),
-                color-mix(in srgb, var(--azm-tone) 28%, transparent));
+            inset-block: 0;
+            inset-inline-start: 0;
+            width: 3px;
+            background: linear-gradient(180deg, var(--azm-tone),
+                color-mix(in srgb, var(--azm-tone) 30%, transparent));
         }
         &:hover { transform: translateY(-2px); box-shadow: 0 14px 30px rgba(15, 35, 71, .11); }
         &.active {
@@ -299,8 +318,8 @@
     }
     .o_azm_om_figures {
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: var(--om-gap);
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 10px;
         margin: 0;
         > div {
             background: rgba(15, 35, 71, .035);
@@ -345,7 +364,7 @@
     .o_azm_om_hint { color: $azm-muted; font-size: 11.5px; margin: -4px 0 14px; line-height: 1.55; }
     .o_azm_om_stage_grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
         gap: var(--om-gap);
     }
     .o_azm_om_stage {
@@ -399,7 +418,7 @@
         flex-direction: column;
         gap: 13px;
         flex: 1 1 auto;
-        padding: 16px 17px 17px 19px;
+        padding: 22px 22px 22px 24px;
         // the faintest wash of the stage's tone, so a grid of thirteen cards is read
         // as thirteen stages of three domains rather than thirteen identical boxes
         background: linear-gradient(170deg,
@@ -476,10 +495,13 @@
     }
 
     // ---------------------------------------------------------------- charts rows
+    // two charts side by side and the third across the width: three in a row left
+    // each of them too narrow to read its own legend
     .o_azm_om_row_3 {
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 14px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: var(--om-gap);
+        > :last-child { grid-column: 1 / -1; }
     }
     // The entities table and the list beside it used to share a row, which left a
     // seven-column table — logo, name, status, counts, two meters, findings — in a
@@ -492,6 +514,8 @@
         gap: var(--om-section);
         align-items: start;
     }
+    // the cards carry the page's new padding, and their table runs to their edges
+    .o_azm_card { padding: var(--om-pad); }
     // every panel on these pages sits on the same glass, and is given room to be a
     // panel rather than a box drawn tightly round its contents
     .o_azm_card {
@@ -567,7 +591,7 @@
             &:last-child { padding-inline-end: 18px; }
         }
         td {
-            padding: 15px 14px;
+            padding: 18px 16px;
             border-bottom: 1px solid rgba(15, 35, 71, .05);
             vertical-align: middle;
             font-size: 12.5px;
@@ -594,7 +618,7 @@
     }
     // the card holds a table edge to edge: its own padding would double the cells'
     .o_azm_card > .table-responsive {
-        margin: 0 -22px -20px;
+        margin: 0 calc(var(--om-pad) * -1) calc(var(--om-pad) * -1);
         border-end-start-radius: var(--om-radius);
         border-end-end-radius: var(--om-radius);
         overflow-x: auto;
