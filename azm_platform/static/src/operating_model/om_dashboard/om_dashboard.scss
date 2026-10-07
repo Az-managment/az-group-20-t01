@@ -261,6 +261,9 @@
             font-variant-numeric: tabular-nums;
         }
         .o_azm_kpi_label { font-size: 12px; font-weight: 600; }
+        .o_azm_kpi_text { gap: 7px; }
+        .o_azm_progress { margin: 2px 0 1px; }
+        small { font-size: 10.5px; line-height: 1.5; }
         .o_azm_icon_badge {
             width: 32px;
             height: 32px;
@@ -311,7 +314,7 @@
         strong { font-size: 15px; font-weight: 750; letter-spacing: -.2px; }
         small { color: $azm-muted; font-size: 11.5px; }
     }
-    .o_azm_om_codes { display: flex; flex-wrap: wrap; gap: 4px; }
+    .o_azm_om_codes { display: flex; flex-wrap: wrap; gap: 6px; }
     .o_azm_om_code {
         font: 600 11px/1 $font-family-monospace; padding: 4px 6px; border-radius: 6px;
         color: var(--azm-tone); background: var(--azm-tone-bg);
@@ -336,9 +339,9 @@
             font-variant-numeric: tabular-nums;
         }
     }
-    .o_azm_om_meters { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+    .o_azm_om_meters { display: flex; flex-direction: column; gap: 12px; width: 100%; }
     .o_azm_om_meter_label {
-        display: flex; align-items: baseline; gap: 6px; font-size: 12px; color: $azm-muted; margin-bottom: 3px;
+        display: flex; align-items: baseline; gap: 6px; font-size: 11.5px; color: $azm-muted; margin-bottom: 5px;
         b { color: $azm-ink; }
         small { margin-inline-start: auto; }
     }
@@ -346,8 +349,9 @@
 
     // ---------------------------------------------------------------- stage cards
     .o_azm_om_cards_head {
-        flex-wrap: wrap; gap: 10px;
-        h3 small { font-size: 13px; font-weight: 500; }
+        flex-wrap: wrap;
+        gap: 14px;
+        h3 small { font-size: 12px; font-weight: 500; }
     }
     .o_azm_om_cards_tools {
         display: flex;
@@ -361,7 +365,7 @@
             &:focus { border-color: rgba($azm-blue, .5); box-shadow: 0 0 0 3px rgba($azm-blue, .12); }
         }
     }
-    .o_azm_om_hint { color: $azm-muted; font-size: 11.5px; margin: -4px 0 14px; line-height: 1.55; }
+    .o_azm_om_hint { color: $azm-muted; font-size: 11.5px; margin: -6px 0 18px; line-height: 1.6; }
     .o_azm_om_stage_grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
@@ -397,7 +401,7 @@
             flex-wrap: wrap;
             gap: 2px;
             border-top: 1px solid rgba(15, 35, 71, .06);
-            padding: 5px 8px;
+            padding: 7px 10px;
             background: rgba(15, 35, 71, .022);
             .btn {
                 font-size: 11.5px;
@@ -461,13 +465,13 @@
     .o_azm_om_stage_stats {
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 6px;
+        gap: 8px;
         > div {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 1px;
-            padding: 7px 4px;
+            gap: 2px;
+            padding: 10px 6px;
             background: rgba(15, 35, 71, .035);
             border-radius: 10px;
             min-width: 0;
@@ -488,7 +492,7 @@
         > span { display: block; height: 100%; }
         &.o_azm_om_stack_lg { height: 14px; margin: 4px 0 8px; }
     }
-    .o_azm_om_chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+    .o_azm_om_chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
     .o_azm_om_chip_sm {
         display: inline-flex; gap: 4px; font-size: 11px; padding: 2px 7px; border-radius: 6px;
         background: $azm-bg; color: $azm-muted; b { color: $azm-ink; }
@@ -523,8 +527,8 @@
         padding: 20px 22px;
     }
     .o_azm_card_header {
-        margin-bottom: 14px;
-        padding-bottom: 12px;
+        margin-bottom: 18px;
+        padding-bottom: 14px;
         border-bottom: 1px solid rgba(15, 35, 71, .07);
         h3 {
             margin: 0;
@@ -684,12 +688,42 @@
     .o_azm_om_control { color: #0d9488 !important; display: flex !important; gap: 4px; align-items: center; margin-top: 2px; }
 }
 
+// ---------------------------------------------------------------- narrow views
+// Each step gives something up rather than letting everything shrink together: the
+// strips break first, then the figures halve, then the header stops being a row.
+@media (max-width: 1400px) {
+    // six figures and two meters stop fitting beside the name
+    .o_azm_om .o_azm_om_domain {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        row-gap: 14px;
+        header { grid-column: 1 / -1; }
+    }
+    .o_azm_om .o_azm_om_figures { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
 @media (max-width: 1200px) {
     .o_azm_om .o_azm_om_kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .o_azm_om .o_azm_om_row_3 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+    .o_azm_om .o_azm_om_row_3 { grid-template-columns: minmax(0, 1fr); }
+    .o_azm_om .o_azm_om_row_3 > :last-child { grid-column: auto; }
     .o_azm_om .o_azm_om_row_2 { grid-template-columns: minmax(0, 1fr); }
+    .o_azm_om .o_azm_om_domain { grid-template-columns: minmax(0, 1fr); }
     // the switch wraps to two rows before it squeezes either model's name
     .o_azm_om .o_azm_om_models { flex-wrap: wrap; }
+}
+@media (max-width: 768px) {
+    .o_azm_om { --om-section: 24px; --om-pad: 18px; --om-gap: 12px; }
+    .o_azm_om .o_azm_om_title { padding: 20px 18px 16px; }
+    .o_azm_om .o_azm_om_title h1 { font-size: 22px; }
+    .o_azm_om .o_azm_om_title_gauge { padding-inline-start: 0; border-inline-start: 0; }
+    .o_azm_om .o_azm_om_title_actions { margin-inline-start: 0; width: 100%; }
+    .o_azm_om .o_azm_om_title_actions .btn { flex: 1 1 auto; justify-content: center; }
+    .o_azm_om .o_azm_om_selects { flex-wrap: wrap; justify-content: flex-start; }
+    .o_azm_om .o_azm_om_selects .form-select { flex: 1 1 100%; min-width: 0; }
+    .o_azm_om .o_azm_om_cards_tools { flex-wrap: wrap; > * { flex: 1 1 100%; } }
+    .o_azm_om .o_azm_om_figures { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .o_azm_om .o_azm_om_stage_stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+    .o_azm_om .o_azm_om_kpis { grid-template-columns: minmax(0, 1fr); }
 }
 
 // Switching between the two models is navigation, not content: it was three cards
@@ -759,7 +793,13 @@
     .o_azm_om_status.o_azm_fin_status_in_progress { color: #b45309; background: #fef3c7; }
     .o_azm_om_status.o_azm_fin_status_not_started { color: #475569; background: #eef2f7; }
     .o_azm_om_status.o_azm_fin_status_not_applicable { color: #94a3b8; background: #f8fafc; }
-    .o_azm_fin_bar_row { grid-template-columns: 150px minmax(0, 1fr) 32px 58px; small { text-align: end; } }
+    // the financial bars carry a name, a bar, a percentage and a count: the name
+    // gets room to be a name and the numbers keep one width between rows
+    .o_azm_fin_bar_row {
+        grid-template-columns: minmax(150px, 1.1fr) minmax(0, 2fr) 40px 64px;
+        gap: 12px;
+        small { text-align: end; font-variant-numeric: tabular-nums; }
+    }
 }
 
 // ---------------------------------------------------------------- financial block on Home / entity page

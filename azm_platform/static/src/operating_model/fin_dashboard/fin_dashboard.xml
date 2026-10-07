@@ -24,6 +24,7 @@
     <t t-name="azm_platform.FinDashboard">
         <div class="o_action o_azm_dashboard o_azm_om o_azm_fin_page">
             <div class="o_azm_om_title">
+                <div class="o_azm_om_title_top">
                 <div class="o_azm_om_title_words">
                     <span class="o_azm_om_eyebrow">
                         <i class="oi" data-icon="view_module" title="Operating model"/>
@@ -61,6 +62,42 @@
                         <i class="oi" data-icon="add" title="New"/> New Financial Assessment
                     </button>
                 </div>
+                </div>
+                    <section t-attf-class="o_azm_om_toolbar {{this.state.busy ? 'o_azm_om_busy' : ''}}">
+                        <div class="o_azm_om_tabs" role="tablist">
+                            <button type="button" t-foreach="this.sourceTabs" t-as="tab" t-key="tab.key or 'all'"
+                                    t-attf-class="o_azm_om_tab o_azm_tone_green {{this.state.source === tab.key ? 'active' : ''}}"
+                                    t-on-click="() => this.setSource(tab.key)">
+                                <i class="oi" t-att-data-icon="tab.icon" t-att-title="tab.label"/>
+                                <span t-out="tab.label"/>
+                                <span t-if="tab.count !== null" class="o_azm_om_count" t-out="tab.count"/>
+                            </button>
+                        </div>
+                        <div class="o_azm_om_selects">
+                            <span t-if="this.state.companyId" class="o_azm_om_chip">
+                                <i class="oi" data-icon="business" title="Company"/>
+                                <t t-out="this.companyName"/>
+                                <button type="button" class="btn btn-link p-0" title="Clear" t-on-click="() => this.clearCompany()">
+                                    <i class="oi" data-icon="close" title="Clear"/>
+                                </button>
+                            </span>
+                            <select class="form-select" t-on-change="this.onProfile" aria-label="Answer template">
+                                <option value="" t-att-selected="!this.state.profile">All answer templates</option>
+                                <option t-foreach="this.d.profiles" t-as="p" t-key="p.key" t-att-value="p.key"
+                                        t-att-selected="p.key === this.state.profile" t-out="p.key + ' · ' + p.name"/>
+                            </select>
+                            <select class="form-select" t-on-change="this.onEntity" aria-label="Entity">
+                                <option value="" t-att-selected="!this.state.entityId">All entities</option>
+                                <option t-foreach="this.d.entity_options" t-as="opt" t-key="opt.id" t-att-value="opt.id"
+                                        t-att-selected="opt.id === this.state.entityId" t-out="opt.name"/>
+                            </select>
+                            <select class="form-select" t-on-change="this.onAssessment" aria-label="Assessment">
+                                <option value="" t-att-selected="!this.state.assessmentId">All current assessments</option>
+                                <option t-foreach="this.d.assessment_options" t-as="opt" t-key="opt.id" t-att-value="opt.id"
+                                        t-att-selected="opt.id === this.state.assessmentId" t-out="opt.name"/>
+                            </select>
+                        </div>
+                    </section>
             </div>
             <t t-call="azm_platform.ModelSwitch"/>
 
@@ -75,43 +112,6 @@
             </div>
 
             <t t-else="">
-                <!-- ============================== Filters -->
-                <section t-attf-class="o_azm_om_toolbar {{this.state.busy ? 'o_azm_om_busy' : ''}}">
-                    <div class="o_azm_om_tabs" role="tablist">
-                        <button type="button" t-foreach="this.sourceTabs" t-as="tab" t-key="tab.key or 'all'"
-                                t-attf-class="o_azm_om_tab o_azm_tone_green {{this.state.source === tab.key ? 'active' : ''}}"
-                                t-on-click="() => this.setSource(tab.key)">
-                            <i class="oi" t-att-data-icon="tab.icon" t-att-title="tab.label"/>
-                            <span t-out="tab.label"/>
-                            <span t-if="tab.count !== null" class="o_azm_om_count" t-out="tab.count"/>
-                        </button>
-                    </div>
-                    <div class="o_azm_om_selects">
-                        <span t-if="this.state.companyId" class="o_azm_om_chip">
-                            <i class="oi" data-icon="business" title="Company"/>
-                            <t t-out="this.companyName"/>
-                            <button type="button" class="btn btn-link p-0" title="Clear" t-on-click="() => this.clearCompany()">
-                                <i class="oi" data-icon="close" title="Clear"/>
-                            </button>
-                        </span>
-                        <select class="form-select" t-on-change="this.onProfile" aria-label="Answer template">
-                            <option value="" t-att-selected="!this.state.profile">All answer templates</option>
-                            <option t-foreach="this.d.profiles" t-as="p" t-key="p.key" t-att-value="p.key"
-                                    t-att-selected="p.key === this.state.profile" t-out="p.key + ' · ' + p.name"/>
-                        </select>
-                        <select class="form-select" t-on-change="this.onEntity" aria-label="Entity">
-                            <option value="" t-att-selected="!this.state.entityId">All entities</option>
-                            <option t-foreach="this.d.entity_options" t-as="opt" t-key="opt.id" t-att-value="opt.id"
-                                    t-att-selected="opt.id === this.state.entityId" t-out="opt.name"/>
-                        </select>
-                        <select class="form-select" t-on-change="this.onAssessment" aria-label="Assessment">
-                            <option value="" t-att-selected="!this.state.assessmentId">All current assessments</option>
-                            <option t-foreach="this.d.assessment_options" t-as="opt" t-key="opt.id" t-att-value="opt.id"
-                                    t-att-selected="opt.id === this.state.assessmentId" t-out="opt.name"/>
-                        </select>
-                    </div>
-                </section>
-
                 <!-- ============================== KPIs -->
                 <section class="o_azm_kpis o_azm_om_kpis">
                     <t t-foreach="this.kpis" t-as="kpi" t-key="kpi.key">
