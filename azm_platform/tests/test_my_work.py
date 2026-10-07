@@ -379,6 +379,43 @@ class TestMyWork(TransactionCase):
                 self.company).submit_my_work('azm.assessment', self.assessment.id)
         self.assertFalse(enqueue.called)
 
+    def test_parts_can_be_handed_out_without_leaving_the_page(self):
+        """The progress page assigns parts itself rather than sending somebody to the
+        backend list, so it needs the parts, who may hold them, and a way to save."""
+        D = self.env['azm.dashboard'].with_company(self.company)
+        fin = self.env['azm.fin.assessment'].sudo().create(
+            {'entity_id': self.entity.id, 'user_id': self.answerer.id})
+
+        offer = D.assignable_parts('azm.fin.assessment', fin.id)
+        self.assertTrue(offer['parts'], 'the model has parts to hand out')
+        self.assertTrue(all(p['level'] in ('module', 'topic') for p in offer['parts']))
+        self.assertIn(self.answerer.id, [c['id'] for c in offer['candidates']],
+                      'somebody on the entity may be given a part')
+
+        part = next(p for p in offer['parts'] if p['level'] == 'module')
+        out = D.set_part_assignment('azm.fin.assessment', fin.id,
+                                    part['level'], part['id'], [self.answerer.id])
+        self.assertIn('rows', out['progress'],
+                      'the page behind the form is handed back refreshed')
+        held = next(p for p in D.assignable_parts('azm.fin.assessment', fin.id)['parts']
+                    if p['level'] == part['level'] and p['id'] == part['id'])
+        self.assertEqual(held['user_ids'], [self.answerer.id])
+
+        # clearing a part removes the row rather than leaving an empty one, which is
+        # what the rest of the system reads as "this stays with the preparer"
+        D.set_part_assignment('azm.fin.assessment', fin.id, part['level'], part['id'], [])
+        cleared = next(p for p in D.assignable_parts('azm.fin.assessment', fin.id)['parts']
+                       if p['level'] == part['level'] and p['id'] == part['id'])
+        self.assertFalse(cleared['assignment_id'])
+        self.assertFalse(self.env['azm.assignment'].search_count(
+            [('fin_assessment_id', '=', fin.id), ('module_id', '=', part['id'])]))
+
+        # a level and an id arrive from a browser, so a stray one must not hand out
+        # somebody else's module
+        with self.assertRaises(UserError):
+            D.set_part_assignment('azm.fin.assessment', fin.id, 'module', 999999,
+                                  [self.answerer.id])
+
     def test_sending_the_whole_model_back_has_to_say_why(self):
         """Returning everything says less about what is wrong than returning one part
         does, so the reason is the only thing the preparer has to work from."""

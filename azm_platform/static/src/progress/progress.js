@@ -4,6 +4,8 @@ import { KeepLast } from "@web/core/utils/concurrency";
 import { useService } from "@web/core/utils/hooks";
 import { standardActionServiceProps } from "@web/webclient/actions/action_plugin";
 
+import { AzmAssignDialog } from "./assign_dialog";
+
 // mirrors STALE_AFTER in azm_progress.py: the page says the same number it counts by
 const STALE_AFTER = 7;
 
@@ -22,6 +24,7 @@ export class AzmProgress extends Component {
     setup() {
         this.orm = useService("orm");
         this.action = useService("action");
+        this.dialog = useService("dialog");
         this.keepLoad = new KeepLast();
         this.state = proxy({ loaded: false, data: null, error: "", open: {} });
         onWillStart(async () => {
@@ -149,8 +152,19 @@ export class AzmProgress extends Component {
         });
     }
 
-    openAssignments() {
-        this.action.doAction("azm_operating_model.azm_assignment_action");
+    /** Hand parts out over the page rather than sending somebody to the backend list,
+     * where they would have to rebuild the thing they were just looking at: which
+     * entity, which model, and which parts are already held. */
+    openAssign(row = null) {
+        this.dialog.add(AzmAssignDialog, {
+            rows: this.d.rows,
+            row: row || null,
+            // the page behind the form is about to be wrong, so it takes what the save
+            // handed back rather than drifting until a reload
+            onChanged: (progress) => {
+                this.state.data = progress;
+            },
+        });
     }
 }
 

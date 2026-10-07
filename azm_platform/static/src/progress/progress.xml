@@ -30,9 +30,9 @@
                         <em class="o_azm_en">Average completion</em>
                     </span>
                 </div>
-                <button type="button" class="btn o_azm_pg_hero_btn"
-                        t-on-click="() => this.openAssignments()">
-                    <i class="oi me-1" data-icon="assignment"/>وزّع الأجزاء
+                <button t-if="this.d.can_assign" type="button" class="btn o_azm_pg_hero_btn"
+                        t-on-click="() => this.openAssign()">
+                    <i class="oi me-1" data-icon="assignment"/>Assign parts
                 </button>
             </t>
         </header>
@@ -245,6 +245,12 @@
                                     <i t-attf-class="oi {{this.isOpen(row) ? 'o_azm_open' : ''}}"
                                        data-icon="chevron_left"/>
                                     <t t-out="row.parts.length"/>
+                                </button>
+                                <button t-if="this.d.can_assign" type="button"
+                                        class="btn o_azm_pg_btn"
+                                        title="Assign parts"
+                                        t-on-click="() => this.openAssign(row)">
+                                    <i class="oi" data-icon="assignment"/>
                                 </button>
                                 <button type="button" class="btn o_azm_pg_btn"
                                         title="افتح الإفادة"

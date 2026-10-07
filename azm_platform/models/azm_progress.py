@@ -9,7 +9,8 @@ far each of them has got.
 Read through the record rules like everything else, so an administrator sees the
 entities they have, not every entity there is.
 """
-from odoo import api, fields, models
+from odoo import Command, _, api, fields, models
+from odoo.exceptions import UserError
 
 from .azm_my_work import MODELS
 
@@ -177,6 +178,9 @@ class AzmDashboard(models.AbstractModel):
                                        p["name"]))
         return {
             "available": True,
+            # whether this reader may hand parts out at all: the page offers the form
+            # only to somebody who could save it
+            "can_assign": Assignment.has_access("write"),
             "rows": sorted(rows, key=lambda r: (r["entity"], r["key"], r["ref"])),
             "people": ranked,
             "totals": {
@@ -192,3 +196,112 @@ class AzmDashboard(models.AbstractModel):
                 "gaps": sum(r["gaps"] for r in rows),
             },
         }
+
+    # ------------------------------------------------------------- assigning parts
+    # Giving a part to somebody used to mean leaving this page for the backend list,
+    # where the reader had to rebuild from scratch the thing they were just looking at:
+    # which entity, which model, which parts are already held. These three methods let
+    # the page ask the same questions it already displays, and answer them in place.
+
+    @api.model
+    def _assign_part_row(self, level, part_id, name, depth, held):
+        row = held.get((level, part_id))
+        return {
+            "level": level, "id": part_id, "name": name, "depth": depth,
+            "assignment_id": row.id if row else False,
+            "user_ids": row.user_ids.ids if row else [],
+            "users": row.user_ids.mapped("name") if row else [],
+            "answered": row.answered if row else 0,
+            "total": row.total if row else 0,
+            "note": (row.note or "") if row else "",
+        }
+
+    @api.model
+    def _assign_held(self, record):
+        """Every part of this assessment that is already in somebody's hands."""
+        field = ("fin_assessment_id" if record._name == "azm.fin.assessment"
+                 else "proc_assessment_id")
+        held = {}
+        for row in self.env["azm.assignment"].search([(field, "=", record.id)]):
+            if row.topic_id:
+                held[("topic", row.topic_id.id)] = row
+            elif row.module_id:
+                held[("module", row.module_id.id)] = row
+            elif row.stage_id:
+                held[("stage", row.stage_id.id)] = row
+        return held
+
+    @api.model
+    def assignable_parts(self, res_model, assessment_id):
+        """The parts of one model, each saying who holds it, and who may be given it.
+
+        The same broad-to-narrow shape the rest of the system uses: a module, then the
+        topics under it, either of which can be handed out; or a stage, which cannot be
+        divided further.
+        """
+        record = self._my_work_record(res_model, assessment_id)
+        record.check_access("read")
+        self.env["azm.assignment"].check_access("read")
+        held = self._assign_held(record)
+        parts = []
+        if res_model == "azm.fin.assessment":
+            for module in record.answer_ids.module_id.sorted("sequence"):
+                parts.append(self._assign_part_row(
+                    "module", module.id, f"FIN.{module.code} · {module.name}", 0, held))
+                lines = record.answer_ids.filtered(lambda a, m=module: a.module_id == m)
+                for topic in lines.topic_id.sorted("sequence"):
+                    label = f"{topic.code or ''} · {topic.name or ''}".strip(" ·")
+                    parts.append(self._assign_part_row("topic", topic.id, label, 1, held))
+        else:
+            visible = record.answer_ids.filtered("is_visible")
+            for stage in visible.stage_id.sorted("sequence"):
+                parts.append(self._assign_part_row(
+                    "stage", stage.id, f"{stage.code} · {stage.name}", 0, held))
+        # who may be given a part: the people on this entity, plus anybody already
+        # holding one — somebody taken off the entity still shows on what they hold,
+        # rather than vanishing from the form that is supposed to move it off them
+        candidates = record.entity_id.user_ids.filtered(lambda u: not u.share)
+        for row in held.values():
+            candidates |= row.user_ids
+        return {
+            "parts": parts,
+            "can_write": self.env["azm.assignment"].has_access("write"),
+            "candidates": [{"id": u.id, "name": u.name} for u in candidates.sorted("name")],
+        }
+
+    @api.model
+    def set_part_assignment(self, res_model, assessment_id, level, part_id, user_ids):
+        """Give one part to these people — or, with nobody named, take it back.
+
+        A part nobody holds is not an empty assignment row but no row at all: that is
+        what the rest of the system reads as "this stays with whoever prepares the
+        assessment", so clearing one has to remove it rather than blank it.
+        """
+        record = self._my_work_record(res_model, assessment_id)
+        record.check_access("read")
+        Assignment = self.env["azm.assignment"]
+        # the part must be one of this assessment's own: a level and an id arrive from
+        # a browser, and without this a stray id would hand out somebody else's module
+        allowed = {(p["level"], p["id"]) for p in
+                   self.assignable_parts(res_model, assessment_id)["parts"]}
+        if (level, int(part_id)) not in allowed:
+            raise UserError(_("That part does not belong to this model."))
+        people = self.env["res.users"].browse([int(uid) for uid in user_ids or []]).exists()
+        if any(user.share for user in people):
+            raise UserError(_("A portal user cannot be given a part."))
+        row = self._assign_held(record).get((level, int(part_id)))
+        if not people:
+            if row:
+                row.unlink()
+            return {"done": True, "progress": self.get_progress()}
+        if row:
+            row.write({"user_ids": [Command.set(people.ids)]})
+        else:
+            field = ("fin_assessment_id" if res_model == "azm.fin.assessment"
+                     else "proc_assessment_id")
+            key = {"module": "module_id", "topic": "topic_id", "stage": "stage_id"}[level]
+            Assignment.create({
+                field: record.id, key: int(part_id),
+                "user_ids": [Command.set(people.ids)],
+            })
+        return {"done": True, "progress": self.get_progress()}
