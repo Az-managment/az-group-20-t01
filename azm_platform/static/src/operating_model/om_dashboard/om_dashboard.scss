@@ -477,10 +477,15 @@
         grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 14px;
     }
+    // The entities table and the list beside it used to share a row, which left a
+    // seven-column table — logo, name, status, counts, two meters, findings — in a
+    // little over half the page. No amount of padding rescues that: the columns were
+    // the problem. They stack now, so the table has the whole width and the list
+    // below it spreads across the same width instead of running down one edge.
     .o_azm_om_row_2 {
         display: grid;
-        grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
-        gap: 14px;
+        grid-template-columns: minmax(0, 1fr);
+        gap: var(--om-section);
         align-items: start;
     }
     // every panel on these pages sits on the same glass, and is given room to be a
@@ -543,28 +548,78 @@
         width: 100%;
         border-collapse: separate;
         border-spacing: 0;
+        // a row is a line somebody reads across, so it is given the height to be one
         th {
             font-size: 10px;
             font-weight: 700;
             letter-spacing: .04em;
             text-transform: uppercase;
             color: $azm-muted;
-            padding: 9px 10px;
+            padding: 11px 14px;
             background: rgba(15, 35, 71, .025);
             border-bottom: 1px solid rgba(15, 35, 71, .07);
             white-space: nowrap;
+            &:first-child { padding-inline-start: 18px; }
+            &:last-child { padding-inline-end: 18px; }
         }
         td {
-            padding: 11px 10px;
+            padding: 15px 14px;
             border-bottom: 1px solid rgba(15, 35, 71, .05);
             vertical-align: middle;
             font-size: 12.5px;
+            // the counts and percentages are compared down their column
+            font-variant-numeric: tabular-nums;
+            &:first-child { padding-inline-start: 18px; }
+            &:last-child { padding-inline-end: 18px; }
         }
         tbody tr:last-child td { border-bottom: 0; }
         tbody tr { cursor: pointer; transition: background .12s ease; &:hover { background: rgba($azm-blue, .035); } }
-        .o_azm_mini_progress { min-width: 120px; }
-        // figures in a column are compared down it, so they keep one width
+        .o_azm_mini_progress {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            min-width: 150px;
+            .o_azm_progress { flex: 1 1 auto; }
+            > span:last-child { font-weight: 700; min-width: 34px; text-align: end; }
+        }
         b, strong { font-variant-numeric: tabular-nums; }
+        // the table is wider than its card on a narrow screen; let it scroll rather
+        // than crush every column to fit
+        th, td { white-space: nowrap; }
+        td .o_azm_entity_cell { white-space: normal; }
+    }
+    // the card holds a table edge to edge: its own padding would double the cells'
+    .o_azm_card > .table-responsive {
+        margin: 0 -22px -20px;
+        border-end-start-radius: var(--om-radius);
+        border-end-end-radius: var(--om-radius);
+        overflow-x: auto;
+    }
+    // who the row is about, with room for a logo and two lines beside it
+    .o_azm_entity_cell {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        min-width: 210px;
+        img, .o_azm_code_avatar {
+            flex: 0 0 auto;
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            object-fit: contain;
+            background: #fff;
+            border: 1px solid rgba(15, 35, 71, .08);
+        }
+        .o_azm_code_avatar {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 800;
+            color: $azm-muted;
+        }
+        strong { display: block; font-size: 12.5px; line-height: 1.35; }
+        small { display: block; font-size: 10.5px; color: $azm-muted; line-height: 1.35; }
     }
     .o_azm_om_state {
         font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 8px; white-space: nowrap;
@@ -572,7 +627,25 @@
         &.o_azm_om_state_review { color: #b45309; background: #fef3c7; }
         &.o_azm_om_state_approved { color: #15803d; background: #dcfce7; }
     }
-    .o_azm_om_risks li { align-items: flex-start; }
+    // with the full width to use, the top risks lay out across it rather than down it
+    .o_azm_om_risks {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+        gap: 8px;
+        li {
+            align-items: flex-start;
+            gap: 10px;
+            padding: 11px 12px;
+            border: 1px solid rgba(15, 35, 71, .08);
+            border-radius: 12px;
+            background: #fff;
+            transition: border-color .14s ease, box-shadow .14s ease;
+            &:hover {
+                border-color: rgba($azm-blue, .35);
+                box-shadow: 0 6px 16px rgba(15, 35, 71, .07);
+            }
+        }
+    }
     .o_azm_om_score {
         flex: 0 0 auto; width: 34px; height: 34px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center;
         font-weight: 800; font-size: 14px; background: #eef2f7; color: #475569;

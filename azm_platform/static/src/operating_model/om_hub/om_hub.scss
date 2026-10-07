@@ -374,7 +374,7 @@
         font-size: 12.5px;
 
         th {
-            padding: 10px 14px;
+            padding: 12px 16px;
             text-align: start;
             font-size: 10px;
             font-weight: 700;
@@ -386,9 +386,12 @@
             white-space: nowrap;
         }
         td {
-            padding: 11px 14px;
+            // the same height a row needs on the model pages: this table carries a
+            // logo, a status chip, a meter and a count in every cell
+            padding: 16px;
             vertical-align: middle;
             border-bottom: 1px solid rgba(15, 35, 71, .05);
+            font-variant-numeric: tabular-nums;
         }
         tbody tr:last-child td { border-bottom: 0; }
         tbody tr:hover td { background: rgba($azm-blue, .03); }
@@ -431,8 +434,8 @@
     .o_azm_hub_cell {
         display: flex;
         flex-direction: column;
-        gap: 5px;
-        min-width: 150px;
+        gap: 6px;
+        min-width: 170px;
         .o_azm_progress { width: 100%; }
     }
     .o_azm_hub_cell_top {
