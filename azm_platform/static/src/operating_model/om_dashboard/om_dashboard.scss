@@ -380,6 +380,19 @@
         }
     }
     .o_azm_om_meters { display: flex; flex-direction: column; gap: 12px; width: 100%; }
+    // the label over a group of bars: three of these stack in one card, so each is
+    // set as a heading of its own with a rule above rather than another line of text
+    .o_azm_om_bars > .o_azm_om_meter_label {
+        padding-top: 14px;
+        margin-top: 6px;
+        border-top: 1px solid rgba(15, 35, 71, .07);
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+        color: $azm-muted;
+        &:first-child { padding-top: 0; margin-top: 0; border-top: 0; }
+    }
     .o_azm_om_meter_label {
         display: flex; align-items: baseline; gap: 6px; font-size: 11.5px; color: $azm-muted; margin-bottom: 5px;
         b { color: $azm-ink; }
@@ -528,9 +541,13 @@
     }
     .o_azm_om_composition { display: flex; flex-direction: column; gap: 4px; }
     .o_azm_om_stack {
-        display: flex; height: 8px; border-radius: 99px; overflow: hidden; background: #eef2f7;
+        display: flex;
+        height: 8px;
+        border-radius: 99px;
+        overflow: hidden;
+        background: rgba(15, 35, 71, .08);
         > span { display: block; height: 100%; }
-        &.o_azm_om_stack_lg { height: 14px; margin: 4px 0 8px; }
+        &.o_azm_om_stack_lg { height: 16px; margin: 6px 0 0; border-radius: 10px; }
     }
     .o_azm_om_chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
     .o_azm_om_chip_sm {
@@ -589,13 +606,63 @@
         }
         a, .btn-link { font-size: 11.5px; font-weight: 600; text-decoration: none; }
     }
-    // the donut panels keep their chart off the heading rule
-    .o_azm_donut_card { display: flex; flex-direction: column; }
+    // ------------------------------------------------------------------ charts
+    // The chart, its legend and the figures under it are one statement, so they are
+    // laid out as one: the chart holds a column of its own and everything beside it
+    // lines up on a single left edge, with the counts down a single right edge.
+    .o_azm_donut_card {
+        display: flex;
+        flex-direction: column;
+        // two of these sit side by side; they end level whatever their legends hold
+        > .o_azm_donut_layout { flex: 1 1 auto; }
+    }
+    .o_azm_donut_layout {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        align-items: center;
+        gap: 26px;
+        justify-content: start;
+    }
+    .o_azm_legend {
+        li {
+            display: grid;
+            grid-template-columns: 10px minmax(0, 1fr) auto;
+            align-items: center;
+            gap: 10px;
+            padding: 7px 0;
+            font-size: 12.5px;
+            // a hairline between entries, so a column of five reads as five
+            + li { border-top: 1px solid rgba(15, 35, 71, .06); }
+        }
+        .o_azm_legend_count {
+            font-weight: 700;
+            color: $azm-ink;
+            font-variant-numeric: tabular-nums;
+            text-align: end;
+            min-width: 34px;
+        }
+    }
+    // the legend that runs along under a stacked bar is a row, not a column
+    .o_azm_om_legend_inline {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 18px;
+        margin-top: 10px;
+        li {
+            display: inline-flex;
+            grid-template-columns: none;
+            gap: 7px;
+            padding: 0;
+            font-size: 11.5px;
+            border-top: 0;
+            + li { border-top: 0; }
+        }
+    }
     .o_azm_om_bars { display: flex; flex-direction: column; gap: 6px; }
     .o_azm_om_bars { gap: 9px; }
     .o_azm_om_bar_row {
         display: grid;
-        grid-template-columns: 130px minmax(0, 1fr) 40px;
+        grid-template-columns: minmax(130px, 0.9fr) minmax(0, 2fr) 44px;
         align-items: center;
         gap: 10px;
         font-size: 12px;
@@ -742,6 +809,22 @@
         &.o_low { background: #dcfce7; color: #15803d; }
     }
     .o_azm_om_control { color: #0d9488 !important; display: flex !important; gap: 4px; align-items: center; margin-top: 2px; }
+}
+
+// When a chart card is too narrow to hold its legend beside the chart, the legend
+// goes under it — as one column, still on one left edge, rather than two columns of
+// hairlined rows that read as a grid of unrelated pairs.
+@container (max-width: 460px) {
+    .o_azm_om .o_azm_donut_layout {
+        grid-template-columns: minmax(0, 1fr);
+        justify-items: stretch;
+        gap: 16px;
+        .o_azm_donut { justify-self: center; }
+    }
+    .o_azm_om .o_azm_donut_layout .o_azm_legend {
+        display: block;
+        width: 100%;
+    }
 }
 
 // ---------------------------------------------------------------- narrow views
