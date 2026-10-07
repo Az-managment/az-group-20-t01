@@ -287,7 +287,6 @@
                                         <th>Status</th>
                                         <th>Activities</th>
                                         <th>Completion</th>
-                                        <th>Maturity</th>
                                         <th>Gaps</th>
                                     </tr>
                                 </thead>
@@ -306,13 +305,24 @@
                                         <td><span t-attf-class="o_azm_status o_azm_status_{{entity.statusClass}}" t-out="entity.statusLabel"/></td>
                                         <td><small t-out="entity.scopes.join('، ') or '—'"/></td>
                                         <td>
+                                            <span class="o_azm_cell_stack">
                                             <span class="o_azm_mini_progress">
                                                 <span class="o_azm_progress"><span class="o_azm_progress_bar" t-attf-style="width: {{this.bar(entity.completion)}}%"/></span>
                                                 <span t-out="this.pct(entity.completion)"/>
                                             </span>
+                                                <!-- maturity qualifies the completion above it rather than
+                                                     standing as a column of its own -->
+                                                <small><t t-out="this.pct(entity.maturity)"/> mature</small>
+                                            </span>
                                         </td>
-                                        <td t-out="this.pct(entity.maturity)"/>
-                                        <td t-att-class="{'text-warning fw-bold': entity.gaps}" t-out="entity.gaps or '—'"/>
+                                        <td>
+                                            <span class="o_azm_cell_stack">
+                                                <b t-if="entity.gaps" class="o_azm_cell_warn">
+                                                    <t t-out="entity.gaps"/> open
+                                                </b>
+                                                <b t-else="" class="o_azm_cell_quiet">none</b>
+                                            </span>
+                                        </td>
                                     </tr>
                                 </tbody>
                             </table>

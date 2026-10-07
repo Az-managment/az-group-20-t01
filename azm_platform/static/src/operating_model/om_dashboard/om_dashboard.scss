@@ -587,7 +587,7 @@
             letter-spacing: .04em;
             text-transform: uppercase;
             color: $azm-muted;
-            padding: 11px 14px;
+            padding: 13px 18px;
             background: rgba(15, 35, 71, .025);
             border-bottom: 1px solid rgba(15, 35, 71, .07);
             white-space: nowrap;
@@ -595,7 +595,7 @@
             &:last-child { padding-inline-end: 18px; }
         }
         td {
-            padding: 18px 16px;
+            padding: 20px 18px;
             border-bottom: 1px solid rgba(15, 35, 71, .05);
             vertical-align: middle;
             font-size: 12.5px;
@@ -606,11 +606,22 @@
         }
         tbody tr:last-child td { border-bottom: 0; }
         tbody tr { cursor: pointer; transition: background .12s ease; &:hover { background: rgba($azm-blue, .035); } }
+        // two facts about one subject, stacked in the cell that holds them rather
+        // than split across two columns that each need their own heading
+        .o_azm_cell_stack {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            min-width: 0;
+            > small { font-size: 10.5px; color: $azm-muted; }
+            .o_azm_cell_warn { font-size: 12.5px; font-weight: 700; color: #c2410c; }
+            .o_azm_cell_quiet { font-size: 12.5px; font-weight: 600; color: rgba($azm-muted, .85); }
+        }
         .o_azm_mini_progress {
             display: flex;
             align-items: center;
             gap: 9px;
-            min-width: 150px;
+            min-width: 170px;
             .o_azm_progress { flex: 1 1 auto; }
             > span:last-child { font-weight: 700; min-width: 34px; text-align: end; }
         }
@@ -631,8 +642,8 @@
     .o_azm_entity_cell {
         display: flex;
         align-items: center;
-        gap: 11px;
-        min-width: 210px;
+        gap: 13px;
+        min-width: 240px;
         img, .o_azm_code_avatar {
             flex: 0 0 auto;
             width: 36px;

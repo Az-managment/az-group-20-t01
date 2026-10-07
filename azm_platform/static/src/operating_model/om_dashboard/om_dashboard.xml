@@ -324,9 +324,7 @@
                                         <th>Status</th>
                                         <th>Assessments</th>
                                         <th>Completion</th>
-                                        <th>Certainty</th>
-                                        <th>Risks</th>
-                                        <th>Open findings</th>
+                                        <th>Risk</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -345,14 +343,25 @@
                                         <td><span t-attf-class="o_azm_status o_azm_status_{{entity.statusClass}}" t-out="entity.statusLabel"/></td>
                                         <td><t t-out="entity.assessments"/> <small class="text-muted" t-if="entity.approved">(<t t-out="entity.approved"/> ✓)</small></td>
                                         <td>
-                                            <span class="o_azm_mini_progress">
-                                                <span class="o_azm_progress"><span class="o_azm_progress_bar" t-attf-style="width: {{this.bar(entity.completion)}}%"/></span>
-                                                <span t-out="this.pct(entity.completion)"/>
+                                            <span class="o_azm_cell_stack">
+                                                <span class="o_azm_mini_progress">
+                                                    <span class="o_azm_progress"><span class="o_azm_progress_bar" t-attf-style="width: {{this.bar(entity.completion)}}%"/></span>
+                                                    <span t-out="this.pct(entity.completion)"/>
+                                                </span>
+                                                <!-- certainty qualifies the completion above it rather than
+                                                     standing as a column of its own -->
+                                                <small><t t-out="this.pct(entity.certainty)"/> certain</small>
                                             </span>
                                         </td>
-                                        <td t-out="this.pct(entity.certainty)"/>
-                                        <td t-out="entity.risks or '—'"/>
-                                        <td t-att-class="{'text-danger fw-bold': entity.findings_open}" t-out="entity.findings_open or '—'"/>
+                                        <td>
+                                            <span class="o_azm_cell_stack">
+                                                <b t-if="entity.findings_open" class="o_azm_cell_warn">
+                                                    <t t-out="entity.findings_open"/> open
+                                                </b>
+                                                <b t-else="" class="o_azm_cell_quiet">none open</b>
+                                                <small><t t-out="entity.risks or 0"/> risks triggered</small>
+                                            </span>
+                                        </td>
                                     </tr>
                                 </tbody>
                             </table>
