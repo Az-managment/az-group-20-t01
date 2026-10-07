@@ -73,6 +73,19 @@
             <div class="o_azm_ws_body">
                 <!-- stage rail -->
                 <nav class="o_azm_rail">
+                    <label class="o_azm_ws_filter">
+                        <input type="checkbox" t-att-checked="this.state.onlyOpen"
+                               t-on-change="() => this.toggleOnlyOpen()"/>
+                        غير المكتمل فقط
+                    </label>
+                    <!-- offered only when something actually came back, so it cannot be
+                         switched on to reveal an empty page for no reason -->
+                    <label t-if="d.returns_open" class="o_azm_ws_filter o_azm_ws_returned_filter">
+                        <input type="checkbox" t-att-checked="this.state.onlyReturned"
+                               t-on-change="() => this.toggleOnlyReturned()"/>
+                        المُعاد من المراجع فقط
+                        <span class="o_azm_returned_count" t-out="d.returns_open"/>
+                    </label>
                     <t t-foreach="d.stages" t-as="stage" t-key="stage.id">
                         <button t-attf-class="o_azm_rail_item o_azm_status_{{stage.status}} {{stage.id === this.state.stageId ? 'o_azm_active' : ''}}"
                                 t-on-click="() => this.selectStage(stage)">
@@ -99,6 +112,12 @@
                         </p>
                         <div t-if="d.header.readonly" class="o_azm_note o_azm_note_warn">
                             الإفادة في حالة «<t t-out="d.header.state_label"/>» — للقراءة فقط.
+                        </div>
+                        <!-- what came back may be under another stage: say where it is
+                             rather than leaving a page that looks empty by mistake -->
+                        <div t-if="this.state.onlyReturned and !this.returnedHere()" class="o_azm_note">
+                            لا شيء مُعاد في هذه المرحلة — المُعاد (<t t-out="d.returns_open"/>)
+                            في مراحل أخرى، اختر منها من القائمة.
                         </div>
                     </div>
 

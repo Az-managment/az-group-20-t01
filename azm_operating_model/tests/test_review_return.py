@@ -105,6 +105,27 @@ class TestReviewReturn(TransactionCase):
         self.assertFalse(any(r['returned'] and r['locked'] for r in rows),
                          'a row is either to be answered again or held, never both')
 
+    def test_the_procurement_workspace_can_show_only_what_came_back(self):
+        """Same filter, same payload contract as the financial workspace."""
+        proc = self.env['azm.assessment'].create({
+            'entity_id': self.entity.id, 'user_id': self.preparer.id,
+            'purchase_kind': 'subscriptions', 'scenario': 'petty_cash'})
+        proc.write({'state': 'review'})
+        before = proc.workspace_data()
+        self.assertEqual(before['returns_open'], 0)
+        self.assertFalse([q for q in before['questions'] if q['returned']])
+
+        stage_id = before['stage']['id']
+        proc.with_user(self.reviewer).action_return_parts(
+            [{'level': 'stage', 'id': stage_id, 'note': 'راجع هذه المرحلة'}])
+        after = proc.workspace_data(stage_id=stage_id)
+        self.assertEqual(after['returns_open'], 1, 'the page can offer the filter')
+        self.assertTrue(after['questions'], 'the stage has questions to judge')
+        self.assertTrue(all(q['returned'] for q in after['questions']),
+                        'a stage came back, so every question under it did')
+        self.assertFalse(any(q['returned'] and q['locked'] for q in after['questions']),
+                         'a question is either to be answered again or held, never both')
+
     def test_it_shows_up_on_the_page_of_whoever_must_fix_it(self):
         self._return_the_module()
         rows = self.env['azm.dashboard'].with_user(self.preparer).with_company(

@@ -239,9 +239,14 @@ class AzmAssessment(models.Model):
             if not line:
                 continue   # a question the catalogue gained since this assessment was made
             q = line.question_id
+            covered = bool(returns) and returns._covers(line)
             questions.append({
                 # a review that sent parts back leaves the rest as it was reviewed
-                "locked": bool(returns) and not returns._covers(line),
+                "locked": bool(returns) and not covered,
+                # said outright rather than left to be read off "locked", which is
+                # false both for a returned question and for every question when
+                # nothing was returned at all
+                "returned": covered,
                 "id": q.id, "line_id": line.id, "code": q.code, "label": q.label, "qtype": q.qtype,
                 "group": q.group, "help": q.help_text or "",
                 "options": [{"id": o.id, "name": o.name, "kind": o.kind} for o in q.option_ids],
@@ -261,6 +266,10 @@ class AzmAssessment(models.Model):
                 **self._azm_review_header(),
                 "readonly": self.state != "draft",
             },
+            # how many parts are waiting to be answered again across the whole
+            # assessment: the filter is worth offering only when there are some, and
+            # what came back may be under a stage the reader is not looking at
+            "returns_open": len(returns),
             "stages": nav,
             "stage": {"id": stage.id, "code": stage.code, "name": stage.name,
                       "input": stage.input_desc, "output": stage.output_desc},

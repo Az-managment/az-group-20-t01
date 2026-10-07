@@ -31,6 +31,8 @@ export class AzmWorkspace extends Component {
             output: markup(""),
             busy: false,
             showHelp: {},
+            onlyOpen: false,
+            onlyReturned: false,
             // the part a reviewer is sending back, and the reason being typed for it
             returning: null,
             returnNote: "",
@@ -298,8 +300,30 @@ export class AzmWorkspace extends Component {
     }
 
     // ------------------------------------------------------------ view helpers
+    toggleOnlyOpen() {
+        this.state.onlyOpen = !this.state.onlyOpen;
+    }
+
+    /** Show only what the reviewer sent back to be answered again. */
+    toggleOnlyReturned() {
+        this.state.onlyReturned = !this.state.onlyReturned;
+    }
+
     questionsOf(group) {
-        return this.state.data.questions.filter((q) => q.group === group);
+        let questions = this.state.data.questions.filter((q) => q.group === group);
+        if (this.state.onlyReturned) {
+            questions = questions.filter((q) => q.returned);
+        }
+        if (this.state.onlyOpen) {
+            questions = questions.filter((q) => !this.isAnswered(q));
+        }
+        return questions;
+    }
+
+    /** How many returned questions are in the stage being looked at, as against the
+     * whole assessment — what came back may be under a stage the reader is not on. */
+    returnedHere() {
+        return this.state.data.questions.filter((q) => q.returned).length;
     }
 
     isChosen(question, option) {
