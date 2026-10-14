@@ -202,6 +202,12 @@
                                  class="o_azm_output_entity">
                                 <span t-attf-class="o_azm_dot o_azm_dot_{{e.css}}" t-att-title="e.state_label"/>
                                 <span class="o_azm_output_entity_name" t-out="e.name"/>
+                                <!-- Whose copy this row is. The card above carries the
+                                     master code, which every entity here shares, so a
+                                     row that showed only a name left the reader opening
+                                     nine documents that all looked like the one code on
+                                     the card. The copy code was already being sent. -->
+                                <b class="o_azm_code o_azm_entity_code" t-out="e.code"/>
                                 <small t-out="e.state_label"/>
                                 <small t-if="e.approval"
                                        t-attf-class="o_azm_appr_chip o_azm_appr_{{e.approval}}"
@@ -216,7 +222,7 @@
                                     <button t-if="e.state !== 'empty'" type="button"
                                             class="btn btn-sm btn-light"
                                             title="قراءة هنا · Read here"
-                                            t-on-click="() => this.previewDoc({...e.doc, label: row.code})">
+                                            t-on-click="() => this.previewDoc({...e.doc, label: e.code})">
                                         <i class="oi" data-icon="visibility"/>
                                     </button>
                                     <button t-if="e.state !== 'empty'" type="button"

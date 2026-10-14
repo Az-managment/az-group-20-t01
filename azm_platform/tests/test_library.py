@@ -269,6 +269,21 @@ class TestOutputsLibrary(TransactionCase):
             self.assertIn(entity['state'], ('done', 'pending', 'empty', 'error'))
             self.assertTrue(entity['doc']['kind'])
             self.assertEqual(entity['doc']['company_id'], entity['company_id'])
+        # Every row says which copy it is. The card above carries the master code that
+        # all of them share, so a panel that named only the entity left the reader
+        # opening nine documents that all looked like the one code on the card.
+        from odoo.addons.azm_platform.models.azm_coding import copy_code
+        codes = self.env['azm.entity'].sudo().with_context(active_test=False).search(
+            [('company_id', 'in', [e['company_id'] for e in found['rows']])])
+        by_company = {e.company_id.id: e.code or '' for e in codes}
+        for entity in found['rows']:
+            self.assertEqual(entity['code'],
+                             copy_code(found['code'], by_company.get(entity['company_id'], '')),
+                             f"{entity['name']} is not told which copy it holds")
+        # and they differ from one another, or the panel is nine rows of one code
+        holders = [e for e in found['rows'] if by_company.get(e['company_id'])]
+        self.assertEqual(len({e['code'] for e in holders}), len(holders),
+                         'two entities are shown the same copy code')
 
     # ------------------------------------------------------------------ reading it
     def test_every_kind_the_library_offers_can_be_read_and_downloaded(self):
