@@ -159,7 +159,7 @@ class AzmDashboard(models.AbstractModel):
                 "whole_left": whole["left"],
                 "reviewer": assessment.reviewer_id.name or "",
                 "version": assessment.version,
-                "parts": [{"name": part.part_name, "answered": part.answered,
+                "parts": [{"id": part.id, "name": part.part_name, "answered": part.answered,
                            "total": part.total, "left": part.left,
                            "progress": round(part.progress)}
                           for part in (parts or [])],

@@ -1,5 +1,6 @@
 import { Component, onWillStart, proxy, t, useProps } from "@odoo/owl";
 import { useService } from "@web/core/utils/hooks";
+import { useHotkey } from "@web/core/hotkeys/hotkey_hook";
 import { useDebounced } from "@web/core/utils/timing";
 
 /**
@@ -38,6 +39,9 @@ export class AzmOmDetail extends Component {
         // searched on the server now, and a request per letter would have the answers
         // arriving out of order
         this.searchLater = useDebounced(() => this.load(), 300);
+        // the sheet closes on Escape as well as on the scrim, which was pointer-only:
+        // a reader who opened it from the keyboard had no way back out
+        useHotkey("escape", () => this.props.onClose());
         onWillStart(() => this.load());
     }
 
@@ -105,6 +109,14 @@ export class AzmOmDetail extends Component {
 
     isOpen(row) {
         return !!this.state.open[row.id];
+    }
+
+    /** A row given a button's job answers a button's keys. */
+    onRowKey(ev, row) {
+        if (ev.key === "Enter" || ev.key === " ") {
+            ev.preventDefault();
+            this.toggle(row);
+        }
     }
 
     toggle(row) {

@@ -154,7 +154,7 @@
                             <!-- when the model has been split, the parts that are this
                                  person's — the figures above are already only theirs -->
                             <div t-if="row.parts.length" class="o_azm_parts">
-                                <span t-foreach="row.parts" t-as="part" t-key="part.name"
+                                <span t-foreach="row.parts" t-as="part" t-key="part.id"
                                       t-attf-class="o_azm_part {{part.left ? '' : 'o_azm_part_done'}}"
                                       t-attf-title="{{part.answered}}/{{part.total}}">
                                     <t t-out="part.name"/>

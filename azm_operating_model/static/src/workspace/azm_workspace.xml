@@ -22,17 +22,17 @@
                         <div t-attf-style="width: {{d.header.progress}}%"/>
                     </div>
                     <span class="o_azm_muted"><t t-out="d.header.progress"/>٪</span>
-                    <button t-if="d.header.can_send" class="btn btn-primary btn-sm"
+                    <button type="button" t-if="d.header.can_send" class="btn btn-primary btn-sm"
                             t-att-disabled="this.state.busy"
                             t-on-click="() => this.requestReview()">
                         اطلب المراجعة <em class="o_azm_en">Request review</em>
                     </button>
-                    <button t-if="d.header.can_return" class="btn btn-outline-warning btn-sm"
+                    <button type="button" t-if="d.header.can_return" class="btn btn-outline-warning btn-sm"
                             t-att-disabled="this.state.busy"
                             t-on-click="() => this.startReturn('stage', d.stage.id, d.stage.name)">
                         أعد هذه المرحلة <em class="o_azm_en">Send this stage back</em>
                     </button>
-                    <button class="btn btn-secondary btn-sm" t-on-click="() => this.openRecord()">
+                    <button type="button" class="btn btn-secondary btn-sm" t-on-click="() => this.openRecord()">
                         <t t-out="d.header.name"/>
                     </button>
                 </div>
@@ -59,10 +59,10 @@
                           t-att-value="this.state.returnNote"
                           t-on-input="(ev) => this.state.returnNote = ev.target.value"/>
                 <div class="o_azm_ws_compose_actions">
-                    <button class="btn btn-sm btn-light" t-on-click="() => this.cancelReturn()">
+                    <button type="button" class="btn btn-sm btn-light" t-on-click="() => this.cancelReturn()">
                         تراجع
                     </button>
-                    <button class="btn btn-sm btn-warning"
+                    <button type="button" class="btn btn-sm btn-warning"
                             t-att-disabled="this.state.busy or !this.state.returnNote.trim()"
                             t-on-click="() => this.confirmReturn()">
                         أعدها مع الملاحظة
@@ -87,7 +87,7 @@
                         <span class="o_azm_returned_count" t-out="d.returns_open"/>
                     </label>
                     <t t-foreach="d.stages" t-as="stage" t-key="stage.id">
-                        <button t-attf-class="o_azm_rail_item o_azm_status_{{stage.status}} {{stage.id === this.state.stageId ? 'o_azm_active' : ''}}"
+                        <button type="button" t-attf-class="o_azm_rail_item o_azm_status_{{stage.status}} {{stage.id === this.state.stageId ? 'o_azm_active' : ''}}"
                                 t-on-click="() => this.selectStage(stage)">
                             <span class="o_azm_rail_idx" t-out="stage_index + 1"/>
                             <span class="o_azm_rail_text">
@@ -130,10 +130,10 @@
                                     <div class="o_azm_q_head">
                                         <span class="o_azm_q_label" t-out="q.label"/>
                                         <span class="o_azm_code" t-out="q.code"/>
-                                        <button t-if="q.help" class="btn btn-link btn-sm p-0"
+                                        <button type="button" t-if="q.help" class="btn btn-link btn-sm p-0"
                                                 t-on-click="() => this.toggleHelp(q)">؟</button>
                                         <!-- one question back, rather than the stage it sits in -->
-                                        <button t-if="d.header.can_return"
+                                        <button type="button" t-if="d.header.can_return"
                                                 class="o_azm_chip o_azm_chip_soft o_azm_return_chip"
                                                 title="أعد هذا السؤال مع ملاحظة"
                                                 t-on-click="() => this.startReturn('question', q.id, q.label)">
@@ -157,7 +157,7 @@
                                                 </t>
                                             </select>
                                             <t t-foreach="this.fallbackOptions(q)" t-as="opt" t-key="opt.id">
-                                                <button t-attf-class="o_azm_chip o_azm_chip_soft {{this.isChosen(q, opt) ? 'o_azm_chip_on' : ''}}"
+                                                <button type="button" t-attf-class="o_azm_chip o_azm_chip_soft {{this.isChosen(q, opt) ? 'o_azm_chip_on' : ''}}"
                                                         t-att-disabled="this.locked(q)"
                                                         t-on-click="() => this.pick(q, opt)"
                                                         t-out="opt.name"/>
@@ -167,13 +167,13 @@
                                     <t t-else="">
                                         <div class="o_azm_chips">
                                             <t t-foreach="this.mainOptions(q)" t-as="opt" t-key="opt.id">
-                                                <button t-attf-class="o_azm_chip {{this.isChosen(q, opt) ? 'o_azm_chip_on' : ''}} {{q.qtype === 'multi' ? 'o_azm_chip_multi' : ''}}"
+                                                <button type="button" t-attf-class="o_azm_chip {{this.isChosen(q, opt) ? 'o_azm_chip_on' : ''}} {{q.qtype === 'multi' ? 'o_azm_chip_multi' : ''}}"
                                                         t-att-disabled="this.locked(q)"
                                                         t-on-click="() => this.pick(q, opt)"
                                                         t-out="opt.name"/>
                                             </t>
                                             <t t-foreach="this.fallbackOptions(q)" t-as="opt" t-key="opt.id">
-                                                <button t-attf-class="o_azm_chip o_azm_chip_soft {{this.isChosen(q, opt) ? 'o_azm_chip_on' : ''}}"
+                                                <button type="button" t-attf-class="o_azm_chip o_azm_chip_soft {{this.isChosen(q, opt) ? 'o_azm_chip_on' : ''}}"
                                                         t-att-disabled="this.locked(q)"
                                                         t-on-click="() => this.pick(q, opt)"
                                                         t-out="opt.name"/>
@@ -186,8 +186,8 @@
                     </t>
 
                     <div class="o_azm_stage_nav">
-                        <button class="btn btn-secondary" t-on-click="() => this.nextStage(-1)">المرحلة السابقة</button>
-                        <button t-attf-class="btn {{this.nextIsSend ? 'btn-success' : 'btn-primary'}}"
+                        <button type="button" class="btn btn-secondary" t-on-click="() => this.nextStage(-1)">المرحلة السابقة</button>
+                        <button type="button" t-attf-class="btn {{this.nextIsSend ? 'btn-success' : 'btn-primary'}}"
                                 t-on-click="() => this.onNext()" t-out="this.nextLabel"/>
                     </div>
                 </section>
@@ -197,15 +197,15 @@
                     <div class="o_azm_live_bar">
                         <span class="o_azm_live_title">المخرجات الحية</span>
                         <div class="btn-group btn-group-sm">
-                            <button t-attf-class="btn {{this.state.scope === 'stage' ? 'btn-primary' : 'btn-secondary'}}"
+                            <button type="button" t-attf-class="btn {{this.state.scope === 'stage' ? 'btn-primary' : 'btn-secondary'}}"
                                     t-on-click="() => this.setScope('stage')">المرحلة الحالية</button>
-                            <button t-attf-class="btn {{this.state.scope === 'cycle' ? 'btn-primary' : 'btn-secondary'}}"
+                            <button type="button" t-attf-class="btn {{this.state.scope === 'cycle' ? 'btn-primary' : 'btn-secondary'}}"
                                     t-on-click="() => this.setScope('cycle')">الدورة بالكامل</button>
                         </div>
                     </div>
                     <div class="o_azm_tabs">
                         <t t-foreach="d.tabs" t-as="tab" t-key="tab.key">
-                            <button t-attf-class="o_azm_tab {{this.state.tab === tab.key ? 'o_azm_tab_on' : ''}}"
+                            <button type="button" t-attf-class="o_azm_tab {{this.state.tab === tab.key ? 'o_azm_tab_on' : ''}}"
                                     t-on-click="() => this.setTab(tab.key)" t-out="tab.title"/>
                         </t>
                     </div>

@@ -13,7 +13,7 @@
                             <t t-if="row.value">
                                 <dt t-out="row.label"/>
                                 <dd>
-                                    <a t-if="row.link" t-att-href="row.link" target="_blank" t-out="row.value"/>
+                                    <a t-if="row.link" t-att-href="row.link" target="_blank" rel="noopener noreferrer" t-out="row.value"/>
                                     <t t-else="" t-out="row.value"/>
                                 </dd>
                             </t>

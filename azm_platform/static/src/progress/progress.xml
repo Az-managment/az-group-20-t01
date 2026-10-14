@@ -261,7 +261,7 @@
                         </div>
 
                         <div t-if="this.isOpen(row)" class="o_azm_pg_parts">
-                            <div t-foreach="row.parts" t-as="part" t-key="part.name"
+                            <div t-foreach="row.parts" t-as="part" t-key="part.id"
                                  class="o_azm_pg_part">
                                 <span t-attf-class="o_azm_dot {{part.left ? 'o_azm_dot_muted' : 'o_azm_dot_ok'}}"/>
                                 <span class="o_azm_pg_cell_main">

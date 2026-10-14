@@ -51,8 +51,14 @@
                 </div>
 
                 <t t-else="">
+                    <!-- a row that expands is a control: it takes focus, answers Enter
+                         and Space, and says whether it is open -->
                     <article t-foreach="this.rows" t-as="row" t-key="row.id"
                              t-attf-class="o_azm_detail_row o_azm_tone_{{row.tone}} {{row.detail ? 'o_azm_detail_row_more' : ''}} {{this.isOpen(row) ? 'o_azm_detail_row_on' : ''}}"
+                             t-att-role="row.detail ? 'button' : undefined"
+                             t-att-tabindex="row.detail ? '0' : undefined"
+                             t-att-aria-expanded="row.detail ? (this.isOpen(row) ? 'true' : 'false') : undefined"
+                             t-on-keydown="(ev) => this.onRowKey(ev, row)"
                              t-on-click="() => this.toggle(row)">
                         <span class="o_azm_detail_row_top">
                             <span class="o_azm_detail_code" t-out="row.code"/>

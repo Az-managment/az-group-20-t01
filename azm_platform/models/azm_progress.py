@@ -108,6 +108,9 @@ class AzmDashboard(models.AbstractModel):
                     for part in Assignment.search([(field, "=", assessment.id)]):
                         people_on_it = part._answered_by()
                         parts.append({
+                            # keyed on by the page: two parts of one model can carry
+                            # the same name, and two equal keys blank the render
+                            "id": part.id,
                             "name": part.part_name,
                             "level": "topic" if part.topic_id else (
                                 "module" if part.module_id else "stage"),

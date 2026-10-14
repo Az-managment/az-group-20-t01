@@ -542,32 +542,11 @@
 }
 
 // The group reads in two languages, so every label on the tree pages says both.
-// Arabic leads; the English follows in a smaller, quieter hand, isolated so the
-// bidi algorithm never drags its punctuation into the Arabic line above it.
-// The mark is a drawing, not a letter: no baseline descender under it.
-.o_azm_tree_mark { display: block; }
 
-// The English line under an Arabic one is a second line, not a wrapped continuation
-// of the first: it is given the space to be read as one, and isolated so the bidi
-// algorithm never folds it into the line above.
-// The English under an Arabic label is a gloss on it, not a second label: it is set
-// plainly smaller, lighter and in the muted colour, with its own space above, so the
-// two can never be mistaken for one wrapped line of equal weight.
-.o_azm_en, .o_azm_kpi_en {
-    display: block;
-    margin-top: 4px;
-    font-style: normal;
-    font-weight: 400;
-    font-size: .76em;
-    line-height: 1.4;
-    letter-spacing: .01em;
-    color: rgba(15, 35, 71, .52);
-    // isolated, so the bidi algorithm never folds this line into the Arabic above it.
-    // Not direction: ltr — the Latin characters already run left to right inside an
-    // isolate, and forcing the direction moved the whole gloss to the far edge of the
-    // card, away from the label it belongs to.
-    unicode-bidi: isolate;
-}
+// The bilingual gloss and the tree mark are platform-wide primitives, and live in
+// azm_backend.scss with the rest of them. They sat here, in one page's stylesheet,
+// while nine templates across the product render them — including the sidebar.
+
 
 .o_azm_tree_page .o_azm_banner small {
     display: block;

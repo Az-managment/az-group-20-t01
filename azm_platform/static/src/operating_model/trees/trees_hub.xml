@@ -55,7 +55,7 @@
                         <span class="o_azm_trees_sort_label">الترتيب <em class="o_azm_en">Sort</em></span>
                         <button t-foreach="this.SORTS" t-as="o" t-key="o.key" type="button"
                                 t-attf-class="o_azm_trees_sort_btn {{this.state.sort === o.key ? 'o_azm_active' : ''}}"
-                                t-att-aria-pressed="this.state.sort === o.key"
+                                t-att-aria-pressed="this.state.sort === o.key ? 'true' : 'false'"
                                 t-on-click="() => this.state.sort = o.key">
                             <t t-out="o.label"/>
                             <em class="o_azm_en" t-out="o.en"/>

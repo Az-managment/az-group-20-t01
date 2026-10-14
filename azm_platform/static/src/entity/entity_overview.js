@@ -1,6 +1,7 @@
 import { Component, onWillStart, proxy, useOnChange, useProps } from "@odoo/owl";
 import { _t } from "@web/core/l10n/translation";
 import { registry } from "@web/core/registry";
+import { KeepLast } from "@web/core/utils/concurrency";
 import { useService } from "@web/core/utils/hooks";
 import { standardWidgetProps } from "@web/views/widgets/standard_widget_props";
 import { AzmDonutChart } from "@azm_platform/components/donut_chart";
@@ -33,6 +34,11 @@ export class AzmEntityOverview extends Component {
         this.orm = useService("orm");
         this.action = useService("action");
         this.state = proxy({ data: null, rights: null });
+        // Paging the entity form reloads this on every record. Without keeping only
+        // the last answer, a slow response for the record just left can land after a
+        // fast one for the record now shown, and the page describes the wrong entity
+        // under the right header. Every sibling page already does this.
+        this.keepLoad = new KeepLast();
         onWillStart(async () => {
             this.state.rights = await loadAzmRights();
             await this.load(this.props.record.resId);
@@ -44,7 +50,8 @@ export class AzmEntityOverview extends Component {
         // an entity outside the active companies answers {} — truthy, but with none of
         // the keys this page reads, which blanks the whole form instead of saying so
         const found = resId
-            ? await this.orm.call("azm.dashboard", "get_company_overview", [resId])
+            ? await this.keepLoad.add(
+                this.orm.call("azm.dashboard", "get_company_overview", [resId]))
             : null;
         this.state.data = found && found.documents_model ? found : null;
     }
