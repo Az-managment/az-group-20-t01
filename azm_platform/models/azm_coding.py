@@ -188,14 +188,27 @@ class AzmArtifact(models.Model):
                        help="الموديول أو المرحلة التي ينتمي إليها المخرج — بجوار الكود لا بداخله.")
     serial = fields.Integer("المسلسل", required=True, readonly=True)
     node_name = fields.Char("اسم العقدة", readonly=True)
+    active = fields.Boolean("قيد الإنتاج", default=True, readonly=True,
+                            help="المخرج الذي توقّف إنتاجه يحتفظ بكوده ولا يُعاد استخدامه.")
 
-    # Deferred: renumbering moves a block of codes down one, and for a moment the code
-    # a row is taking is still held by the row ahead of it. Checked row by row that is a
-    # duplicate; checked at commit — which is what the registry actually promises — it
-    # is not. The same reason azm.fin.catalogue defers its tree reference.
-    _code_uniq = models.Constraint("UNIQUE(code) DEFERRABLE INITIALLY DEFERRED",
-                                   "هذا الكود مسجل بالفعل.")
-    _ref_uniq = models.Constraint("UNIQUE(ref)", "هذه العقدة لها كود مسجل بالفعل.")
+    # The registry's dedup rule, in the three parts it is written in: unique IDs,
+    # unique *active* relationships, and a serial that belongs to one deliverable.
+    #
+    # The code constraint no longer has to be deferred. It was, because renumbering slid
+    # a block of codes down one and a row would briefly hold the code of the row ahead
+    # of it — a duplicate between statements that was gone by commit. Nothing renumbers
+    # now, so a duplicate is a duplicate where it is written, and is worth refusing
+    # there rather than at the end of the transaction.
+    _code_uniq = models.Constraint("UNIQUE(code)", "هذا الكود مسجل بالفعل.")
+    # A node is registered once per output type *while it is produced*. A deliverable
+    # that retires keeps its row and its code, so its ref stays behind on an inactive
+    # row — which is why this covers the active ones rather than the whole table.
+    _ref_active_uniq = models.UniqueIndex("(ref, domain, atype) WHERE active",
+                                          "هذه العقدة لها كود مسجل بالفعل.")
+    # and a serial, once issued for a model and type, is never issued again
+    _serial_uniq = models.Constraint("UNIQUE(domain, atype, serial)",
+                                     "هذا المسلسل مستخدم بالفعل.")
+    _serial_positive = models.Constraint("CHECK(serial > 0)", "المسلسل يبدأ من واحد.")
 
     @api.model
     def _find(self, ref):
@@ -205,7 +218,10 @@ class AzmArtifact(models.Model):
         request all ask what a document is called, and allocating a serial there writes
         to the database — which a read-only cursor refuses and a reader should not do.
         """
-        return self.sudo().search([("ref", "=", ref)], limit=1)
+        # retired deliverables included: a document issued under a code goes on
+        # printing that code after the group stops producing new ones
+        return self.sudo().with_context(active_test=False).search(
+            [("ref", "=", ref)], limit=1)
 
     @api.model
     def _of(self, ref, domain, atype, node=WHOLE_MODEL, name="", code=None):
@@ -218,22 +234,39 @@ class AzmArtifact(models.Model):
         puts it where the catalogue says it belongs. A ``code`` the registry already
         assigned — every requirement has one — is taken as given rather than allocated.
         """
-        Artifact = self.sudo()
-        found = Artifact.search([("ref", "=", ref)], limit=1)
+        Artifact = self.sudo().with_context(active_test=False)
+        # matched on the whole identity, because one node may produce a policy and a
+        # procedure, and after a retirement it may hold a code for each
+        identity = [("ref", "=", ref), ("domain", "=", domain), ("atype", "=", atype)]
+
+        def revive(art):
+            """Producing it again restores the code it already had."""
+            if art and not art.active:
+                art.active = True
+            return art
+
+        found = revive(Artifact.search(identity, limit=1))
         if found:
             return found
         # Take the lock before deciding to create. Without it two transactions asking
         # for the same unregistered ref both miss the search above, both allocate, and
-        # the second dies on _ref_uniq — so the search is repeated under the lock.
+        # the second dies on the uniqueness rule — so the search is repeated under it.
         self.env.cr.execute("SELECT pg_advisory_xact_lock(hashtext(%s))",
                             (f"azm.artifact:{domain}:{atype}",))
-        found = Artifact.search([("ref", "=", ref)], limit=1)
+        found = revive(Artifact.search(identity, limit=1))
         if found:
             return found
+        # This node produced something else before and now produces this. The old
+        # deliverable keeps its code and steps aside, rather than being re-typed under
+        # a code whose type segment would stop describing it.
+        Artifact.search([("ref", "=", ref), ("active", "=", True)]).write(
+            {"active": False})
         if code:
             serial = int(code.rsplit("-", 1)[-1]) if code.rsplit("-", 1)[-1].isdigit() else 0
         else:
-            # the next serial of this domain and type, read under the lock taken above
+            # The next serial of this domain and type, read under the lock taken
+            # above. Straight SQL over the table, so retired rows count: their codes
+            # are spoken for and the next one goes above them, never into the gap.
             self.env.cr.execute(
                 "SELECT COALESCE(MAX(serial), 0) FROM azm_artifact "
                 "WHERE domain = %s AND atype = %s", (domain, atype))
@@ -275,7 +308,7 @@ class AzmArtifact(models.Model):
         from .azm_proc_documents import (
             PROC_ARTIFACTS, PROC_KIND_ARTIFACTS, PROC_OUTPUTS, PROC_TAB_ORDER)
         if reset:
-            self.sudo().search([]).unlink()
+            self.sudo().with_context(active_test=False).search([]).unlink()
 
         env = self.env
         plan = []   # (ref, domain, atype, node, name, code)
@@ -331,36 +364,72 @@ class AzmArtifact(models.Model):
         plan = [row for row in plan if row[0] not in filed or row[0] in produced]
 
         # ------------------------------------------------------------ the numbers
-        # One running serial per model and type, as the registry numbers them. The node
-        # travels on the artifact as a field, because an artifact is allowed to belong
-        # to more than one node and a code naming one would forbid that.
-        counters, wanted = {}, []
+        # A code is allocated once, and is never allocated again.
+        #
+        # This used to renumber on every run: each type was counted from one, so the
+        # catalogue read 000001..N with no holes. What that costs only shows when
+        # something retires. Dropping a single policy from FIN.GOV moved 108 codes onto
+        # different deliverables — AZM-FIN-POL-000003 stopped meaning "حالات إضافية"
+        # and started meaning the policy after it — while every PDF already issued went
+        # on carrying the old number. The registry's rule is that approved history is
+        # immutable, and a code that moves underneath an issued document cannot keep it.
+        #
+        # So an identity that already holds a code keeps it, and only something genuinely
+        # new draws a serial — from above the highest ever issued, never from the holes
+        # that retirement leaves behind.
+        Artifact = self.sudo().with_context(active_test=False)
+        # One lock for the whole register. Two runs overlapping would each read the same
+        # highest serial and hand one code to two deliverables; the per-type lock in
+        # _of does not cover this, which allocates across every type at once.
+        env.cr.execute("SELECT pg_advisory_xact_lock(hashtext(%s))", ("azm.artifact",))
+
+        # An artifact is what a node produces *of one type*. When a requirement changes
+        # profile the old deliverable is not re-typed in place: the policy that was
+        # issued stays issued under its own code, and the procedure that takes over is
+        # a new deliverable with a new one.
+        existing = {(art.ref, art.domain, art.atype): art for art in Artifact.search([])}
+        # the highest serial ever issued per model and type, retired rows counted, so a
+        # retired code can never come back attached to something else
+        env.cr.execute("SELECT domain, atype, MAX(serial) FROM azm_artifact "
+                       "GROUP BY domain, atype")
+        highest = {(domain, atype): serial
+                   for domain, atype, serial in env.cr.fetchall()}
+
+        wanted = []
         for ref, domain, atype, node, name, code in plan:
+            art = existing.get((ref, domain, atype))
+            if art:
+                # it has an identity already, and an identity does not move
+                wanted.append((ref, domain, atype, node, name, art.code, art.serial))
+                continue
             key = (domain, atype)
-            serial = counters.get(key, 0) + 1
-            counters[key] = serial
-            code = CANONICAL.format(domain=domain, atype=atype, serial=serial)
-            wanted.append((ref, domain, atype, node, name, code, serial))
+            serial = highest.get(key, 0) + 1
+            highest[key] = serial
+            wanted.append((ref, domain, atype, node, name,
+                           CANONICAL.format(domain=domain, atype=atype, serial=serial),
+                           serial))
 
         # ------------------------------------------------------------ apply
-        Artifact = self.sudo()
-        existing = {art.ref: art for art in Artifact.search([])}
-        keep = {row[0] for row in wanted}
-        # a deliverable the group has stopped producing leaves the registry; the
-        # documents that were copies of it keep their file and lose the link
-        retired = [art.id for ref, art in existing.items() if ref not in keep]
+        keep = {(ref, domain, atype) for ref, domain, atype, *_rest in wanted}
+        # A deliverable the group has stopped producing is retired, not deleted. The row
+        # stays so the code stays spoken for, and the documents issued under it go on
+        # meaning what they said. Every reader of this register filters on active, so a
+        # retired artifact leaves the catalogue without leaving the record.
+        retired = [art.id for identity, art in existing.items()
+                   if identity not in keep and art.active]
         if retired:
-            Artifact.browse(retired).unlink()
+            Artifact.browse(retired).write({"active": False})
         fresh = []
         for ref, domain, atype, node, name, code, serial in wanted:
-            art = existing.get(ref)
+            art = existing.get((ref, domain, atype))
             if not art:
                 fresh.append({"code": code, "ref": ref, "domain": domain, "atype": atype,
                               "node": node, "serial": serial, "node_name": name})
                 continue
+            # the code and the serial are settled; what the node is called is not, and
+            # producing it again brings it back under the code it already had
             vals = {field: value for field, value in
-                    (("code", code), ("serial", serial), ("node_name", name),
-                     ("domain", domain), ("atype", atype), ("node", node))
+                    (("node_name", name), ("node", node), ("active", True))
                     if art[field] != value}
             if vals:
                 art.write(vals)

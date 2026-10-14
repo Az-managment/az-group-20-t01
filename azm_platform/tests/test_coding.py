@@ -194,13 +194,21 @@ class TestCoding(TransactionCase):
         for field in ('code', 'ref'):
             dupes = [k for k, n in Counter(arts.mapped(field)).items() if n > 1]
             self.assertFalse(dupes, f"duplicate {field}: {dupes[:3]}")
-        # one running serial per model and type, as the registry numbers them
+        # One running serial per model and type, as the registry numbers them. This
+        # asked for 1..N with no gaps, which held only because every run renumbered
+        # from one — and renumbering is what moved an issued code onto a different
+        # deliverable. Retirement now leaves its serial behind rather than closing the
+        # rank up, so the promise is that a serial is issued once and never moves,
+        # which is the one the registry actually makes.
         by = defaultdict(list)
         for art in arts:
             by[(art.domain, art.atype)].append(art.serial)
         for key, serials in by.items():
-            self.assertEqual(sorted(serials), list(range(1, len(serials) + 1)),
-                             f"{key} is numbered 1..N with no gaps")
+            self.assertEqual(len(set(serials)), len(serials),
+                             f"{key} issued a serial twice")
+            self.assertTrue(all(n >= 1 for n in serials), f"{key} has a serial below one")
+            self.assertGreaterEqual(max(serials), len(serials),
+                                    f"{key} has more rows than serials issued")
 
     def test_a_module_s_deliverables_are_its_own_and_counted_from_one(self):
         """FIN.GOV has three policies, not one. That was the whole complaint about
@@ -221,8 +229,9 @@ class TestCoding(TransactionCase):
         # the serial runs through the model, so another module's policies carry on
         # rather than starting again — the module is a field, not part of the number
         everything = A.search([('domain', '=', 'FIN'), ('atype', '=', 'POL')])
-        self.assertEqual(sorted(everything.mapped('serial')),
-                         list(range(1, len(everything) + 1)))
+        serials = everything.mapped('serial')
+        self.assertEqual(len(set(serials)), len(serials), 'each under its own serial')
+        self.assertEqual(min(serials), 1, 'and the model is counted from one')
 
     def test_the_tree_reference_points_at_the_tree(self):
         """The identity is the canonical code; the tree reference is how to find the
@@ -509,3 +518,122 @@ class TestCoding(TransactionCase):
         operating = self.env['azm.stage'].search([('is_governance', '=', False)], limit=1)
         self.assertIn('pur_procedure', operating._azm_outputs())
         self.assertIn('pur_workflow', operating._azm_outputs())
+
+
+@tagged('post_install', '-at_install')
+class TestACodeIsIssuedOnce(TransactionCase):
+    """Approved history is immutable, which is a promise about codes.
+
+    The register used to renumber on every run so that each type read 000001..N with
+    no holes. Retiring one policy from FIN.GOV then moved 108 codes onto different
+    deliverables: AZM-FIN-POL-000003 stopped meaning "حالات إضافية" and started
+    meaning the policy after it, while every PDF already issued went on carrying the
+    old number. These are the four things that must hold instead.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.A = self.env['azm.artifact'].sudo().with_context(active_test=False)
+        self.Pub = self.env['azm.doc.publication']
+
+    def _retire(self, ref):
+        """Run the real registration with one deliverable no longer produced."""
+        original = type(self.Pub)._produced_refs
+
+        def produced_without_it(pub):
+            filed, produced = original(pub)
+            return set(filed) | {ref}, set(produced) - {ref}
+
+        type(self.Pub)._produced_refs = produced_without_it
+        try:
+            self.env['azm.artifact'].sudo()._register_all()
+        finally:
+            type(self.Pub)._produced_refs = original
+
+    def _a_policy(self):
+        art = self.A.search([('domain', '=', 'FIN'), ('atype', '=', 'POL')],
+                            order='serial', limit=1)
+        if not art:
+            self.skipTest('no financial policy is registered')
+        return art
+
+    def test_retiring_one_deliverable_moves_no_other_code(self):
+        victim = self._a_policy()
+        before = {a.code: a.node_name for a in self.A.search([])}
+        self._retire(victim.ref)
+        after = {a.code: a.node_name for a in self.A.search([])}
+        moved = [c for c in sorted(set(before) & set(after)) if before[c] != after[c]]
+        self.assertFalse(moved, f"{len(moved)} codes changed meaning: {moved[:3]}")
+
+    def test_a_retired_deliverable_keeps_its_code_and_leaves_the_catalogue(self):
+        victim = self._a_policy()
+        code, name = victim.code, victim.node_name
+        self._retire(victim.ref)
+        still = self.A.search([('code', '=', code)], limit=1)
+        self.assertTrue(still, 'the row stays, so the code stays spoken for')
+        self.assertEqual(still.node_name, name, 'and goes on meaning what it meant')
+        self.assertFalse(still.active, 'but it is no longer produced')
+        self.assertFalse(self.env['azm.artifact'].sudo().search([('code', '=', code)]),
+                         'so it is out of the catalogue every reader sees')
+
+    def test_a_new_deliverable_never_takes_a_retired_code(self):
+        victim = self._a_policy()
+        hole = victim.code
+        top = max(self.A.search([('domain', '=', 'FIN'),
+                                 ('atype', '=', 'POL')]).mapped('serial'))
+        self._retire(victim.ref)
+        fresh = self.env['azm.artifact'].sudo()._of(
+            'azm.test,brand.new,rules', 'FIN', 'POL', node='GOV', name='a new policy')
+        self.assertNotEqual(fresh.code, hole, 'a retired code is never handed out again')
+        self.assertGreater(fresh.serial, top,
+                           'the next serial goes above the highest ever issued, '
+                           'not into the gap retirement left')
+
+    def test_producing_it_again_revives_the_code_it_already_had(self):
+        victim = self._a_policy()
+        code, ref = victim.code, victim.ref
+        self._retire(ref)
+        back = self.env['azm.artifact'].sudo()._of(ref, 'FIN', 'POL', node='GOV',
+                                                   name='revived')
+        self.assertEqual(back.code, code, 'it is the same deliverable, so the same code')
+        self.assertTrue(back.active)
+
+    def test_registering_twice_issues_nothing_new(self):
+        """The register is derived, so a second run with nothing changed is a no-op."""
+        before = {a.code: a.ref for a in self.A.search([])}
+        self.env['azm.artifact'].sudo()._register_all()
+        self.assertEqual({a.code: a.ref for a in self.A.search([])}, before)
+
+    def test_the_same_code_cannot_be_issued_to_two_rows(self):
+        from psycopg2 import IntegrityError
+        from odoo.tools.misc import mute_logger
+        art = self._a_policy()
+        with self.assertRaises(IntegrityError), mute_logger('odoo.sql_db'):
+            with self.env.cr.savepoint():
+                self.A.create({
+                    'code': art.code, 'ref': 'azm.test,duplicate,rules',
+                    'domain': 'FIN', 'atype': 'POL', 'node': 'GOV', 'serial': 999999,
+                })
+
+    def test_the_same_serial_cannot_be_issued_twice_for_a_type(self):
+        from psycopg2 import IntegrityError
+        from odoo.tools.misc import mute_logger
+        art = self._a_policy()
+        with self.assertRaises(IntegrityError), mute_logger('odoo.sql_db'):
+            with self.env.cr.savepoint():
+                self.A.create({
+                    'code': 'AZM-FIN-POL-999999', 'ref': 'azm.test,same.serial,rules',
+                    'domain': 'FIN', 'atype': 'POL', 'node': 'GOV',
+                    'serial': art.serial,
+                })
+
+    def test_one_node_is_registered_once_while_it_is_produced(self):
+        from psycopg2 import IntegrityError
+        from odoo.tools.misc import mute_logger
+        art = self._a_policy()
+        with self.assertRaises(IntegrityError), mute_logger('odoo.sql_db'):
+            with self.env.cr.savepoint():
+                self.A.create({
+                    'code': 'AZM-FIN-POL-999998', 'ref': art.ref,
+                    'domain': 'FIN', 'atype': 'POL', 'node': 'GOV', 'serial': 999998,
+                })
