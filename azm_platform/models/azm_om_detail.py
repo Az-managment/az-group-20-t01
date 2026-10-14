@@ -18,6 +18,8 @@ found nothing at all. A search has to reach the whole catalogue to be a search.
 from odoo import _, api, models
 from odoo.exceptions import UserError
 
+from .azm_om_dashboard import OPEN_FINDING_STATES
+
 # How many rows are sent at once. The panel asks for the next page when the reader
 # wants it, and is always told how many there are in total.
 DETAIL_PAGE = 60
@@ -61,7 +63,11 @@ class AzmDashboard(models.AbstractModel):
         elif domain_key:
             domain.append(("azm_domain", "=", domain_key))
         if only_open:
-            domain.append(("state", "not in", ("closed", "accepted")))
+            # the states that mean open, named the way every other reader names them.
+            # This filtered on "accepted", which azm.finding has never had, so the
+            # panel counted dismissed findings as open and disagreed with the tile
+            # that opened it.
+            domain.append(("state", "in", OPEN_FINDING_STATES))
         states = dict(self.env["azm.finding"]._fields["state"].selection)
 
         def row(f):

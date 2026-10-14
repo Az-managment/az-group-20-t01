@@ -1333,8 +1333,14 @@ class AzmFinRequirement(models.Model):
     azm_doc_ids = fields.One2many("azm.doc.publication", "requirement_id", string="المستندات")
 
     def action_azm_publish_documents(self):
-        """(Re)build this requirement's document for the entities the user works in."""
-        self.check_access("read")
+        """(Re)build this requirement's document for the entities the user works in.
+
+        Write, not read: rendering a document writes publication rows and files into
+        each entity's workspace under sudo, and read on the catalogue is granted to
+        every user of the operating model. action_refresh next door was corrected for
+        exactly this and these two were missed.
+        """
+        self.check_access("write")
         Pub = self.env["azm.doc.publication"]
         # env.companies, not every company there is: this writes documents into each
         # entity's workspace, and it was reaching entities the user cannot even see
@@ -1375,7 +1381,16 @@ class AzmFinAssessment(models.Model):
             rec.azm_doc_count = counts.get(rec.company_id, 0)
 
     def action_azm_publish_documents(self):
-        """Queue every document of the entity; they are built in the background."""
+        """Queue every document of the entity; they are built in the background.
+
+        The heaviest button in the product: it renumbers the whole master coding
+        registry and queues every document of the company, all under sudo. It checked
+        nothing at all, so anybody who could read one assessment could start it.
+        """
+        self.check_access("write")
+        if not self.env.user.has_group("azm_operating_model.azm_group_manager"):
+            raise UserError(_("Publishing an entity's whole set of documents is the "
+                              "model manager's to do."))
         queued = self.env["azm.doc.publication"]._enqueue(self.company_id, force=True)
         return {"type": "ir.actions.client", "tag": "display_notification",
                 "params": {"type": "info", "sticky": False,

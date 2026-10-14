@@ -21,7 +21,6 @@ def _figures(answers):
     answered = len(answers) - states['open']
     done = len(answers.filtered('is_done'))
     questions, answered_q = answers._question_totals()
-    implemented = states['full'] + states['partial'] + states['unavailable']
     return {
         'applicable': len(answers),
         'done': done,
@@ -32,8 +31,12 @@ def _figures(answers):
         'question_completion': _pct(answered_q, questions),
         'gaps': states['partial'] + states['unavailable'],
         'completion': _pct(done, len(answers)),
-        # maturity: share of the requirements that exist (not N/A) which are fully applied
-        'maturity': _pct(states['full'], implemented),
+        # maturity: share of the requirements that exist (not N/A) which are fully
+        # applied. The denominator is every applicable requirement, which is what the
+        # line above says: it used to be full+partial+unavailable, dropping the
+        # unknown and the unanswered, so ten requirements with three full and four
+        # "don't know" reported 50% where the sentence promises 30%.
+        'maturity': _pct(states['full'], len(answers) - states['na']),
     }
 
 

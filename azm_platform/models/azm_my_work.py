@@ -432,11 +432,20 @@ class AzmDashboard(models.AbstractModel):
             raise UserError(_(
                 "Your part is done, but sending the assessment on is %s's to do.",
                 preparer.name))
-        outstanding = record._azm_outstanding()
+        # Asked the way the buttons ask it. When a review has sent named parts back,
+        # only those parts can be written at all, so demanding the whole assessment
+        # here would strand somebody who fixed what came back but has an unanswered
+        # question somewhere they are not allowed to touch.
+        returns = self.env["azm.review.return"]._open_for(record)
+        outstanding = (record._azm_returned_outstanding(returns) if returns
+                       else record._azm_outstanding())
         if outstanding:
             raise UserError(_(
                 "%s questions have not been answered yet. The assessment goes for "
-                "review once all of it is answered.", outstanding))
+                "review once all of it is answered.", outstanding)
+                if not returns else _(
+                "%s questions in the parts that came back have not been answered yet.",
+                outstanding))
         # the record rules decide whether this person may touch it
         record.check_access("write")
         reviewers = record._reviewers()

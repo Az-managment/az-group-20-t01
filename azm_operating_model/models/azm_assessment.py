@@ -148,7 +148,18 @@ class AzmAssessment(models.Model):
 
     def _refresh_visibility(self):
         for rec in self:
-            for stage in rec._stages():
+            stages = rec._stages()
+            # A line whose stage has been archived is visited by nothing below — the
+            # loop only walks the stages that still exist — so it kept is_visible from
+            # its default and went on being counted as an unanswered question nobody
+            # could reach. Every assessment then sat short of 100% for good, and the
+            # workspace had no page to send anyone to.
+            orphaned = rec.answer_ids.filtered(
+                lambda line: line.stage_id not in stages and line.is_visible)
+            if orphaned:
+                orphaned.with_context(azm_no_visibility=True,
+                                      azm_skip_lock=AZM_SKIP_LOCK_TOKEN).is_visible = False
+            for stage in stages:
                 sdict, qdicts, answers, by_q = rec._stage_payload(stage)
                 visible = {q["id"] for q in engine.visible_questions(sdict, qdicts, answers)}
                 for qid, line in by_q.items():
@@ -376,7 +387,13 @@ class AzmAssessment(models.Model):
 
     def action_sync_findings(self):
         """Turn triggered rules into tracked findings; flag ones no longer triggered."""
-        self.check_access("read")
+        # Write, not read: this rewrites the entity's risk register under sudo, and
+        # read access to an assessment is granted far more widely than the right to
+        # change what it produced. Draft only, for the same reason — the register of an
+        # approved assessment is a record of what was approved.
+        self.check_access("write")
+        if self.filtered(lambda rec: rec.state != "draft"):
+            raise UserError(_("Findings are synced while the assessment is a draft."))
         rules = self._rules()
         # findings are generated from the answers, not typed by the preparer:
         # create/refresh them as superuser, reviewers then work them by hand.

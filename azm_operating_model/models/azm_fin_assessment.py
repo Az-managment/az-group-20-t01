@@ -330,9 +330,21 @@ class AzmFinAssessment(models.Model):
         return max(self.question_count - self.answered_count, 0)
 
     def _azm_returned_outstanding(self, returns):
+        """What is still owed on the parts a review sent back.
+
+        Counted the way the assessment counts itself, which it did not use to be: over
+        the applicable lines only, and through _question_totals, where «لا ينطبق»
+        is one question answered by its reason. Reading q_total directly counted both
+        the requirements that do not apply to this entity and the ones marked not
+        applicable — neither of which the workspace will ever let anybody answer. A
+        returned module holding one of either could never be sent back for review
+        again: the figure never reached zero, so the button stayed dead for good.
+        """
         self.ensure_one()
-        lines = self.answer_ids.filtered(lambda line: returns._covers(line))
-        return sum(max(line.q_total - line.q_answered, 0) for line in lines)
+        lines = self.answer_ids.filtered(
+            lambda line: line.applicable and returns._covers(line))
+        total, answered = lines._question_totals()
+        return max(total - answered, 0)
 
     def action_open_workspace(self, focus=None):
         """Open the workspace, on a named part of it when one is asked for.
@@ -832,23 +844,34 @@ class AzmFinQAnswer(models.Model):
         if not self.env["azm.answer"]._azm_lock_lifted() and any(qa.line_id.assessment_id.state != "draft" for qa in self):
             raise UserError("الإفادة مش في حالة مسودة؛ لا يمكن تعديل الإجابات.")
 
+    def _check_writable(self):
+        """Every reason this answer may not be written, asked in one place.
+
+        The return lock was missing here. A reviewer who sends one module back leaves
+        the rest of the assessment as they reviewed it, and the procurement twin
+        enforces that on every answer — but on this side only «لا ينطبق» and its reason
+        went through it, while every actual answer is written as one of these lines. So
+        a preparer could keep editing modules the reviewer had already accepted, which
+        is the one thing returning named parts exists to prevent.
+        """
+        self._check_draft()
+        self.line_id._azm_check_assignee()
+        self.line_id._azm_check_returns()
+
     @api.model_create_multi
     def create(self, vals_list):
         records = super().create(vals_list)
-        records._check_draft()
-        # a question is first answered by creating this line, so the check belongs here
+        # a question is first answered by creating this line, so the checks belong here
         # as much as on write
-        records.line_id._azm_check_assignee()
+        records._check_writable()
         return records
 
     def write(self, vals):
-        self._check_draft()
-        self.line_id._azm_check_assignee()
+        self._check_writable()
         return super().write(vals)
 
     def unlink(self):
-        self._check_draft()
-        self.line_id._azm_check_assignee()
+        self._check_writable()
         return super().unlink()
 
 

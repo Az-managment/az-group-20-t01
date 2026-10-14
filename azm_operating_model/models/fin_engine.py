@@ -127,7 +127,21 @@ def step_rows(qa):
         return all(str(value).strip().replace(".", "", 1).isdigit() for value in seen)
 
     lead = 1 if (numeric(0) and len(columns) > 1) else 0
-    ordered = sorted(rows, key=lambda row: float(row[0])) if lead else rows
+
+    def order_key(row):
+        """Where this row sorts. numeric() ignores blank cells when deciding the
+        column is a number — deliberately, since a half-filled table is still a
+        numbered one — so the sort has to expect them too. float("") raised, and it
+        raised while rendering: the workspace panel, the module's SOP and the book
+        all died on one row whose first cell was left empty."""
+        cell = str(row[0]).strip() if row and row[0] is not None else ""
+        try:
+            return (0, float(cell))
+        except ValueError:
+            # anything unnumbered sorts after the numbered rows, in its own order
+            return (1, 0.0)
+
+    ordered = sorted(rows, key=order_key) if lead else rows
     steps = []
     for row in ordered:
         title = (row[lead] if lead < len(row) else "") or "[لم يُحدد]"
