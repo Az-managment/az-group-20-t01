@@ -567,11 +567,56 @@ class TestTheCardHeadingIsATitle(TransactionCase):
                          'the registry code is an identity, not a title')
 
     def test_opening_the_card_still_shows_the_whole_code(self):
+        """Opened, each row carries a complete code -- the copy that row holds.
+
+        The master code is not repeated above them. Every copy code contains it:
+        FUE-FIN-POL-000001 is AZM-FIN-POL-000001 held by FUE, so a reader who has
+        opened the card can read the whole identity off any row.
+        """
         _head, panel = self._template()
-        self.assertIn('t-out="row.code"', panel,
-                      'the master code every entity below holds a copy of')
         self.assertIn('t-out="e.code"', panel,
-                      'and which copy each entity holds')
+                      'each row says which copy it holds')
+
+    def test_no_screen_prints_the_master_code(self):
+        """The master code identifies the artifact; it does not label a screen.
+
+        What a reader is looking at is always one entity's copy, and the copy code
+        contains the master anyway -- FUE-FIN-POL-000001 is AZM-FIN-POL-000001 held
+        by FUE. So no template renders the master: not as a card heading, not as a
+        panel header, and not as the tooltip the preview used to carry.
+        """
+        import os
+        from odoo.modules.module import get_module_path
+        offenders = []
+        for module in ('azm_platform', 'azm_operating_model'):
+            root = os.path.join(get_module_path(module), 'static')
+            for base, _dirs, files in os.walk(root):
+                for name in files:
+                    if not name.endswith(('.xml', '.js')):
+                        continue
+                    path = os.path.join(base, name)
+                    with open(path, encoding='utf-8') as handle:
+                        body = handle.read()
+                    if 'master_code' in body:
+                        offenders.append(os.path.relpath(path, root))
+        self.assertFalse(offenders, f"these still print the master code: {offenders}")
+
+    def test_a_document_is_labelled_with_the_copy_it_opens(self):
+        """The label becomes the preview's heading and the opened tab's title."""
+        from odoo.addons.azm_platform.models.azm_coding import copy_code
+        D = self.env['azm.dashboard']
+        library = D.get_outputs_library(atype='POL')
+        if not library['rows']:
+            self.skipTest('no policy is registered')
+        opened = D.get_output_entities(library['rows'][0]['id'])
+        entities = self.env['azm.entity'].sudo().with_context(active_test=False).search(
+            [('company_id', 'in', [r['company_id'] for r in opened['rows']])])
+        by_company = {e.company_id.id: e.code or '' for e in entities}
+        for row in opened['rows']:
+            self.assertEqual(
+                row['doc'].get('label'),
+                copy_code(opened['code'], by_company.get(row['company_id'], '')),
+                f"{row['name']} opens a document labelled with somebody else's code")
 
     def test_the_code_is_still_in_the_payload_and_still_searchable(self):
         """Nothing about the identity moved -- only where it is printed."""

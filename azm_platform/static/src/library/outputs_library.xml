@@ -203,12 +203,6 @@
                         </button>
 
                         <div t-if="this.isOpen(row.id)" class="o_azm_output_entities">
-                            <!-- Opened, the deliverable says what it is: the master code
-                                 every entity below holds a copy of. -->
-                            <div class="o_azm_output_identity">
-                                <b class="o_azm_code o_azm_code_big" t-out="row.code"/>
-                                <small>الكود المعتمد <span class="o_azm_en">Master ID</span></small>
-                            </div>
                             <div t-foreach="this.entitiesOf(row)" t-as="e" t-key="e.company_id"
                                  class="o_azm_output_entity">
                                 <span t-attf-class="o_azm_dot o_azm_dot_{{e.css}}" t-att-title="e.state_label"/>
@@ -233,7 +227,7 @@
                                     <button t-if="e.state !== 'empty'" type="button"
                                             class="btn btn-sm btn-light"
                                             title="قراءة هنا · Read here"
-                                            t-on-click="() => this.previewDoc({...e.doc, label: e.code})">
+                                            t-on-click="() => this.previewDoc(e.doc)">
                                         <i class="oi" data-icon="visibility"/>
                                     </button>
                                     <button t-if="e.state !== 'empty'" type="button"

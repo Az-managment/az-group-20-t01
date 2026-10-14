@@ -12,11 +12,10 @@
         <div>
             <!--
                 What is being looked at, named the way the document itself names it:
-                this entity's copy code, with the master register entry behind it on
-                hover. A binding carries no code of its own, so it keeps the plain label.
+                this entity's copy code. A binding carries no code of its own, so it
+                keeps the plain label.
             -->
-            <span t-if="p.code" class="o_azm_code o_azm_code_big" t-att-title="p.master_code"
-                  t-out="p.code"/>
+            <span t-if="p.code" class="o_azm_code o_azm_code_big" t-out="p.code"/>
             <span t-else="" class="o_azm_code o_azm_code_big">معاينة <small>Preview</small></span>
             <h3 t-out="p.name"/>
             <small t-if="p.folder" class="text-muted">

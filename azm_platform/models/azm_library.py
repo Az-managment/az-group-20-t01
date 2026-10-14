@@ -422,7 +422,11 @@ class AzmDashboard(models.AbstractModel):
                 "state_en": english,
                 "css": css,
                 "generated": str(found["generated_on"] or "") if found else "",
-                "doc": {**doc, "company_id": company.id},
+                # labelled with the copy this row opens, not with the master: the
+                # label becomes the preview's heading and the opened tab's title,
+                # and both are showing one entity's document
+                "doc": {**doc, "company_id": company.id,
+                        "label": copy_code(artifact.code, codes.get(company.id, ""))},
             })
         return {"available": True, "code": artifact.code, "rows": rows}
 
