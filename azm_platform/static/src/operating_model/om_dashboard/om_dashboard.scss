@@ -1,0 +1,1201 @@
+// AZM Platform · Operating Model page (uses the azm_platform design tokens).
+
+.o_azm_tone_red { --azm-tone: #dc2626; --azm-tone-bg: #{rgba(#dc2626, .1)}; }
+
+.o_azm_kpi.o_azm_kpi_static { cursor: default; }
+
+.o_azm_om {
+    display: flex;
+    flex-direction: column;
+    // one scale, so every gap on these pages is a multiple of something. The page is
+    // dense by nature — five figures, thirteen stage cards, three charts and two
+    // tables — so the air between its parts is what separates them into parts.
+    --om-gap: 18px;
+    --om-pad: 26px;
+    --om-section: 36px;
+    --om-radius: 18px;
+    // Spacing is added, never subtracted. A heading and the part it names have to sit
+    // closer together than two parts do, and that was done by pulling the section up
+    // with a negative margin — which is a rule that can only ever subtract, and over
+    // the two headings that carry no card of their own it subtracted enough to pull
+    // the cards across them. Every gap here is a margin between siblings; the heading
+    // simply does not get one before the thing it names.
+    // Every page carrying this class spaces its sections with a gap, as it always
+    // did. Only the two model pages below trade that for margins, and they are the
+    // only ones that may: setting gap: 0 for everybody left the tree pages, the
+    // library and the register with no space between their sections at all.
+    gap: 16px;
+    > * { flex-shrink: 0; }
+
+    // Only the two model pages are laid out this way. Every other page carrying
+    // o_azm_om — the trees, the library, the register, مساحتي — spaces its own
+    // children, and adding this on top of theirs gave the trees hub 62px between its
+    // header and the rest: its own 26 and this 36.
+    &.o_azm_om_page {
+        gap: 0;
+        > * + * { margin-top: var(--om-section); }
+        .o_azm_om_block_title + section { margin-top: 0; }
+    }
+
+    // the hub carries its own light; this is for the pages that do not
+    &:not(.o_azm_hub) {
+        @include azm-lit-field(rgba(47, 123, 245, .15), rgba(13, 148, 136, .12));
+    }
+
+    // -------------------------------------------------------------- the hero
+    .o_azm_om_title {
+        @include azm-glass(22px);
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        padding: 28px 28px 20px;
+    }
+    // the name, the figure and the actions: one row across the top of the header
+    .o_azm_om_title_top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        flex-wrap: wrap;
+        h1 {
+            margin: 7px 0 0;
+            font-size: 28px;
+            line-height: 1.15;
+            font-weight: 800;
+            letter-spacing: -.6px;
+            background: linear-gradient(100deg, $azm-ink 8%, $azm-blue 52%, #0d9488 92%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        p { margin: 9px 0 0; max-width: 62ch; color: $azm-muted; font-size: 12.5px; line-height: 1.7; }
+    }
+    .o_azm_om_title_words { flex: 1 1 320px; min-width: 0; }
+
+    // the filters are part of the header, under a rule rather than in a block of
+    // their own: they say what the page below is showing, so they belong to its name
+    .o_azm_om_toolbar {
+        padding-top: 18px;
+        border-top: 1px solid rgba(15, 35, 71, .08);
+        gap: 14px;
+    }
+    .o_azm_om_eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 3px 10px;
+        border-radius: 99px;
+        font-size: 10.5px;
+        font-weight: 700;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+        color: $azm-blue;
+        background: rgba($azm-blue, .1);
+        .oi { font-size: 13px; }
+    }
+
+    // how far the work in scope has got, beside the name of the page it is about
+    .o_azm_om_title_gauge {
+        flex: 0 0 auto;
+        display: flex;
+        align-items: center;
+        gap: 13px;
+        padding-inline-start: 22px;
+        // one rule, between the words and the figure; the actions after it are
+        // already separated by their own shapes
+        border-inline-start: 1px solid rgba(15, 35, 71, .08);
+        --azm-tone: #{map-get($azm-tones, 'teal')};
+
+        .o_azm_ring_wrap { position: relative; display: grid; place-items: center; width: 76px; height: 76px; }
+        .o_azm_ring { width: 76px; height: 76px; /*rtl:ignore*/transform: rotate(-90deg); }
+        .o_azm_ring circle { fill: none; stroke-width: 4.5; stroke-linecap: round; }
+        .o_azm_ring_track { stroke: rgba(15, 35, 71, .08); }
+        .o_azm_ring_value {
+            stroke: var(--azm-tone);
+            filter: drop-shadow(0 0 5px color-mix(in srgb, var(--azm-tone) 55%, transparent));
+            transition: stroke-dasharray .7s cubic-bezier(.2, .8, .2, 1);
+        }
+        .o_azm_ring_label {
+            position: absolute;
+            font-size: 17px;
+            font-weight: 800;
+            letter-spacing: -.5px;
+            color: $azm-ink;
+        }
+    }
+    .o_azm_title_gauge_words {
+        display: flex;
+        flex-direction: column;
+        font-size: 12.5px;
+        font-weight: 600;
+        line-height: 1.35;
+        max-width: 150px;
+        em { font-style: normal; font-size: 10.5px; font-weight: 400; color: $azm-muted; }
+        .o_azm_om_title_actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-inline-start: 22px;
+            .btn {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                border-radius: 11px;
+                padding: 8px 14px;
+                font-size: 12.5px;
+                font-weight: 600;
+            }
+            // the one that makes something new leads; the rest are quiet beside it
+            .btn-light {
+                border: 1px solid rgba(15, 35, 71, .1);
+                background: rgba(255, 255, 255, .75);
+                &:hover { background: #fff; border-color: rgba($azm-blue, .4); color: $azm-blue; }
+            }
+            .btn-primary {
+                border: 0;
+                background: linear-gradient(135deg, $azm-blue, #4f46e5);
+                box-shadow: 0 6px 16px rgba($azm-blue, .3);
+                &:hover { filter: brightness(1.06); box-shadow: 0 10px 22px rgba($azm-blue, .36); }
+            }
+        }
+    }
+
+    // ------------------------------------------------------- separating the parts
+    // The page is a stack of unlike things — a band of figures, three domain strips,
+    // thirteen stage cards, three charts, two tables. Read straight down it they ran
+    // into one another, because only the ones built as cards had an edge of their own
+    // and only those had a name. Every part is announced now, over a rule, so the eye
+    // can find where one ends and the next begins.
+    .o_azm_om_block_title {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        margin: 0;
+        padding-top: 6px;
+        border-top: 1px solid rgba(15, 35, 71, .09);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+        color: $azm-ink;
+        em {
+            font-style: normal;
+            font-size: 11px;
+            font-weight: 400;
+            letter-spacing: 0;
+            text-transform: none;
+            color: $azm-muted;
+        }
+        margin-bottom: 12px;
+    }
+
+    // ---------------------------------------------------------------- toolbar
+    .o_azm_om_toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        transition: opacity .2s ease;
+        &.o_azm_om_busy { opacity: .6; pointer-events: none; }
+    }
+    .o_azm_om_tabs {
+        display: flex;
+        gap: 4px;
+        flex-wrap: wrap;
+        background: rgba(255, 255, 255, .72);
+        border: 1px solid rgba(15, 35, 71, .09);
+        border-radius: 13px;
+        padding: 4px;
+        backdrop-filter: blur(8px);
+    }
+    .o_azm_om_tab {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border: 0;
+        border-radius: 10px;
+        background: transparent;
+        padding: 7px 13px;
+        font-size: 12.5px;
+        font-weight: 600;
+        color: $azm-muted;
+        transition: color .14s ease, background .14s ease, box-shadow .14s ease;
+        .oi { font-size: 17px; }
+        &:hover { color: $azm-ink; background: rgba(15, 35, 71, .05); }
+        // the chosen one is lifted off the rail rather than merely tinted
+        &.active {
+            color: var(--azm-tone);
+            background: #fff;
+            box-shadow:
+                0 1px 2px rgba(15, 35, 71, .06),
+                0 4px 12px rgba(15, 35, 71, .08),
+                inset 0 0 0 1px color-mix(in srgb, var(--azm-tone) 28%, transparent);
+        }
+        .o_azm_om_count {
+            min-width: 22px;
+            padding: 0 6px;
+            border-radius: 99px;
+            font-size: 10.5px;
+            font-weight: 700;
+            line-height: 19px;
+            background: rgba(15, 35, 71, .07);
+            color: inherit;
+            text-align: center;
+            font-variant-numeric: tabular-nums;
+        }
+        &.active .o_azm_om_count { background: color-mix(in srgb, var(--azm-tone) 14%, transparent); }
+    }
+    .o_azm_om_selects {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex: 1 1 380px;
+        justify-content: flex-end;
+        .form-select, .form-control {
+            flex: 0 1 260px;
+            min-width: 160px;
+            border-radius: 11px;
+            border-color: rgba(15, 35, 71, .1);
+            background-color: rgba(255, 255, 255, .78);
+            font-size: 12.5px;
+            padding-block: 8px;
+            &:focus {
+                border-color: rgba($azm-blue, .5);
+                box-shadow: 0 0 0 3px rgba($azm-blue, .12);
+            }
+        }
+    }
+    .o_azm_om_chip {
+        display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 99px;
+        background: rgba($azm-blue, .1); color: $azm-blue; font-weight: 600; font-size: 13px;
+    }
+    .o_azm_om_scope {
+        margin: 8px 0 0;
+        color: $azm-muted;
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .o_azm_om_chip {
+        font-size: 11.5px;
+        background: rgba($azm-blue, .1);
+    }
+
+    // ---------------------------------------------------------------- KPIs
+    .o_azm_om_kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--om-gap); }
+    .o_azm_om_kpi { align-items: flex-start; }
+    // the figures, in the language the rest of the platform now uses: glass, a line of
+    // the tone along the top edge, and a numeral that does not shift between tiles
+    .o_azm_kpi {
+        @include azm-glass(var(--om-radius));
+        position: relative;
+        overflow: hidden;
+        padding: 20px 22px;
+        gap: 16px;
+        &::before {
+            content: "";
+            position: absolute;
+            inset-block-start: 0;
+            inset-inline: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--azm-tone, #{$azm-blue}),
+                color-mix(in srgb, var(--azm-tone, #{$azm-blue}) 25%, transparent));
+        }
+        .o_azm_kpi_value {
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: -1px;
+            font-variant-numeric: tabular-nums;
+        }
+        .o_azm_kpi_label { font-size: 12px; font-weight: 600; }
+        .o_azm_kpi_text { gap: 9px; }
+        // the line under the value qualifies it; it is not part of it
+        .o_azm_kpi_text > small { margin-top: 1px; line-height: 1.5; }
+        .o_azm_kpi_label { line-height: 1.35; }
+        .o_azm_progress { margin: 2px 0 1px; }
+        small { font-size: 10.5px; line-height: 1.5; }
+        .o_azm_icon_badge {
+            width: 32px;
+            height: 32px;
+            border-radius: 9px;
+            .oi { font-size: 17px; }
+        }
+    }
+    .o_azm_om_meter { margin: 2px 0; height: 6px; .o_azm_progress_bar { background: var(--azm-tone); } }
+
+    // ---------------------------------------------------------------- domains
+    // Three domain cards stood between the figures and the work, each carrying six
+    // more figures in a grid of its own. They are strips now: one line per domain,
+    // read across rather than down, so the page gets to the stages sooner.
+    .o_azm_om_domains {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    .o_azm_om_domain {
+        position: relative;
+        display: grid;
+        grid-template-columns: minmax(200px, 1.1fr) auto minmax(0, 2fr) minmax(190px, 1fr);
+        align-items: center;
+        gap: 22px;
+        padding: 16px var(--om-pad);
+        text-align: start;
+        color: $azm-ink;
+        overflow: hidden;
+        transition: transform .15s ease, box-shadow .15s ease;
+        // the tone as an edge of light down the side the line starts from
+        &::before {
+            content: "";
+            position: absolute;
+            inset-block: 0;
+            inset-inline-start: 0;
+            width: 3px;
+            background: linear-gradient(180deg, var(--azm-tone),
+                color-mix(in srgb, var(--azm-tone) 30%, transparent));
+        }
+        &:hover { transform: translateY(-2px); box-shadow: 0 14px 30px rgba(15, 35, 71, .11); }
+        &.active {
+            box-shadow:
+                inset 0 0 0 2px color-mix(in srgb, var(--azm-tone) 55%, transparent),
+                0 14px 30px rgba(15, 35, 71, .1);
+        }
+        header { display: flex; gap: 12px; align-items: center; }
+        .o_azm_om_domain_title { display: flex; flex-direction: column; min-width: 0; }
+        strong { font-size: 15px; font-weight: 750; letter-spacing: -.2px; }
+        small { color: $azm-muted; font-size: 11.5px; }
+    }
+    .o_azm_om_codes { display: flex; flex-wrap: wrap; gap: 6px; }
+    .o_azm_om_code {
+        font: 600 11px/1 $font-family-monospace; padding: 4px 6px; border-radius: 6px;
+        color: var(--azm-tone); background: var(--azm-tone-bg);
+    }
+    .o_azm_om_figures {
+        display: grid;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 10px;
+        margin: 0;
+        > div {
+            position: relative;
+            padding: 4px 14px 4px 0;
+            min-width: 0;
+            // a hairline between one figure and the next, rather than six numbers in
+            // a row with nothing to say where each one stops
+            + div { padding-inline-start: 14px; }
+            + div::before {
+                content: "";
+                position: absolute;
+                inset-block: 2px;
+                inset-inline-start: 0;
+                width: 1px;
+                background: rgba(15, 35, 71, .09);
+            }
+        }
+        dt { font-size: 10.5px; font-weight: 600; color: $azm-muted; }
+        dd {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 800;
+            letter-spacing: -.5px;
+            font-variant-numeric: tabular-nums;
+        }
+    }
+    .o_azm_om_meters { display: flex; flex-direction: column; gap: 12px; width: 100%; }
+    // the label over a group of bars: three of these stack in one card, so each is
+    // set as a heading of its own with a rule above rather than another line of text
+    .o_azm_om_bars > .o_azm_om_meter_label {
+        padding-top: 14px;
+        margin-top: 6px;
+        border-top: 1px solid rgba(15, 35, 71, .07);
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+        color: $azm-muted;
+        &:first-child { padding-top: 0; margin-top: 0; border-top: 0; }
+    }
+    .o_azm_om_meter_label {
+        display: flex; align-items: baseline; gap: 6px; font-size: 11.5px; color: $azm-muted; margin-bottom: 5px;
+        b { color: $azm-ink; }
+        small { margin-inline-start: auto; }
+    }
+    .o_azm_om_alt .o_azm_progress_bar { background: linear-gradient(90deg, #7c3aed, #a78bfa); }
+
+    // ---------------------------------------------------------------- stage cards
+    .o_azm_om_cards_head {
+        flex-wrap: wrap;
+        gap: 14px;
+        h3 small { font-size: 12px; font-weight: 500; }
+    }
+    .o_azm_om_cards_tools {
+        display: flex;
+        gap: 8px;
+        .form-control, .form-select {
+            border-radius: 11px;
+            min-width: 180px;
+            border-color: rgba(15, 35, 71, .1);
+            background-color: rgba(255, 255, 255, .78);
+            font-size: 12.5px;
+            &:focus { border-color: rgba($azm-blue, .5); box-shadow: 0 0 0 3px rgba($azm-blue, .12); }
+        }
+    }
+    .o_azm_om_hint { color: $azm-muted; font-size: 11.5px; margin: -6px 0 18px; line-height: 1.6; }
+    .o_azm_om_stage_grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+        gap: var(--om-gap);
+    }
+    .o_azm_om_stage {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        border: 1px solid rgba(15, 35, 71, .09);
+        border-radius: 14px;
+        background: #fff;
+        overflow: hidden;
+        transition: box-shadow .16s ease, transform .16s ease, border-color .16s ease;
+        // the stage's tone runs down its leading edge, inside the card rather than as
+        // a border that fights the radius
+        &::before {
+            content: "";
+            position: absolute;
+            inset-block: 0;
+            inset-inline-start: 0;
+            width: 3px;
+            background: linear-gradient(180deg, var(--azm-tone),
+                color-mix(in srgb, var(--azm-tone) 35%, transparent));
+        }
+        &:hover {
+            box-shadow: 0 14px 30px rgba(15, 35, 71, .11);
+            transform: translateY(-2px);
+            border-color: color-mix(in srgb, var(--azm-tone) 35%, transparent);
+        }
+        footer {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2px;
+            border-top: 1px solid rgba(15, 35, 71, .06);
+            padding: 7px 10px;
+            background: rgba(15, 35, 71, .022);
+            .btn {
+                font-size: 11.5px;
+                font-weight: 600;
+                padding: 5px 9px;
+                border-radius: 8px;
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                text-decoration: none;
+                color: $azm-muted;
+                &:hover { color: var(--azm-tone); background: color-mix(in srgb, var(--azm-tone) 10%, transparent); }
+            }
+        }
+    }
+    .o_azm_om_stage_main {
+        display: flex;
+        flex-direction: column;
+        gap: 13px;
+        flex: 1 1 auto;
+        padding: 22px 22px 22px 24px;
+        // the faintest wash of the stage's tone, so a grid of thirteen cards is read
+        // as thirteen stages of three domains rather than thirteen identical boxes
+        background: linear-gradient(170deg,
+            color-mix(in srgb, var(--azm-tone) 5%, transparent), transparent 48%);
+        border: 0;
+        background: transparent;
+        text-align: start;
+        color: $azm-ink;
+        header { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        h4 { margin: 0; font-size: 15px; font-weight: 700; line-height: 1.4; letter-spacing: -.2px; }
+    }
+    .o_azm_om_stage_code {
+        font: 700 11px/1 $font-family-monospace;
+        color: var(--azm-tone);
+        background: color-mix(in srgb, var(--azm-tone) 11%, transparent);
+        padding: 5px 8px;
+        border-radius: 7px;
+    }
+    .o_azm_om_pill {
+        font-size: 10.5px;
+        font-weight: 700;
+        padding: 3px 9px;
+        border-radius: 99px;
+        color: var(--azm-tone);
+        background: color-mix(in srgb, var(--azm-tone) 12%, transparent);
+    }
+    .o_azm_om_status {
+        font-size: 10.5px; font-weight: 700; padding: 3px 10px; border-radius: 99px; margin-inline-start: auto;
+        &.o_azm_om_status_full { color: #15803d; background: #dcfce7; }
+        &.o_azm_om_status_partial { color: #b45309; background: #fef3c7; }
+        &.o_azm_om_status_none { color: #b91c1c; background: #fee2e2; }
+        &.o_azm_om_status_unknown { color: #475569; background: #eef2f7; }
+    }
+    .o_azm_om_flow {
+        display: flex; align-items: center; gap: 6px; margin: 0; font-size: 12px; color: $azm-muted; flex-wrap: wrap;
+        .oi { font-size: 14px; }
+        [dir="rtl"] & .oi, .o_rtl & .oi { transform: scaleX(-1); }
+    }
+    .o_azm_om_owner { color: $azm-muted; font-size: 12px; display: flex; align-items: center; gap: 4px; }
+    .o_azm_om_stage_stats {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 8px;
+        > div {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            padding: 10px 6px;
+            background: rgba(15, 35, 71, .035);
+            border-radius: 10px;
+            min-width: 0;
+        }
+        strong {
+            font-size: 17px;
+            font-weight: 800;
+            line-height: 1.1;
+            letter-spacing: -.4px;
+            font-variant-numeric: tabular-nums;
+        }
+        small { font-size: 10px; color: $azm-muted; text-align: center; line-height: 1.3; }
+        .o_azm_om_alert { background: rgba(239, 68, 68, .09); strong { color: #dc2626; } }
+    }
+    .o_azm_om_composition { display: flex; flex-direction: column; gap: 4px; }
+    .o_azm_om_stack {
+        display: flex;
+        height: 8px;
+        border-radius: 99px;
+        overflow: hidden;
+        background: rgba(15, 35, 71, .08);
+        > span { display: block; height: 100%; }
+        &.o_azm_om_stack_lg { height: 16px; margin: 6px 0 0; border-radius: 10px; }
+    }
+    .o_azm_om_chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+    .o_azm_om_chip_sm {
+        display: inline-flex; gap: 4px; font-size: 11px; padding: 2px 7px; border-radius: 6px;
+        background: $azm-bg; color: $azm-muted; b { color: $azm-ink; }
+    }
+
+    // ---------------------------------------------------------------- charts rows
+    // two charts side by side and the third across the width: three in a row left
+    // each of them too narrow to read its own legend
+    .o_azm_om_row_3 {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: var(--om-gap);
+        > :last-child { grid-column: 1 / -1; }
+    }
+    // The entities table and the list beside it used to share a row, which left a
+    // seven-column table — logo, name, status, counts, two meters, findings — in a
+    // little over half the page. No amount of padding rescues that: the columns were
+    // the problem. They stack now, so the table has the whole width and the list
+    // below it spreads across the same width instead of running down one edge.
+    .o_azm_om_row_2 {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: var(--om-section);
+        align-items: start;
+    }
+    // the cards carry the page's new padding, and their table runs to their edges
+    .o_azm_card { padding: var(--om-pad); }
+    // a card section is its own part too, and gets the same rule above it as the
+    // parts that need a title of their own
+    > section.o_azm_card { border-top: 0; }
+    > section.o_azm_card::before { content: none; }
+
+    // every panel on these pages sits on the same glass, and is given room to be a
+    // panel rather than a box drawn tightly round its contents
+    .o_azm_card {
+        @include azm-glass(var(--om-radius));
+        padding: 20px 22px;
+    }
+    .o_azm_card_header {
+        margin-bottom: 18px;
+        padding-bottom: 14px;
+        border-bottom: 1px solid rgba(15, 35, 71, .07);
+        h3 {
+            margin: 0;
+            font-size: 13.5px;
+            font-weight: 700;
+            letter-spacing: -.2px;
+            // a heading is a label for what follows, so it reads as one
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            font-size: 11px;
+            color: $azm-muted;
+            small { color: rgba($azm-muted, .8); font-weight: 500; text-transform: none; letter-spacing: 0; }
+        }
+        a, .btn-link { font-size: 11.5px; font-weight: 600; text-decoration: none; }
+    }
+    // ------------------------------------------------------------------ charts
+    // The chart, its legend and the figures under it are one statement, so they are
+    // laid out as one: the chart holds a column of its own and everything beside it
+    // lines up on a single left edge, with the counts down a single right edge.
+    .o_azm_donut_card {
+        display: flex;
+        flex-direction: column;
+        // two of these sit side by side; they end level whatever their legends hold
+        > .o_azm_donut_layout { flex: 1 1 auto; }
+    }
+    .o_azm_donut_layout {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        align-items: center;
+        gap: 26px;
+        justify-content: start;
+    }
+    .o_azm_legend {
+        li {
+            display: grid;
+            grid-template-columns: 10px minmax(0, 1fr) auto;
+            align-items: center;
+            gap: 10px;
+            padding: 7px 0;
+            font-size: 12.5px;
+            // a hairline between entries, so a column of five reads as five
+            + li { border-top: 1px solid rgba(15, 35, 71, .06); }
+        }
+        .o_azm_legend_count {
+            font-weight: 700;
+            color: $azm-ink;
+            font-variant-numeric: tabular-nums;
+            text-align: end;
+            min-width: 34px;
+        }
+    }
+    // the legend that runs along under a stacked bar is a row, not a column
+    .o_azm_om_legend_inline {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 18px;
+        margin-top: 10px;
+        li {
+            display: inline-flex;
+            grid-template-columns: none;
+            gap: 7px;
+            padding: 0;
+            font-size: 11.5px;
+            border-top: 0;
+            + li { border-top: 0; }
+        }
+    }
+    .o_azm_om_bars { display: flex; flex-direction: column; gap: 6px; }
+    .o_azm_om_bars { gap: 9px; }
+    .o_azm_om_bar_row {
+        display: grid;
+        grid-template-columns: minmax(130px, 0.9fr) minmax(0, 2fr) 44px;
+        align-items: center;
+        gap: 10px;
+        font-size: 12px;
+        b { text-align: end; font-variant-numeric: tabular-nums; font-weight: 700; }
+    }
+    .o_azm_om_bar {
+        display: block;
+        height: 7px;
+        border-radius: 99px;
+        background: rgba(15, 35, 71, .08);
+        overflow: hidden;
+        > span {
+            display: block;
+            height: 100%;
+            border-radius: 99px;
+            /*rtl:ignore*/
+            background: linear-gradient(90deg,
+                color-mix(in srgb, var(--azm-tone, #{$azm-blue}) 55%, white),
+                var(--azm-tone, #{$azm-blue}));
+            transition: width .5s cubic-bezier(.2, .8, .2, 1);
+        }
+    }
+    .o_azm_om_legend_inline { display: flex; flex-wrap: wrap; gap: 4px 14px; li { padding: 0; font-size: 12px; } }
+
+    // ---------------------------------------------------------------- tables / lists
+    .o_azm_om_table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        // a row is a line somebody reads across, so it is given the height to be one
+        th {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            color: $azm-muted;
+            padding: 13px 18px;
+            background: rgba(15, 35, 71, .025);
+            border-bottom: 1px solid rgba(15, 35, 71, .07);
+            white-space: nowrap;
+            &:first-child { padding-inline-start: 18px; }
+            &:last-child { padding-inline-end: 18px; }
+        }
+        td {
+            padding: 20px 18px;
+            border-bottom: 1px solid rgba(15, 35, 71, .05);
+            vertical-align: middle;
+            font-size: 12.5px;
+            // the counts and percentages are compared down their column
+            font-variant-numeric: tabular-nums;
+            &:first-child { padding-inline-start: 18px; }
+            &:last-child { padding-inline-end: 18px; }
+        }
+        tbody tr:last-child td { border-bottom: 0; }
+        tbody tr { cursor: pointer; transition: background .12s ease; &:hover { background: rgba($azm-blue, .035); } }
+        // two facts about one subject, stacked in the cell that holds them rather
+        // than split across two columns that each need their own heading
+        .o_azm_cell_stack {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            min-width: 0;
+            > small { font-size: 10.5px; color: $azm-muted; }
+            .o_azm_cell_warn { font-size: 12.5px; font-weight: 700; color: #c2410c; }
+            .o_azm_cell_quiet { font-size: 12.5px; font-weight: 600; color: rgba($azm-muted, .85); }
+        }
+        .o_azm_mini_progress {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            min-width: 170px;
+            .o_azm_progress { flex: 1 1 auto; }
+            > span:last-child { font-weight: 700; min-width: 34px; text-align: end; }
+        }
+        b, strong { font-variant-numeric: tabular-nums; }
+        // the table is wider than its card on a narrow screen; let it scroll rather
+        // than crush every column to fit
+        th, td { white-space: nowrap; }
+        td .o_azm_entity_cell { white-space: normal; }
+    }
+    // the card holds a table edge to edge: its own padding would double the cells'
+    .o_azm_card > .table-responsive {
+        margin: 0 calc(var(--om-pad) * -1) calc(var(--om-pad) * -1);
+        border-end-start-radius: var(--om-radius);
+        border-end-end-radius: var(--om-radius);
+        overflow-x: auto;
+    }
+    // who the row is about, with room for a logo and two lines beside it
+    .o_azm_entity_cell {
+        display: flex;
+        align-items: center;
+        gap: 13px;
+        min-width: 240px;
+        img, .o_azm_code_avatar {
+            flex: 0 0 auto;
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            object-fit: contain;
+            background: #fff;
+            border: 1px solid rgba(15, 35, 71, .08);
+        }
+        .o_azm_code_avatar {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 800;
+            color: $azm-muted;
+        }
+        strong { display: block; font-size: 12.5px; line-height: 1.35; }
+        small { display: block; font-size: 10.5px; color: $azm-muted; line-height: 1.35; }
+    }
+    .o_azm_om_state {
+        font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 8px; white-space: nowrap;
+        &.o_azm_om_state_draft { color: #475569; background: #eef2f7; }
+        &.o_azm_om_state_review { color: #b45309; background: #fef3c7; }
+        &.o_azm_om_state_approved { color: #15803d; background: #dcfce7; }
+    }
+    // with the full width to use, the top risks lay out across it rather than down it
+    .o_azm_om_risks {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+        gap: 8px;
+        li {
+            align-items: flex-start;
+            gap: 10px;
+            padding: 11px 12px;
+            border: 1px solid rgba(15, 35, 71, .08);
+            border-radius: 12px;
+            background: #fff;
+            transition: border-color .14s ease, box-shadow .14s ease;
+            &:hover {
+                border-color: rgba($azm-blue, .35);
+                box-shadow: 0 6px 16px rgba(15, 35, 71, .07);
+            }
+        }
+    }
+    .o_azm_om_score {
+        flex: 0 0 auto; width: 34px; height: 34px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center;
+        font-weight: 800; font-size: 14px; background: #eef2f7; color: #475569;
+        &.o_high { background: #fee2e2; color: #b91c1c; }
+        &.o_mid { background: #fef3c7; color: #b45309; }
+        &.o_low { background: #dcfce7; color: #15803d; }
+    }
+    .o_azm_om_control { color: #0d9488 !important; display: flex !important; gap: 4px; align-items: center; margin-top: 2px; }
+}
+
+// When a chart card is too narrow to hold its legend beside the chart, the legend
+// goes under it — as one column, still on one left edge, rather than two columns of
+// hairlined rows that read as a grid of unrelated pairs.
+@container (max-width: 460px) {
+    .o_azm_om .o_azm_donut_layout {
+        grid-template-columns: minmax(0, 1fr);
+        justify-items: stretch;
+        gap: 16px;
+        .o_azm_donut { justify-self: center; }
+    }
+    .o_azm_om .o_azm_donut_layout .o_azm_legend {
+        display: block;
+        width: 100%;
+    }
+}
+
+// ---------------------------------------------------------------- narrow views
+// Each step gives something up rather than letting everything shrink together: the
+// strips break first, then the figures halve, then the header stops being a row.
+@media (max-width: 1400px) {
+    // six figures and two meters stop fitting beside the name
+    .o_azm_om .o_azm_om_domain {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        row-gap: 14px;
+        header { grid-column: 1 / -1; }
+    }
+    .o_azm_om .o_azm_om_figures { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 1200px) {
+    .o_azm_om .o_azm_om_kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .o_azm_om .o_azm_om_row_3 { grid-template-columns: minmax(0, 1fr); }
+    .o_azm_om .o_azm_om_row_3 > :last-child { grid-column: auto; }
+    .o_azm_om .o_azm_om_row_2 { grid-template-columns: minmax(0, 1fr); }
+    .o_azm_om .o_azm_om_domain { grid-template-columns: minmax(0, 1fr); }
+    // the switch wraps to two rows before it squeezes either model's name
+    .o_azm_om .o_azm_om_models { flex-wrap: wrap; }
+}
+@media (max-width: 768px) {
+    .o_azm_om { --om-section: 24px; --om-pad: 18px; --om-gap: 12px; }
+    .o_azm_om .o_azm_om_title { padding: 20px 18px 16px; }
+    .o_azm_om .o_azm_om_title h1 { font-size: 22px; }
+    .o_azm_om .o_azm_om_title_gauge { padding-inline-start: 0; border-inline-start: 0; }
+    .o_azm_om .o_azm_om_title_actions { margin-inline-start: 0; width: 100%; }
+    .o_azm_om .o_azm_om_title_actions .btn { flex: 1 1 auto; justify-content: center; }
+    .o_azm_om .o_azm_om_selects { flex-wrap: wrap; justify-content: flex-start; }
+    .o_azm_om .o_azm_om_selects .form-select { flex: 1 1 100%; min-width: 0; }
+    .o_azm_om .o_azm_om_cards_tools { flex-wrap: wrap; > * { flex: 1 1 100%; } }
+    .o_azm_om .o_azm_om_figures { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .o_azm_om .o_azm_om_stage_stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+    .o_azm_om .o_azm_om_kpis { grid-template-columns: minmax(0, 1fr); }
+}
+
+// Switching between the two models is navigation, not content: it was three cards
+// the size of panels, stacked under a hero that had just said the same name. It is a
+// single slim bar now, sitting directly under the heading as part of the same block.
+.o_azm_om .o_azm_om_models {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 6px;
+    margin-top: 10px;
+    padding: 5px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, .7);
+    border: 1px solid rgba(15, 35, 71, .08);
+    backdrop-filter: blur(8px);
+
+    .o_azm_om_model {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
+        padding: 8px 14px;
+        text-align: start;
+        border: 0;
+        border-radius: 10px;
+        background: transparent;
+        color: $azm-muted;
+        transition: color .14s ease, background .14s ease, box-shadow .14s ease;
+        .oi { font-size: 19px; color: inherit; }
+        b { display: block; font-size: 12.5px; font-weight: 650; line-height: 1.25; color: inherit; }
+        small { display: block; font-size: 10.5px; color: rgba($azm-muted, .9); line-height: 1.3; }
+        &:hover { color: $azm-ink; background: rgba(15, 35, 71, .05); }
+        // the page you are on is lifted out of the rail, the way the tabs below it are
+        &.active {
+            cursor: default;
+            color: $azm-ink;
+            background: #fff;
+            box-shadow:
+                0 1px 2px rgba(15, 35, 71, .06),
+                0 4px 12px rgba(15, 35, 71, .09),
+                inset 0 0 0 1px rgba($azm-blue, .35);
+            .oi { color: $azm-blue; }
+            small { color: $azm-muted; }
+        }
+    }
+    // the way out, said as a quiet step back rather than a third model
+    .o_azm_om_model_back {
+        margin-inline-end: 4px;
+        padding-inline: 11px;
+        border-inline-end: 1px solid rgba(15, 35, 71, .09);
+        border-radius: 10px 0 0 10px;
+        small { display: none; }
+        b { font-size: 11.5px; font-weight: 600; }
+        .oi { font-size: 17px; }
+    }
+}
+@media (max-width: 640px) {
+    .o_azm_om .o_azm_om_models { flex-direction: column; align-items: stretch; }
+    .o_azm_om .o_azm_om_model_back { border-inline-end: 0; border-block-end: 1px solid rgba(15, 35, 71, .09); margin: 0 0 4px; }
+}
+
+// ---------------------------------------------------------------- financial page specifics
+.o_azm_fin_page {
+    .o_azm_fin_hrf { color: #7c3aed; background: rgba(#7c3aed, .1); }
+    .o_azm_om_status.o_azm_fin_status_complete { color: #15803d; background: #dcfce7; }
+    .o_azm_om_status.o_azm_fin_status_in_progress { color: #b45309; background: #fef3c7; }
+    .o_azm_om_status.o_azm_fin_status_not_started { color: #475569; background: #eef2f7; }
+    .o_azm_om_status.o_azm_fin_status_not_applicable { color: #94a3b8; background: #f8fafc; }
+    // the financial bars carry a name, a bar, a percentage and a count: the name
+    // gets room to be a name and the numbers keep one width between rows
+    .o_azm_fin_bar_row {
+        grid-template-columns: minmax(150px, 1.1fr) minmax(0, 2fr) 40px 64px;
+        gap: 12px;
+        small { text-align: end; font-variant-numeric: tabular-nums; }
+    }
+}
+
+// ---------------------------------------------------------------- financial block on Home / entity page
+// ------------------------------------- the operating model, summarised on Home
+//
+// These styles were deleted by accident when the model switch was rewritten, and
+// without them the block has no layout at all: its label, value and sub-line are
+// three inline elements, so they render as one run of text — "Assessments72
+// approved", "Answer completion96%". They are back, and drawn as cards.
+.o_azm_om_home {
+    --omh-gap: 12px;
+
+    // a figure is a label, a value and what qualifies it — three lines, not one
+    .o_azm_om_home_kpis {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: var(--omh-gap);
+        margin-bottom: 18px;
+
+        > div {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-width: 0;
+            padding: 14px 16px;
+            border: 1px solid rgba(20, 43, 61, .08);
+            border-radius: 12px;
+            background: #fff;
+        }
+        // the label above, the value under it, the qualifier last
+        small {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            line-height: 1.35;
+            color: rgba(20, 43, 61, .58);
+        }
+        strong {
+            display: block;
+            font-size: 24px;
+            font-weight: 800;
+            line-height: 1.1;
+            letter-spacing: -.6px;
+            color: #142b3d;
+            font-variant-numeric: tabular-nums;
+        }
+        small.fw-normal { font-weight: 500; font-size: 10.5px; }
+        .o_azm_progress { margin-top: 2px; height: 5px; }
+    }
+
+    // one card per domain, with its figures in a column of rows that line up
+    .o_azm_om_home_domains {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+        gap: var(--omh-gap);
+    }
+    .o_azm_om_home_domain {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        text-align: start;
+        padding: 16px;
+        border: 1px solid rgba(20, 43, 61, .08);
+        border-radius: 14px;
+        background: linear-gradient(180deg,
+            color-mix(in srgb, var(--azm-tone) 7%, transparent), #fff 58%);
+        color: #142b3d;
+        overflow: hidden;
+        transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+
+        &::before {
+            content: "";
+            position: absolute;
+            inset-block-start: 0;
+            inset-inline: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--azm-tone),
+                color-mix(in srgb, var(--azm-tone) 28%, transparent));
+        }
+        &:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 26px rgba(20, 43, 61, .1);
+            border-color: color-mix(in srgb, var(--azm-tone) 35%, transparent);
+        }
+        &:focus-visible { outline: 2px solid var(--azm-tone); outline-offset: 2px; }
+
+        header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            strong { font-size: 13.5px; font-weight: 700; letter-spacing: -.2px; }
+        }
+        // the completion, said once and large, above the rows it summarises
+        .o_azm_mini_progress {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            .o_azm_progress { flex: 1 1 auto; height: 6px; }
+            small { font-size: 13px; font-weight: 800; color: #142b3d; font-variant-numeric: tabular-nums; }
+        }
+        // name on one edge, figure on the other, with a hairline between rows so four
+        // of them read as four
+        .o_azm_om_home_line {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 7px 0;
+            font-size: 11.5px;
+            color: rgba(20, 43, 61, .58);
+            + .o_azm_om_home_line { border-top: 1px solid rgba(20, 43, 61, .06); }
+            b { font-weight: 700; color: #142b3d; font-variant-numeric: tabular-nums; }
+        }
+    }
+
+    .o_azm_om_home_lists {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 18px;
+        margin-top: 20px;
+        h4 {
+            margin: 0 0 8px;
+            font-size: 10.5px;
+            font-weight: 700;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            color: rgba(20, 43, 61, .58);
+        }
+    }
+    .o_azm_om_score {
+        flex: 0 0 auto;
+        width: 32px;
+        height: 32px;
+        border-radius: 9px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        font-size: 13px;
+        background: #eef2f7;
+        color: #475569;
+        font-variant-numeric: tabular-nums;
+        &.o_high { background: #fee2e2; color: #b91c1c; }
+        &.o_mid { background: #fef3c7; color: #b45309; }
+        &.o_low { background: #dcfce7; color: #15803d; }
+    }
+}
+.o_azm_overview .o_azm_om_entity { grid-column: 1 / -1; }
+
+.o_azm_om_home .o_azm_fin_home_mods {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px;
+}
+.o_azm_om_home .o_azm_fin_home_mod {
+    display: flex; flex-direction: column; gap: 4px; text-align: start; padding: 8px 10px; border-radius: 10px;
+    border: 1px solid $azm-border; background: #fff; color: $azm-ink; min-width: 0;
+    .o_code { font: 700 10.5px/1 ui-monospace, SFMono-Regular, Menlo, monospace; color: #c08a1e; }
+    .o_name { font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .o_azm_progress { height: 5px; }
+    small { color: $azm-muted; font-size: 11px; b { color: #b45309; } }
+    &:hover { border-color: rgba($azm-blue, .5); }
+    &.o_azm_fin_hs_complete { border-color: rgba(#16a34a, .45); background: #f6fdf8; }
+    &.o_azm_fin_hs_not_applicable { opacity: .55; }
+}
+
+// The Operating Models hub has its own stylesheet: om_hub/om_hub.scss
+
+// ---------------------------------------------------------------- unified Assessments / Risk Register
+.o_azm_unified {
+    // The page is four blocks — its name, the filters, the figures, the table — and
+    // they sat on the default sixteen pixels, which read as one stack rather than
+    // four things. Each gets room to be its own.
+    &.o_azm_om { gap: 36px; }
+
+    .o_azm_unified_kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+
+    // The three breaks down this page are not equal. The filters narrow what the
+    // figures count, and the figures summarise the list below them, so each of those
+    // joins gets room above the page's own gap rather than sitting on it.
+    .o_azm_om_toolbar + .o_azm_kpis { margin-top: 16px; }
+    .o_azm_unified_kpis + .o_azm_card { margin-top: 16px; }
+
+    // the filters belong to the list below them, so they sit nearer it than the
+    // heading above
+    .o_azm_om_toolbar { gap: 14px; }
+    .o_azm_om_selects .form-control {
+        max-width: 240px;
+        border-radius: 11px;
+        border-color: rgba(15, 35, 71, .1);
+        background-color: rgba(255, 255, 255, .78);
+        font-size: 12.5px;
+        &:focus { border-color: rgba($azm-blue, .5); box-shadow: 0 0 0 3px rgba($azm-blue, .12); }
+    }
+
+    // the table is the page: it runs to the edges of the card that holds it, and its
+    // rows are tall enough to carry two lines of Arabic without crowding
+    .o_azm_om_table td { padding-block: 18px; }
+    .o_azm_om_table td:first-child { font-weight: 600; }
+    .o_azm_unified_model {
+        display: inline-block;
+        font-size: 10.5px; font-weight: 700; padding: 3px 10px; border-radius: 99px; white-space: nowrap;
+        &.o_procurement { color: #1d4ed8; background: #dbeafe; }
+        &.o_financial { color: #15803d; background: #dcfce7; }
+    }
+    // a row's subject: its name, and under it where it came from — two lines with
+    // room between them, not one wrapped one
+    .o_azm_unified_title {
+        max-width: 460px;
+        strong, small { display: block; }
+        strong { font-size: 12.5px; line-height: 1.45; }
+        small { margin-top: 3px; font-size: 10.5px; line-height: 1.5; color: $azm-muted; }
+    }
+    // a state is read down its column, so every badge is the same size whatever it says
+    .o_azm_om_state {
+        display: inline-block;
+        min-width: 86px;
+        text-align: center;
+        font-size: 10.5px;
+        padding: 4px 10px;
+    }
+    .o_azm_om_state {
+        &.o_azm_unified_state_candidate { color: #b45309; background: #fef3c7; }
+        &.o_azm_unified_state_confirmed { color: #b91c1c; background: #fee2e2; }
+        &.o_azm_unified_state_treatment { color: #1d4ed8; background: #dbeafe; }
+        &.o_azm_unified_state_closed { color: #15803d; background: #dcfce7; }
+        &.o_azm_unified_state_dismissed, &.o_azm_unified_state_na { color: #64748b; background: #f1f5f9; }
+        &.o_azm_unified_state_partial { color: #b45309; background: #fef3c7; }
+        &.o_azm_unified_state_unavailable { color: #475569; background: #e2e8f0; }
+    }
+}
+@media (max-width: 1200px) { .o_azm_unified .o_azm_unified_kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+@media (prefers-reduced-motion: reduce) {
+    .o_azm_om .o_azm_om_stage,
+    .o_azm_om .o_azm_om_domain,
+    .o_azm_om .o_azm_om_model,
+    .o_azm_om .o_azm_om_tab { transition: none; }
+}

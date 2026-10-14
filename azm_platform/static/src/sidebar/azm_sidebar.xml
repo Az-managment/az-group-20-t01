@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="azm_platform.Sidebar">
+        <nav t-if="this.app" class="o_azm_sidebar d-print-none" t-att-class="{'o_collapsed': this.state.collapsed}">
+            <div class="o_azm_sidebar_brand">
+                <svg class="o_azm_logo_mark" viewBox="0 0 64 56" aria-hidden="true">
+                    <polygon points="32,2 62,54 47,54 32,26 17,54 2,54" fill="#f97316"/>
+                    <polygon points="32,20 44,42 20,42" fill="#ffffff"/>
+                    <polygon points="32,30 37,42 27,42" fill="#0b2554"/>
+                </svg>
+                <span class="o_azm_sidebar_brand_text">
+                    <strong>AZM</strong>
+                    <small>PEOPLE. GOVERNANCE. IMPACT.</small>
+                </span>
+                <button type="button" class="o_azm_sidebar_toggle" t-on-click="() => this.toggle()" title="Collapse">
+                    <i class="oi" t-att-data-icon="this.state.collapsed ? 'left_panel_open' : 'left_panel_close'" title="Collapse"/>
+                </button>
+            </div>
+            <ul class="o_azm_sidebar_menu">
+                <t t-foreach="this.items" t-as="item" t-key="item.id">
+                    <li t-if="item.divider" class="o_azm_sidebar_divider" role="separator"/>
+                    <li>
+                        <a href="#" t-att-class="{'active': this.state.activeMenuId === item.id}"
+                           t-att-title="item.name" t-att-data-menu-xmlid="item.menu.xmlid"
+                           t-on-click.prevent="() => this.onClick(item)">
+                            <t t-if="item.mark" t-call="{{item.mark}}"/>
+                            <i t-else="" class="oi" t-att-data-icon="item.icon" t-att-title="item.name"/>
+                            <span t-out="item.name"/>
+                        </a>
+                    </li>
+                </t>
+            </ul>
+            <div class="o_azm_sidebar_footer">
+                <div class="o_azm_lang_switch" role="group" aria-label="Language">
+                    <t t-foreach="this.languages" t-as="lang" t-key="lang.code">
+                        <button type="button"
+                                t-att-class="{'active': lang.code === this.currentLang}"
+                                t-att-aria-pressed="lang.code === this.currentLang ? 'true' : 'false'"
+                                t-att-title="lang.name"
+                                t-on-click="() => this.setLanguage(lang.code)"
+                                t-out="lang.label"/>
+                    </t>
+                </div>
+            </div>
+        </nav>
+    </t>
+</templates>

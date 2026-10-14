@@ -1,0 +1,252 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- A4 with a slim header and footer, so the page is mostly content -->
+    <record id="paperformat_azm_document" model="report.paperformat">
+        <field name="name">AZM document (A4)</field>
+        <field name="format">A4</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">22</field>
+        <field name="margin_bottom">18</field>
+        <field name="margin_left">16</field>
+        <field name="margin_right">16</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">12</field>
+        <field name="dpi">96</field>
+    </record>
+
+    <record id="action_report_azm_document" model="ir.actions.report">
+        <field name="name">مستند النموذج المالي</field>
+        <field name="model">azm.doc.publication</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">azm_platform.report_azm_document</field>
+        <field name="print_report_name">object.name</field>
+        <field name="paperformat_id" ref="paperformat_azm_document"/>
+    </record>
+
+    <!-- The path of the page: model › module › topic › requirement -->
+    <template id="report_azm_document_path">
+        <table class="azm_path">
+            <tr>
+                <t t-foreach="path" t-as="step">
+                    <td t-attf-class="azm_path_step {{'azm_path_last' if step_last else ''}}">
+                        <div class="azm_path_label" t-out="step[0]"/>
+                        <div class="azm_path_code" t-out="step[1]"/>
+                        <div class="azm_path_name" t-out="step[2]"/>
+                    </td>
+                    <td t-if="not step_last" class="azm_path_sep">‹</td>
+                </t>
+            </tr>
+        </table>
+    </template>
+
+    <!-- One requirement in plain words -->
+    <template id="report_azm_document_item">
+        <div t-attf-class="azm_item {{'azm_item_single' if single else ''}}">
+            <table t-if="not single" class="azm_item_head">
+                <tr>
+                    <td>
+                        <!--
+                            A binding lists deliverables, and each row is one of them:
+                            its own number first, then where it sits on the tree, so a
+                            reader can ask for any single row by name.
+                        -->
+                        <span t-if="it.get('code')" class="azm_code" t-out="it['code']"/>
+                        <span class="azm_code azm_code_dim" t-out="it['tree_ref']"/>
+                        <span class="azm_item_title" t-out="it['title']"/>
+                    </td>
+                    <td class="azm_item_status">
+                        <span t-attf-class="azm_pill azm_pill_{{it['status']['css']}}" t-out="it['status']['ar']"/>
+                    </td>
+                </tr>
+            </table>
+
+            <t t-set="n" t-value="0"/>
+            <div class="azm_sec">
+                <t t-set="n" t-value="n + 1"/>
+                <h3><span class="azm_num" t-out="n"/>ما المطلوب؟ <small>What is required</small></h3>
+                <p class="azm_lead" t-out="it['question']"/>
+            </div>
+
+            <t t-if="it['status']['key'] == 'open'">
+                <div class="azm_sec">
+                    <t t-set="n" t-value="n + 1"/>
+                    <h3><span class="azm_num" t-out="n"/>الأسئلة المطلوب الإجابة عنها <small>Questions to answer</small></h3>
+                    <ol class="azm_questions">
+                        <li t-foreach="it['pending']" t-as="q" t-out="q"/>
+                    </ol>
+                </div>
+            </t>
+            <t t-elif="it['status']['key'] == 'na'">
+                <div class="azm_sec">
+                    <t t-set="n" t-value="n + 1"/>
+                    <h3><span class="azm_num" t-out="n"/>لماذا لا ينطبق؟ <small>Why not applicable</small></h3>
+                    <p t-out="it['na_reason'] or '—'"/>
+                </div>
+            </t>
+            <t t-else="">
+                <div class="azm_sec">
+                    <t t-set="n" t-value="n + 1"/>
+                    <h3><span class="azm_num" t-out="n"/>ماذا يحدث اليوم؟ <small>Today</small></h3>
+                    <table class="azm_kv">
+                        <tr>
+                            <th>الحالة</th>
+                            <td><span t-attf-class="azm_pill azm_pill_{{it['status']['css']}}" t-out="it['status']['ar']"/></td>
+                        </tr>
+                        <tr t-foreach="it['answers']" t-as="a">
+                            <th t-out="a['label']"/>
+                            <td t-attf-class="{{'azm_muted' if a['muted'] else ''}}" t-out="a['value']"/>
+                        </tr>
+                        <tr t-if="it['impl']"><th>كيف يُنفَّذ</th><td t-out="it['impl']"/></tr>
+                        <tr t-if="it['rule']"><th>حالة السياسة أو القاعدة</th><td t-out="it['rule']"/></tr>
+                    </table>
+                    <t t-foreach="it['steps']" t-as="s">
+                        <p class="azm_caption" t-out="s['label']"/>
+                        <!-- a cycle is an order of work, so it is drawn as one; the list
+                             stands in only where there was nothing to draw -->
+                        <div t-if="s.get('flow')" class="azm_flow" t-out="s['flow']"/>
+                        <ol t-else="" class="azm_steps">
+                            <li t-foreach="s['items']" t-as="step">
+                                <b t-out="step['title']"/>
+                                <div t-if="step['detail']" class="azm_muted" t-out="step['detail']"/>
+                            </li>
+                        </ol>
+                    </t>
+                    <t t-foreach="it['tables']" t-as="tbl">
+                        <p class="azm_caption" t-out="tbl['label']"/>
+                        <table class="azm_grid">
+                            <thead><tr><th t-foreach="tbl['columns']" t-as="c" t-out="c"/></tr></thead>
+                            <tbody>
+                                <tr t-foreach="tbl['rows']" t-as="row"><td t-foreach="row" t-as="cell" t-out="cell"/></tr>
+                            </tbody>
+                        </table>
+                    </t>
+                </div>
+
+                <div t-if="it['problems']" class="azm_sec">
+                    <t t-set="n" t-value="n + 1"/>
+                    <h3><span class="azm_num" t-out="n"/>ما المشكلة؟ <small>Issues</small></h3>
+                    <p class="azm_box azm_box_warn" t-out="it['problems']"/>
+                </div>
+
+                <div t-if="it['target'] or it['target_note']" class="azm_sec">
+                    <t t-set="n" t-value="n + 1"/>
+                    <h3><span class="azm_num" t-out="n"/>إلى أين نريد الوصول؟ <small>Direction</small></h3>
+                    <p>
+                        <b t-if="it['target']" t-out="it['target']"/>
+                        <t t-if="it['target'] and it['target_note']"> — </t>
+                        <t t-out="it['target_note']"/>
+                    </p>
+                    <p class="azm_note">توجه مقترح من الإفادة، وليس تصميمًا معتمدًا.</p>
+                </div>
+
+                <div t-if="it['missing']" class="azm_sec">
+                    <t t-set="n" t-value="n + 1"/>
+                    <h3><span class="azm_num" t-out="n"/>ما زال ناقصًا <small>Still to answer</small></h3>
+                    <ul><li t-foreach="it['missing']" t-as="m" t-out="m"/></ul>
+                </div>
+            </t>
+        </div>
+    </template>
+
+    <template id="report_azm_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-set="p" t-value="doc._azm_payload()"/>
+
+                <div class="header azm_doc_header" dir="rtl">
+                    <table>
+                        <tr>
+                            <td class="azm_hdr_company" t-out="p['company']"/>
+                            <td class="azm_hdr_brand">AZM · نموذج التشغيل المؤسسي</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <div class="article azm_doc" dir="rtl" t-att-data-oe-model="doc._name" t-att-data-oe-id="doc.id">
+                    <div class="azm_doc_type">
+                        <t t-out="p['doc_type'][0]"/> · <t t-out="p['doc_type'][1]"/>
+                        <span class="azm_doc_scope">
+                            <t t-out="p['azm_type'][0]"/> · <t t-out="p['scope']"/>
+                            <t t-if="p['version']"> · v<t t-out="p['version']"/></t>
+                            · <t t-out="p['stage']"/>
+                        </span>
+                    </div>
+                    <h1><span class="azm_code azm_code_big" t-out="p['code']"/>
+                        <!-- A binding collects the deliverables under a module; it carries
+                             their place, not a registry number of its own, and says so. -->
+                        <span class="azm_binding" t-if="p['is_binding']">مجموعة</span>
+                        <t t-out="p['title']"/></h1>
+
+                    <t t-set="path" t-value="p['path']"/>
+                    <t t-call="azm_platform.report_azm_document_path"/>
+
+                    <div t-attf-class="azm_banner azm_banner_{{p['banner']['css']}}" t-out="p['banner']['text']"/>
+
+                    <table class="azm_glance">
+                        <tr t-foreach="p['glance_rows']" t-as="pair">
+                            <td t-foreach="pair" t-as="g" class="azm_glance_cell">
+                                <div class="azm_glance_label"><t t-out="g[0]"/> <small t-out="g[1]"/></div>
+                                <div class="azm_glance_value" t-out="g[2]"/>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <t t-if="p['html']">
+                        <!-- an output written by its own engine: the body is already prose,
+                             the page around it is the same as every other document -->
+                        <div class="azm_output" t-out="p['html']"/>
+                    </t>
+                    <t t-elif="p['single']">
+                        <t t-foreach="p['items']" t-as="it">
+                            <t t-set="single" t-value="True"/>
+                            <t t-call="azm_platform.report_azm_document_item"/>
+                        </t>
+                    </t>
+                    <t t-else="">
+                        <t t-foreach="p['groups']" t-as="grp">
+                            <div class="azm_topic">
+                                <span class="azm_code" t-out="grp['code']"/> <t t-out="grp['name']"/>
+                            </div>
+                            <t t-foreach="grp['items']" t-as="it">
+                                <t t-set="single" t-value="False"/>
+                                <t t-call="azm_platform.report_azm_document_item"/>
+                            </t>
+                        </t>
+                    </t>
+
+                    <t t-if="p['summary']">
+                        <h2 class="azm_h2">
+                            <t t-out="p['summary_title'][0]"/> <small t-out="p['summary_title'][1]"/>
+                        </h2>
+                        <table class="azm_grid">
+                            <thead>
+                                <tr>
+                                    <th t-out="p['summary_label']"/>
+                                    <th t-foreach="p['summary_columns']" t-as="col"
+                                        t-out="col[0]"/>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="p['summary']" t-as="row">
+                                    <td><span class="azm_code" t-out="row['code']"/> <t t-out="row['name']"/></td>
+                                    <td t-foreach="p['summary_columns']" t-as="col"
+                                        t-out="row[col[1]]"/>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </t>
+                </div>
+
+                <div class="footer azm_doc_footer" dir="rtl">
+                    <table>
+                        <tr>
+                            <td>نسخة مضبوطة — تحقق من أحدث إصدار داخل AZM · Controlled copy</td>
+                            <td class="azm_ftr_mid"><t t-out="p['verify']"/> · <t t-out="p['generated']"/></td>
+                            <td class="azm_ftr_page">صفحة <span class="page"/> من <span class="topage"/></td>
+                        </tr>
+                    </table>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>

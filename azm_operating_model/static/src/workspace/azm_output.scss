@@ -1,0 +1,94 @@
+// Document styles shared by the workspace, the form preview and the PDF book.
+.o_azm_output {
+    color: #17323d;
+    line-height: 1.75;
+    h3 { font-size: 17px; font-weight: 700; margin: 0; }
+    h4 { font-size: 14px; font-weight: 700; margin: 10px 0 4px; }
+    p { margin: 4px 0 8px; }
+    ul, ol { padding-inline-start: 22px; }
+}
+
+// The rest of this file is the document's own styling: the blocks the engines
+// emit. It sat at the top level, so generic names — .o_azm_card, .o_azm_table,
+// .o_azm_code, .o_azm_note, .o_azm_section — were applying to every screen in the
+// product. .o_azm_card never sets display anywhere else, so every card on every
+// AZM page was being laid out as a flex column by a report stylesheet.
+//
+// Both wrappers are listed because a document is rendered in two places: the PDF
+// and the form preview wrap it in .o_azm_output, and the two workspaces draw it
+// live inside .o_azm_live_doc.
+.o_azm_output, .o_azm_live_doc {
+    .o_azm_stage_head {
+        display: flex; gap: 10px; align-items: baseline; margin: 22px 0 8px; padding-bottom: 6px;
+        border-bottom: 2px solid #e6f1f4;
+        &:first-child { margin-top: 4px; }
+    }
+    .o_azm_code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: #5b7380;
+        background: #eef2f4; border-radius: 4px; padding: 1px 6px; direction: ltr; unicode-bidi: isolate;
+    }
+    .o_azm_doc_code { font-family: ui-monospace, monospace; font-size: 11px; color: #8aa1ad; margin-bottom: 6px; direction: ltr; text-align: end; }
+    .o_azm_source {
+        display: block; font-size: 11px; color: #8aa1ad; margin: -2px 0 10px; direction: ltr; text-align: end;
+        summary { cursor: pointer; direction: rtl; text-align: start; }
+    }
+    .o_azm_facts {
+        list-style: none; padding: 0 !important; margin: 4px 0;
+        li { position: relative; padding-inline-start: 16px; margin-bottom: 3px; }
+        li::before { content: ""; position: absolute; inset-inline-start: 2px; top: .75em; width: 6px; height: 6px; border-radius: 50%; background: #1f5f73; }
+    }
+    .o_azm_group { color: #1f5f73; }
+    .o_azm_clause { margin-bottom: 2px !important; }
+    .o_azm_muted { color: #5b7380; }
+    .o_azm_note {
+        border-radius: 10px; padding: 8px 12px; margin: 8px 0; font-size: 12.5px;
+        background: #eef5f7; color: #1f5f73; border: 1px solid #d4e6ec;
+        &.o_azm_note_warn { background: #fff8e6; color: #8a6312; border-color: #f2dfb0; }
+    }
+    .o_azm_section {
+        position: relative; border: 1px solid #e1e8ec; border-radius: 12px; padding: 10px 14px; margin: 10px 0;
+        .o_azm_num {
+            position: absolute; inset-inline-start: -10px; top: 10px; width: 22px; height: 22px; border-radius: 50%;
+            background: #1f5f73; color: #fff; font-size: 12px; display: grid; place-items: center;
+        }
+    }
+    .o_azm_steps {
+        list-style: none; counter-reset: azmstep; padding: 0 !important;
+        li {
+            counter-increment: azmstep; position: relative; padding: 8px 40px 8px 0; margin-bottom: 6px;
+            border-inline-start: 2px solid #e6f1f4;
+            &::before {
+                content: counter(azmstep, decimal-leading-zero); position: absolute; inset-inline-start: -15px; top: 8px;
+                width: 28px; height: 28px; border-radius: 50%; background: #fff; border: 2px solid #1f5f73;
+                color: #1f5f73; font-size: 11px; font-weight: 700; display: grid; place-items: center;
+            }
+            padding-inline-start: 26px;
+        }
+    }
+    .o_azm_rules li { margin-bottom: 4px; }
+    .o_azm_svg { width: 100%; height: auto; margin: 8px 0; font-family: inherit; }
+    .o_azm_cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+    .o_azm_card {
+        border: 1px solid #e1e8ec; border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px;
+        b { font-size: 14.5px; }
+    }
+    .o_azm_badge { font-size: 11.5px; color: #5b7380; }
+    .o_azm_risk {
+        border: 1px solid #f0d5d1; border-inline-start: 4px solid #c0392b; border-radius: 10px;
+        padding: 10px 14px; margin: 10px 0; background: #fffafa;
+        .o_azm_chain { display: grid; gap: 2px; font-size: 13px; }
+    }
+    .o_azm_table {
+        width: 100%; border-collapse: collapse; font-size: 12.5px; margin: 8px 0 16px;
+        th, td { border: 1px solid #e1e8ec; padding: 6px 8px; text-align: start; vertical-align: top; }
+        thead th { background: #f2f6f7; }
+        tbody th { font-weight: 600; background: #fbfcfd; }
+    }
+    .o_azm_stats {
+        display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 10px 0;
+        > div { border: 1px solid #e1e8ec; border-radius: 12px; padding: 10px; text-align: center; }
+        b { display: block; font-size: 22px; color: #1f5f73; }
+        span { font-size: 12px; color: #5b7380; }
+    }
+
+}

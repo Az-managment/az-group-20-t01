@@ -1,0 +1,244 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="azm_platform.Dashboard">
+        <div class="o_action o_azm_dashboard">
+            <div class="o_azm_page_title">
+                <h1>AZM Enterprise Operating Model Platform</h1>
+                <p>From Current Reality to a Unified, Governed and Impactful Future</p>
+            </div>
+
+            <div t-if="!this.state.loaded" class="o_azm_loading">
+                <i class="oi oi-spin" data-icon="progress_activity" title="Loading"/>
+            </div>
+
+            <div t-else="" class="o_azm_dash_grid">
+                <!-- ============================== MAIN COLUMN -->
+                <div class="o_azm_dash_main">
+                    <!-- Hero -->
+                    <section class="o_azm_hero">
+                        <div class="o_azm_hero_text">
+                            <h2>Towards Unified, Impactful Operating Models</h2>
+                            <p>From current reality to a more governed and sustainable future</p>
+                            <ul class="o_azm_hero_pillars">
+                                <li><i class="oi" data-icon="person" title="People"/> <span>People</span></li>
+                                <li><i class="oi" data-icon="book" title="Knowledge"/> <span>Knowledge</span></li>
+                                <li><i class="oi" data-icon="bar_chart" title="Value"/> <span>Value</span></li>
+                                <li><i class="oi" data-icon="rocket_launch" title="Impact"/> <span>Impact</span></li>
+                            </ul>
+                        </div>
+                        <blockquote class="o_azm_hero_quote">
+                            <p>“Governance today... a more sustainable future”</p>
+                            <cite>— AZM</cite>
+                        </blockquote>
+                    </section>
+
+                    <!-- Journey: live figures from the existing apps -->
+                    <section class="o_azm_journey">
+                        <t t-foreach="this.steps" t-as="step" t-key="step.key">
+                            <button type="button" t-attf-class="o_azm_phase o_azm_tone_{{step.color}} {{this.canOpen(step.action) ? '' : 'o_azm_static'}}"
+                                    t-on-click="() => this.openAction(step.action)">
+                                <span class="o_azm_phase_num" t-out="step.index"/>
+                                <i class="oi o_azm_phase_icon" t-att-data-icon="step.icon" t-att-title="step.label"/>
+                                <strong t-out="step.label"/>
+                                <span class="o_azm_phase_value" t-out="step.value"/>
+                                <small t-out="step.hint"/>
+                            </button>
+                            <span t-if="!step_last" class="o_azm_phase_arrow"><i class="oi" data-icon="chevron_right" title=""/></span>
+                        </t>
+                    </section>
+
+                    <!-- KPIs -->
+                    <section class="o_azm_kpis">
+                        <button type="button" t-foreach="this.kpis" t-as="kpi" t-key="kpi.key"
+                                t-attf-class="o_azm_kpi {{this.canOpen(kpi.action) ? '' : 'o_azm_kpi_static'}}" t-on-click="() => this.openAction(kpi.action)">
+                            <span class="o_azm_kpi_text">
+                                <span class="o_azm_kpi_label" t-out="kpi.label"/>
+                                <strong class="o_azm_kpi_value" t-out="kpi.value"/>
+                                <small t-if="kpi.sub" t-out="kpi.sub"/>
+                            </span>
+                            <span t-attf-class="o_azm_icon_badge o_azm_tone_{{kpi.tone}}">
+                                <i class="oi" t-att-data-icon="kpi.icon" t-att-title="kpi.label"/>
+                            </span>
+                        </button>
+                    </section>
+
+                    <!-- Entity progress + domain distribution -->
+                    <section class="o_azm_row_2">
+                        <div class="o_azm_card">
+                            <header class="o_azm_card_header">
+                                <h3>Entities Progress</h3>
+                                <a href="#" t-on-click.prevent="() => this.openAction('azm_platform.action_azm_entity')">View all</a>
+                            </header>
+                            <table class="o_azm_table">
+                                <thead>
+                                    <tr>
+                                        <th>Entity</th>
+                                        <th>Platform Status</th>
+                                        <th>Employees</th>
+                                        <th>Projects</th>
+                                        <th>Open Tasks</th>
+                                        <th>Completion</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr t-foreach="this.entities" t-as="entity" t-key="entity.id"
+                                        t-on-click="() => this.openEntity(entity.id)">
+                                        <td>
+                                            <span class="o_azm_entity_cell">
+                                                <img t-if="entity.logoUrl" t-att-src="entity.logoUrl" alt=""/>
+                                                <span t-else="" class="o_azm_code_avatar" t-out="entity.code.slice(0, 3)"/>
+                                                <span>
+                                                    <strong t-out="entity.name"/>
+                                                    <small t-out="entity.name_alt"/>
+                                                </span>
+                                            </span>
+                                        </td>
+                                        <td><span t-attf-class="o_azm_status o_azm_status_{{entity.status}}" t-out="entity.status_label"/></td>
+                                        <td t-out="entity.employees or '—'"/>
+                                        <td t-out="entity.projects or '—'"/>
+                                        <td t-out="entity.open_tasks or '—'"/>
+                                        <td>
+                                            <span class="o_azm_mini_progress">
+                                                <span class="o_azm_progress"><span class="o_azm_progress_bar" t-attf-style="width: {{entity.progress}}%"/></span>
+                                                <span t-out="entity.progressLabel"/>
+                                            </span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="o_azm_card o_azm_donut_card">
+                            <header class="o_azm_card_header">
+                                <h3>Employees by Department</h3>
+                            </header>
+                            <div class="o_azm_donut_layout">
+                                <AzmDonutChart data="this.state.data.departments" size="190" thickness="28"
+                                               centerLabel="this.donutLabel" emptyLabel="this.donutEmptyLabel"/>
+                                <ul class="o_azm_legend">
+                                    <li t-if="!this.state.data.departments.length" class="text-muted">Add departments and employees in the Employees app to see this chart.</li>
+                                    <li t-foreach="this.state.data.departments" t-as="dep" t-key="dep.id">
+                                        <span class="o_azm_dot" t-attf-style="background: {{dep.color}}"/>
+                                        <span class="flex-grow-1" t-out="dep.name"/>
+                                        <span class="o_azm_legend_count" t-out="dep.count"/>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Quick access -->
+                    <section class="o_azm_card">
+                        <header class="o_azm_card_header"><h3>Quick Access</h3></header>
+                        <div class="o_azm_quick">
+                            <button type="button" t-foreach="this.visibleQuickLinks" t-as="link" t-key="link.action"
+                                    class="o_azm_quick_item" t-on-click="() => this.openAction(link.action)">
+                                <i class="oi" t-att-data-icon="link.icon" t-att-title="link.label"/>
+                                <span t-out="link.label"/>
+                            </button>
+                        </div>
+                    </section>
+
+                    <!-- Current state / AI / target design -->
+                    <section class="o_azm_info_cards">
+                        <button type="button" t-foreach="this.infoCards" t-as="info" t-key="info.key"
+                                t-attf-class="o_azm_info_card o_azm_tone_{{info.tone}} {{this.canOpen(info.action) ? '' : 'o_azm_static'}}"
+                                t-on-click="() => this.openAction(info.action)">
+                            <header>
+                                <span t-attf-class="o_azm_icon_badge o_azm_tone_{{info.tone}}">
+                                    <i class="oi" t-att-data-icon="info.icon" t-att-title="info.title"/>
+                                </span>
+                                <span>
+                                    <strong t-out="info.title"/>
+                                    <small t-out="info.subtitle"/>
+                                </span>
+                            </header>
+                            <ul>
+                                <li t-foreach="info.items" t-as="item" t-key="item_index" t-out="item"/>
+                            </ul>
+                        </button>
+                    </section>
+                </div>
+
+                <!-- ============================== SIDE COLUMN -->
+                <aside class="o_azm_dash_side">
+                    <!-- Assistant -->
+                    <section class="o_azm_card o_azm_assistant">
+                        <header class="o_azm_assistant_head">
+                            <i class="oi o_azm_sparkle" data-icon="wand_stars" title="AZM Assistant"/>
+                            <span>
+                                <strong>AZM Assistant</strong>
+                                <small>Ask. Analyse. Design better.</small>
+                            </span>
+                        </header>
+                        <div class="o_azm_assistant_input">
+                            <textarea rows="3" placeholder="Type your question..." t-att-value="this.state.question"
+                                      t-on-input="this.onQuestionInput" t-on-keydown="this.onQuestionKeydown"/>
+                            <button type="button" class="o_azm_send" t-att-disabled="this.state.asking" t-on-click="() => this.ask()" title="Send">
+                                <i t-if="this.state.asking" class="oi oi-spin" data-icon="progress_activity" title="Thinking"/>
+                                <i t-else="" class="oi" data-icon="send" title="Send"/>
+                            </button>
+                        </div>
+                        <div t-if="this.state.answer" t-attf-class="o_azm_answer {{this.state.answerOk ? '' : 'o_azm_answer_warn'}}" t-out="this.state.answer"/>
+                        <div class="o_azm_chips">
+                            <button type="button" t-foreach="this.suggestions" t-as="suggestion" t-key="suggestion_index"
+                                    class="o_azm_chip" t-on-click="() => this.useSuggestion(suggestion)" t-out="suggestion"/>
+                        </div>
+                    </section>
+
+                    <!-- Tasks -->
+                    <section class="o_azm_card">
+                        <header class="o_azm_card_header">
+                            <h3>My Tasks</h3>
+                            <a t-if="this.canOpen('project.action_view_all_task')" href="#" t-on-click.prevent="() => this.openAction('project.action_view_all_task')">View all</a>
+                        </header>
+                        <div class="o_azm_filters">
+                            <button type="button" t-att-class="{'active': this.state.taskFilter === 'all'}" t-on-click="() => this.setTaskFilter('all')">All</button>
+                            <button type="button" class="o_azm_f_high" t-att-class="{'active': this.state.taskFilter === 'high'}" t-on-click="() => this.setTaskFilter('high')">High</button>
+                            <button type="button" class="o_azm_f_overdue" t-att-class="{'active': this.state.taskFilter === 'overdue'}" t-on-click="() => this.setTaskFilter('overdue')">Overdue</button>
+                        </div>
+                        <ul t-if="this.tasks.length" class="o_azm_list">
+                            <li t-foreach="this.tasks" t-as="task" t-key="task.model + task.id + task_index"
+                                t-on-click="() => this.openRecord(task.model, task.id)">
+                                <span t-attf-class="o_azm_prio o_azm_prio_{{task.priority}}"/>
+                                <span class="flex-grow-1">
+                                    <strong t-out="task.name"/>
+                                    <small t-out="task.entity"/>
+                                </span>
+                                <small t-if="task.deadline" t-att-class="task.overdue ? 'text-danger' : 'text-muted'" t-out="task.deadline"/>
+                            </li>
+                        </ul>
+                        <div t-else="" class="o_azm_empty">
+                            <i class="oi" data-icon="assignment" title="No tasks"/>
+                            <strong>No tasks right now</strong>
+                            <small>Tasks assigned to you will appear here</small>
+                            <button t-if="this.canOpen('project.action_view_all_task')" type="button" class="btn btn-primary btn-sm mt-2" t-on-click="() => this.openAction('project.action_view_all_task')">View all tasks</button>
+                        </div>
+                    </section>
+
+                    <!-- Activity -->
+                    <section class="o_azm_card">
+                        <header class="o_azm_card_header">
+                            <h3>Recent Activity</h3>
+                        </header>
+                        <ul t-if="this.activities.length" class="o_azm_list o_azm_activity">
+                            <li t-foreach="this.activities" t-as="activity" t-key="activity.id"
+                                t-on-click="() => this.openRecord(activity.model, activity.res_id)">
+                                <span class="o_azm_icon_badge o_azm_tone_green small">
+                                    <i class="oi" t-att-data-icon="activity.icon" title="Activity"/>
+                                </span>
+                                <span class="flex-grow-1">
+                                    <strong t-out="activity.text"/>
+                                    <small><t t-out="activity.record"/><t t-if="activity.record"> · </t><t t-out="activity.when"/></small>
+                                </span>
+                            </li>
+                        </ul>
+                        <div t-else="" class="o_azm_empty"><small>No activity yet</small></div>
+                    </section>
+                </aside>
+            </div>
+        </div>
+    </t>
+
+</templates>

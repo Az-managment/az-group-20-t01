@@ -1,0 +1,100 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* azm_operating_model
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 20.0\n"
+"Report-Msgid-Bugs-To: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: ar\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: \n"
+
+#. module: azm_operating_model
+#: model:ir.ui.menu,name:azm_operating_model.azm_menu_root
+msgid "AZM Operating Model"
+msgstr "AZM نموذج التشغيل"
+
+#. module: azm_operating_model
+#: model:ir.ui.menu,name:azm_operating_model.azm_assessment_menu
+msgid "Assessments"
+msgstr "الإفادات"
+
+#. module: azm_operating_model
+#: model:ir.ui.menu,name:azm_operating_model.azm_finding_menu
+msgid "Risk Register"
+msgstr "سجل المخاطر"
+
+#. module: azm_operating_model
+#: model:ir.ui.menu,name:azm_operating_model.azm_menu_config
+msgid "Configuration"
+msgstr "الإعدادات"
+
+#. module: azm_operating_model
+#: model:ir.ui.menu,name:azm_operating_model.azm_entity_menu
+msgid "Entities"
+msgstr "الكيانات"
+
+#. module: azm_operating_model
+#: model:ir.ui.menu,name:azm_operating_model.azm_stage_menu
+msgid "Cycle Stages"
+msgstr "مراحل الدورة"
+
+#. module: azm_operating_model
+#: model:ir.ui.menu,name:azm_operating_model.azm_question_menu
+msgid "Question Catalogue"
+msgstr "كتالوج الأسئلة"
+
+#. module: azm_operating_model
+#: model:ir.ui.menu,name:azm_operating_model.azm_risk_rule_menu
+msgid "Risk Rules"
+msgstr "قواعد المخاطر"
+
+#. module: azm_operating_model
+#: model:ir.ui.menu,name:azm_operating_model.azm_fin_menu_root
+msgid "Unified Financial Model"
+msgstr "النموذج المالي الموحد"
+
+#. module: azm_operating_model
+#: model:ir.ui.menu,name:azm_operating_model.azm_fin_assessment_menu
+msgid "Financial Assessments"
+msgstr "الإفادات المالية"
+
+#. module: azm_operating_model
+#: model:ir.ui.menu,name:azm_operating_model.azm_fin_gap_menu
+msgid "Gap Register"
+msgstr "سجل الفجوات"
+
+#. module: azm_operating_model
+#: model:ir.ui.menu,name:azm_operating_model.azm_fin_module_menu
+msgid "Financial Model Modules"
+msgstr "موديولات النموذج المالي"
+
+#. module: azm_operating_model
+#: model:ir.ui.menu,name:azm_operating_model.azm_fin_requirement_menu
+msgid "Financial Model Requirements"
+msgstr "متطلبات النموذج المالي"
+
+#. module: azm_operating_model
+#: model:ir.ui.menu,name:azm_operating_model.azm_fin_topic_menu
+msgid "Financial Topics"
+msgstr "الموضوعات الفرعية (المالي)"
+
+#. module: azm_operating_model
+#: model:ir.ui.menu,name:azm_operating_model.azm_fin_question_menu
+msgid "Financial Model Questions"
+msgstr "أسئلة النموذج المالي"
+
+#. module: azm_operating_model
+#: model:ir.ui.menu,name:azm_operating_model.azm_fin_prompt_menu
+msgid "Financial Opening Prompts"
+msgstr "الأسئلة الافتتاحية (المالي)"
+
+#. module: azm_operating_model
+#: model:ir.ui.menu,name:azm_operating_model.azm_fin_scope_menu
+msgid "Entity Activities"
+msgstr "أنشطة الكيانات"

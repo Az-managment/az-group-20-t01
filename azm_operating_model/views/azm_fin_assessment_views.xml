@@ -1,0 +1,322 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ========================= Assessments -->
+    <record id="azm_fin_assessment_view_list" model="ir.ui.view">
+        <field name="name">azm.fin.assessment.view.list</field>
+        <field name="model">azm.fin.assessment</field>
+        <field name="arch" type="xml">
+            <list string="الإفادات المالية">
+                <field name="name"/>
+                <field name="entity_id"/>
+                <field name="version"/>
+                <field name="applicable_count" string="منطبق"/>
+                <field name="answered_count" string="أسئلة مُجابة" optional="show"/>
+                <field name="question_count" string="أسئلة ظاهرة" optional="hide"/>
+                <field name="progress" widget="progressbar"/>
+                <field name="full_count" optional="show"/>
+                <field name="partial_count" optional="show"/>
+                <field name="unavailable_count" optional="show"/>
+                <field name="unknown_count" optional="hide"/>
+                <field name="na_count" optional="hide"/>
+                <field name="user_id" widget="many2one_avatar_user" optional="show"/>
+                <field name="state" widget="badge" decoration-info="state == 'draft'"
+                       decoration-warning="state == 'review'" decoration-success="state == 'approved'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="azm_fin_assessment_view_kanban" model="ir.ui.view">
+        <field name="name">azm.fin.assessment.view.kanban</field>
+        <field name="model">azm.fin.assessment</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="entity_id" class="o_azm_fin_kanban">
+                <templates>
+                    <t t-name="card">
+                        <div class="d-flex justify-content-between">
+                            <field name="name" class="fw-bold"/>
+                            <field name="state" widget="badge"/>
+                        </div>
+                        <div class="small text-muted">
+                            النموذج المالي الموحد · v<field name="version"/> · <field name="answered_count"/>/<field name="question_count"/> سؤال
+                        </div>
+                        <field name="progress" widget="progressbar"/>
+                        <div class="small d-flex gap-2 flex-wrap">
+                            <span class="text-success"><field name="full_count"/> بالكامل</span>
+                            <span class="text-warning"><field name="partial_count"/> جزئيًا</span>
+                            <span class="text-muted"><field name="unavailable_count"/> غير منفذ</span>
+                        </div>
+                        <footer>
+                            <span class="small"><field name="gap_count"/> فجوة</span>
+                            <field name="user_id" widget="many2one_avatar_user" class="ms-auto"/>
+                        </footer>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="azm_fin_assessment_view_form" model="ir.ui.view">
+        <field name="name">azm.fin.assessment.view.form</field>
+        <field name="model">azm.fin.assessment</field>
+        <field name="arch" type="xml">
+            <form string="إفادة مالية">
+                <header>
+                    <button name="action_open_workspace" type="object" string="افتح بوابة الحصر"
+                            class="btn-primary" icon="edit_note"/>
+                    <button name="action_submit" type="object" string="إرسال للمراجعة"
+                            invisible="state != 'draft'"/>
+                    <button name="action_approve" type="object" string="اعتماد" class="btn-primary"
+                            invisible="state != 'review'" groups="azm_operating_model.azm_group_manager"/>
+                    <button name="action_back_to_draft" type="object" string="إرجاع للمسودة"
+                            invisible="state != 'review'" groups="azm_operating_model.azm_group_reviewer"/>
+                    <button name="action_new_version" type="object" string="إصدار جديد"
+                            invisible="state != 'approved'" groups="azm_operating_model.azm_group_manager"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,review,approved"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_gaps" type="object" class="oe_stat_button" icon="warning">
+                            <field name="gap_count" string="سجل الفجوات" widget="statinfo"/>
+                        </button>
+                        <button name="action_view_answers" type="object" class="oe_stat_button" icon="checklist">
+                            <field name="answered_count" string="سؤال مُجاب" widget="statinfo"/>
+                        </button>
+                    </div>
+                    <widget name="web_ribbon" title="مثال" bg_color="text-bg-warning" invisible="not is_demo"/>
+                    <div class="oe_title">
+                        <field name="name" class="text-muted"/>
+                        <h1><field name="entity_id" placeholder="الكيان (الشركة)" readonly="state != 'draft'" options="{'no_create': True}"/></h1>
+                        <div class="text-muted">النموذج المالي الموحد (ACEAZ)</div>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="scope_ids" widget="many2many_tags" readonly="state != 'draft'"/>
+                            <field name="version"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="applicable_count"/>
+                            <field name="done_count"/>
+                        </group>
+                        <group>
+                            <field name="allowed_preparer_ids" invisible="1"/>
+                            <field name="allowed_reviewer_ids" invisible="1"/>
+                            <!-- only people who are on this entity, or the role
+                                 at large when nobody is on it yet: assigning
+                                 anyone else hands them work they cannot open -->
+                            <field name="user_id" widget="many2one_avatar_user"
+                                   domain="[('id', 'in', allowed_preparer_ids)]"/>
+                            <field name="reviewer_id" widget="many2one_avatar_user"
+                                   domain="[('id', 'in', allowed_reviewer_ids)]"/>
+                            <field name="answered_count"/>
+                            <field name="progress" widget="progressbar"/>
+                            <field name="approved_by_id" invisible="not approved_by_id"/>
+                            <field name="approved_date" invisible="not approved_date"/>
+                            <field name="previous_id" invisible="not previous_id"/>
+                            <field name="is_demo" invisible="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <!-- Who answers which part. What is not given to anybody stays
+                             with whoever prepares the assessment, so leaving this empty
+                             keeps the old behaviour exactly. -->
+                        <page string="التوزيع" name="assignment">
+                            <p class="text-muted">
+                                وزّع موديولات النموذج المالي على المسؤولين عنها. الجزء المُسند يصبح ملك صاحبه:
+                                يجيبه وحده، ويقرأه الباقون دون تعديل. ما لا يُسند يبقى مع
+                                مُعد الإفادة.
+                            </p>
+                            <field name="assignment_ids" nolabel="1"
+                                   context="{'default_fin_assessment_id': id}"
+                                   readonly="state != 'draft'"
+                                   widget="one2many" mode="list"
+                                   view_ids="[ref('azm_operating_model.azm_assignment_fin_list')]"/>
+                        </page>
+                        <page string="خريطة النموذج" name="map">
+                            <field name="map_html" readonly="1" nolabel="1"/>
+                        </page>
+                        <page string="الوضع الحالي" name="book">
+                            <field name="output_html" readonly="1" nolabel="1"/>
+                        </page>
+                        <page string="ملخص الموديولات" name="summary">
+                            <field name="summary_html" readonly="1" nolabel="1"/>
+                        </page>
+                        <page string="الفجوات والتصورات" name="gaps">
+                            <field name="gaps_html" readonly="1" nolabel="1"/>
+                        </page>
+                        <page string="الإصدارات المعتمدة" name="versions">
+                            <field name="version_ids" readonly="1">
+                                <list>
+                                    <field name="version"/>
+                                    <field name="approved_date"/>
+                                    <field name="approved_by_id"/>
+                                </list>
+                                <form>
+                                    <group>
+                                        <field name="version"/>
+                                        <field name="approved_date"/>
+                                        <field name="approved_by_id"/>
+                                    </group>
+                                    <field name="summary_html"/>
+                                </form>
+                            </field>
+                        </page>
+                        <page string="أدوات" name="tools" invisible="state != 'draft'">
+                            <div class="d-flex gap-2">
+                                <button name="action_fill_demo" type="object" string="املأ مثالًا افتراضيًا"
+                                        class="btn-secondary" confirm="هيتم ملء كل المتطلبات المنطبقة بإجابات تجريبية. تكمل؟"/>
+                                <button name="action_reset_answers" type="object" string="مسح كل الإجابات"
+                                        class="btn-secondary" confirm="هيتم مسح كل الإجابات. تكمل؟"/>
+                            </div>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="azm_fin_assessment_view_search" model="ir.ui.view">
+        <field name="name">azm.fin.assessment.view.search</field>
+        <field name="model">azm.fin.assessment</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="entity_id"/>
+                <filter name="draft" string="مسودات" domain="[('state', '=', 'draft')]"/>
+                <filter name="review" string="تحت المراجعة" domain="[('state', '=', 'review')]"/>
+                <filter name="approved" string="معتمدة" domain="[('state', '=', 'approved')]"/>
+                <filter name="current" string="الإصدارات الحالية" domain="[('state', '!=', 'archived')]"/>
+                <filter name="mine" string="إفاداتي" domain="[('user_id', '=', uid)]"/>
+                <group>
+                    <filter name="by_entity" string="الكيان" context="{'group_by': 'entity_id'}"/>
+                    <filter name="by_state" string="الحالة" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="azm_fin_assessment_action" model="ir.actions.act_window">
+        <field name="name">الإفادات المالية</field>
+        <field name="res_model">azm.fin.assessment</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="context">{'search_default_current': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">ابدأ أول إفادة للنموذج المالي الموحد</p>
+            <p>اختار الكيان وأنشطته (تعليمي، رواتب، مشروعات...)، وبعدين افتح بوابة الحصر وجاوب على أسئلة المتطلبات المنطبقة.</p>
+        </field>
+    </record>
+
+    <!-- ========================= Answers / gaps register -->
+    <record id="azm_fin_answer_view_list" model="ir.ui.view">
+        <field name="name">azm.fin.answer.view.list</field>
+        <field name="model">azm.fin.answer</field>
+        <field name="arch" type="xml">
+            <list string="متطلبات النموذج المالي" create="0" decoration-muted="not applicable">
+                <field name="code"/>
+                <field name="entity_id" optional="show"/>
+                <field name="module_id"/>
+                <field name="topic_id" optional="hide"/>
+                <field name="title"/>
+                <field name="profile" optional="hide"/>
+                <field name="scope_code" optional="hide"/>
+                <field name="applicable" column_invisible="True"/>
+                <field name="state" widget="badge" decoration-success="state == 'full'"
+                       decoration-warning="state == 'partial'" decoration-info="state == 'unavailable'"/>
+                <field name="impl" optional="hide"/>
+                <field name="rule_state" optional="hide"/>
+                <field name="target" optional="show"/>
+                <field name="gap" optional="show"/>
+                <field name="future" optional="hide"/>
+                <field name="q_answered" string="مُجاب" optional="show"/>
+                <field name="q_total" string="من" optional="show"/>
+                <field name="is_done" widget="boolean_toggle" readonly="1" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="azm_fin_answer_view_form" model="ir.ui.view">
+        <field name="name">azm.fin.answer.view.form</field>
+        <field name="model">azm.fin.answer</field>
+        <field name="arch" type="xml">
+            <form string="إجابة متطلب">
+                <sheet>
+                    <div class="oe_title">
+                        <span class="text-muted"><field name="code" class="oe_inline"/> · <field name="req_id" class="oe_inline"/></span>
+                        <h2><field name="title"/></h2>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="assessment_id" readonly="1"/>
+                            <field name="module_id"/>
+                            <field name="topic_id"/>
+                            <field name="scope_code"/>
+                        </group>
+                        <group>
+                            <field name="state" readonly="1"/>
+                            <field name="impl" readonly="1" invisible="not impl"/>
+                            <field name="rule_state" readonly="1" invisible="not rule_state"/>
+                            <field name="target" readonly="1" invisible="not target"/>
+                            <field name="q_answered" readonly="1"/>
+                            <field name="q_total" readonly="1"/>
+                            <field name="is_done"/>
+                        </group>
+                    </group>
+                    <group string="الإجابة">
+                        <field name="current" readonly="1" invisible="not current"/>
+                        <field name="issues" readonly="1" invisible="not issues"/>
+                        <field name="target_note" readonly="1" invisible="not target_note"/>
+                        <field name="reason" readonly="1" invisible="not reason"/>
+                    </group>
+                    <field name="qanswer_ids" readonly="1">
+                        <list>
+                            <field name="code"/>
+                            <field name="role"/>
+                            <field name="label"/>
+                            <field name="value_display"/>
+                            <field name="note" optional="show"/>
+                        </list>
+                    </field>
+                    <group string="الأدلة">
+                        <field name="attachment_ids" widget="many2many_binary" nolabel="1" colspan="2"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="azm_fin_answer_view_search" model="ir.ui.view">
+        <field name="name">azm.fin.answer.view.search</field>
+        <field name="model">azm.fin.answer</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="code"/>
+                <field name="title"/>
+                <field name="entity_id"/>
+                <field name="module_id"/>
+                <filter name="applicable" string="منطبق" domain="[('applicable', '=', True)]"/>
+                <separator/>
+                <filter name="gaps" string="فجوات (جزئي أو غير منفذ)" domain="[('state', 'in', ('partial', 'unavailable'))]"/>
+                <filter name="partial" string="مطبّق جزئيًا" domain="[('state', '=', 'partial')]"/>
+                <filter name="unavailable" string="غير منفذ" domain="[('state', '=', 'unavailable')]"/>
+                <filter name="unknown" string="لا أعرف" domain="[('state', '=', 'unknown')]"/>
+                <filter name="na" string="لا ينطبق" domain="[('state', '=', 'na')]"/>
+                <filter name="open" string="لم تتم الإجابة" domain="[('is_done', '=', False)]"/>
+                <separator/>
+                <filter name="current" string="الإفادات الحالية" domain="[('assessment_id.state', '!=', 'archived')]"/>
+                <group>
+                    <filter name="by_module" string="الموديول" context="{'group_by': 'module_id'}"/>
+                    <filter name="by_topic" string="الموضوع الفرعي" context="{'group_by': 'topic_id'}"/>
+                    <filter name="by_entity" string="الكيان" context="{'group_by': 'entity_id'}"/>
+                    <filter name="by_state" string="الحالة" context="{'group_by': 'state'}"/>
+                    <filter name="by_profile" string="قالب الإجابة" context="{'group_by': 'profile'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="azm_fin_gap_action" model="ir.actions.act_window">
+        <field name="name">سجل الفجوات المالية</field>
+        <field name="res_model">azm.fin.answer</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_applicable': 1, 'search_default_gaps': 1, 'search_default_current': 1, 'search_default_by_module': 1}</field>
+    </record>
+</odoo>

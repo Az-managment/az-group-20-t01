@@ -1,0 +1,356 @@
+import { Component, onWillStart, proxy, useProps } from "@odoo/owl";
+import { closeDocument, openDocument, previewDocument } from "@azm_platform/components/doc_preview";
+import { KeepLast } from "@web/core/utils/concurrency";
+import { useService } from "@web/core/utils/hooks";
+import { standardActionServiceProps } from "@web/webclient/actions/action_plugin";
+import { pct } from "../om_utils";
+
+/**
+ * AZM Platform · the shell every tree page shares.
+ *
+ * A tree is a model read from its catalogue down to its leaf — three levels, the same
+ * three everywhere — with one entity's own answers hung on it. What changes between
+ * the financial model and the procurement cycle is what a leaf *is*, so only the
+ * detail panel is written twice; walking, searching, folding and picking the entity
+ * live here, and the tree panel itself is one template (azm_platform.TreePanel).
+ *
+ * A subclass gives its template, the two model methods and the name of the argument
+ * that carries a leaf's id.
+ */
+export class AzmTreePage extends Component {
+    static dataMethod = "";   // azm.dashboard method returning the whole tree
+    static nodeMethod = "";   // ... and the one returning a single leaf
+    static nodeArg = "id";    // what that method calls the leaf's id
+
+    props = useProps(standardActionServiceProps);
+
+    setup() {
+        this.orm = useService("orm");
+        this.action = useService("action");
+        this.pct = pct;
+        // one per concern: clicking two leaves quickly must leave the panel showing the
+        // second, whichever answer comes back last
+        this.keepTree = new KeepLast();
+        this.keepNode = new KeepLast();
+        this.keepPreview = new KeepLast();
+        this.state = proxy({
+            loaded: false,
+            data: null,
+            open: {},          // "n-3" / "c-12" → expanded
+            docs: {},          // branch id → its outputs are showing
+            selected: null,    // leaf id
+            node: null,        // its detail
+            loadingNode: false,
+            error: "",
+            query: "",
+            preview: null,     // the document being read in place, if any
+            family: null,      // only this family of outputs is showing, if any
+        });
+        // the Trees page opens a card by handing us its entity; the outputs library
+        // hands us a branch and an output as well, and expects to see them
+        const context = this.props.action.context || {};
+        onWillStart(async () => {
+            await this.load(context.azm_company_id || null);
+            this.reveal(context.azm_node_id, context.azm_family);
+        });
+    }
+
+    /** Extra arguments a subclass sends with every call (an assessment, a filter…). */
+    get extra() {
+        return {};
+    }
+
+    /** What the header says. A subclass names its own model. */
+    get pageTitle() {
+        return "";
+    }
+    get pageTitleEn() {
+        return "";
+    }
+    get pageSubtitle() {
+        return "";
+    }
+    get panelTitle() {
+        return "الشجرة";
+    }
+    get searchHint() {
+        return "ابحث بالكود أو العنوان…";
+    }
+
+    /** The selects in the header. Which entity the tree is read for is always one. */
+    get selects() {
+        return [{
+            key: "company",
+            title: "الكيان",
+            value: this.d.company.id,
+            options: this.d.entity_options,
+        }];
+    }
+
+    async onSelectChange(key, ev) {
+        if (key === "company") {
+            await this.load(parseInt(ev.target.value, 10));
+        }
+    }
+
+    async load(companyId = null, extra = {}) {
+        this.state.loaded = false;
+        this.state.error = "";
+        this.state.selected = null;
+        this.state.node = null;
+        this.state.preview = null;
+        this.state.family = null;
+        this.state.docs = {};
+        try {
+            this.state.data = await this.keepTree.add(
+                this.orm.call("azm.dashboard", this.constructor.dataMethod, [], {
+                    company_id: companyId,
+                    ...extra,
+                })
+            );
+            // open the first node so the page never greets anyone with a wall of closed rows
+            const first = this.nodes[0];
+            if (first) {
+                this.state.open[`n-${first.id}`] = true;
+            }
+        } catch (error) {
+            // without this the page sits on a spinner for ever when the tree cannot load
+            this.state.data = null;
+            this.state.error =
+                (error && error.data && error.data.message) || (error && error.message) ||
+                "تعذّر تحميل الشجرة.";
+        } finally {
+            this.state.loaded = true;
+        }
+    }
+
+    /**
+     * Open the tree on one branch and one of its outputs.
+     *
+     * The branch is unfolded, its outputs are shown and the view narrows to the family
+     * asked for, which is what "show it on the tree" means: the policy of FIN.GOV, not
+     * the financial model from the top. A branch that is not on this tree is ignored
+     * rather than leaving the page half-opened on nothing.
+     */
+    reveal(nodeId, family) {
+        if (!nodeId || !this.d) {
+            return;
+        }
+        const node = this.nodes.find((n) => n.id === nodeId);
+        if (!node) {
+            return;
+        }
+        this.state.open[`n-${node.id}`] = true;
+        this.state.docs[node.id] = true;
+        if (family && node.docs.some((doc) => doc.tab === family)) {
+            this.state.family = family;
+        }
+    }
+
+    get d() {
+        return this.state.data;
+    }
+
+    get nodes() {
+        return (this.d && this.d.nodes) || [];
+    }
+
+    /** The tree, narrowed to what the search box matches (code, title or branch name). */
+    get tree() {
+        const q = this.state.query.trim().toLowerCase();
+        if (!q) {
+            return this.nodes;
+        }
+        const hit = (text) => (text || "").toLowerCase().includes(q);
+        return this.nodes
+            .map((n) => {
+                const children = n.children
+                    .map((c) => {
+                        const items = c.items.filter(
+                            (i) => hit(i.code) || hit(i.title) || hit(c.name) || hit(c.code)
+                        );
+                        return items.length ? { ...c, items } : null;
+                    })
+                    .filter(Boolean);
+                const match = hit(n.code) || hit(n.name);
+                if (match && !children.length) {
+                    return n;
+                }
+                return children.length ? { ...n, children } : null;
+            })
+            .filter(Boolean);
+    }
+
+    get searching() {
+        return !!this.state.query.trim();
+    }
+
+    isOpen(kind, id) {
+        return this.searching || !!this.state.open[`${kind}-${id}`];
+    }
+
+    toggle(kind, id) {
+        if (this.searching) {
+            return;
+        }
+        this.state.open[`${kind}-${id}`] = !this.state.open[`${kind}-${id}`];
+    }
+
+    expandAll() {
+        for (const n of this.nodes) {
+            this.state.open[`n-${n.id}`] = true;
+            for (const c of n.children) {
+                this.state.open[`c-${c.id}`] = true;
+            }
+        }
+    }
+
+    collapseAll() {
+        this.state.open = {};
+        this.state.docs = {};
+        this.state.family = null;
+    }
+
+    /** Whether the documents on offer would say what the page says. */
+    get docsAvailable() {
+        return true;
+    }
+
+    /** Why they are not on offer, when they are not. */
+    get docsNote() {
+        return "";
+    }
+
+    async select(item) {
+        this.state.selected = item.id;
+        this.state.preview = null;
+        this.state.loadingNode = true;
+        try {
+            this.state.node = await this.keepNode.add(
+                this.orm.call("azm.dashboard", this.constructor.nodeMethod, [], {
+                    [this.constructor.nodeArg]: item.id,
+                    company_id: this.d.company.id,
+                    ...this.extra,
+                })
+            );
+            this.state.loadingNode = false;
+        } catch (error) {
+            // a superseded request resolves to nothing: leave the spinner to the one
+            // that is still running rather than clearing it on the stale answer
+            if (error) {
+                this.state.loadingNode = false;
+                throw error;
+            }
+        }
+    }
+
+    /** The outputs of a branch — policy, procedure, authority, KPIs … — folded away
+     *  until asked for, so the tree stays a tree. */
+    docsOpen(id) {
+        return !!this.state.docs[id];
+    }
+
+    toggleDocs(id) {
+        this.state.docs[id] = !this.state.docs[id];
+    }
+
+    /** The outputs a branch shows: all of them, or just the family being looked for. */
+    docsOf(node) {
+        const family = this.state.family;
+        return family ? node.docs.filter((d) => d.tab === family) : node.docs;
+    }
+
+    /** A family of documents is a way in only if it hangs on the branches. */
+    outputsOpen(family) {
+        return !["requirement", "question"].includes(family.tab);
+    }
+
+    /**
+     * Follow a family: the entity-wide ones open straight away, and a branch output
+     * — policies, SOPs, authority … — unfolds every branch showing just that one,
+     * which is what "how many policies" is really asking to see.
+     */
+    // ------------------------------------------------- the outputs, sorted by job
+    // The row used to draw nine identical tiles for three different things: seven
+    // that filter the tree, one that opens a document, and one that is permanently
+    // disabled because there is nothing to filter by. They are separated now, so a
+    // thing that looks like a filter is one.
+
+    /** The families that narrow the tree to one kind of output. */
+    get outputFilters() {
+        const families = (this.d && this.d.outputs && this.d.outputs.families) || [];
+        return families.filter((f) => this.outputsOpen(f)
+            && !["summary", "cycle"].includes(f.tab));
+    }
+
+    /** The families that are a document in themselves, opened rather than filtered. */
+    get outputDocs() {
+        const families = (this.d && this.d.outputs && this.d.outputs.families) || [];
+        return families.filter((f) => ["summary", "cycle"].includes(f.tab));
+    }
+
+    /** What the tree holds that cannot be filtered by — a count, not a control. */
+    get outputStats() {
+        const families = (this.d && this.d.outputs && this.d.outputs.families) || [];
+        return families.filter((f) => !this.outputsOpen(f));
+    }
+
+    get outputsTotal() {
+        return this.outputFilters.reduce((n, f) => n + (f.count || 0), 0);
+    }
+
+    /** Back to every output, which is where the tree starts. */
+    clearFamily() {
+        this.state.family = null;
+        this.state.docs = {};
+    }
+
+    openOutputs(family) {
+        if (!this.docsAvailable) {
+            return;
+        }
+        if (family.tab === "summary" || family.tab === "cycle") {
+            this.previewDoc({ kind: family.tab, label: family.label });
+            return;
+        }
+        if (!this.outputsOpen(family)) {
+            return;
+        }
+        const same = this.state.family === family.tab;
+        this.state.family = same ? null : family.tab;
+        this.state.docs = {};
+        if (!same) {
+            for (const node of this.nodes) {
+                this.state.docs[node.id] = true;
+            }
+        }
+    }
+
+    /** Which entity a document is read for, when the caller does not say. */
+    get previewCompanyId() {
+        return this.d.company.id;
+    }
+
+    async previewDoc(doc) {
+        if (!this.docsAvailable) {
+            return;
+        }
+        await previewDocument(this, doc);
+    }
+
+    closePreview() {
+        closeDocument(this);
+    }
+
+    async openDoc(doc, download = false) {
+        if (!this.docsAvailable) {
+            return;
+        }
+        await openDocument(this, doc, download);
+    }
+
+    /** Back to the page that lists every tree of every entity. */
+    openTrees() {
+        this.action.doAction("azm_platform.action_azm_trees");
+    }
+}

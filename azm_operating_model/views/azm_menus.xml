@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        The technical menu: the catalogue behind the models, and the lists the AZM
+        sidebar already presents properly. Somebody whose job is to answer their
+        entity's questions has no business in here — they were seeing the stages, the
+        risk rules and the financial model's own configuration next to their work, and
+        the question catalogue is not something an answerer should be reading ahead.
+        A reviewer upwards keeps it; the configuration under it stays manager-only.
+    -->
+    <menuitem id="azm_menu_root" name="AZM نموذج التشغيل" sequence="60"
+              web_icon="azm_operating_model,static/description/icon.png"
+              groups="azm_operating_model.azm_group_manager"/>
+    <!--
+        Said again, as a replacement. `groups=` on an existing menuitem adds to what is
+        already there, so on an upgrade the menu kept the preparer group it was created
+        with and went on being shown to exactly the people it was being taken from.
+    -->
+    <record id="azm_menu_root" model="ir.ui.menu">
+        <field name="group_ids" eval="[(6, 0, [ref('azm_operating_model.azm_group_manager')])]"/>
+    </record>
+    <menuitem id="azm_assessment_menu" name="الإفادات" parent="azm_menu_root"
+              action="azm_assessment_action" sequence="10"/>
+    <menuitem id="azm_finding_menu" name="سجل المخاطر" parent="azm_menu_root"
+              action="azm_finding_action" sequence="20"/>
+    <menuitem id="azm_menu_config" name="الإعدادات" parent="azm_menu_root" sequence="90"
+              groups="azm_operating_model.azm_group_manager"/>
+    <menuitem id="azm_entity_menu" name="الكيانات" parent="azm_menu_config"
+              action="azm_entity_action" sequence="10"/>
+    <menuitem id="azm_stage_menu" name="مراحل الدورة" parent="azm_menu_config"
+              action="azm_stage_action" sequence="20"/>
+    <menuitem id="azm_question_menu" name="كتالوج الأسئلة" parent="azm_menu_config"
+              action="azm_question_action" sequence="30"/>
+    <menuitem id="azm_risk_rule_menu" name="قواعد المخاطر" parent="azm_menu_config"
+              action="azm_risk_rule_action" sequence="40"/>
+    <!--
+        What hides the catalogue is the menu above and nothing else, which is worth
+        writing down because it is easy to believe otherwise. Putting group_ids on the
+        act_window records reads like it closes the action, and it does not: /web/action/load
+        resolves an action with sudo and never looks at its groups, and menu visibility
+        consults the menu's groups, never the action's. act_window.group_ids is read
+        only when building contextual bindings.
+
+        Nor would it be the control even if it worked. Answering a question requires
+        reading it, so azm.question stays readable to anybody who answers. What has gone
+        is the way to sit and browse the catalogue; what remains is that the data is
+        still reachable by someone who goes looking for it over RPC.
+    -->
+</odoo>

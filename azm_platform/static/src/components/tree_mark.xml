@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<!--
+    The mark of the Trees pages: three tiers over a trunk, drawn from the same
+    triangle the AZM logo is built on, so the feature reads as part of the group's
+    identity rather than as a borrowed glyph.
+
+    It paints in currentColor, so one drawing serves the dark sidebar, a tinted
+    badge and a card footer at any size, in either theme. The trunk is the same
+    colour held back, which keeps it legible when the whole mark is one tone.
+-->
+<t t-name="azm_platform.TreeMark">
+    <svg class="o_azm_tree_mark" viewBox="0 0 64 64" fill="currentColor"
+         aria-hidden="true" focusable="false">
+        <polygon points="32,4 43,22 21,22"/>
+        <polygon points="32,15 49,36 15,36"/>
+        <polygon points="32,28 55,50 9,50"/>
+        <rect x="28.5" y="47" width="7" height="14" rx="2" opacity=".55"/>
+    </svg>
+</t>
+
+</templates>

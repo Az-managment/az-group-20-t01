@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="azm_assessment_report_book_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.internal_layout">
+                    <div class="page o_azm_report" dir="rtl">
+                        <h1 t-out="'كتاب دورة المشتريات — ' + doc.entity_id.name"/>
+                        <p>
+                            <span t-field="doc.name"/> ·
+                            <span t-field="doc.purchase_kind"/> ·
+                            <span t-field="doc.scenario"/> ·
+                            الإصدار <span t-field="doc.version"/> ·
+                            <span t-field="doc.state"/>
+                        </p>
+                        <t t-foreach="doc._report_sections()" t-as="section">
+                            <div style="page-break-before: always;">
+                                <h2 t-out="section[0]"/>
+                                <t t-out="section[1]"/>
+                            </div>
+                        </t>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

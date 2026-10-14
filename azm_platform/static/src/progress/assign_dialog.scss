@@ -1,0 +1,241 @@
+// توزيع الأجزاء — the form that hands parts out, over التقدّم rather than away from it.
+//
+// Not nested under .o_azm_progress_page: a dialog renders at the end of the document,
+// outside the page that opened it.
+.o_azm_assign_dialog .o_azm_assign {
+    --as-pad: 14px;
+    font-size: 13px;
+    color: $azm-ink;
+
+    .o_azm_assign_lead {
+        margin: 0 0 12px;
+        color: $azm-muted;
+        font-size: 12px;
+        line-height: 1.6;
+        .o_azm_en { display: block; font-size: 10.5px; opacity: .85; }
+    }
+    .o_azm_assign_error {
+        display: flex;
+        align-items: center;
+        margin-bottom: 12px;
+        padding: 9px 12px;
+        border-radius: 10px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #b42318;
+        background: rgba(239, 68, 68, .1);
+    }
+    .o_azm_assign_readonly {
+        margin-bottom: 12px;
+        padding: 9px 12px;
+        border-radius: 10px;
+        font-size: 12px;
+        color: $azm-muted;
+        background: rgba(15, 35, 71, .05);
+    }
+    .o_azm_assign_empty,
+    .o_azm_assign_loading {
+        padding: 18px;
+        text-align: center;
+        color: $azm-muted;
+        font-size: 12px;
+    }
+
+    // ------------------------------------------------- choosing which model
+    .o_azm_assign_group {
+        margin-bottom: 14px;
+        h4 {
+            margin: 0 0 6px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .02em;
+            color: $azm-muted;
+        }
+    }
+    .o_azm_assign_pick {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        width: 100%;
+        padding: 10px 12px;
+        margin-bottom: 7px;
+        text-align: start;
+        border: 1px solid $azm-border;
+        border-radius: 12px;
+        background: #fff;
+        transition: border-color .14s ease, box-shadow .14s ease, transform .14s ease;
+        &:hover {
+            border-color: rgba($azm-blue, .45);
+            box-shadow: 0 6px 16px rgba(15, 35, 71, .08);
+            transform: translateY(-1px);
+        }
+        .o_azm_icon_badge { width: 36px; height: 36px; border-radius: 10px; .oi { font-size: 18px; } }
+    }
+    .o_azm_assign_pick_words {
+        flex: 1 1 auto;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        b { font-size: 12.5px; }
+        small { font-size: 11px; color: $azm-muted; }
+    }
+    .o_azm_assign_pick_go {
+        flex: 0 0 auto;
+        color: $azm-muted;
+        /*rtl:ignore*/
+        font-size: 18px;
+    }
+
+    // ------------------------------------------------------ the chosen model
+    .o_azm_assign_head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding-bottom: 11px;
+        margin-bottom: 12px;
+        border-bottom: 1px solid $azm-border;
+    }
+    .o_azm_assign_back {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 5px 10px;
+        border-radius: 9px;
+        font-size: 11.5px;
+        font-weight: 600;
+        color: $azm-muted;
+        border: 1px solid $azm-border;
+        background: #fff;
+        &:hover { color: $azm-blue; border-color: rgba($azm-blue, .4); }
+    }
+    .o_azm_assign_head_words {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        b { font-size: 13px; }
+        small { font-size: 11px; color: $azm-muted; }
+    }
+
+    // ------------------------------------------------------------- the parts
+    .o_azm_assign_part {
+        border: 1px solid $azm-border;
+        border-radius: 12px;
+        margin-bottom: 7px;
+        background: #fff;
+        overflow: hidden;
+        // a topic sits under its module, the same broad-to-narrow shape the rest of
+        // the system reads parts in
+        &.o_azm_assign_d1 {
+            margin-inline-start: 22px;
+            background: rgba(15, 35, 71, .015);
+        }
+        &.o_azm_assign_part_on { border-color: rgba($azm-blue, .4); }
+    }
+    .o_azm_assign_part_row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px var(--as-pad);
+    }
+    .o_azm_assign_part_main {
+        flex: 1 1 auto;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        b { font-size: 12px; font-weight: 650; }
+    }
+    .o_azm_assign_holders { display: flex; flex-wrap: wrap; gap: 5px; }
+    .o_azm_assign_holder {
+        padding: 2px 9px;
+        border-radius: 99px;
+        font-style: normal;
+        font-size: 10.5px;
+        font-weight: 600;
+        color: $azm-blue;
+        background: rgba($azm-blue, .1);
+    }
+    // a part nobody holds is not an error, so it says where it actually sits
+    .o_azm_assign_free {
+        font-style: normal;
+        font-size: 10.5px;
+        color: $azm-muted;
+    }
+    .o_azm_assign_count {
+        flex: 0 0 auto;
+        font-size: 11px;
+        color: $azm-muted;
+        font-variant-numeric: tabular-nums;
+        b { color: $azm-ink; font-weight: 700; }
+    }
+    .o_azm_assign_edit {
+        flex: 0 0 auto;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 5px 11px;
+        border-radius: 9px;
+        font-size: 11px;
+        font-weight: 600;
+        color: $azm-ink;
+        border: 1px solid $azm-border;
+        background: #fff;
+        &:hover { color: $azm-blue; border-color: rgba($azm-blue, .4); }
+        .oi { font-size: 14px; }
+    }
+
+    // ------------------------------------------------------ who it goes to
+    .o_azm_assign_people {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        padding: 11px var(--as-pad) 12px;
+        border-top: 1px solid $azm-border;
+        background: rgba($azm-blue, .03);
+    }
+    .o_azm_assign_person {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin: 0;
+        padding: 5px 11px;
+        border-radius: 99px;
+        font-size: 11.5px;
+        cursor: pointer;
+        border: 1px solid $azm-border;
+        background: #fff;
+        transition: border-color .12s ease, background .12s ease;
+        &:hover { border-color: rgba($azm-blue, .4); }
+        &.o_azm_assign_person_on {
+            border-color: rgba($azm-blue, .55);
+            background: rgba($azm-blue, .1);
+            font-weight: 600;
+            color: $azm-blue;
+        }
+        input { margin: 0; }
+    }
+    .o_azm_assign_actions {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        width: 100%;
+        margin-top: 4px;
+    }
+    .o_azm_assign_picked {
+        flex: 1 1 auto;
+        font-size: 11px;
+        color: $azm-muted;
+    }
+    .o_azm_assign_save {
+        color: #fff;
+        border: 0;
+        background: linear-gradient(135deg, $azm-blue, #4f46e5);
+        font-weight: 600;
+        &:hover { color: #fff; filter: brightness(1.05); }
+    }
+
+    @media (max-width: 576px) {
+        .o_azm_assign_part_row { flex-wrap: wrap; }
+        .o_azm_assign_part.o_azm_assign_d1 { margin-inline-start: 10px; }
+    }
+}
