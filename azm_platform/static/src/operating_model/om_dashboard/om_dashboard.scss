@@ -1137,6 +1137,11 @@
 
     .o_azm_unified_kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
 
+    // The figures summarise the list; the list begins below them. That is the one
+    // break on this page worth more than the rest, so the table it introduces gets
+    // extra room above it on top of the page's own gap.
+    .o_azm_unified_kpis + .o_azm_card { margin-top: 16px; }
+
     // the filters belong to the list below them, so they sit nearer it than the
     // heading above
     .o_azm_om_toolbar { gap: 14px; }
