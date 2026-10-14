@@ -60,7 +60,19 @@ class AzmEntity(models.Model):
     # ---------------------------------------------------------------- companies → entities
     @api.model
     def _azm_new_code(self, company, taken):
-        base = re.sub(r"[^A-Z0-9]", "", _initials(company.name))[:6] or f"C{company.id}"
+        """The code this company is known by, preferring the one it already has.
+
+        A company carries an entity code of its own — it prefixes the company's journals
+        and therefore the numbering of everything it files — and that is the code the
+        group knows it by. This used to ignore it and build initials from the name
+        instead, so the two drifted apart: AZ Management & Development is AZM on its
+        journals and was AMD here, and its documents printed AMD-FIN-POL-000001 for an
+        entity nothing else in the system calls AMD.
+
+        Initials are the fallback, for a company that has no code to go on.
+        """
+        own = re.sub(r"[^A-Z0-9]", "", (company.code or "").upper())
+        base = own[:6] or re.sub(r"[^A-Z0-9]", "", _initials(company.name))[:6] or f"C{company.id}"
         code, n = base, 2
         while code in taken:
             code, n = f"{base}{n}", n + 1

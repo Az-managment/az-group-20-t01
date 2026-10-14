@@ -317,7 +317,12 @@ class AzmDocPublication(models.Model):
             # gaps, risks, controls, system and KPIs are written from the risk rules as
             # well as the answers, so an edited rule has to age the output it feeds
             "rules": self._rules_stamp() if self.kind == "stage" else None,
-            "coding": [self._artifact(create=False).code or "", self._lifecycle()],
+            # The code the document *prints*, which is this entity's copy of the master
+            # and not the master itself. Fingerprinting the master meant a document
+            # carried AMD-PUR-MAN-000001 on its face while ageing against
+            # AZM-PUR-MAN-000001, so renaming the entity changed what every procurement
+            # document said and aged none of them.
+            "coding": [self._scoped_code() or "", self._lifecycle()],
             "lines": {line.code: [line.is_visible, line.is_known, line._engine_value(), line.note or ""]
                       for line in lines},
         }

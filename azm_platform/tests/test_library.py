@@ -495,10 +495,17 @@ class TestLibrarySearchesWhatItShows(TransactionCase):
 
     def test_a_copy_code_outside_your_entities_finds_nothing(self):
         """Searching is not a way to learn that another entity holds a copy."""
+        # AZ Management holds the master register, so its entity code is the master's
+        # own prefix and its "copy" code is the master code — which every reader is
+        # meant to resolve. It cannot stand for somebody else's copy here.
+        from odoo.addons.azm_platform.models.azm_coding import HOLDER
         entities = self.env['azm.entity'].sudo().search([('code', '!=', False)])
-        if len(entities) < 2:
-            self.skipTest('needs two entities')
-        mine, theirs = entities[0], entities[1]
+        others = entities.filtered(lambda e: (e.code or '').upper() != HOLDER)
+        if len(entities) < 2 or not others:
+            self.skipTest('needs two entities, one of them not the register holder')
+        mine, theirs = entities[0], others[0]
+        if mine == theirs:
+            mine = (entities - theirs)[0]
         user = new_test_user(
             self.env, 'azm_lib_scope', company_id=mine.company_id.id,
             company_ids=[(6, 0, [mine.company_id.id])],
