@@ -736,19 +736,26 @@ class AzmFinAnswer(models.Model):
         return super().write(vals)
 
     # ---------------------------------------------------------------- whose part
-    def _azm_part_key(self):
+    def _azm_part_keys(self):
         self.ensure_one()
-        return (self.assessment_id.id, self.module_id.id)
+        return [(self.assessment_id.id, "topic", self.topic_id.id),
+                (self.assessment_id.id, "module", self.module_id.id)]
 
-    def _azm_part_name(self):
+    def _azm_part_name(self, key=None):
         self.ensure_one()
+        if key and key[1] == "topic" and self.topic_id:
+            return self.topic_id.code or self.topic_id.name or f"FIN.{self.module_id.code}"
         return f"FIN.{self.module_id.code}"
 
     @api.model
     def _azm_assignments(self, lines):
         found = self.env["azm.assignment"].sudo().search(
             [("fin_assessment_id", "in", lines.assessment_id.ids)])
-        return {(a.fin_assessment_id.id, a.module_id.id): a.user_ids.ids for a in found}
+        # keyed at the level it was actually given out at, so a topic handed to one
+        # person does not read as the whole module being theirs
+        return {(a.fin_assessment_id.id,
+                 "topic" if a.topic_id else "module",
+                 (a.topic_id or a.module_id).id): a.user_ids.ids for a in found}
 
 
 class AzmFinQAnswer(models.Model):
