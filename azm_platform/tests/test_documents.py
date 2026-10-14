@@ -60,11 +60,19 @@ class TestOperatingModelDocuments(TransactionCase):
         pub = self.Pub._get(self.company, 'requirement', requirement=self.requirement)
         pub._generate()
         self.assertEqual(pub.state, 'done')
-        # the file says what it is, then where it sits: a folder of forty is read by
-        # the number, not by hunting for the title
-        self.assertTrue(pub.document_id.name.startswith(pub._scoped_code()),
-                        pub.document_id.name)
-        self.assertIn(self.requirement.tree_ref, pub.document_id.name)
+        # The file says what it is, then whose copy it is, then which version: a folder
+        # of forty is read by the number, not by hunting for the title. The master
+        # leads rather than the entity's copy code, so every entity's copy of one
+        # artifact sorts together — <MasterID>__<Entity>__v<N>__<Lang>__<Title>.
+        name = pub.document_id.name
+        master = pub._artifact(create=False).code
+        self.assertTrue(name.startswith(f"{master}__{pub._entity().code}__"), name)
+        parts = name.rsplit('.', 1)[0].split('__')
+        self.assertEqual(len(parts), 5, name)
+        self.assertRegex(parts[2], r"^v\d+$", name)
+        # the tree reference is not repeated in the file name: it already travels
+        # inside the master ID, as the node the artifact hangs from
+        self.assertEqual(parts[4], pub._short_title())
         self.assertEqual(pub.document_id.company_id, self.company)
         self.assertEqual(pub.document_id.folder_id, self.env['azm.doc.folder']._folder(
             self.company, 'FIN', (self.pur.code, f'FIN.{self.pur.code} · {self.pur.name}')))

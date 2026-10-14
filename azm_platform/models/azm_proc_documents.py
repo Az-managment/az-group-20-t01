@@ -322,7 +322,8 @@ class AzmDocPublication(models.Model):
             # carried AMD-PUR-MAN-000001 on its face while ageing against
             # AZM-PUR-MAN-000001, so renaming the entity changed what every procurement
             # document said and aged none of them.
-            "coding": [self._scoped_code() or "", self._lifecycle()],
+            "coding": [self._scoped_code() or "", self._lifecycle(),
+                       self._file_stem(assessment)],
             "lines": {line.code: [line.is_visible, line.is_known, line._engine_value(), line.note or ""]
                       for line in lines},
         }

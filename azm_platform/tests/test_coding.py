@@ -637,3 +637,95 @@ class TestACodeIsIssuedOnce(TransactionCase):
                     'code': 'AZM-FIN-POL-999998', 'ref': art.ref,
                     'domain': 'FIN', 'atype': 'POL', 'node': 'GOV', 'serial': 999998,
                 })
+
+
+@tagged('post_install', '-at_install')
+class TestTheFilenameConvention(TransactionCase):
+    """<MasterID>__<Entity-or-Shared>__v<Version>__<Lang>__<ShortTitle>.pdf
+
+    The parts are the registry's first rule written into a file name: the identity is
+    the master ID, and the entity, the version and the language sit beside it rather
+    than inside it. A file used to be named for the entity's copy code, which buried
+    the master and left the version and the language unsaid.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.Pub = self.env['azm.doc.publication'].sudo()
+
+    def _published(self, limit=200):
+        pubs = self.Pub.search([('document_id', '!=', False)], limit=limit)
+        if not pubs:
+            self.skipTest('nothing has been published')
+        return pubs
+
+    def test_a_name_has_the_five_parts_in_the_right_order(self):
+        from odoo.addons.azm_platform.models.azm_documents import DOC_LANG
+        for pub in self._published(50):
+            stem = pub._file_stem()
+            parts = stem.split('__')
+            self.assertEqual(len(parts), 5, f"not five parts: {stem}")
+            master, scope, version, lang, title = parts
+            self.assertTrue(master, 'it leads with what identifies it')
+            self.assertTrue(scope, 'and says whose copy it is')
+            self.assertRegex(version, r"^v\d+$", f"version reads oddly: {version}")
+            self.assertEqual(lang, DOC_LANG)
+            self.assertTrue(title.strip(), 'and what it is about')
+
+    def test_the_master_leads_and_the_entity_sits_beside_it(self):
+        """Every entity's copy of a policy is the same artifact, so they sort together."""
+        from odoo.addons.azm_platform.models.azm_coding import HOLDER, copy_code
+        # an entity that is not the register holder, so its copy code genuinely differs
+        # from the master and there is something to tell apart
+        pubs = self.Pub.search([('document_id', '!=', False),
+                                ('artifact_id', '!=', False)], limit=400)
+        pub = next((p for p in pubs
+                    if (p._entity().code or '').upper() != HOLDER
+                    and p._artifact(create=False).code), None)
+        if not pub:
+            self.skipTest('nothing published for an entity other than the holder')
+        master = pub._artifact(create=False).code
+        entity = pub._entity().code
+        stem = pub._file_stem()
+        self.assertTrue(stem.startswith(f"{master}__{entity}__"), stem)
+        # the copy code is what the cover prints; it is not what the file is named
+        copy = copy_code(master, entity)
+        self.assertNotEqual(copy, master, 'this entity really does hold a copy code')
+        self.assertNotIn(copy, stem,
+                         f"the file is named for the master, not the copy: {stem}")
+
+    def test_a_name_carries_nothing_a_file_system_refuses(self):
+        for pub in self._published(200):
+            stem = pub._file_stem()
+            for bad in '\\/:*?"<>|':
+                self.assertNotIn(bad, stem, f"{bad!r} is not safe in {stem}")
+            self.assertNotIn('\n', stem)
+            self.assertLessEqual(len(stem), 160, f"too long to survive a zip: {stem}")
+
+    def test_a_long_title_is_cut_to_the_budget(self):
+        from odoo.addons.azm_platform.models.azm_documents import SHORT_TITLE
+        from unittest.mock import patch
+        pub = self._published(1)
+        long_title = 'ref · ' + ('سياسة الاعتماد والتفويض المالي للكيانات التابعة ' * 5)
+        with patch.object(type(pub), 'name', long_title):
+            title = pub._short_title()
+        self.assertLessEqual(len(title), SHORT_TITLE)
+        self.assertTrue(title.strip())
+        self.assertNotIn('__', title, 'or the parts cannot be told apart again')
+
+    def test_a_binding_leads_with_where_it_sits(self):
+        """It is a collection of deliverables that each carry their own number."""
+        binding = self.Pub.search([('kind', '=', 'module'), ('document_id', '!=', False)],
+                                  limit=1)
+        if not binding:
+            self.skipTest('no binding is published')
+        self.assertEqual(binding._file_stem().split('__')[0], binding._tree_ref())
+
+    def test_a_document_ages_when_its_own_name_would_change(self):
+        """Otherwise a naming change leaves files behind under a dead convention."""
+        from unittest.mock import patch
+        pub = self._published(1)
+        before = pub._current_stamp()
+        with patch.object(type(pub), '_file_stem', lambda self, assessment=None: 'OTHER'):
+            after = pub._current_stamp()
+        self.assertNotEqual(before, after, 'the name is part of what the document is')

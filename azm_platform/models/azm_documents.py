@@ -21,6 +21,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 from datetime import timedelta
 
 import pytz
@@ -35,6 +36,30 @@ from odoo.addons.azm_operating_model.models import azm_svg, fin_engine
 from .azm_coding import (LIFECYCLE_LABELS, PROFILE_OUTPUT, REQUIREMENT_ASPECTS,
                          TYPE_LABELS, WHOLE_MODEL, copy_code)
 from odoo.addons.azm_operating_model.models.azm_fin_catalogue import PROFILES, SCOPES
+
+# ------------------------------------------------------------------ what a file is called
+# The registry's filename convention:
+#
+#     <MasterID>__<Entity-or-Shared>__v<Version>__<Lang>__<ShortTitle>.pdf
+#
+# The parts are the registry's first rule written out in a filename: the identity is the
+# master ID, and the entity, the version and the language sit *beside* it rather than
+# inside it. A file used to be named for the entity's copy code — AMD-FIN-POL-000001 ·
+# FIN.GOV · … — which buried the master, left the version and the language unsaid, and
+# meant a directory listing sorted by whoever held the copy rather than by what the
+# document is.
+FILENAME = "{master}__{scope}__v{version}__{lang}__{title}"
+# What stands where the entity goes when a document belongs to no single one of them.
+SHARED = "Shared"
+# These are bilingual: an Arabic body under headings that carry both languages, which is
+# what the registry means by a controlled bilingual PDF.
+DOC_LANG = "AR-EN"
+# Long enough to tell two deliverables apart, short enough that the whole name survives
+# a mail client, a zip and a Windows path.
+SHORT_TITLE = 60
+# What no file name may carry: path separators, the characters Windows reserves, and
+# control characters.
+UNSAFE_IN_NAME = re.compile(r'[\\/:*?"<>|\x00-\x1f]+')
 
 _logger = logging.getLogger(__name__)
 
@@ -607,7 +632,10 @@ class AzmDocPublication(models.Model):
             # the code a document prints is part of what it says, so one filed under an
             # older coding ages by itself and is rebuilt when next read; looked up and
             # not allocated, because this runs inside the `outdated` compute
-            "coding": [self._scoped_code(), self._lifecycle()],
+            # A document ages when its own name would change, so a change to the
+            # naming convention itself rebuilds what it renames rather than leaving
+            # files behind under a convention nothing uses any more.
+            "coding": [self._scoped_code(), self._lifecycle(), self._file_stem(assessment)],
             "lines": {line.code: [line.applicable, line._snapshot()] for line in lines},
         }
         if self.kind == "module":
@@ -655,10 +683,8 @@ class AzmDocPublication(models.Model):
             folder = self.env["azm.doc.folder"]._folder(company, *pub._folder_key())
             # The file is named by what it is as well as by where it sits. A folder
             # holds forty of these, and a reader who wants one of them has to be able to
-            # ask for it by number. A binding carries no number of its own and keeps the
-            # plain name.
-            code = pub._scoped_code()
-            stem = f"{code} · {pub.name}" if code else pub.name
+            # ask for it by number, by whose copy it is, and by which version.
+            stem = pub._file_stem(assessment)
             vals = {
                 # a question is coded PUR-GOV/model, and a slash is a path separator to
                 # every browser that downloads the file: it is filed with a dash
@@ -873,6 +899,46 @@ class AzmDocPublication(models.Model):
         """
         self.ensure_one()
         return copy_code(self._artifact(create=False).code, self._entity().code)
+
+    def _short_title(self):
+        """The title alone, short enough and safe enough to be part of a file name."""
+        self.ensure_one()
+        # The tree reference already travels inside the master ID's node, so the file is
+        # named for the thing rather than for where it hangs: "FIN.GOV.01.01 · صلاحيات
+        # العمليات" is filed as "صلاحيات العمليات".
+        title = (self.name or "").split(" · ")[-1]
+        title = UNSAFE_IN_NAME.sub(" ", title)
+        # the convention separates its parts with a double underscore, so a title that
+        # carried one would leave a reader unable to tell the parts apart again
+        title = " ".join(title.replace("_", " ").split())
+        if len(title) > SHORT_TITLE:
+            # cut on a word where there is one, so the name ends in a word and not
+            # halfway through one
+            title = title[:SHORT_TITLE].rsplit(" ", 1)[0] or title[:SHORT_TITLE]
+        return title.strip() or "document"
+
+    def _file_stem(self, assessment=None):
+        """What this document is called on disk, by the registry's convention.
+
+        ``<MasterID>__<Entity-or-Shared>__v<Version>__<Lang>__<ShortTitle>``
+
+        The master ID leads because it is the identity: every entity's copy of a policy
+        is the same artifact, so they sort together and the entity beside it says whose
+        copy this one is. A binding has no master of its own — it is a collection of the
+        deliverables under it, each carrying their own — so it leads with where it sits
+        instead, exactly as its cover does.
+        """
+        self.ensure_one()
+        if assessment is None:
+            assessment = self._assessment()
+        master = self._artifact(create=False).code or self._tree_ref()
+        return FILENAME.format(
+            master=master,
+            scope=self._entity().code or SHARED,
+            version=assessment.version if assessment else 0,
+            lang=DOC_LANG,
+            title=self._short_title(),
+        )
 
     def _tree_ref(self):
         """Where to find this document's node in the tree.
