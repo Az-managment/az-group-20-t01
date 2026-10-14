@@ -11,6 +11,12 @@ refuses to send work somewhere nobody is standing.
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
+# The value that marks a state change as coming from a workflow button. It is an object
+# rather than True because a caller supplies the context of an RPC call: any value that
+# can be written in JSON can be forged by whoever is asking.
+AZM_WORKFLOW_TOKEN = object()
+
+
 
 class AzmReviewable(models.AbstractModel):
     _name = "azm.reviewable"
@@ -27,6 +33,15 @@ class AzmReviewable(models.AbstractModel):
     # action_approve exists to enforce. It let a preparer approve their own draft, too.
     # So every state change goes through the buttons, which carry this flag.
     AZM_WORKFLOW = "azm_workflow"
+
+    # ... and the value under that key is this object, compared by identity.
+    #
+    # A context key alone cannot carry authority: the context of an RPC call is sent by
+    # the caller, so `{"azm_workflow": true}` in the request body used to satisfy this
+    # guard and hand the sender everything it exists to withhold. A plain user could
+    # write {"state": "approved"} over their own draft and have it stick — no version
+    # snapshot, no approved_by, no separation of duties. A sentinel survives
+    # with_context inside the server and cannot be written in JSON.
 
     # When the work last changed hands. A tracking page wants to know how long something
     # has been sitting where it is — a draft nobody has touched for a fortnight and one
@@ -115,10 +130,11 @@ class AzmReviewable(models.AbstractModel):
 
     def _workflow(self):
         """This record, with the right to move itself along."""
-        return self.with_context(**{self.AZM_WORKFLOW: True})
+        return self.with_context(**{self.AZM_WORKFLOW: AZM_WORKFLOW_TOKEN})
 
     def write(self, vals):
-        if "state" in vals and not self.env.context.get(self.AZM_WORKFLOW) \
+        if "state" in vals \
+                and self.env.context.get(self.AZM_WORKFLOW) is not AZM_WORKFLOW_TOKEN \
                 and not self.env.su:
             for record in self:
                 if record.state != vals["state"]:

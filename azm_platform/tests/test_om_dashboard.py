@@ -277,8 +277,12 @@ class TestAzmGroupComposition(TransactionCase):
             'azm_platform.group_azm_user,azm_operating_model.azm_group_manager')
 
         theirs = self._azm_menus(answerer)
-        self.assertEqual(theirs, {'My work', 'Outputs Library'},
-                         'their own work, and what it produces')
+        # The library is the whole group's shelf of deliverables across every entity,
+        # and fe8e407 took it off an answerer deliberately: they are asked to answer
+        # one entity's model, not to curate the group's output. See ONLY_OFFERED_TO in
+        # azm_platform/models/ir_ui_menu.py, which is where that is said.
+        self.assertEqual(theirs, {'My work'},
+                         'their own work, and nothing about anybody else’s')
 
         reviewing = self._azm_menus(reviewer)
         self.assertTrue({'My work', 'Assessments', 'Risk Register', 'Trees'} <= reviewing,

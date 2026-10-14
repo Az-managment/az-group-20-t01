@@ -717,7 +717,7 @@ class AzmFinAnswer(models.Model):
         }
 
     def write(self, vals):
-        if {"na", "reason"} & set(vals) and not self.env.context.get("azm_skip_lock"):
+        if {"na", "reason"} & set(vals) and not self.env["azm.answer"]._azm_lock_lifted():
             if any(a.assessment_id.state != "draft" for a in self):
                 raise UserError("الإفادة مش في حالة مسودة؛ لا يمكن تعديل الإجابات.")
             self._azm_check_assignee()
@@ -829,7 +829,7 @@ class AzmFinQAnswer(models.Model):
                 "note": self.note or "", "note_tags": self._tags(), "priority": self.priority or False}
 
     def _check_draft(self):
-        if not self.env.context.get("azm_skip_lock") and any(qa.line_id.assessment_id.state != "draft" for qa in self):
+        if not self.env["azm.answer"]._azm_lock_lifted() and any(qa.line_id.assessment_id.state != "draft" for qa in self):
             raise UserError("الإفادة مش في حالة مسودة؛ لا يمكن تعديل الإجابات.")
 
     @api.model_create_multi

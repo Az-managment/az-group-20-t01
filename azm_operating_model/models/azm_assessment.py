@@ -6,6 +6,8 @@ from markupsafe import Markup
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
+from .azm_answer import AZM_SKIP_LOCK_TOKEN
+
 from . import engine
 
 PURCHASE_KINDS = [
@@ -152,7 +154,8 @@ class AzmAssessment(models.Model):
                 for qid, line in by_q.items():
                     flag = qid in visible
                     if line.is_visible != flag:
-                        line.with_context(azm_no_visibility=True, azm_skip_lock=True).is_visible = flag
+                        line.with_context(azm_no_visibility=True,
+                                         azm_skip_lock=AZM_SKIP_LOCK_TOKEN).is_visible = flag
 
     # ---------------------------------------------------------------- computes
     @api.depends("answer_ids.has_value", "answer_ids.is_known", "answer_ids.is_visible")

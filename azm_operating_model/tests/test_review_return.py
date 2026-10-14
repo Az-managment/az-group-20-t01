@@ -126,6 +126,25 @@ class TestReviewReturn(TransactionCase):
         self.assertFalse(any(q['returned'] and q['locked'] for q in after['questions']),
                          'a question is either to be answered again or held, never both')
 
+    def test_a_state_cannot_be_written_by_asking_nicely_in_the_context(self):
+        """The guard that forces every state change through the buttons keyed off a
+        context flag — and the context of an RPC call is sent by the caller. A plain
+        user could write {'state': 'approved'} over their own draft and have it stick:
+        no version snapshot, no approved_by, none of the separation of duties the
+        buttons exist to enforce."""
+        self.assertEqual(self.assessment.state, 'draft')
+        with self.assertRaises(UserError):
+            self.assessment.with_user(self.preparer).write({'state': 'approved'})
+        # the same write, with the flag the guard used to trust
+        with self.assertRaises(UserError):
+            self.assessment.with_user(self.preparer).with_context(
+                azm_workflow=True).write({'state': 'approved'})
+        self.assertEqual(self.assessment.state, 'draft',
+                         'neither route moved it')
+        # and the buttons still work
+        self.assessment.with_user(self.preparer).action_submit()
+        self.assertEqual(self.assessment.state, 'review')
+
     def test_it_shows_up_on_the_page_of_whoever_must_fix_it(self):
         self._return_the_module()
         rows = self.env['azm.dashboard'].with_user(self.preparer).with_company(
