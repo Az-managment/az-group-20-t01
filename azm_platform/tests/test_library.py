@@ -454,3 +454,61 @@ class TestOutputsLibraryTour(HttpCase):
     def test_the_library_renders_and_opens_a_deliverable(self):
         self.start_tour('/odoo/action-azm_platform.action_azm_outputs_library',
                         'azm_library_tour', login='admin')
+
+
+@tagged('post_install', '-at_install')
+class TestLibrarySearchesWhatItShows(TransactionCase):
+    """A code the product prints has to be a code the product finds."""
+
+    def _library(self, query, user=None, company=None):
+        model = self.env['azm.dashboard']
+        if user:
+            model = model.with_user(user)
+        if company:
+            model = model.with_company(company)
+        return model.get_outputs_library(query=query)
+
+    def test_a_copy_code_finds_the_master_it_names(self):
+        artifact = self.env['azm.artifact'].sudo().search([], limit=1)
+        if not artifact:
+            self.skipTest('no artifacts registered')
+        master = artifact.code
+        tail = master.split('-', 1)[1]
+        entity = self.env['azm.entity'].sudo().search([('code', '!=', False)], limit=1)
+        copy = f'{entity.code}-{tail}'
+
+        self.assertTrue(self._library(master)['rows'], 'the master is findable')
+        self.assertTrue(self._library(copy)['rows'],
+                        f'{copy} is printed on the page, so it must be searchable')
+        # case and stray spacing are not part of a code
+        self.assertTrue(self._library(copy.lower())['rows'])
+        self.assertTrue(self._library(f'   {master}  ')['rows'])
+
+    def test_search_reaches_titles_and_tree_references(self):
+        artifact = self.env['azm.artifact'].sudo().search([('node_name', '!=', False)], limit=1)
+        if not artifact:
+            self.skipTest('no artifact carries a node name')
+        # the tree reference is the leading token of the node name: "FIN.GOV · ..."
+        ref = (artifact.node_name or '').split(' ')[0]
+        self.assertTrue(self._library(ref)['rows'],
+                        f'{ref} names a branch, and a reader types what they see')
+
+    def test_a_copy_code_outside_your_entities_finds_nothing(self):
+        """Searching is not a way to learn that another entity holds a copy."""
+        entities = self.env['azm.entity'].sudo().search([('code', '!=', False)])
+        if len(entities) < 2:
+            self.skipTest('needs two entities')
+        mine, theirs = entities[0], entities[1]
+        user = new_test_user(
+            self.env, 'azm_lib_scope', company_id=mine.company_id.id,
+            company_ids=[(6, 0, [mine.company_id.id])],
+            groups='azm_platform.group_azm_user,azm_operating_model.azm_group_user')
+        artifact = self.env['azm.artifact'].sudo().search([], limit=1)
+        tail = artifact.code.split('-', 1)[1]
+
+        self.assertTrue(
+            self._library(f'{mine.code}-{tail}', user, mine.company_id)['rows'],
+            'their own copy is theirs to find')
+        self.assertFalse(
+            self._library(f'{theirs.code}-{tail}', user, mine.company_id)['rows'],
+            'another entity\'s copy code must not resolve for them')

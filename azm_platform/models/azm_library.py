@@ -156,7 +156,45 @@ class AzmDashboard(models.AbstractModel):
             bucket[state] = bucket.get(state, 0) + count
         counted = {a: c for a, c in states.items() if a in in_scope}
 
-        needle = (query or "").strip().lower()
+        # What a search has to match, which is more than the master code it used to.
+        #
+        # A reader who is looking at FUE's copy of a policy sees FUE-FIN-POL-000001 on
+        # the page and types that back in. The registry numbers the artifact once, as
+        # AZM-FIN-POL-000001, and the copy code is made for display — so searching the
+        # code the product had just shown them found nothing at all. The same held for
+        # the entity's own code, the tree reference, the legacy requirement code and
+        # both titles.
+        #
+        # The copies offered here are only those of the companies already in scope, so
+        # a search cannot confirm the existence of an entity's copy the reader may not
+        # see.
+        entity_codes = [c for c in self._library_entity_codes(companies).values() if c]
+
+        def _norm(value):
+            # case and stray spacing are not part of a code
+            return " ".join((value or "").split()).casefold()
+
+        terms_cache = {}
+
+        def terms(artifact):
+            """Every string this deliverable can be found by."""
+            found = terms_cache.get(artifact.id)
+            if found is None:
+                arabic, english = self._library_output_name(artifact)
+                tail = artifact.code.split("-", 1)[1] if artifact.code and "-" in artifact.code else ""
+                found = {_norm(x) for x in (
+                    artifact.code,          # the canonical master identity
+                    artifact.ref,           # what was numbered: the node and its output
+                    artifact.node,          # the module or stage it belongs to
+                    artifact.node_name,     # "FIN.GOV · الفترات المالية" — tree ref and name
+                    arabic, english,        # the title, in both languages
+                ) if x}
+                # and the copy code each permitted entity prints for it
+                found |= {_norm(f"{entity}-{tail}") for entity in entity_codes if tail}
+                terms_cache[artifact.id] = found
+            return found
+
+        needle = _norm(query)
 
         def passes(entry, skip=None):
             """Whether a deliverable survives the filters — all of them for the rows,
@@ -170,8 +208,7 @@ class AzmDashboard(models.AbstractModel):
                 return False
             if skip != "node" and node and branch != node:
                 return False
-            if needle and needle not in (artifact.code or "").lower() \
-                    and needle not in (artifact.node_name or "").lower():
+            if needle and not any(needle in term for term in terms(artifact)):
                 return False
             return True
 
