@@ -51,10 +51,15 @@ class AzmDashboard(models.AbstractModel):
         always match what the preparer sees.
         """
         rules = [r._engine_dict() for r in self.env['azm.risk.rule'].search([])]
+        # the catalogue is the same for every assessment, and an assessment's answers are
+        # the same for every stage: both are built once rather than per pair
+        catalogues = {stage.id: stage._engine_catalogue() for stage in stages}
         result = {}
         for assessment in assessments:
+            by_stage = assessment._answers_by_stage()
             for stage in stages:
-                sdict, qdicts, answers, _by_q = assessment._stage_payload(stage)
+                sdict, qdicts, answers, _by_q = assessment._stage_payload(
+                    stage, catalogues[stage.id], by_stage)
                 stats = engine.stage_stats(sdict, qdicts, answers)
                 result[assessment.id, stage.id] = {
                     'visible': stats['total'],

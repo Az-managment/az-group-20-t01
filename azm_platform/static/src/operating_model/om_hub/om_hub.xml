@@ -3,12 +3,35 @@
 
     <t t-name="azm_platform.OmHub">
         <div class="o_action o_azm_dashboard o_azm_om o_azm_hub">
-            <div class="o_azm_om_title">
-                <div>
+
+            <!-- ====================================================== the hero -->
+            <header class="o_azm_hub_hero">
+                <div class="o_azm_hub_hero_words">
+                    <span class="o_azm_hub_eyebrow">
+                        <i class="oi" data-icon="view_module" title="Operating model"/>
+                        Operating Model
+                    </span>
                     <h1>Operating Models</h1>
-                    <p>Every operating model of the group in one place — open a model to see its data and statistics</p>
+                    <p>Every operating model of the group in one place — open a model to
+                       see its data and statistics.</p>
                 </div>
-            </div>
+
+                <div t-if="this.state.loaded and this.d.available" class="o_azm_hub_hero_gauge">
+                    <span class="o_azm_ring_wrap">
+                        <svg class="o_azm_ring" viewBox="0 0 40 40" aria-hidden="true">
+                            <circle class="o_azm_ring_track" cx="20" cy="20" r="15.9155"/>
+                            <circle t-if="this.bar(this.d.totals.completion)" class="o_azm_ring_value"
+                                    cx="20" cy="20" r="15.9155"
+                                    t-attf-stroke-dasharray="{{this.bar(this.d.totals.completion)}} 100"/>
+                        </svg>
+                        <b class="o_azm_ring_label" t-out="this.pct(this.d.totals.completion)"/>
+                    </span>
+                    <span class="o_azm_hub_hero_gauge_words">
+                        Overall completion
+                        <em>weighted by assessments</em>
+                    </span>
+                </div>
+            </header>
 
             <div t-if="!this.state.loaded" class="o_azm_loading">
                 <i class="oi oi-spin" data-icon="progress_activity" title="Loading"/>
@@ -20,122 +43,188 @@
             </div>
 
             <t t-else="">
-                <!-- group KPIs -->
-                <section class="o_azm_kpis o_azm_hub_kpis">
-                    <div t-foreach="this.totals" t-as="kpi" t-key="kpi.key" class="o_azm_kpi o_azm_kpi_static">
-                        <span class="o_azm_kpi_text">
-                            <span class="o_azm_kpi_label" t-out="kpi.label"/>
-                            <strong class="o_azm_kpi_value" t-out="kpi.value"/>
-                            <span t-if="kpi.meter !== undefined" t-attf-class="o_azm_progress o_azm_om_meter o_azm_tone_{{kpi.tone}}">
-                                <span class="o_azm_progress_bar" t-attf-style="width: {{this.bar(kpi.meter)}}%"/>
+                <!-- =================================================== figures -->
+                <section class="o_azm_hub_kpis">
+                    <div t-foreach="this.totals" t-as="kpi" t-key="kpi.key"
+                         t-attf-class="o_azm_hub_kpi o_azm_tone_{{kpi.tone}}">
+                        <span class="o_azm_hub_kpi_top">
+                            <span class="o_azm_hub_kpi_label" t-out="kpi.label"/>
+                            <span class="o_azm_hub_kpi_icon">
+                                <i class="oi" t-att-data-icon="kpi.icon" t-att-title="kpi.label"/>
                             </span>
-                            <small t-if="kpi.sub" t-out="kpi.sub"/>
                         </span>
-                        <span t-attf-class="o_azm_icon_badge o_azm_tone_{{kpi.tone}}">
-                            <i class="oi" t-att-data-icon="kpi.icon" t-att-title="kpi.label"/>
+                        <strong class="o_azm_hub_kpi_value" t-out="kpi.value"/>
+                        <span t-if="kpi.meter !== undefined"
+                              t-attf-class="o_azm_progress o_azm_om_meter o_azm_tone_{{kpi.tone}}">
+                            <span class="o_azm_progress_bar"
+                                  t-attf-style="width: {{this.bar(kpi.meter)}}%"/>
                         </span>
+                        <small t-if="kpi.sub" class="o_azm_hub_kpi_sub" t-out="kpi.sub"/>
                     </div>
                 </section>
 
-                <!-- one file per operating model -->
+                <!-- ============================================ one per model -->
+                <!-- the tour walks these by position, so the section holds the
+                     articles and nothing else -->
                 <section class="o_azm_hub_files">
-                    <article t-foreach="this.models" t-as="m" t-key="m.key" role="button"
-                             t-attf-class="o_azm_hub_file o_azm_tone_{{m.tone}}" t-on-click="() => this.open(m)">
-                        <span class="o_azm_hub_tab"><i class="oi" data-icon="folder" title="Operating model"/> <t t-out="m.structure"/></span>
-                        <header>
-                            <span t-attf-class="o_azm_icon_badge o_azm_tone_{{m.tone}}"><i class="oi" t-att-data-icon="m.icon" t-att-title="m.label"/></span>
+                    <article t-foreach="this.models" t-as="m" t-key="m.key"
+                             t-attf-class="o_azm_hub_file o_azm_tone_{{m.tone}}">
+
+                        <!-- the way in is this header and the button at the foot; the
+                             card around them is not itself a control, so the links it
+                             holds are not controls inside a control -->
+                        <header role="button" tabindex="0"
+                                t-attf-aria-label="Open {{m.label}}"
+                                t-on-click="() => this.open(m)"
+                                t-on-keydown="(ev) => this.openOnKey(ev, m)">
+                            <span t-attf-class="o_azm_icon_badge o_azm_tone_{{m.tone}}">
+                                <i class="oi" t-att-data-icon="m.icon" t-att-title="m.label"/>
+                            </span>
                             <span class="o_azm_hub_names">
                                 <strong t-out="m.label"/>
                                 <span t-if="m.name_ar !== m.label" class="o_azm_hub_ar" t-out="m.name_ar"/>
                                 <small t-out="m.desc"/>
                             </span>
+                            <span class="o_azm_hub_structure" t-out="m.structure"/>
                         </header>
-                        <dl class="o_azm_hub_kpis_grid">
-                            <div>
-                                <dt>Assessments</dt>
-                                <dd t-out="m.assessments"/>
-                                <small><t t-out="m.approved"/> ✓ · <t t-out="m.review"/> ⟳ · <t t-out="m.draft"/> ✎</small>
-                            </div>
-                            <div>
-                                <dt>Completion</dt>
-                                <dd t-out="this.pct(m.completion)"/>
-                                <span class="o_azm_progress"><span class="o_azm_progress_bar" t-attf-style="width: {{this.bar(m.completion)}}%"/></span>
-                            </div>
-                            <div>
-                                <dt t-out="m.qualityLabel"/>
-                                <dd t-out="this.pct(m.quality)"/>
-                                <span class="o_azm_progress o_azm_om_alt"><span class="o_azm_progress_bar" t-attf-style="width: {{this.bar(m.quality)}}%"/></span>
-                            </div>
-                            <div t-att-class="{'o_azm_hub_alert': m.issues}">
-                                <dt t-out="m.issuesLabel"/>
-                                <dd t-out="m.issues"/>
-                                <small t-out="m.issuesSub"/>
-                            </div>
-                            <div>
-                                <dt>Entities covered</dt>
-                                <dd><t t-out="m.entities_covered"/>/<t t-out="m.entities"/></dd>
-                            </div>
-                        </dl>
+
+                        <!-- the two counts, then the two rates: a figure reads faster
+                             beside its own kind than in a row of five narrow cells -->
+                        <div class="o_azm_hub_counts">
+                            <span class="o_azm_hub_count">
+                                <b t-out="m.assessments"/>
+                                <small>Assessments</small>
+                                <span class="o_azm_hub_split">
+                                    <em class="o_azm_hub_split_ok" t-attf-title="{{m.approved}} approved">
+                                        <i class="oi" data-icon="check_circle" title="Approved"/><t t-out="m.approved"/>
+                                    </em>
+                                    <em t-attf-title="{{m.review}} in review">
+                                        <i class="oi" data-icon="fact_check" title="In review"/><t t-out="m.review"/>
+                                    </em>
+                                    <em t-attf-title="{{m.draft}} in draft">
+                                        <i class="oi" data-icon="edit_note" title="Draft"/><t t-out="m.draft"/>
+                                    </em>
+                                </span>
+                            </span>
+                            <span class="o_azm_hub_count">
+                                <b><t t-out="m.entities_covered"/><small>/<t t-out="m.entities"/></small></b>
+                                <small>Entities covered</small>
+                            </span>
+                            <span t-attf-class="o_azm_hub_count o_azm_hub_issues {{m.issues ? 'o_azm_hub_issues_on' : ''}}">
+                                <b t-out="m.issues"/>
+                                <small t-out="m.issuesLabel"/>
+                                <span class="o_azm_hub_split"><em t-out="m.issuesSub"/></span>
+                            </span>
+                        </div>
+
+                        <div class="o_azm_hub_rates">
+                            <span class="o_azm_hub_rate">
+                                <span class="o_azm_hub_rate_line">
+                                    Completion <b t-out="this.pct(m.completion)"/>
+                                </span>
+                                <span t-attf-class="o_azm_progress o_azm_om_meter o_azm_tone_{{m.tone}}">
+                                    <span class="o_azm_progress_bar"
+                                          t-attf-style="width: {{this.bar(m.completion)}}%"/>
+                                </span>
+                            </span>
+                            <span class="o_azm_hub_rate">
+                                <span class="o_azm_hub_rate_line">
+                                    <t t-out="m.qualityLabel"/> <b t-out="this.pct(m.quality)"/>
+                                </span>
+                                <span class="o_azm_progress o_azm_om_meter o_azm_om_alt">
+                                    <span class="o_azm_progress_bar"
+                                          t-attf-style="width: {{this.bar(m.quality)}}%"/>
+                                </span>
+                            </span>
+                        </div>
+
                         <div class="o_azm_hub_parts">
-                            <span class="o_azm_om_meter_label" t-out="m.partsLabel"/>
-                            <div t-foreach="m.parts" t-as="part" t-key="part.code" class="o_azm_om_bar_row">
-                                <span t-out="this.partLabel(m, part)"/>
-                                <span class="o_azm_om_bar">
-                                    <span t-attf-style="width: {{part.completion === null ? 100 : this.bar(part.completion)}}%; {{part.completion === null ? 'opacity:.35' : ''}}"/>
+                            <span class="o_azm_hub_parts_label" t-out="m.partsLabel"/>
+                            <div t-foreach="m.parts" t-as="part" t-key="part.code"
+                                 class="o_azm_hub_part">
+                                <span class="o_azm_hub_part_name" t-out="this.partLabel(m, part)"/>
+                                <span class="o_azm_hub_part_bar">
+                                    <span t-attf-style="width: {{part.completion === null ? 100 : this.bar(part.completion)}}%; {{part.completion === null ? 'opacity:.3' : ''}}"/>
                                 </span>
                                 <b t-out="part.completion === null ? part.count : this.pct(part.completion)"/>
                             </div>
                         </div>
+
+                        <!-- the tour clicks the first of these by position -->
                         <div class="o_azm_hub_links">
-                            <button t-foreach="this.links(m)" t-as="link" t-key="link.key" type="button"
-                                    class="o_azm_hub_link" t-on-click.stop="() => this.openLink(link, m)">
+                            <button t-foreach="this.links(m)" t-as="link" t-key="link.key"
+                                    type="button" class="o_azm_hub_link"
+                                    t-on-click.stop="() => this.openLink(link, m)">
                                 <i class="oi" t-att-data-icon="link.icon" t-att-title="link.label"/>
                                 <span t-out="link.label"/>
                                 <b t-if="link.count !== undefined" t-out="link.count"/>
                             </button>
                         </div>
+
                         <footer>
-                            <span>Open the model</span>
-                            <i class="oi" data-icon="arrow_forward" title="Open"/>
+                            <button type="button" class="o_azm_hub_open"
+                                    t-attf-aria-label="Open {{m.label}}"
+                                    t-on-click="() => this.open(m)">
+                                <span>Open the model</span>
+                                <i class="oi" data-icon="arrow_forward" title="Open"/>
+                            </button>
                         </footer>
                     </article>
                 </section>
 
-                <!-- entity x model -->
-                <section class="o_azm_card">
-                    <header class="o_azm_card_header"><h3>Entities across the operating models</h3></header>
-                    <div class="table-responsive">
-                        <table class="o_azm_table o_azm_om_table o_azm_hub_table">
-                            <thead>
-                                <tr>
-                                    <th>Entity</th>
-                                    <th t-foreach="this.models" t-as="m" t-key="m.key" t-out="m.label"/>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr t-foreach="this.entities" t-as="e" t-key="e.id">
-                                    <td>
-                                        <span class="o_azm_entity_cell">
-                                            <img t-if="e.logoUrl" t-att-src="e.logoUrl" alt=""/>
-                                            <span t-else="" class="o_azm_code_avatar" t-out="e.code.slice(0, 3)"/>
-                                            <span><strong t-out="e.name"/><small t-if="e.company" t-out="e.company.name"/></span>
-                                        </span>
-                                    </td>
-                                    <td t-foreach="this.models" t-as="m" t-key="m.key" t-on-click="() => this.open(m)">
-                                        <t t-set="cell" t-value="e[m.key]"/>
-                                        <span t-if="cell" class="o_azm_hub_cell">
-                                            <span t-attf-class="o_azm_status o_azm_status_{{this.statusClass(cell.status)}}" t-out="this.statusLabel(cell.status)"/>
-                                            <span class="o_azm_mini_progress">
-                                                <span class="o_azm_progress"><span class="o_azm_progress_bar" t-attf-style="width: {{this.bar(cell.completion)}}%"/></span>
-                                                <span t-out="this.pct(cell.completion)"/>
+                <!-- ======================================== entity × model -->
+                <section class="o_azm_hub_matrix">
+                    <h2 class="o_azm_hub_title">
+                        Entities across the operating models
+                        <span class="o_azm_hub_title_count" t-out="this.entities.length"/>
+                    </h2>
+                    <div class="o_azm_hub_matrix_panel">
+                        <div class="table-responsive">
+                            <table class="o_azm_hub_table">
+                                <thead>
+                                    <tr>
+                                        <th class="o_azm_hub_th_entity">Entity</th>
+                                        <th t-foreach="this.models" t-as="m" t-key="m.key"
+                                            t-out="m.label"/>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr t-foreach="this.entities" t-as="e" t-key="e.id">
+                                        <td class="o_azm_hub_td_entity">
+                                            <span class="o_azm_entity_cell">
+                                                <img t-if="e.logoUrl" t-att-src="e.logoUrl" alt=""/>
+                                                <span t-else="" class="o_azm_code_avatar"
+                                                      t-out="e.code.slice(0, 3)"/>
+                                                <span class="o_azm_entity_words">
+                                                    <strong t-out="e.name"/>
+                                                    <small t-if="e.company" t-out="e.company.name"/>
+                                                </span>
                                             </span>
-                                            <small t-if="cell.issues" class="text-warning fw-bold"><t t-out="cell.issues"/> <t t-out="m.issuesLabel"/></small>
-                                        </span>
-                                        <span t-else="" class="text-muted">—</span>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                                        </td>
+                                        <td t-foreach="this.models" t-as="m" t-key="m.key"
+                                            class="o_azm_hub_td_cell"
+                                            t-on-click="() => this.open(m)">
+                                            <t t-set="cell" t-value="e[m.key]"/>
+                                            <span t-if="cell" class="o_azm_hub_cell">
+                                                <span class="o_azm_hub_cell_top">
+                                                    <span t-attf-class="o_azm_status o_azm_status_{{this.statusClass(cell.status)}}"
+                                                          t-out="this.statusLabel(cell.status)"/>
+                                                    <b t-out="this.pct(cell.completion)"/>
+                                                </span>
+                                                <span class="o_azm_progress o_azm_om_meter">
+                                                    <span class="o_azm_progress_bar"
+                                                          t-attf-style="width: {{this.bar(cell.completion)}}%"/>
+                                                </span>
+                                                <small t-if="cell.issues" class="o_azm_hub_cell_issues">
+                                                    <t t-out="cell.issues"/> <t t-out="m.issuesLabel"/>
+                                                </small>
+                                            </span>
+                                            <span t-else="" class="o_azm_hub_cell_none">—</span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </section>
             </t>

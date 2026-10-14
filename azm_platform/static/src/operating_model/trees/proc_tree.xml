@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="azm_platform.ProcTree">
+    <div class="o_action o_azm_dashboard o_azm_om o_azm_tree_page o_azm_tree_procurement" dir="rtl">
+
+        <t t-call="azm_platform.TreeHead"/>
+
+        <div t-if="!this.state.loaded" class="o_azm_loading"><i class="oi oi-spin" data-icon="progress_activity" title="Loading"/></div>
+
+        <t t-elif="!this.d.available">
+            <div class="o_azm_card p-4 text-muted">دورة المشتريات غير متاحة لحسابك.</div>
+        </t>
+
+        <t t-else="">
+            <div t-attf-class="o_azm_banner o_azm_banner_{{this.banner.css}}">
+                <t t-out="this.banner.text"/>
+                <small t-out="this.banner.en"/>
+            </div>
+
+            <t t-call="azm_platform.TreeKpis"/>
+
+            <t t-call="azm_platform.TreeOutputs"/>
+
+            <div class="o_azm_tree_split">
+
+                <t t-call="azm_platform.TreePanel"/>
+
+                <!-- ============================== the question -->
+                <section class="o_azm_card o_azm_tree_detail">
+                    <t t-if="this.state.preview">
+                        <t t-call="azm_platform.DocPreview"/>
+                    </t>
+
+                    <t t-elif="this.state.loadingNode">
+                        <div class="o_azm_loading"><i class="oi oi-spin" data-icon="progress_activity" title="Loading"/></div>
+                    </t>
+
+                    <t t-elif="!this.state.node">
+                        <div class="o_azm_tree_empty">
+                            <t t-call="azm_platform.TreeMark"/>
+                            <h3>اختر سؤالًا من الشجرة</h3>
+                            <p class="text-muted">كل سؤال يعرض ما يُسأل عنه، وماذا أجاب هذا الكيان، والمخاطر المترتبة على إجابته.</p>
+                            <button t-if="this.d.summary_doc and this.docsAvailable" type="button"
+                                    class="btn btn-sm btn-light"
+                                    t-on-click="() => this.previewDoc(this.d.summary_doc)">
+                                <i class="oi me-1" data-icon="description"/>قراءة ملخص الدورة
+                            </button>
+                        </div>
+                    </t>
+
+                    <t t-else="">
+                        <t t-set="n" t-value="this.state.node"/>
+                        <header class="o_azm_card_header o_azm_tree_detail_head">
+                            <div>
+                                <span class="o_azm_code o_azm_code_big" t-out="n.code"/>
+                                <h3 t-out="n.title"/>
+                            </div>
+                            <span t-attf-class="o_azm_pill o_azm_pill_{{n.status.css}}" t-out="n.status.label"/>
+                        </header>
+
+                        <div class="o_azm_tree_path">
+                            <t t-foreach="n.path" t-as="step" t-key="step_index">
+                                <span class="o_azm_tree_path_step">
+                                    <small t-out="step[0]"/>
+                                    <b t-out="step[1]"/>
+                                </span>
+                                <i t-if="!step_last" class="oi" data-icon="chevron_left"/>
+                            </t>
+                        </div>
+
+                        <div class="o_azm_tree_actions">
+                            <button t-if="this.docsAvailable" type="button" class="btn btn-sm btn-primary"
+                                    t-on-click="() => this.previewDoc(n.doc)">
+                                <i class="oi me-1" data-icon="description"/>معاينة المستند
+                            </button>
+                            <button t-if="this.docsAvailable" type="button" class="btn btn-sm btn-light"
+                                    t-on-click="() => this.openDoc(n.doc, true)">
+                                <i class="oi me-1" data-icon="download"/>تنزيل
+                            </button>
+                            <button t-if="n.assessment" type="button" class="btn btn-sm btn-light"
+                                    t-on-click="() => this.openAssessment()">
+                                <i class="oi me-1" data-icon="assignment"/>فتح الإفادة
+                            </button>
+                            <button type="button" class="btn btn-sm btn-light"
+                                    t-on-click="() => this.openQuestion(n.id)">
+                                <i class="oi me-1" data-icon="open_in_new"/>فتح السؤال
+                            </button>
+                        </div>
+
+                        <div class="o_azm_tree_facts">
+                            <div><small>الكيان</small><b t-out="n.company"/></div>
+                            <div><small>المرحلة</small><b t-out="n.stage.name"/></div>
+                            <div><small>المجموعة</small><b t-out="n.group"/></div>
+                            <div><small>نوع السؤال</small><b t-out="n.qtype"/></div>
+                        </div>
+
+                        <div class="o_azm_tree_sec">
+                            <h4>ما الذي يُسأل عنه؟ <small>What is asked</small></h4>
+                            <p t-out="n.title"/>
+                            <p t-if="n.help" class="text-muted" t-out="n.help"/>
+                            <p t-if="n.is_common" class="text-muted">
+                                <i class="oi me-1" data-icon="repeat"/>سؤال مشترك بين كل المراحل.
+                            </p>
+                            <p t-if="n.raci" class="text-muted">دور المسؤولية (RACI): <b t-out="n.raci"/></p>
+                        </div>
+
+                        <div class="o_azm_tree_sec">
+                            <h4>ماذا أجاب هذا الكيان؟ <small>Today</small></h4>
+                            <t t-if="n.status.key === 'hidden'">
+                                <p class="o_azm_box">
+                                    هذا السؤال لا يُطرح على هذا الكيان بناءً على إجاباته السابقة في نفس المرحلة.
+                                </p>
+                            </t>
+                            <t t-elif="!n.answer.value">
+                                <p class="o_azm_box o_azm_box_warn">لم تتم الإجابة عن هذا السؤال بعد.</p>
+                            </t>
+                            <t t-else="">
+                                <table class="o_azm_tree_kv">
+                                    <tr>
+                                        <th>الإجابة</th>
+                                        <td t-attf-class="{{n.answer.known ? '' : 'text-muted'}}" t-out="n.answer.value"/>
+                                    </tr>
+                                    <tr t-if="n.sentence"><th>كما ستُكتب في الكتاب</th><td t-out="n.sentence"/></tr>
+                                    <tr t-if="n.answer.note"><th>ملاحظة المُجيب</th><td t-out="n.answer.note"/></tr>
+                                    <tr><th>الأدلة المرفقة</th><td t-out="n.answer.evidence"/></tr>
+                                </table>
+                            </t>
+                        </div>
+
+                        <div t-if="n.options.length" class="o_azm_tree_sec">
+                            <h4>الاختيارات المتاحة <small>Options</small></h4>
+                            <ul class="o_azm_tree_options">
+                                <li t-foreach="n.options" t-as="opt" t-key="opt.id"
+                                    t-attf-class="{{opt.chosen ? 'o_azm_chosen' : ''}}">
+                                    <i t-if="opt.chosen" class="oi me-1" data-icon="check"/>
+                                    <t t-out="opt.name"/>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <div t-if="n.risks.length" class="o_azm_tree_sec">
+                            <h4>المخاطر المرتبطة بهذه الإجابة <small>Risks watched here</small></h4>
+                            <div class="o_azm_tree_grid_wrap">
+                                <table class="o_azm_tree_grid">
+                                    <thead>
+                                        <tr>
+                                            <th>تُفعَّل عند</th><th>الممارسة</th><th>الأثر المحتمل</th>
+                                            <th>الضابط المقترح</th><th>الحالة</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr t-foreach="n.risks" t-as="r" t-key="r.code"
+                                            t-attf-class="{{r.live ? 'o_azm_row_live' : ''}}">
+                                            <td t-out="r.trigger"/>
+                                            <td t-out="r.fact"/>
+                                            <td t-out="r.risk"/>
+                                            <td t-out="r.control"/>
+                                            <td>
+                                                <a t-if="r.finding_id" href="#"
+                                                   t-on-click.prevent="() => this.openFinding(r.finding_id)"
+                                                   t-out="r.state_label"/>
+                                                <span t-else="" class="text-muted">لم تُفعَّل</span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="o_azm_tree_sec">
+                            <h4>مكان السؤال في الدورة <small>Where it sits</small></h4>
+                            <table class="o_azm_tree_kv">
+                                <tr t-if="n.stage.input"><th>مدخل المرحلة</th><td t-out="n.stage.input"/></tr>
+                                <tr t-if="n.stage.output"><th>مخرج المرحلة</th><td t-out="n.stage.output"/></tr>
+                                <tr t-if="n.stage.owner"><th>المالك المعتاد</th><td t-out="n.stage.owner"/></tr>
+                                <tr t-if="n.conditional">
+                                    <th>ظهور مشروط</th>
+                                    <td>يظهر هذا السؤال حسب إجابات سابقة في نفس المرحلة.</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </t>
+                </section>
+            </div>
+        </t>
+    </div>
+</t>
+
+</templates>

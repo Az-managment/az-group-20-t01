@@ -31,8 +31,63 @@ export class AzmWorkspace extends Component {
             output: markup(""),
             busy: false,
             showHelp: {},
+            onlyOpen: false,
+            onlyReturned: false,
+            // the part a reviewer is sending back, and the reason being typed for it
+            returning: null,
+            returnNote: "",
         });
         onWillStart(() => this.load());
+    }
+
+    /** Whether this question may be answered now: the page may be read-only, or the
+    review may have sent other parts back and left this one as it was. */
+    locked(q) {
+        return this.state.data.header.readonly || !!q.locked;
+    }
+
+    // ------------------------------------------------------------ review
+    /** Start sending a part back: this stage, or one question of it. */
+    startReturn(level, id, name) {
+        this.state.returning = { level, id, name };
+        this.state.returnNote = "";
+    }
+
+    cancelReturn() {
+        this.state.returning = null;
+        this.state.returnNote = "";
+    }
+
+    async confirmReturn() {
+        const note = (this.state.returnNote || "").trim();
+        if (!note || !this.state.returning) {
+            return;
+        }
+        this.state.busy = true;
+        try {
+            await this.orm.call("azm.dashboard", "return_review_part", [], {
+                res_model: MODEL,
+                assessment_id: this.assessmentId,
+                level: this.state.returning.level,
+                part_id: this.state.returning.id,
+                note,
+            });
+            this.cancelReturn();
+            await this.load();
+        } finally {
+            this.state.busy = false;
+        }
+    }
+
+    /** Ask for the work to be reviewed. */
+    async requestReview() {
+        this.state.busy = true;
+        try {
+            await this.orm.call(MODEL, "action_submit", [[this.assessmentId]]);
+            await this.load();
+        } finally {
+            this.state.busy = false;
+        }
     }
 
     apply(data) {
@@ -88,11 +143,96 @@ export class AzmWorkspace extends Component {
         this.load(stage.id);
     }
 
+    /** Still owed answers: a stage is finished when every question it shows is answered. */
+    unfinished(stage) {
+        return (stage.answered || 0) < (stage.total || 0);
+    }
+
+    get missing() {
+        return this.state.data.stages.filter((s) => this.unfinished(s));
+    }
+
+    get atLastStage() {
+        const stages = this.state.data.stages;
+        return !!stages.length && stages[stages.length - 1].id === this.state.stageId;
+    }
+
+    /** Whether the assessment can go for review — the server's answer, not ours. */
+    get canSend() {
+        const header = this.state.data && this.state.data.header;
+        return !!(header && header.can_send);
+    }
+
+    /**
+     * What the forward button says.
+     *
+     * At the end of the cycle it stops being "next" and becomes whatever is actually
+     * left to do: the first stage still missing answers, or — when there is nothing
+     * missing — sending the whole thing for review, which is what somebody who has just
+     * finished came here to do. The financial workspace does the same.
+     */
+    get nextLabel() {
+        if (!this.atLastStage) {
+            return "المرحلة التالية";
+        }
+        const left = this.missing.length;
+        if (left) {
+            return `أكمل الناقص (${left})`;
+        }
+        return this.canSend ? "أرسل للمراجعة" : "عُد إلى البداية";
+    }
+
+    get nextIsSend() {
+        return this.atLastStage && !this.missing.length && this.canSend;
+    }
+
+    async onNext() {
+        if (this.nextIsSend) {
+            await this.sendForReview();
+            return;
+        }
+        this.nextStage(1);
+    }
+
+    /** Hand it to whoever reviews it, through the one guarded way in. */
+    async sendForReview() {
+        if (this.sending) {
+            return;
+        }
+        this.sending = true;
+        try {
+            await this.orm.call("azm.dashboard", "submit_my_work", [], {
+                res_model: "azm.assessment",
+                assessment_id: this.state.data.header.id,
+            });
+            await this.load();
+        } finally {
+            this.sending = false;
+        }
+    }
+
+    /**
+     * Step through the stages, wrapping round at the ends.
+     *
+     * The last stage's "next" used to do nothing — the reader reached the end of the
+     * cycle and the button stopped answering. It wraps now, to the first stage still
+     * missing answers rather than to the top: at the end of a pass what is left to do
+     * is behind you. The financial workspace does the same with its modules.
+     */
     nextStage(step) {
         const stages = this.state.data.stages;
-        const idx = stages.findIndex((s) => s.id === this.state.stageId) + step;
-        if (idx >= 0 && idx < stages.length) {
-            this.load(stages.at(idx).id);
+        const at = stages.findIndex((s) => s.id === this.state.stageId);
+        const to = at + step;
+        if (to >= 0 && to < stages.length) {
+            this.load(stages.at(to).id);
+            return;
+        }
+        const rest = step > 0
+            ? [...stages.slice(0, at), ...stages.slice(at + 1)]
+            : [...stages.slice(at + 1), ...stages.slice(0, at)].reverse();
+        const target = rest.find((s) => this.unfinished(s)) || rest[0];
+        if (target) {
+            this.load(target.id);
         }
     }
 
@@ -160,8 +300,30 @@ export class AzmWorkspace extends Component {
     }
 
     // ------------------------------------------------------------ view helpers
+    toggleOnlyOpen() {
+        this.state.onlyOpen = !this.state.onlyOpen;
+    }
+
+    /** Show only what the reviewer sent back to be answered again. */
+    toggleOnlyReturned() {
+        this.state.onlyReturned = !this.state.onlyReturned;
+    }
+
     questionsOf(group) {
-        return this.state.data.questions.filter((q) => q.group === group);
+        let questions = this.state.data.questions.filter((q) => q.group === group);
+        if (this.state.onlyReturned) {
+            questions = questions.filter((q) => q.returned);
+        }
+        if (this.state.onlyOpen) {
+            questions = questions.filter((q) => !this.isAnswered(q));
+        }
+        return questions;
+    }
+
+    /** How many returned questions are in the stage being looked at, as against the
+     * whole assessment — what came back may be under a stage the reader is not on. */
+    returnedHere() {
+        return this.state.data.questions.filter((q) => q.returned).length;
     }
 
     isChosen(question, option) {

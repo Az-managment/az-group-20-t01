@@ -3,7 +3,7 @@
 
     <!-- Switch between the two operating models (same header on both pages) -->
     <t t-name="azm_platform.ModelSwitch">
-        <nav class="o_azm_om_models" role="tablist">
+        <nav class="o_azm_om_models" role="group" aria-label="Operating model">
             <button type="button" class="o_azm_om_model o_azm_om_model_back" t-on-click="() => this.openHub()">
                 <i class="oi" data-icon="folder_open" title="All operating models"/>
                 <span><b>All operating models</b><small>Back to the files</small></span>
@@ -22,11 +22,31 @@
     </t>
 
     <t t-name="azm_platform.FinDashboard">
-        <div class="o_action o_azm_dashboard o_azm_om o_azm_fin_page">
+        <div class="o_action o_azm_dashboard o_azm_om o_azm_om_page o_azm_fin_page">
             <div class="o_azm_om_title">
-                <div>
-                    <h1>Unified Financial Model</h1>
+                <div class="o_azm_om_title_top">
+                <div class="o_azm_om_title_words">
+                    <span class="o_azm_om_eyebrow">
+                        <i class="oi" data-icon="view_module" title="Operating model"/>
+                        Operating Model
+                    </span>
+                    <h1>Unified financial model</h1>
                     <p>Inventory of the financial requirements of each entity and design of the target model</p>
+                </div>
+                <div t-if="this.state.loaded and this.d.available" class="o_azm_om_title_gauge">
+                    <span class="o_azm_ring_wrap">
+                        <svg class="o_azm_ring" viewBox="0 0 40 40" aria-hidden="true">
+                            <circle class="o_azm_ring_track" cx="20" cy="20" r="15.9155"/>
+                            <circle t-if="this.bar(this.k.completion)" class="o_azm_ring_value"
+                                    cx="20" cy="20" r="15.9155"
+                                    t-attf-stroke-dasharray="{{this.bar(this.k.completion)}} 100"/>
+                        </svg>
+                        <b class="o_azm_ring_label" t-out="this.pct(this.k.completion)"/>
+                    </span>
+                    <span class="o_azm_title_gauge_words">
+                        Inventory completion
+                        <em>across the assessments in scope</em>
+                    </span>
                 </div>
                 <div t-if="this.state.loaded and this.d.available" class="o_azm_om_title_actions">
                     <button type="button" class="btn btn-light" t-on-click="() => this.openUnified('assessments')">
@@ -42,6 +62,43 @@
                         <i class="oi" data-icon="add" title="New"/> New Financial Assessment
                     </button>
                 </div>
+                </div>
+                    <section t-attf-class="o_azm_om_toolbar {{this.state.busy ? 'o_azm_om_busy' : ''}}">
+                        <div class="o_azm_om_tabs" role="group" aria-label="Filter by domain">
+                            <button type="button" t-foreach="this.sourceTabs" t-as="tab" t-key="tab.key or 'all'"
+                                    t-attf-class="o_azm_om_tab o_azm_tone_green {{this.state.source === tab.key ? 'active' : ''}}"
+                                t-att-aria-pressed="this.state.source === tab.key ? 'true' : 'false'"
+                                    t-on-click="() => this.setSource(tab.key)">
+                                <i class="oi" t-att-data-icon="tab.icon" t-att-title="tab.label"/>
+                                <span t-out="tab.label"/>
+                                <span t-if="tab.count !== null" class="o_azm_om_count" t-out="tab.count"/>
+                            </button>
+                        </div>
+                        <div class="o_azm_om_selects">
+                            <span t-if="this.state.companyId" class="o_azm_om_chip">
+                                <i class="oi" data-icon="business" title="Company"/>
+                                <t t-out="this.companyName"/>
+                                <button type="button" class="btn btn-link p-0" title="Clear" t-on-click="() => this.clearCompany()">
+                                    <i class="oi" data-icon="close" title="Clear"/>
+                                </button>
+                            </span>
+                            <select class="form-select" t-on-change="this.onProfile" aria-label="Answer template">
+                                <option value="" t-att-selected="!this.state.profile">All answer templates</option>
+                                <option t-foreach="this.d.profiles" t-as="p" t-key="p.key" t-att-value="p.key"
+                                        t-att-selected="p.key === this.state.profile" t-out="p.key + ' · ' + p.name"/>
+                            </select>
+                            <select class="form-select" t-on-change="this.onEntity" aria-label="Entity">
+                                <option value="" t-att-selected="!this.state.entityId">All entities</option>
+                                <option t-foreach="this.d.entity_options" t-as="opt" t-key="opt.id" t-att-value="opt.id"
+                                        t-att-selected="opt.id === this.state.entityId" t-out="opt.name"/>
+                            </select>
+                            <select class="form-select" t-on-change="this.onAssessment" aria-label="Assessment">
+                                <option value="" t-att-selected="!this.state.assessmentId">All current assessments</option>
+                                <option t-foreach="this.d.assessment_options" t-as="opt" t-key="opt.id" t-att-value="opt.id"
+                                        t-att-selected="opt.id === this.state.assessmentId" t-out="opt.name"/>
+                            </select>
+                        </div>
+                    </section>
             </div>
             <t t-call="azm_platform.ModelSwitch"/>
 
@@ -56,44 +113,11 @@
             </div>
 
             <t t-else="">
-                <!-- ============================== Filters -->
-                <section t-attf-class="o_azm_om_toolbar {{this.state.busy ? 'o_azm_om_busy' : ''}}">
-                    <div class="o_azm_om_tabs" role="tablist">
-                        <button type="button" t-foreach="this.sourceTabs" t-as="tab" t-key="tab.key or 'all'"
-                                t-attf-class="o_azm_om_tab o_azm_tone_green {{this.state.source === tab.key ? 'active' : ''}}"
-                                t-on-click="() => this.setSource(tab.key)">
-                            <i class="oi" t-att-data-icon="tab.icon" t-att-title="tab.label"/>
-                            <span t-out="tab.label"/>
-                            <span t-if="tab.count !== null" class="o_azm_om_count" t-out="tab.count"/>
-                        </button>
-                    </div>
-                    <div class="o_azm_om_selects">
-                        <span t-if="this.state.companyId" class="o_azm_om_chip">
-                            <i class="oi" data-icon="business" title="Company"/>
-                            <t t-out="this.companyName"/>
-                            <button type="button" class="btn btn-link p-0" title="Clear" t-on-click="() => this.clearCompany()">
-                                <i class="oi" data-icon="close" title="Clear"/>
-                            </button>
-                        </span>
-                        <select class="form-select" t-on-change="this.onProfile" aria-label="Answer template">
-                            <option value="" t-att-selected="!this.state.profile">All answer templates</option>
-                            <option t-foreach="this.d.profiles" t-as="p" t-key="p.key" t-att-value="p.key"
-                                    t-att-selected="p.key === this.state.profile" t-out="p.key + ' · ' + p.name"/>
-                        </select>
-                        <select class="form-select" t-on-change="this.onEntity" aria-label="Entity">
-                            <option value="" t-att-selected="!this.state.entityId">All entities</option>
-                            <option t-foreach="this.d.entity_options" t-as="opt" t-key="opt.id" t-att-value="opt.id"
-                                    t-att-selected="opt.id === this.state.entityId" t-out="opt.name"/>
-                        </select>
-                        <select class="form-select" t-on-change="this.onAssessment" aria-label="Assessment">
-                            <option value="" t-att-selected="!this.state.assessmentId">All current assessments</option>
-                            <option t-foreach="this.d.assessment_options" t-as="opt" t-key="opt.id" t-att-value="opt.id"
-                                    t-att-selected="opt.id === this.state.assessmentId" t-out="opt.name"/>
-                        </select>
-                    </div>
-                </section>
-
                 <!-- ============================== KPIs -->
+                <h2 class="o_azm_om_block_title">
+                    <span>At a glance</span>
+                    <em>The model in figures</em>
+                </h2>
                 <section class="o_azm_kpis o_azm_om_kpis">
                     <t t-foreach="this.kpis" t-as="kpi" t-key="kpi.key">
                         <button type="button" t-attf-class="o_azm_kpi o_azm_om_kpi {{kpi.onClick ? '' : 'o_azm_kpi_static'}}"
@@ -215,6 +239,10 @@
                 </section>
 
                 <!-- ============================== Charts -->
+                <h2 class="o_azm_om_block_title">
+                    <span>Breakdown</span>
+                    <em>Requirements by status, template and scope</em>
+                </h2>
                 <section class="o_azm_om_row_3">
                     <div class="o_azm_card o_azm_donut_card">
                         <header class="o_azm_card_header"><h3>Requirements by status</h3></header>
@@ -254,6 +282,10 @@
                 </section>
 
                 <!-- ============================== Entities + top gaps -->
+                <h2 class="o_azm_om_block_title">
+                    <span>Entities and gaps</span>
+                    <em>Where the work stands, and what is still open</em>
+                </h2>
                 <section class="o_azm_om_row_2">
                     <div class="o_azm_card">
                         <header class="o_azm_card_header">
@@ -268,7 +300,6 @@
                                         <th>Status</th>
                                         <th>Activities</th>
                                         <th>Completion</th>
-                                        <th>Maturity</th>
                                         <th>Gaps</th>
                                     </tr>
                                 </thead>
@@ -287,13 +318,24 @@
                                         <td><span t-attf-class="o_azm_status o_azm_status_{{entity.statusClass}}" t-out="entity.statusLabel"/></td>
                                         <td><small t-out="entity.scopes.join('، ') or '—'"/></td>
                                         <td>
+                                            <span class="o_azm_cell_stack">
                                             <span class="o_azm_mini_progress">
                                                 <span class="o_azm_progress"><span class="o_azm_progress_bar" t-attf-style="width: {{this.bar(entity.completion)}}%"/></span>
                                                 <span t-out="this.pct(entity.completion)"/>
                                             </span>
+                                                <!-- maturity qualifies the completion above it rather than
+                                                     standing as a column of its own -->
+                                                <small><t t-out="this.pct(entity.maturity)"/> mature</small>
+                                            </span>
                                         </td>
-                                        <td t-out="this.pct(entity.maturity)"/>
-                                        <td t-att-class="{'text-warning fw-bold': entity.gaps}" t-out="entity.gaps or '—'"/>
+                                        <td>
+                                            <span class="o_azm_cell_stack">
+                                                <b t-if="entity.gaps" class="o_azm_cell_warn">
+                                                    <t t-out="entity.gaps"/> open
+                                                </b>
+                                                <b t-else="" class="o_azm_cell_quiet">none</b>
+                                            </span>
+                                        </td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -370,7 +412,15 @@
                     </div>
                 </section>
             </t>
-        </div>
+        
+            <!-- what is behind a figure, keyed so asking for something else reloads it -->
+            <AzmOmDetail t-if="this.state.detail"
+                         t-key="this.state.detail.kind + '-' + this.state.detail.heading"
+                         kind="this.state.detail.kind"
+                         scope="this.state.detail.scope"
+                         heading="this.state.detail.heading"
+                         onClose="() => this.closeDetail()"/>
+</div>
     </t>
 
 </templates>

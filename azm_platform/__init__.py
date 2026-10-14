@@ -20,3 +20,6 @@ def _azm_post_init(env):
     from .hooks import describe_entities, load_dev_entity_data
     describe_entities(env)
     load_dev_entity_data(env)
+    # every entity gets its document folders, and its documents are queued for the background job
+    env['azm.doc.folder']._ensure_all()
+    env['azm.doc.publication']._enqueue()

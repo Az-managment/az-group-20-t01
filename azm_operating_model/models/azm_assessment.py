@@ -6,6 +6,8 @@ from markupsafe import Markup
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
+from .azm_answer import AZM_SKIP_LOCK_TOKEN
+
 from . import engine
 
 PURCHASE_KINDS = [
@@ -27,7 +29,7 @@ SCENARIOS = [
 class AzmAssessment(models.Model):
     _name = "azm.assessment"
     _description = "إفادة AZM"
-    _inherit = ["mail.thread", "mail.activity.mixin"]
+    _inherit = ["mail.thread", "mail.activity.mixin", "azm.reviewable"]
     _order = "create_date desc, id desc"
 
     name = fields.Char("المرجع", required=True, copy=False, readonly=True, default="جديد")
@@ -46,6 +48,8 @@ class AzmAssessment(models.Model):
     ], default="draft", required=True, tracking=True, copy=False, string="الحالة")
     user_id = fields.Many2one("res.users", "مُعد الإفادة", default=lambda self: self.env.user, tracking=True)
     reviewer_id = fields.Many2one("res.users", "المراجع", tracking=True)
+    assignment_ids = fields.One2many("azm.assignment", "proc_assessment_id",
+                                     string="توزيع المراحل")
     approved_by_id = fields.Many2one("res.users", "اعتمدها", readonly=True, copy=False)
     approved_date = fields.Datetime("تاريخ الاعتماد", readonly=True, copy=False)
     is_demo = fields.Boolean("مثال افتراضي", copy=False)
@@ -56,6 +60,7 @@ class AzmAssessment(models.Model):
 
     progress = fields.Float("نسبة الاكتمال", compute="_compute_progress")
     visible_count = fields.Integer(compute="_compute_progress")
+    answered_count = fields.Integer("أسئلة مُجابة", compute="_compute_progress")
     known_count = fields.Integer(compute="_compute_progress")
     risk_count = fields.Integer(compute="_compute_progress")
     finding_count = fields.Integer(compute="_compute_finding_count")
@@ -83,6 +88,15 @@ class AzmAssessment(models.Model):
         records._ensure_answers()
         return records
 
+    @api.model
+    def _ensure_all_answers(self):
+        """Give every assessment a line for every question, after a catalogue reload.
+
+        A question added to the catalogue has no answer line on the assessments that
+        already existed, and the workspace reads a line for every *visible* question —
+        so without this the whole workspace of every older assessment stops opening."""
+        self.search([])._ensure_answers()
+
     def _ensure_answers(self):
         questions = self.env["azm.question"].search([])
         lines = []
@@ -97,20 +111,33 @@ class AzmAssessment(models.Model):
     def _stages(self):
         return self.env["azm.stage"].search([])
 
-    def _stage_payload(self, stage):
-        """Questions, ordered answers (only those visible) for one stage."""
+    def _answers_by_stage(self):
+        """{stage id: {question id: line}} — built once instead of rescanning every
+        answer of the assessment for each stage in turn."""
         self.ensure_one()
-        questions = stage.question_ids.sorted(lambda q: (q.sequence, q.id))
-        by_q = {a.question_id.id: a for a in self.answer_ids if a.stage_id == stage}
-        qdicts = [q._engine_dict() for q in questions]
-        sdict = stage._engine_dict()
+        grouped = {}
+        for line in self.answer_ids:
+            grouped.setdefault(line.stage_id.id, {})[line.question_id.id] = line
+        return grouped
+
+    def _stage_payload(self, stage, catalogue=None, by_stage=None):
+        """Questions, ordered answers (only those visible) for one stage.
+
+        ``catalogue`` and ``by_stage`` let a scan over many assessments build the stage's
+        question dicts and this assessment's answer index once each, instead of per
+        assessment and stage — which is most of what the Home page used to cost."""
+        self.ensure_one()
+        sdict, qdicts = catalogue if catalogue else stage._engine_catalogue()
+        by_q = (by_stage if by_stage is not None else self._answers_by_stage()).get(stage.id, {})
         answers = {}
         for qd in qdicts:
             line = by_q.get(qd["id"])
             if not line:
                 continue
-            probe = {**answers}
-            if engine.visible_questions(sdict, [qd], probe):
+            # visible_questions only reads the answers — is_applied and condition both
+            # do — so the defensive copy was rebuilding the whole dict once per question,
+            # which is quadratic in the questions of a stage and bought nothing
+            if engine.visible_questions(sdict, [qd], answers):
                 value = line._engine_value()
                 if value is not None:
                     answers[qd["key"]] = value
@@ -121,30 +148,65 @@ class AzmAssessment(models.Model):
 
     def _refresh_visibility(self):
         for rec in self:
-            for stage in rec._stages():
-                sdict, qdicts, answers, by_q = rec._stage_payload(stage)
+            stages = rec._stages()
+            # A line whose stage has been archived is visited by nothing below — the
+            # loop only walks the stages that still exist — so it kept is_visible from
+            # its default and went on being counted as an unanswered question nobody
+            # could reach. Every assessment then sat short of 100% for good, and the
+            # workspace had no page to send anyone to.
+            orphaned = rec.answer_ids.filtered(
+                lambda line: line.stage_id not in stages and line.is_visible)
+            # The index of this assessment's answers is built once for the whole pass,
+            # which is what _stage_payload takes it for. This called it per stage, so
+            # every one of the thirteen rescanned all 396 answers — and then wrote
+            # is_visible a line at a time. It runs on every answer anybody gives.
+            by_stage = rec._answers_by_stage()
+            show = rec.answer_ids.browse()
+            hide = orphaned
+            for stage in stages:
+                sdict, qdicts, answers, by_q = rec._stage_payload(stage, by_stage=by_stage)
                 visible = {q["id"] for q in engine.visible_questions(sdict, qdicts, answers)}
                 for qid, line in by_q.items():
                     flag = qid in visible
                     if line.is_visible != flag:
-                        line.with_context(azm_no_visibility=True, azm_skip_lock=True).is_visible = flag
+                        if flag:
+                            show |= line
+                        else:
+                            hide |= line
+            quietly = {"azm_no_visibility": True, "azm_skip_lock": AZM_SKIP_LOCK_TOKEN}
+            if show:
+                show.with_context(**quietly).write({"is_visible": True})
+            if hide:
+                hide.with_context(**quietly).write({"is_visible": False})
 
     # ---------------------------------------------------------------- computes
     @api.depends("answer_ids.has_value", "answer_ids.is_known", "answer_ids.is_visible")
     def _compute_progress(self):
+        # progress and risk_count are both columns of the list view, so this runs for a
+        # whole page at once: the stages and their question dicts are the same for every
+        # row and are read once, not once per assessment
         rules = self._rules() if self else []
+        stages = self._stages() if self else self.env["azm.stage"]
+        catalogues = {stage.id: stage._engine_catalogue() for stage in stages}
         for rec in self:
             vis = rec.answer_ids.filtered("is_visible")
+            answered = vis.filtered("has_value")
             rec.visible_count = len(vis)
+            # counted here rather than read back off the percentage: "nine questions
+            # left" is what somebody answering wants, and it has to be exact
+            rec.answered_count = len(answered)
             rec.known_count = len(vis.filtered("is_known"))
-            rec.progress = 100.0 * len(vis.filtered("has_value")) / len(vis) if vis else 0.0
+            rec.progress = 100.0 * len(answered) / len(vis) if vis else 0.0
             risks = 0
             if rec.id:
-                for stage in rec._stages():
-                    sdict, qdicts, answers, _by_q = rec._stage_payload(stage)
+                by_stage = rec._answers_by_stage()
+                for stage in stages:
+                    sdict, qdicts, answers, _by_q = rec._stage_payload(
+                        stage, catalogues[stage.id], by_stage)
                     risks += len(engine.findings(sdict, qdicts, answers, rules))
             rec.risk_count = risks
 
+    @api.depends("finding_ids")
     def _compute_finding_count(self):
         for rec in self:
             rec.finding_count = len(rec.finding_ids)
@@ -155,11 +217,15 @@ class AzmAssessment(models.Model):
             rec.output_html = rec._render("book") if rec.id else False
             rec.output_map_html = rec._render("workflow") if rec.id else False
 
-    def _render(self, tab, stage=False):
+    def _render(self, tab, stage=False, doc_code=None):
+        """Render one output. ``doc_code`` is the code the published document carries,
+        so the body of a PDF names itself the way its cover does."""
         self.ensure_one()
         rules = self._rules()
         if stage:
             sdict, qdicts, answers, _ = self._stage_payload(stage)
+            if doc_code:
+                sdict = {**sdict, "doc_code": doc_code}
             body = engine.render_stage(tab, sdict, qdicts, answers, rules)
         else:
             data = []
@@ -190,13 +256,23 @@ class AzmAssessment(models.Model):
                 "risks": len(engine.findings(sdict, qdicts, answers, rules)),
                 "status": engine.stage_status(sdict, answers),
             })
+        returns = self.env["azm.review.return"]._open_for(self)
         sdict, qdicts, answers, by_q = self._stage_payload(stage)
         visible = engine.visible_questions(sdict, qdicts, answers)
         questions = []
         for qd in visible:
-            line = by_q[qd["id"]]
+            line = by_q.get(qd["id"])
+            if not line:
+                continue   # a question the catalogue gained since this assessment was made
             q = line.question_id
+            covered = bool(returns) and returns._covers(line)
             questions.append({
+                # a review that sent parts back leaves the rest as it was reviewed
+                "locked": bool(returns) and not covered,
+                # said outright rather than left to be read off "locked", which is
+                # false both for a returned question and for every question when
+                # nothing was returned at all
+                "returned": covered,
                 "id": q.id, "line_id": line.id, "code": q.code, "label": q.label, "qtype": q.qtype,
                 "group": q.group, "help": q.help_text or "",
                 "options": [{"id": o.id, "name": o.name, "kind": o.kind} for o in q.option_ids],
@@ -212,8 +288,14 @@ class AzmAssessment(models.Model):
                 "scenario": dict(SCENARIOS)[self.scenario],
                 "state": self.state, "state_label": dict(self._fields["state"].selection)[self.state],
                 "version": self.version, "progress": round(self.progress), "is_demo": self.is_demo,
+                "outstanding": self._azm_outstanding(), "can_send": self._azm_can_send(),
+                **self._azm_review_header(),
                 "readonly": self.state != "draft",
             },
+            # how many parts are waiting to be answered again across the whole
+            # assessment: the filter is worth offering only when there are some, and
+            # what came back may be under a stage the reader is not looking at
+            "returns_open": len(returns),
             "stages": nav,
             "stage": {"id": stage.id, "code": stage.code, "name": stage.name,
                       "input": stage.input_desc, "output": stage.output_desc},
@@ -249,35 +331,51 @@ class AzmAssessment(models.Model):
         return str(self._render(tab, stage if scope == "stage" else False))
 
     # ---------------------------------------------------------------- actions
-    def action_open_workspace(self):
+    def _azm_outstanding(self):
         self.ensure_one()
+        return max(self.visible_count - self.answered_count, 0)
+
+    def _azm_returned_outstanding(self, returns):
+        self.ensure_one()
+        # counted the way the whole assessment is counted: a visible question with a
+        # value in it is answered
+        lines = self.answer_ids.filtered(
+            lambda line: line.is_visible and returns._covers(line))
+        return len(lines) - len(lines.filtered("has_value"))
+
+    def action_open_workspace(self, focus=None):
+        """Open the workspace, on the stage that was asked for when one is named."""
+        self.ensure_one()
+        params = {"assessment_id": self.id}
+        if focus and focus.get("level") == "stage":
+            params["stage_id"] = focus["id"]
+        elif focus and focus.get("level") == "question":
+            params["stage_id"] = self.env["azm.question"].browse(focus["id"]).stage_id.id
         return {
             "type": "ir.actions.client", "tag": "azm_workspace", "name": self.name,
-            "params": {"assessment_id": self.id},
+            "params": params,
         }
 
     def action_submit(self):
-        for rec in self:
-            if rec.state != "draft":
-                continue
+        """Send the cycle assessment to whoever reviews it."""
+        for rec in self.filtered(lambda r: r.state == "draft"):
             rec.action_sync_findings()
-            rec.state = "review"
-            if rec.reviewer_id:
-                # the preparer loses write access once the assessment leaves draft: notify as superuser
-                rec.sudo().activity_schedule("mail.mail_activity_data_todo", user_id=rec.reviewer_id.id,
-                                      summary="مراجعة إفادة AZM")
+            rec._submit_for_review("مراجعة إفادة دورة المشتريات")
 
     def action_back_to_draft(self):
-        self.filtered(lambda r: r.state == "review").write({"state": "draft"})
+        self.filtered(lambda r: r.state == "review")._workflow().write({"state": "draft"})
 
     def action_approve(self):
-        if not self.env.user.has_group("azm_operating_model.azm_group_manager"):
-            raise UserError("الاعتماد لمدير النموذج فقط.")
+        # The reviewer is who the work was sent to; making them unable to accept it
+        # left the role with nothing to do but look. What stays is the part that
+        # matters — nobody signs off their own work, which is checked below.
+        if not (self.env.user.has_group("azm_operating_model.azm_group_reviewer")
+                or self.env.user.has_group("azm_operating_model.azm_group_manager")):
+            raise UserError("الاعتماد للمراجع أو مدير النموذج.")
         for rec in self:
             if rec.state != "review":
                 raise UserError("الاعتماد يتم من حالة «تحت المراجعة» فقط.")
-            if rec.user_id == self.env.user and not self.env.is_superuser():
-                raise UserError("مُعد الإفادة لا يعتمدها بنفسه (فصل المهام).")
+            rec._azm_check_not_own_work()
             snapshot = "".join(str(rec._render(tab)) for tab in ("book", "policy", "procedure",
                                                                     "workflow", "authority", "risks"))
             answers = {a.question_id.code: a._engine_value() for a in rec.answer_ids if a.has_value}
@@ -286,7 +384,7 @@ class AzmAssessment(models.Model):
                 "answers_json": json.dumps(answers, ensure_ascii=False, indent=1),
                 "snapshot_html": snapshot,
             })
-            rec.write({"state": "approved", "approved_by_id": self.env.user.id,
+            rec._workflow().write({"state": "approved", "approved_by_id": self.env.user.id,
                        "approved_date": fields.Datetime.now()})
 
     def action_new_version(self):
@@ -294,13 +392,19 @@ class AzmAssessment(models.Model):
         if self.state != "approved":
             raise UserError("الإصدار الجديد يتعمل من إفادة معتمدة.")
         new = self.copy({"version": self.version + 1, "previous_id": self.id, "name": "جديد"})
-        self.state = "archived"
+        self._workflow().state = "archived"
         return {"type": "ir.actions.act_window", "res_model": self._name, "res_id": new.id,
                 "view_mode": "form"}
 
     def action_sync_findings(self):
         """Turn triggered rules into tracked findings; flag ones no longer triggered."""
-        self.check_access("read")
+        # Write, not read: this rewrites the entity's risk register under sudo, and
+        # read access to an assessment is granted far more widely than the right to
+        # change what it produced. Draft only, for the same reason — the register of an
+        # approved assessment is a record of what was approved.
+        self.check_access("write")
+        if self.filtered(lambda rec: rec.state != "draft"):
+            raise UserError(_("Findings are synced while the assessment is a draft."))
         rules = self._rules()
         # findings are generated from the answers, not typed by the preparer:
         # create/refresh them as superuser, reviewers then work them by hand.
@@ -330,8 +434,8 @@ class AzmAssessment(models.Model):
                 for stage in rec._stages():
                     sdict, qdicts, answers, by_q = rec._stage_payload(stage)
                     for qd in engine.visible_questions(sdict, qdicts, answers):
-                        line = by_q[qd["id"]]
-                        if line.has_value:
+                        line = by_q.get(qd["id"])
+                        if not line or line.has_value:
                             continue
                         normal = line.question_id.option_ids.filtered(lambda o: o.kind == "normal")
                         seed = zlib.crc32(f"{stage.code}/{qd['key']}".encode())

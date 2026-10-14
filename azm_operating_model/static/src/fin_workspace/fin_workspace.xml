@@ -47,7 +47,7 @@
                                     </td>
                                 </t>
                                 <td t-if="!d.header.readonly">
-                                    <button t-if="rows.length > 1" class="btn btn-link btn-sm text-danger p-0" title="حذف الصف"
+                                    <button type="button" t-if="rows.length > 1" class="btn btn-link btn-sm text-danger p-0" title="حذف الصف"
                                             t-on-click="() => this.removeRow(r, q, row_index)">×</button>
                                 </td>
                             </tr>
@@ -55,9 +55,9 @@
                     </table>
                 </div>
                 <div class="o_azm_select_row">
-                    <button t-if="!d.header.readonly" class="btn btn-secondary btn-sm" t-on-click="() => this.addRow(r, q)">+ إضافة صف</button>
+                    <button type="button" t-if="!d.header.readonly" class="btn btn-secondary btn-sm" t-on-click="() => this.addRow(r, q)">+ إضافة صف</button>
                     <t t-foreach="this.fallbackOptions(q)" t-as="opt" t-key="opt.id">
-                        <button t-attf-class="o_azm_chip o_azm_chip_soft {{this.isChosen(q, opt) ? 'o_azm_chip_on' : ''}}"
+                        <button type="button" t-attf-class="o_azm_chip o_azm_chip_soft {{this.isChosen(q, opt) ? 'o_azm_chip_on' : ''}}"
                                 t-att-disabled="d.header.readonly" t-on-click="() => this.pick(r, q, opt)" t-out="opt.name"/>
                     </t>
                 </div>
@@ -74,7 +74,7 @@
                         </t>
                     </select>
                     <t t-foreach="this.fallbackOptions(q)" t-as="opt" t-key="opt.id">
-                        <button t-attf-class="o_azm_chip o_azm_chip_soft {{this.isChosen(q, opt) ? 'o_azm_chip_on' : ''}}"
+                        <button type="button" t-attf-class="o_azm_chip o_azm_chip_soft {{this.isChosen(q, opt) ? 'o_azm_chip_on' : ''}}"
                                 t-att-disabled="d.header.readonly" t-on-click="() => this.pick(r, q, opt)" t-out="opt.name"/>
                     </t>
                 </div>
@@ -84,11 +84,11 @@
             <t t-else="">
                 <div class="o_azm_chips">
                     <t t-foreach="this.mainOptions(q)" t-as="opt" t-key="opt.id">
-                        <button t-attf-class="o_azm_chip {{this.isChosen(q, opt) ? 'o_azm_chip_on' : ''}} {{q.qtype === 'multi' ? 'o_azm_chip_multi' : ''}} {{q.role === 'status' ? 'o_azm_fin_status_chip' : ''}}"
+                        <button type="button" t-attf-class="o_azm_chip {{this.isChosen(q, opt) ? 'o_azm_chip_on' : ''}} {{q.qtype === 'multi' ? 'o_azm_chip_multi' : ''}} {{q.role === 'status' ? 'o_azm_fin_status_chip' : ''}}"
                                 t-att-disabled="d.header.readonly" t-on-click="() => this.pick(r, q, opt)" t-out="opt.name"/>
                     </t>
                     <t t-foreach="this.fallbackOptions(q)" t-as="opt" t-key="opt.id">
-                        <button t-attf-class="o_azm_chip o_azm_chip_soft {{this.isChosen(q, opt) ? 'o_azm_chip_on' : ''}}"
+                        <button type="button" t-attf-class="o_azm_chip o_azm_chip_soft {{this.isChosen(q, opt) ? 'o_azm_chip_on' : ''}}"
                                 t-att-disabled="d.header.readonly" t-on-click="() => this.pick(r, q, opt)" t-out="opt.name"/>
                     </t>
                 </div>
@@ -99,14 +99,14 @@
                 <span class="o_azm_fin_label" t-out="q.note_label"/>
                 <div t-if="q.note_options.length" class="o_azm_chips">
                     <t t-foreach="q.note_options" t-as="tag" t-key="tag">
-                        <button t-attf-class="o_azm_chip o_azm_chip_multi {{tag === 'أخرى' ? 'o_azm_chip_soft' : ''}} {{q.value.note_tags.includes(tag) ? 'o_azm_chip_on' : ''}}"
+                        <button type="button" t-attf-class="o_azm_chip o_azm_chip_multi {{tag === 'أخرى' ? 'o_azm_chip_soft' : ''}} {{q.value.note_tags.includes(tag) ? 'o_azm_chip_on' : ''}}"
                                 t-att-disabled="d.header.readonly" t-on-click="() => this.toggleTag(r, q, tag)" t-out="tag"/>
                     </t>
                 </div>
                 <div t-if="q.has_priority" class="o_azm_select_row">
                     <span class="o_azm_muted">الأولوية</span>
                     <t t-foreach="d.priorities" t-as="p" t-key="p.key">
-                        <button t-attf-class="o_azm_chip {{q.value.priority === p.key ? 'o_azm_chip_on' : ''}}"
+                        <button type="button" t-attf-class="o_azm_chip {{q.value.priority === p.key ? 'o_azm_chip_on' : ''}}"
                                 t-att-disabled="d.header.readonly" t-on-click="() => this.setPriority(r, q, p.key)" t-out="p.name"/>
                     </t>
                 </div>
@@ -146,11 +146,57 @@
                     </div>
                     <span class="o_azm_muted"><t t-out="d.header.answered"/>/<t t-out="d.header.questions"/> سؤال · <t t-out="d.header.progress"/>٪</span>
                     <span t-if="this.state.saving" class="o_azm_muted">يحفظ…</span>
-                    <button class="btn btn-secondary btn-sm" t-on-click="() => this.openRecord()">
+                    <!-- the preparer asks for it to be looked at -->
+                    <button type="button" t-if="d.header.can_send" class="btn btn-primary btn-sm"
+                            t-att-disabled="this.state.busy"
+                            t-on-click="() => this.requestReview()">
+                        اطلب المراجعة <em class="o_azm_en">Request review</em>
+                    </button>
+                    <!-- and the reviewer sends a part of it back -->
+                    <button type="button" t-if="d.header.can_return" class="btn btn-outline-warning btn-sm"
+                            t-att-disabled="this.state.busy"
+                            t-on-click="() => this.startReturn('module', d.module.id, d.module.name)">
+                        أعد هذا الموديول <em class="o_azm_en">Send this module back</em>
+                    </button>
+                    <button type="button" class="btn btn-secondary btn-sm" t-on-click="() => this.openRecord()">
                         <t t-out="d.header.name"/>
                     </button>
                 </div>
             </header>
+
+            <!-- why a part came back, read beside the questions rather than remembered
+                 from another page -->
+            <div t-if="d.header.returns.length" class="o_azm_ws_returns">
+                <div t-foreach="d.header.returns" t-as="item" t-key="item.id" class="o_azm_ws_return">
+                    <i class="oi" data-icon="undo" title="عاد"/>
+                    <div>
+                        <b><t t-out="item.part"/></b>
+                        <p t-out="item.note"/>
+                        <small>أعادها <t t-out="item.reviewer"/></small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- the reviewer's note, written where the work is -->
+            <div t-if="this.state.returning" class="o_azm_ws_compose">
+                <label>
+                    سبب الإعادة — <b t-out="this.state.returning.name"/>
+                    <em class="o_azm_en">Why it is coming back</em>
+                </label>
+                <textarea class="form-control" rows="3" placeholder="ما الذي يحتاج معالجة؟"
+                          t-att-value="this.state.returnNote"
+                          t-on-input="(ev) => this.state.returnNote = ev.target.value"/>
+                <div class="o_azm_ws_compose_actions">
+                    <button type="button" class="btn btn-sm btn-light" t-on-click="() => this.cancelReturn()">
+                        تراجع
+                    </button>
+                    <button type="button" class="btn btn-sm btn-warning"
+                            t-att-disabled="this.state.busy or !this.state.returnNote.trim()"
+                            t-on-click="() => this.confirmReturn()">
+                        أعدها مع الملاحظة
+                    </button>
+                </div>
+            </div>
 
             <div class="o_azm_ws_body">
                 <!-- module rail -->
@@ -163,8 +209,16 @@
                         <input type="checkbox" t-att-checked="this.state.onlyOpen" t-on-change="() => this.toggleOnlyOpen()"/>
                         غير المكتمل فقط
                     </label>
+                    <!-- offered only when something actually came back, so it cannot be
+                         switched on to reveal an empty page for no reason -->
+                    <label t-if="d.returns_open" class="o_azm_fin_showall o_azm_fin_returned_filter">
+                        <input type="checkbox" t-att-checked="this.state.onlyReturned"
+                               t-on-change="() => this.toggleOnlyReturned()"/>
+                        المُعاد من المراجع فقط
+                        <span class="o_azm_returned_count" t-out="d.returns_open"/>
+                    </label>
                     <t t-foreach="d.modules" t-as="mod" t-key="mod.code">
-                        <button t-attf-class="o_azm_rail_item o_azm_status_{{this.moduleStatus(mod)}} {{mod.code === this.state.moduleCode ? 'o_azm_active' : ''}}"
+                        <button type="button" t-attf-class="o_azm_rail_item o_azm_status_{{this.moduleStatus(mod)}} {{mod.code === this.state.moduleCode ? 'o_azm_active' : ''}}"
                                 t-on-click="() => this.selectModule(mod)">
                             <span class="o_azm_rail_idx o_azm_fin_idx" t-out="mod.code"/>
                             <span class="o_azm_rail_text">
@@ -194,13 +248,28 @@
                         <div t-if="!d.topics.length" class="o_azm_note">
                             لا توجد متطلبات منطبقة على أنشطة هذا الكيان في هذا الموديول.
                         </div>
+                        <!-- what came back may be under another module: say where it is
+                             rather than leaving a page that looks empty by mistake -->
+                        <div t-if="this.state.onlyReturned and d.topics.length and !this.returnedHere()"
+                             class="o_azm_note">
+                            لا شيء مُعاد في هذا الموديول — المُعاد (<t t-out="d.returns_open"/>)
+                            في موديولات أخرى، اختر منها من القائمة.
+                        </div>
                     </div>
 
                     <t t-foreach="this.visibleTopics()" t-as="topic" t-key="topic.id">
                         <div class="o_azm_fin_topicline">
                             <span class="o_azm_code" t-out="topic.code"/>
                             <span class="o_azm_fin_topicname" t-out="topic.name"/>
-                            <button t-if="topic.prompts.length" class="btn btn-link btn-sm p-0 o_azm_fin_prompts_toggle"
+                            <!-- the sub-module: narrower than the whole module, wider
+                                 than one requirement -->
+                            <button type="button" t-if="d.header.can_return"
+                                    class="o_azm_chip o_azm_chip_soft o_azm_fin_return_chip"
+                                    title="أعد هذا الموضوع مع ملاحظة"
+                                    t-on-click="() => this.startReturn('topic', topic.id, topic.name)">
+                                <i class="oi" data-icon="undo" title="أعد"/> أعده
+                            </button>
+                            <button type="button" t-if="topic.prompts.length" class="btn btn-link btn-sm p-0 o_azm_fin_prompts_toggle"
                                     t-on-click="() => this.togglePrompts(topic)">
                                 أسئلة افتتاحية مقترحة (<t t-out="topic.prompts.length"/>)
                             </button>
@@ -221,8 +290,14 @@
                                     <h4 t-out="r.title"/>
                                     <span t-if="r.state" t-attf-class="o_azm_fin_statepill o_azm_fin_s_{{r.state}}" t-out="this.stateLabel(r)"/>
                                     <span class="o_azm_fin_count" t-if="!r.na"><t t-out="r.q_answered"/>/<t t-out="r.q_total"/> إجابة</span>
-                                    <button t-attf-class="o_azm_chip o_azm_chip_soft o_azm_fin_na_chip {{r.na ? 'o_azm_chip_on' : ''}}"
+                                    <button type="button" t-attf-class="o_azm_chip o_azm_chip_soft o_azm_fin_na_chip {{r.na ? 'o_azm_chip_on' : ''}}"
                                             t-att-disabled="d.header.readonly" t-on-click="() => this.toggleNa(r)">لا ينطبق</button>
+                                    <!-- one requirement back, rather than the module it sits in -->
+                                    <button type="button" t-if="d.header.can_return" class="o_azm_chip o_azm_chip_soft o_azm_fin_return_chip"
+                                            title="أعد هذا المتطلب مع ملاحظة"
+                                            t-on-click="() => this.startReturn('requirement', r.requirement_id, r.title)">
+                                        <i class="oi" data-icon="undo" title="أعد"/> أعده
+                                    </button>
                                 </div>
                                 <p class="o_azm_fin_meta">
                                     <span class="o_azm_code" t-out="r.code"/>
@@ -231,11 +306,18 @@
                                     <span t-if="!r.applicable" class="o_azm_fin_bad"> · غير منطبق على الكيان</span>
                                 </p>
 
-                                <div t-if="r.na" class="o_azm_fin_notebox">
+                                <!-- this requirement is not one of the parts that came
+                                     back, so it stands as it was reviewed -->
+                                <p t-if="r.locked" class="o_azm_fin_locked">
+                                    <i class="oi" data-icon="lock" title="مغلق"/>
+                                    مغلق — الإفادة عادت لأجزاء بعينها، وهذا ليس منها.
+                                    <em class="o_azm_en">Locked: only the parts sent back can be answered.</em>
+                                </p>
+                                <div t-elif="r.na" class="o_azm_fin_notebox">
                                     <span class="o_azm_fin_label">سبب عدم الانطباق <b>*</b></span>
                                     <div class="o_azm_chips">
                                         <t t-foreach="d.na_reasons" t-as="reason" t-key="reason">
-                                            <button t-attf-class="o_azm_chip {{this.reasonChoice(r) === reason ? 'o_azm_chip_on' : ''}}"
+                                            <button type="button" t-attf-class="o_azm_chip {{this.reasonChoice(r) === reason ? 'o_azm_chip_on' : ''}}"
                                                     t-att-disabled="d.header.readonly" t-on-click="() => this.pickReason(r, reason)" t-out="reason"/>
                                         </t>
                                     </div>
@@ -255,7 +337,7 @@
                                         <span t-if="this.hiddenCount(r)" class="o_azm_muted">
                                             <t t-out="this.hiddenCount(r)"/> سؤال يظهر حسب الإجابة
                                         </span>
-                                        <button class="btn btn-link btn-sm p-0 o_azm_fin_evidence" t-on-click="() => this.openEvidence(r)">
+                                        <button type="button" class="btn btn-link btn-sm p-0 o_azm_fin_evidence" t-on-click="() => this.openEvidence(r)">
                                             📎 المصدر والدليل<t t-if="r.attachments"> (<t t-out="r.attachments"/>)</t>
                                         </button>
                                     </div>
@@ -265,8 +347,9 @@
                     </t>
 
                     <div class="o_azm_stage_nav">
-                        <button class="btn btn-secondary" t-on-click="() => this.nextModule(-1)">الموديول السابق</button>
-                        <button class="btn btn-primary" t-on-click="() => this.nextModule(1)">الموديول التالي</button>
+                        <button type="button" class="btn btn-secondary" t-on-click="() => this.nextModule(-1)">الموديول السابق</button>
+                        <button type="button" t-attf-class="btn {{this.nextIsSend ? 'btn-success' : 'btn-primary'}}"
+                                t-on-click="() => this.onNext()" t-out="this.nextLabel"/>
                     </div>
                 </section>
 
@@ -275,15 +358,15 @@
                     <div class="o_azm_live_bar">
                         <span class="o_azm_live_title">المخرجات الحية</span>
                         <div class="btn-group btn-group-sm">
-                            <button t-attf-class="btn {{this.state.scope === 'module' ? 'btn-primary' : 'btn-secondary'}}"
+                            <button type="button" t-attf-class="btn {{this.state.scope === 'module' ? 'btn-primary' : 'btn-secondary'}}"
                                     t-on-click="() => this.setScope('module')">الموديول الحالي</button>
-                            <button t-attf-class="btn {{this.state.scope === 'model' ? 'btn-primary' : 'btn-secondary'}}"
+                            <button type="button" t-attf-class="btn {{this.state.scope === 'model' ? 'btn-primary' : 'btn-secondary'}}"
                                     t-on-click="() => this.setScope('model')">النموذج بالكامل</button>
                         </div>
                     </div>
                     <div class="o_azm_tabs">
                         <t t-foreach="d.tabs" t-as="tab" t-key="tab.key">
-                            <button t-attf-class="o_azm_tab {{this.state.tab === tab.key ? 'o_azm_tab_on' : ''}}"
+                            <button type="button" t-attf-class="o_azm_tab {{this.state.tab === tab.key ? 'o_azm_tab_on' : ''}}"
                                     t-on-click="() => this.setTab(tab.key)" t-out="tab.title"/>
                         </t>
                     </div>

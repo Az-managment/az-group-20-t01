@@ -15,16 +15,30 @@ class AzmStage(models.Model):
     _inherit = 'azm.stage'
 
     azm_domain = fields.Selection(
-        MODEL_DOMAINS, 'Model Domain', compute='_compute_azm_domain', store=True, readonly=False,
+        MODEL_DOMAINS, 'Model Domain', compute='_compute_azm_domain',
+        inverse='_inverse_azm_domain', store=True, readonly=False,
         help='Which part of the operating model this question area belongs to '
              '(used by the AZM Platform cards and statistics).')
+    # Whether somebody chose the domain rather than the code and the governance flag
+    # deciding it. The computation used to infer that from "a value is already there",
+    # which is true of every value it had itself just written — so after the first pass
+    # it could never change its mind. A stage created as operational and later ticked
+    # as governance stayed in the procurement column of every card and filter.
+    azm_domain_manual = fields.Boolean(
+        'Domain set by hand', default=False, copy=False,
+        help='Set when the domain was chosen rather than derived; the derivation then '
+             'leaves it alone.')
+
+    def _inverse_azm_domain(self):
+        for stage in self:
+            stage.azm_domain_manual = True
 
     @api.depends('code', 'is_governance')
     def _compute_azm_domain(self):
         for stage in self:
-            if stage.azm_domain:
-                stage.azm_domain = stage.azm_domain  # keep a value chosen by hand
-            elif stage.is_governance:
+            if stage.azm_domain_manual:
+                continue   # chosen by hand; the derivation does not argue
+            if stage.is_governance:
                 stage.azm_domain = 'governance'
             elif stage.code in FINANCIAL_STAGE_CODES:
                 stage.azm_domain = 'financial'

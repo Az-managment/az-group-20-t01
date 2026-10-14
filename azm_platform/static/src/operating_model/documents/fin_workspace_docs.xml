@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-inherit="azm_operating_model.FinWorkspace" t-inherit-mode="extension">
+        <xpath expr="//p[hasclass('o_azm_fin_meta')]" position="after">
+            <div class="o_azm_doc_bar">
+                <span class="o_azm_code" t-if="r.tree_ref" t-out="r.tree_ref"/>
+                <button class="btn btn-sm btn-light" title="قراءة المستند"
+                        t-on-click="() => this.azmOpenDocument(r, false)">قراءة المستند</button>
+                <button class="btn btn-sm btn-light" title="تنزيل PDF"
+                        t-on-click="() => this.azmOpenDocument(r, true)">تنزيل</button>
+            </div>
+        </xpath>
+    </t>
+</templates>

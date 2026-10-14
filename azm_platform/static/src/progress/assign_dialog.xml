@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="azm_platform.AssignDialog">
+    <Dialog size="'lg'" contentClass="'o_azm_assign_dialog'"
+            title="'توزيع الأجزاء · Assign parts'">
+        <div dir="rtl" class="o_azm_assign">
+
+            <div t-if="this.state.error" class="o_azm_assign_error">
+                <i class="oi me-1" data-icon="error" title="Error"/>
+                <span t-out="this.state.error"/>
+            </div>
+
+            <!-- ============================================ which model to divide -->
+            <t t-if="!this.state.model">
+                <p class="o_azm_assign_lead">
+                    اختر النموذج الذي تريد توزيع أجزائه.
+                    <small class="o_azm_en">Pick the model whose parts you want to hand out.</small>
+                </p>
+                <div t-if="!this.groups.length" class="o_azm_assign_empty">
+                    لا توجد نماذج لتوزيعها.
+                </div>
+                <div t-foreach="this.groups" t-as="group" t-key="group.id"
+                     class="o_azm_assign_group">
+                    <h4 t-out="group.name"/>
+                    <button t-foreach="group.rows" t-as="row"
+                            t-key="row.res_model + '-' + row.id"
+                            type="button" class="o_azm_assign_pick"
+                            t-on-click="() => this.pick(row)">
+                        <span t-attf-class="o_azm_icon_badge o_azm_tone_{{row.tone}}">
+                            <i class="oi" t-att-data-icon="row.icon" t-att-title="row.label"/>
+                        </span>
+                        <span class="o_azm_assign_pick_words">
+                            <b t-out="row.label"/>
+                            <small>
+                                <t t-out="row.parts.length"/> جزء مُسند ·
+                                <t t-out="row.answered"/>/<t t-out="row.total"/>
+                            </small>
+                        </span>
+                        <i class="oi o_azm_assign_pick_go" data-icon="chevron_left" title="اختر"/>
+                    </button>
+                </div>
+            </t>
+
+            <!-- ==================================================== its parts -->
+            <t t-else="">
+                <div class="o_azm_assign_head">
+                    <button type="button" class="o_azm_assign_back"
+                            t-on-click="() => this.backToModels()">
+                        <i class="oi" data-icon="chevron_right" title="رجوع"/>
+                        <t t-if="!this.props.row">كل النماذج</t>
+                        <t t-else="">رجوع</t>
+                    </button>
+                    <span class="o_azm_assign_head_words">
+                        <b t-out="this.state.model.label"/>
+                        <small t-out="this.state.model.entity"/>
+                    </span>
+                </div>
+
+                <p class="o_azm_assign_lead">
+                    الجزء المُسند يصبح لمن أُسند إليه: يجيبه، ويقرأه الباقون دون كتابة.
+                    وما لا يُسند يبقى مع مُعدّ الإفادة.
+                    <small class="o_azm_en">An assigned part is answered by whoever holds
+                        it; what is not assigned stays with the preparer.</small>
+                </p>
+
+                <div t-if="this.state.loading" class="o_azm_assign_loading">
+                    <i class="oi oi-spin" data-icon="progress_activity" title="Loading"/>
+                </div>
+
+                <t t-else="">
+                    <div t-if="!this.state.canWrite" class="o_azm_assign_readonly">
+                        <i class="oi me-1" data-icon="lock" title="للقراءة"/>
+                        لا تملك صلاحية تغيير التوزيع — هذه قراءة فقط.
+                    </div>
+
+                    <div t-foreach="this.state.parts" t-as="part"
+                         t-key="part.level + '-' + part.id"
+                         t-attf-class="o_azm_assign_part o_azm_assign_d{{part.depth}} {{this.isEditing(part) ? 'o_azm_assign_part_on' : ''}}">
+
+                        <div class="o_azm_assign_part_row">
+                            <span class="o_azm_assign_part_main">
+                                <b t-out="part.name"/>
+                                <span class="o_azm_assign_holders">
+                                    <em t-if="!part.users.length" class="o_azm_assign_free">
+                                        مع مُعدّ الإفادة
+                                    </em>
+                                    <!-- keyed by position: two people can share a name,
+                                         and two identical keys collide -->
+                                    <em t-foreach="part.users" t-as="who" t-key="who_index"
+                                        class="o_azm_assign_holder" t-out="who"/>
+                                </span>
+                            </span>
+                            <small t-if="part.total" class="o_azm_assign_count">
+                                <b t-out="part.answered"/>/<t t-out="part.total"/>
+                            </small>
+                            <button t-if="this.state.canWrite" type="button"
+                                    class="o_azm_assign_edit"
+                                    t-att-aria-expanded="this.isEditing(part) ? 'true' : 'false'"
+                                    t-on-click="() => this.editPart(part)">
+                                <i class="oi" t-att-data-icon="part.user_ids.length ? 'edit' : 'person_add'"
+                                   title="غيّر"/>
+                                <t t-if="part.user_ids.length">غيّر</t>
+                                <t t-else="">أسنِد</t>
+                            </button>
+                        </div>
+
+                        <!-- who it goes to -->
+                        <div t-if="this.isEditing(part)" class="o_azm_assign_people">
+                            <div t-if="!this.state.candidates.length" class="o_azm_assign_empty">
+                                لا يوجد أشخاص على هذا الكيان بعد.
+                            </div>
+                            <label t-foreach="this.state.candidates" t-as="user" t-key="user.id"
+                                   t-attf-class="o_azm_assign_person {{this.isPicked(user) ? 'o_azm_assign_person_on' : ''}}">
+                                <input type="checkbox" t-att-checked="this.isPicked(user)"
+                                       t-on-change="() => this.togglePerson(user)"/>
+                                <span t-out="user.name"/>
+                            </label>
+
+                            <div class="o_azm_assign_actions">
+                                <small class="o_azm_assign_picked">
+                                    <t t-if="this.pickedCount()">
+                                        اخترت <t t-out="this.pickedCount()"/>
+                                    </t>
+                                    <t t-else="">بلا أحد — يعود الجزء لمُعدّ الإفادة</t>
+                                </small>
+                                <button type="button" class="btn btn-sm btn-light"
+                                        t-on-click="() => this.editPart(part)">تراجع</button>
+                                <button type="button" class="btn btn-sm o_azm_assign_save"
+                                        t-att-disabled="this.state.busy ? 'disabled' : undefined"
+                                        t-on-click="() => this.savePart(part)">
+                                    <t t-if="this.state.busy">…</t>
+                                    <t t-else="">احفظ</t>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </div>
+
+        <t t-set-slot="footer">
+            <button type="button" class="btn btn-light" t-on-click="() => this.props.close()">
+                أغلق
+            </button>
+        </t>
+    </Dialog>
+</t>
+
+</templates>

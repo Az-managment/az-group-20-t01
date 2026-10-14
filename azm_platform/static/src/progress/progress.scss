@@ -1,0 +1,554 @@
+// التقدّم — everybody's work. It borrows the shapes مساحتي already uses, so the two
+// pages read as one pair rather than two designs.
+//
+// The page is a table of people and a table of models, and its one real job is that a
+// reader can run their eye down a column. So the rows are grids with shared column
+// widths rather than flex rows that each end up a different shape, and the headings
+// above them are the same grid — which is what keeps the columns honest as the content
+// changes.
+.o_azm_progress_page {
+    @include azm-lit-field(rgba(79, 70, 229, .15), rgba(47, 123, 245, .13));
+
+    // one scale, so every gap on the page is a multiple of something
+    --pg-gap: 10px;
+    --pg-pad: 18px;
+    --pg-row-pad: 13px;
+    --pg-section: 30px;
+    --pg-radius: 16px;
+    // the columns both tables share
+    --pg-meter: 190px;
+    --pg-end: 148px;
+
+    // ---------------------------------------------------------------- the hero
+    .o_azm_pg_hero {
+        @include azm-glass(22px);
+        display: flex;
+        align-items: center;
+        gap: 22px;
+        padding: 24px 26px;
+        margin-bottom: 26px;
+
+        h1 {
+            margin: 2px 0 0;
+            font-weight: 800;
+            letter-spacing: -.4px;
+            background: linear-gradient(100deg, $azm-ink 10%, $azm-blue 55%, #7c3aed 90%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            small { -webkit-text-fill-color: $azm-muted; }
+        }
+        p { margin: 5px 0 0; color: $azm-muted; font-size: 13px; }
+        .o_azm_en { display: block; font-size: 11px; }
+    }
+    .o_azm_pg_hero_words { flex: 1 1 auto; min-width: 0; }
+    .o_azm_pg_eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 3px 10px;
+        border-radius: 99px;
+        font-size: 10.5px;
+        font-weight: 700;
+        letter-spacing: .02em;
+        color: $azm-blue;
+        background: rgba($azm-blue, .1);
+        em { font-style: normal; font-weight: 500; color: rgba($azm-ink, .5); }
+    }
+
+    .o_azm_pg_hero_gauge {
+        display: flex;
+        align-items: center;
+        gap: 13px;
+        flex: 0 0 auto;
+        padding-inline-start: 22px;
+        border-inline-start: 1px solid rgba(15, 35, 71, .08);
+        --azm-tone: #{map-get($azm-tones, 'indigo')};
+
+        .o_azm_ring_wrap {
+            position: relative;
+            display: grid;
+            place-items: center;
+            width: 78px;
+            height: 78px;
+        }
+        .o_azm_ring { width: 78px; height: 78px; /*rtl:ignore*/transform: rotate(-90deg); }
+        .o_azm_ring circle { fill: none; stroke-width: 4.5; stroke-linecap: round; }
+        .o_azm_ring_track { stroke: rgba(15, 35, 71, .08); }
+        .o_azm_ring_value {
+            stroke: var(--azm-tone);
+            filter: drop-shadow(0 0 5px color-mix(in srgb, var(--azm-tone) 55%, transparent));
+            transition: stroke-dasharray .7s cubic-bezier(.2, .8, .2, 1);
+        }
+        .o_azm_ring_label {
+            position: absolute;
+            font-size: 19px;
+            font-weight: 800;
+            letter-spacing: -.5px;
+            color: $azm-ink;
+            i { font-style: normal; font-size: 11px; font-weight: 700; color: $azm-muted; }
+        }
+    }
+    .o_azm_pg_hero_gauge_words {
+        display: flex;
+        flex-direction: column;
+        font-size: 13px;
+        font-weight: 600;
+        .o_azm_en { font-size: 11px; font-weight: 400; color: $azm-muted; }
+    }
+    .o_azm_pg_hero_btn {
+        flex: 0 0 auto;
+        display: inline-flex;
+        align-items: center;
+        border-radius: 11px;
+        padding: 9px 15px;
+        font-size: 12.5px;
+        font-weight: 600;
+        color: #fff;
+        border: 0;
+        background: linear-gradient(135deg, $azm-blue, #4f46e5);
+        box-shadow: 0 6px 16px rgba($azm-blue, .3);
+        transition: transform .15s ease, box-shadow .15s ease;
+        &:hover { color: #fff; transform: translateY(-1px); box-shadow: 0 10px 22px rgba($azm-blue, .36); }
+        &:active { transform: translateY(0); }
+    }
+
+    // ------------------------------------------------------------- the figures
+    .o_azm_pg_kpis {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(186px, 1fr));
+        gap: 13px;
+        margin-bottom: var(--pg-section);
+    }
+    .o_azm_pg_kpi {
+        @include azm-glass(var(--pg-radius));
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+        padding: 15px 16px 14px;
+        overflow: hidden;
+        // the tone reads as a line of light along the top edge rather than a block of
+        // colour, which at five tiles side by side becomes a stripe of noise
+        &::before {
+            content: "";
+            position: absolute;
+            inset-block-start: 0;
+            inset-inline: 0;
+            height: 3px;
+            background: linear-gradient(90deg,
+                var(--azm-tone, #{$azm-blue}),
+                color-mix(in srgb, var(--azm-tone, #{$azm-blue}) 25%, transparent));
+        }
+    }
+    .o_azm_pg_kpi_top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 8px;
+    }
+    .o_azm_pg_kpi_label {
+        display: flex;
+        flex-direction: column;
+        font-size: 12px;
+        font-weight: 600;
+        color: $azm-ink;
+        em {
+            font-style: normal;
+            font-size: 10px;
+            font-weight: 400;
+            color: $azm-muted;
+        }
+    }
+    .o_azm_pg_kpi_icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 auto;
+        width: 30px;
+        height: 30px;
+        border-radius: 9px;
+        color: var(--azm-tone, #{$azm-blue});
+        background: color-mix(in srgb, var(--azm-tone, #{$azm-blue}) 12%, transparent);
+        .oi { font-size: 16px; }
+    }
+    .o_azm_pg_kpi_value {
+        font-size: 30px;
+        font-weight: 800;
+        line-height: 1;
+        letter-spacing: -1px;
+        color: $azm-ink;
+        font-variant-numeric: tabular-nums;
+    }
+    .o_azm_pg_kpi_sub { font-size: 10.5px; color: $azm-muted; }
+
+    // ------------------------------------------------------- sections and panels
+    .o_azm_pg_section { margin-bottom: var(--pg-section); }
+    .o_azm_pg_title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0 0 11px;
+        font-size: 13px;
+        font-weight: 700;
+        color: $azm-ink;
+        em { font-style: normal; font-size: 10.5px; color: $azm-muted; }
+    }
+    .o_azm_pg_title_count {
+        min-width: 20px;
+        padding: 1px 7px;
+        border-radius: 99px;
+        font-size: 10.5px;
+        font-weight: 700;
+        text-align: center;
+        color: $azm-muted;
+        background: rgba(15, 35, 71, .07);
+    }
+
+    .o_azm_pg_panel {
+        @include azm-glass(var(--pg-radius));
+        overflow: hidden;
+        + .o_azm_pg_panel { margin-top: 13px; }
+    }
+
+    // ------------------------------------------------------- the shared columns
+    .o_azm_pg_person_grid {
+        display: grid;
+        grid-template-columns: 38px minmax(0, 1fr) var(--pg-meter) var(--pg-end);
+        align-items: center;
+        gap: var(--pg-gap);
+    }
+    .o_azm_pg_model_grid {
+        display: grid;
+        grid-template-columns: 46px minmax(0, 1fr) var(--pg-meter) var(--pg-end) auto;
+        align-items: center;
+        gap: var(--pg-gap);
+    }
+
+    // the headings the rows line up under: the one thing that tells a reader the
+    // numbers in a column are the same kind of number
+    .o_azm_pg_head {
+        padding: 9px var(--pg-pad);
+        border-bottom: 1px solid rgba(15, 35, 71, .07);
+        background: rgba(15, 35, 71, .018);
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: .03em;
+        color: $azm-muted;
+        .o_azm_pg_head_end { text-align: end; }
+    }
+
+    .o_azm_pg_row {
+        padding: var(--pg-row-pad) var(--pg-pad);
+        transition: background .14s ease;
+        + .o_azm_pg_row { border-top: 1px solid rgba(15, 35, 71, .06); }
+        &:hover { background: rgba($azm-blue, .035); }
+        // an open row and its parts read as one block
+        &.o_azm_pg_row_open { background: rgba($azm-blue, .045); }
+    }
+    // a row nobody has moved in a week says so down its edge
+    .o_azm_pg_stalled {
+        /*rtl:ignore*/
+        box-shadow: inset 3px 0 0 rgba(249, 115, 22, .55);
+    }
+
+    .o_azm_pg_cell_main {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        b {
+            font-size: 12.5px;
+            font-weight: 650;
+            color: $azm-ink;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+    }
+    .o_azm_ref {
+        margin-inline-start: 7px;
+        font-weight: 400;
+        font-size: 10.5px;
+        color: $azm-muted;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    // what somebody is on, as separate pills rather than one sentence strung together
+    // with middots — three facts read faster than one long clause
+    .o_azm_pg_tags {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 5px;
+    }
+    .o_azm_pg_tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        max-width: 100%;
+        padding: 2px 8px;
+        border-radius: 99px;
+        font-style: normal;
+        font-size: 10.5px;
+        font-weight: 500;
+        color: $azm-ink;
+        background: rgba(15, 35, 71, .055);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        .oi { font-size: 12px; color: $azm-muted; }
+        &.o_azm_pg_tag_quiet { color: $azm-muted; background: transparent; padding-inline: 2px; }
+        &.o_azm_pg_tag_person b { font-weight: 700; color: $azm-blue; }
+        // somebody who answered here and is no longer on the part
+        &.o_azm_pg_tag_off {
+            color: $azm-muted;
+            background: transparent;
+            border: 1px dashed rgba(15, 35, 71, .18);
+            b { color: $azm-muted; }
+        }
+    }
+
+    // the count sits above the bar, so the eye reads the number and the bar confirms it
+    .o_azm_pg_cell_meter {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        min-width: 0;
+        .o_azm_progress { width: 100%; }
+        &.o_azm_pg_cell_empty {
+            align-items: center;
+            color: rgba(15, 35, 71, .22);
+            font-weight: 700;
+        }
+    }
+    .o_azm_pg_meter_line {
+        display: flex;
+        align-items: baseline;
+        gap: 4px;
+        font-variant-numeric: tabular-nums;
+        b { font-size: 12.5px; font-weight: 700; color: $azm-ink; }
+        small { font-size: 10.5px; color: $azm-muted; }
+        .o_azm_pg_meter_left {
+            margin-inline-start: auto;
+            font-weight: 600;
+            color: #c2410c;
+        }
+    }
+
+    .o_azm_pg_cell_end {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 5px;
+        text-align: end;
+    }
+    .o_azm_pg_facts { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 5px; }
+    .o_azm_fact {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 8px;
+        border-radius: 99px;
+        font-size: 10.5px;
+        font-weight: 600;
+        color: $azm-muted;
+        background: rgba(15, 35, 71, .05);
+        white-space: nowrap;
+        .oi { font-size: 12px; }
+        &.o_azm_fact_warn { color: #c2410c; background: rgba(249, 115, 22, .14); }
+        &.o_azm_fact_gap { color: #6d28d9; background: rgba(124, 58, 237, .12); }
+        &.o_azm_fact_quiet {
+            color: rgba($azm-muted, .85);
+            background: transparent;
+            border: 1px solid rgba(15, 35, 71, .09);
+            font-variant-numeric: tabular-nums;
+        }
+    }
+
+    .o_azm_standing {
+        padding: 3px 10px;
+        border-radius: 99px;
+        font-size: 10.5px;
+        font-weight: 600;
+        white-space: nowrap;
+        &.o_azm_standing_warn  { background: rgba(#f97316, .14); color: #c2410c; }
+        &.o_azm_standing_info  { background: rgba($azm-blue, .12); color: $azm-blue; }
+        &.o_azm_standing_ok    { background: rgba(#16a34a, .14); color: #15803d; }
+        &.o_azm_standing_muted { background: rgba($azm-muted, .14); color: $azm-muted; }
+    }
+
+    // ------------------------------------------------------------------ people
+    // a disc of initials rather than the same person glyph five times over: at a
+    // glance it is the only thing on the row that says which person it is
+    .o_azm_pg_face {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 38px;
+        height: 38px;
+        border-radius: 12px;
+        font-size: 13px;
+        font-weight: 700;
+        color: #fff;
+        background: linear-gradient(135deg,
+            color-mix(in srgb, var(--azm-tone, #{$azm-blue}) 78%, white),
+            var(--azm-tone, #{$azm-blue}));
+        box-shadow: 0 3px 8px color-mix(in srgb, var(--azm-tone, #{$azm-blue}) 32%, transparent);
+    }
+
+    // ---------------------------------------------------------------- entities
+    .o_azm_pg_entity_head {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 13px var(--pg-pad);
+        border-bottom: 1px solid rgba(15, 35, 71, .07);
+        background: linear-gradient(180deg, rgba(15, 35, 71, .028), transparent);
+        .o_azm_icon_badge { width: 38px; height: 38px; border-radius: 11px; .oi { font-size: 19px; } }
+    }
+    .o_azm_pg_entity_words {
+        flex: 1 1 auto;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        h3 { margin: 0; font-size: 13.5px; font-weight: 700; color: $azm-ink; }
+        small { font-size: 11px; color: $azm-muted; b { color: $azm-ink; font-weight: 700; } }
+    }
+    .o_azm_pg_entity_gauge {
+        flex: 0 0 auto;
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        width: calc(var(--pg-meter) + var(--pg-end) + var(--pg-gap));
+        .o_azm_progress { flex: 1 1 auto; }
+        b {
+            font-size: 12px;
+            font-weight: 700;
+            color: $azm-ink;
+            font-variant-numeric: tabular-nums;
+            min-width: 34px;
+            text-align: end;
+        }
+    }
+
+    .o_azm_pg_cell_actions { display: flex; gap: 6px; }
+    .o_azm_pg_btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 6px 10px;
+        border-radius: 9px;
+        font-size: 11px;
+        font-weight: 600;
+        color: $azm-ink;
+        border: 1px solid rgba(15, 35, 71, .1);
+        background: rgba(255, 255, 255, .72);
+        transition: background .14s ease, border-color .14s ease;
+        &:hover { background: #fff; border-color: rgba($azm-blue, .35); color: $azm-blue; }
+        .oi { font-size: 14px; transition: transform .18s ease; }
+        .o_azm_open {
+            // the page is rtl and the bundle is mirrored by language; a mirrored caret
+            // points away from the row it opens
+            /*rtl:ignore*/
+            transform: rotate(-90deg);
+        }
+    }
+
+    // ------------------------------------- the parts of a model, under its row
+    .o_azm_pg_parts {
+        position: relative;
+        padding: 4px 0 8px;
+        background: rgba($azm-blue, .028);
+        border-top: 1px solid rgba(15, 35, 71, .06);
+    }
+    .o_azm_pg_part {
+        display: grid;
+        grid-template-columns: 10px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: var(--pg-gap);
+        padding: 7px var(--pg-pad);
+        // the parts sit under the model they belong to, held there by a rail rather
+        // than by indentation alone
+        padding-inline-start: calc(var(--pg-pad) + 22px);
+        position: relative;
+        &::before {
+            content: "";
+            position: absolute;
+            inset-block: 0;
+            inset-inline-start: calc(var(--pg-pad) + 22px);
+            width: 1px;
+            background: rgba(15, 35, 71, .1);
+        }
+        &:first-child::before { inset-block-start: 50%; }
+        &:last-child::before { inset-block-end: 50%; }
+        b { font-size: 11.5px; }
+    }
+    .o_azm_pg_part_count {
+        font-size: 10.5px;
+        color: $azm-muted;
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+        b { color: $azm-ink; font-weight: 700; }
+    }
+    .o_azm_part_level {
+        margin-inline-start: 6px;
+        padding: 1px 7px;
+        border-radius: 99px;
+        font-size: 10px;
+        font-weight: 600;
+        color: $azm-blue;
+        background: rgba(29, 99, 224, .1);
+    }
+
+    .o_azm_om_meter { @include azm-meter; }
+    .o_azm_card { @include azm-glass(var(--pg-radius)); }
+
+    // ------------------------------------------------------------- narrow views
+    // the columns stop being columns before they start squeezing the names: the meter
+    // and the standing drop under the name rather than shrinking beside it
+    @media (max-width: 1200px) {
+        --pg-meter: 150px;
+        --pg-end: 126px;
+    }
+    @media (max-width: 992px) {
+        .o_azm_pg_head { display: none; }
+        .o_azm_pg_person_grid,
+        .o_azm_pg_model_grid {
+            grid-template-columns: 42px minmax(0, 1fr) auto;
+            row-gap: 9px;
+        }
+        .o_azm_pg_cell_meter,
+        .o_azm_pg_cell_end {
+            grid-column: 2 / -1;
+        }
+        .o_azm_pg_cell_end {
+            flex-direction: row;
+            align-items: center;
+            justify-content: flex-start;
+            flex-wrap: wrap;
+        }
+        .o_azm_pg_cell_meter { width: 100%; }
+        .o_azm_pg_entity_gauge { width: 160px; }
+    }
+    @media (max-width: 768px) {
+        .o_azm_pg_hero {
+            flex-wrap: wrap;
+            padding: 20px;
+            gap: 16px;
+        }
+        .o_azm_pg_hero_gauge {
+            padding-inline-start: 0;
+            border-inline-start: 0;
+        }
+        .o_azm_pg_kpi_value { font-size: 26px; }
+        .o_azm_pg_entity_gauge { display: none; }
+        .o_azm_pg_part { padding-inline-start: calc(var(--pg-pad) + 10px); &::before { display: none; } }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .o_azm_pg_hero_btn,
+        .o_azm_pg_btn .oi,
+        .o_azm_ring_value { transition: none; }
+    }
+}

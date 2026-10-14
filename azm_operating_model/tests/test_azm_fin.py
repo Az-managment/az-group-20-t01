@@ -144,14 +144,26 @@ class TestAzmFinancialModel(TransactionCase):
             a.with_user(self.preparer).action_approve()
         a.with_user(self.manager).action_approve()
         self.assertEqual((a.state, len(a.version_ids)), ("approved", 1))
+        # the point of an approved snapshot is that it records what was approved and
+        # does not move afterwards — truthiness proved neither
         snapshot = json.loads(a.version_ids.answers_json)
-        self.assertTrue(snapshot["FIN-004"]["answers"])
+        line = self._line("FIN-004")
+        self.assertEqual(snapshot["FIN-004"]["state"], line.state)
+        self.assertEqual(snapshot["FIN-004"]["answers"], line._snapshot()["answers"])
+        frozen = dict(snapshot["FIN-004"])
         line = self._line("FIN-001")
         with self.assertRaises((UserError, AccessError)):
             a.with_user(self.preparer).workspace_answer(line.id, line.requirement_id.question_ids[:1].id, {"option_id": False})
         new = self.env["azm.fin.assessment"].browse(a.with_user(self.manager).action_new_version()["res_id"])
         self.assertEqual((new.version, new.state, a.state), (2, "draft", "archived"))
         self.assertEqual((new.done_count, new.answered_count), (a.done_count, a.answered_count))
+        # the approved history is immutable: answering again in the new version must not
+        # reach back into what was approved
+        moved = new.answer_ids.filtered(lambda x: x.code == "FIN-004")[:1]
+        if moved and moved.qanswer_ids:
+            moved.qanswer_ids[:1].option_id = False
+        self.assertEqual(json.loads(a.version_ids.answers_json)["FIN-004"], frozen,
+                         "the snapshot still says what was approved")
 
     def test_each_user_sees_own_data(self):
         theirs = self.env["azm.fin.assessment"].with_user(self.preparer_b).create({"entity_id": self.other.id})

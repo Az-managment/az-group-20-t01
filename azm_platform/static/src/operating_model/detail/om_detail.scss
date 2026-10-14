@@ -1,0 +1,244 @@
+// The sheet that shows what is behind a figure, beside the page rather than instead
+// of it. Anchored to the inline end so the page stays where the reader left it, and
+// scrimmed so it is plainly a layer rather than a new place.
+.o_azm_detail_scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 1040;
+    background: rgba(11, 31, 69, .28);
+    backdrop-filter: blur(1.5px);
+    animation: o_azm_detail_fade .18s ease both;
+}
+
+.o_azm_detail {
+    position: fixed;
+    inset-block: 0;
+    inset-inline-end: 0;
+    z-index: 1041;
+    // not min(560px, 100vw): sass evaluates min() itself and refuses to compare px
+    // with vw, which fails the whole bundle rather than this one rule
+    width: 560px;
+    max-width: 100vw;
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(180deg, #fbfdff, #f4f8fd);
+    border-inline-start: 1px solid rgba(15, 35, 71, .1);
+    box-shadow: -24px 0 60px rgba(15, 35, 71, .16);
+    animation: o_azm_detail_in .22s cubic-bezier(.2, .8, .2, 1) both;
+
+    // ------------------------------------------------------------------ head
+    .o_azm_detail_head {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 16px 18px;
+        border-bottom: 1px solid rgba(15, 35, 71, .08);
+        background: #fff;
+        // the kind's tone, as an edge of light along the top
+        box-shadow: inset 0 3px 0 var(--azm-tone, #{$azm-blue});
+    }
+    .o_azm_detail_titles {
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        strong { font-size: 15px; font-weight: 750; letter-spacing: -.2px; color: $azm-ink; }
+        small { font-size: 11px; color: $azm-muted; font-variant-numeric: tabular-nums; }
+    }
+    .o_azm_detail_close {
+        flex: 0 0 auto;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 9px;
+        border: 1px solid rgba(15, 35, 71, .1);
+        background: #fff;
+        color: $azm-muted;
+        &:hover { color: $azm-ink; border-color: rgba(15, 35, 71, .25); }
+    }
+
+    // ---------------------------------------------------------------- search
+    .o_azm_detail_search {
+        position: relative;
+        padding: 12px 18px;
+        border-bottom: 1px solid rgba(15, 35, 71, .07);
+        background: #fff;
+        > .oi {
+            position: absolute;
+            inset-block-start: 50%;
+            inset-inline-start: 28px;
+            transform: translateY(-50%);
+            font-size: 16px;
+            color: $azm-muted;
+            pointer-events: none;
+        }
+        .form-control {
+            padding-inline-start: 36px;
+            border-radius: 10px;
+            border-color: rgba(15, 35, 71, .12);
+            font-size: 12.5px;
+            &:focus { border-color: rgba($azm-blue, .5); box-shadow: 0 0 0 3px rgba($azm-blue, .12); }
+        }
+    }
+
+    // ----------------------------------------------------------------- rows
+    .o_azm_detail_body {
+        flex: 1 1 auto;
+        overflow-y: auto;
+        padding: 14px 18px 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    .o_azm_detail_row {
+        padding: 11px 13px;
+        border-radius: 12px;
+        border: 1px solid rgba(15, 35, 71, .09);
+        background: #fff;
+        transition: border-color .14s ease, box-shadow .14s ease;
+        &.o_azm_detail_row_more { cursor: pointer; }
+        &.o_azm_detail_row_more:hover {
+            border-color: color-mix(in srgb, var(--azm-tone, #{$azm-blue}) 45%, transparent);
+            box-shadow: 0 6px 16px rgba(15, 35, 71, .07);
+        }
+        &.o_azm_detail_row_on {
+            border-color: color-mix(in srgb, var(--azm-tone, #{$azm-blue}) 55%, transparent);
+            .o_azm_detail_caret { transform: rotate(180deg); }
+        }
+    }
+    .o_azm_detail_row_top {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+    }
+    .o_azm_detail_code {
+        flex: 0 0 auto;
+        padding: 2px 8px;
+        border-radius: 99px;
+        font-size: 10px;
+        font-weight: 700;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        color: var(--azm-tone, #{$azm-blue});
+        background: color-mix(in srgb, var(--azm-tone, #{$azm-blue}) 12%, transparent);
+        white-space: nowrap;
+    }
+    .o_azm_detail_title {
+        flex: 1 1 auto;
+        min-width: 0;
+        font-size: 12.5px;
+        font-weight: 600;
+        line-height: 1.5;
+        color: $azm-ink;
+    }
+    // a finding's score, where it has one
+    .o_azm_detail_score {
+        flex: 0 0 auto;
+        min-width: 24px;
+        padding: 1px 7px;
+        border-radius: 7px;
+        font-size: 11px;
+        font-weight: 800;
+        text-align: center;
+        color: #c2410c;
+        background: rgba(249, 115, 22, .14);
+        font-variant-numeric: tabular-nums;
+    }
+    .o_azm_detail_caret {
+        flex: 0 0 auto;
+        font-size: 16px;
+        color: $azm-muted;
+        transition: transform .18s ease;
+    }
+    .o_azm_detail_meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        margin-top: 6px;
+        em {
+            font-style: normal;
+            font-size: 10.5px;
+            font-weight: 600;
+            color: $azm-muted;
+            padding: 2px 8px;
+            border-radius: 99px;
+            background: rgba(15, 35, 71, .05);
+        }
+    }
+    .o_azm_detail_more {
+        margin: 9px 0 0;
+        padding-top: 9px;
+        border-top: 1px dashed rgba(15, 35, 71, .14);
+        font-size: 12px;
+        line-height: 1.65;
+        color: $azm-muted;
+        white-space: pre-line;
+    }
+
+    // --------------------------------------------------------------- states
+    .o_azm_detail_loading,
+    .o_azm_detail_empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        padding: 46px 0;
+        color: $azm-muted;
+        .oi { font-size: 28px; opacity: .55; }
+        strong { font-size: 13px; font-weight: 600; }
+    }
+    // The one control that pages the catalogue had no rule at all, so it rendered as
+    // a bare browser button among styled siblings.
+    .o_azm_detail_more_btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        width: 100%;
+        margin-top: 4px;
+        padding: 11px 14px;
+        border-radius: 12px;
+        border: 1px dashed rgba(15, 35, 71, .2);
+        background: rgba(255, 255, 255, .7);
+        color: $azm-ink;
+        font-size: 12px;
+        font-weight: 600;
+        transition: border-color .14s ease, background .14s ease, color .14s ease;
+        small { font-size: 10.5px; color: $azm-muted; font-variant-numeric: tabular-nums; }
+        &:hover:not(:disabled) {
+            border-color: rgba($azm-blue, .5);
+            background: #fff;
+            color: $azm-blue;
+            small { color: $azm-blue; }
+        }
+        &:focus-visible { outline: 2px solid $azm-blue; outline-offset: 2px; }
+        &:disabled { opacity: .6; }
+    }
+    .o_azm_detail_row_more:focus-visible {
+        outline: 2px solid var(--azm-tone, #{$azm-blue});
+        outline-offset: 2px;
+    }
+
+    .o_azm_detail_note {
+        padding: 10px 12px;
+        border-radius: 10px;
+        font-size: 11.5px;
+        color: $azm-muted;
+        background: rgba(15, 35, 71, .05);
+        &.o_azm_detail_note_bad { color: #b42318; background: rgba(239, 68, 68, .1); font-weight: 600; }
+    }
+}
+
+@keyframes o_azm_detail_in {
+    from { opacity: 0; /*rtl:ignore*/ transform: translateX(26px); }
+    to   { opacity: 1; transform: none; }
+}
+@keyframes o_azm_detail_fade {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .o_azm_detail, .o_azm_detail_scrim { animation: none; }
+    .o_azm_detail .o_azm_detail_caret { transition: none; }
+}

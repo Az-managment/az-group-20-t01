@@ -242,7 +242,11 @@ class AzmFinModule(models.Model):
         return True
 
     def action_reload_catalogue(self):
+        self.env["azm.fin.module"].check_access("write")
         self._load_catalogue()
+        # a requirement added here has no answer line on the assessments that already
+        # exist, and one retired here must stop being counted
+        self.env["azm.fin.assessment"]._ensure_all_answers()
         return {"type": "ir.actions.client", "tag": "display_notification",
                 "params": {"type": "success", "message": "تم تحديث كتالوج النموذج المالي."}}
 
@@ -313,10 +317,14 @@ class AzmFinRequirement(models.Model):
     _name = "azm.fin.requirement"
     _description = "متطلب النموذج المالي الموحد"
     _order = "module_sequence, topic_sequence, sequence, id"
-    _rec_names_search = ("title", "code", "req_id", "question")
+    _rec_names_search = ("title", "code", "req_id", "tree_ref", "question")
 
     code = fields.Char("الكود", required=True, index=True, help="الكود السابق (V3) مثل FIN-004 أو HRF-050.")
     req_id = fields.Char("Requirement ID", index=True)
+    tree_ref = fields.Char(
+        "مرجع الشجرة", compute="_compute_tree_ref", store=True, index=True,
+        help="مكان المتطلب في الشجرة: الموضوع ثم ترتيب المتطلب فيه، مثل FIN.PUR.03.01. "
+             "مرجع للتصفح يتغير مع إصدار النموذج؛ الهوية الثابتة هي Requirement ID.")
     module_id = fields.Many2one("azm.fin.module", "الموديول", required=True, ondelete="cascade", index=True)
     module_sequence = fields.Integer(related="module_id.sequence", store=True, string="ترتيب الموديول")
     topic_id = fields.Many2one("azm.fin.topic", "الموضوع الفرعي", ondelete="set null", index=True)
@@ -336,6 +344,41 @@ class AzmFinRequirement(models.Model):
     active = fields.Boolean(default=True)
 
     _code_uniq = models.Constraint("UNIQUE(code)", "كود المتطلب لازم يكون فريد.")
+    # tree_ref is what the tree, the breadcrumb, the PDF cover and the filed document
+    # all name a requirement by, and it is computed from sibling rank — so inserting or
+    # reordering a requirement could quietly give two of them the same name. It cannot
+    # now: the database refuses it instead of filing two documents under one name.
+    # Deferred to commit: reordering requirements inside a topic renumbers all of them,
+    # and any permutation passes through a moment where two rows share a reference.
+    # Postgres checks a plain UNIQUE row by row and would refuse the legal reorder; what
+    # must never be true is the *end state* having duplicates.
+    _tree_ref_uniq = models.Constraint(
+        "UNIQUE(tree_ref) DEFERRABLE INITIALLY DEFERRED",
+        "مرجع الشجرة مكرر؛ لا يمكن أن يحمل متطلبان نفس المرجع.")
+
+    @api.depends("topic_id.code", "topic_id.requirement_ids.sequence", "module_id.code", "sequence")
+    def _compute_tree_ref(self):
+        """Model › module › topic › requirement: FIN.PUR.03.02 is the 2nd requirement of topic FIN.PUR.03.
+
+        Numbered inside the topic (archived ones included, so a retired requirement never
+        shifts the others).
+
+        The rank depends on the siblings, so the whole topic has to recompute when any one
+        of them moves — depending only on this record's own ``sequence`` left the others
+        holding their old rank, which is a duplicate reference, and the reference names the
+        tree leaf, the breadcrumb, the PDF cover and the filed document."""
+        siblings = self.with_context(active_test=False).search(
+            [("topic_id", "in", self.topic_id.ids)], order="sequence, id") if self.topic_id else self.browse()
+        rank = {}
+        for req in siblings:
+            rank.setdefault(req.topic_id.id, []).append(req.id)
+        for req in self:
+            if req.topic_id.code and req.id in rank.get(req.topic_id.id, []):
+                req.tree_ref = f"{req.topic_id.code}.{rank[req.topic_id.id].index(req.id) + 1:02d}"
+            elif req.module_id.code:
+                req.tree_ref = f"FIN.{req.module_id.code}.R{req.sequence:02d}"
+            else:
+                req.tree_ref = False
 
     @api.depends("code")
     def _compute_source(self):
@@ -348,21 +391,24 @@ class AzmFinRequirement(models.Model):
         for req in self:
             req.question_count = counts.get(req, 0)
 
-    @api.depends("code", "title")
+    @api.depends("tree_ref", "code", "title")
     def _compute_display_name(self):
         for req in self:
-            req.display_name = f"[{req.code}] {req.title}" if req.code else req.title
+            ref = req.tree_ref or req.code
+            req.display_name = f"{ref} · {req.title}" if ref else req.title
 
 
 class AzmFinQuestion(models.Model):
     _name = "azm.fin.question"
     _description = "سؤال النموذج المالي الموحد"
     _order = "module_sequence, requirement_id, sequence, id"
-    _rec_names_search = ("label", "code")
+    _rec_names_search = ("label", "code", "tree_ref")
 
     code = fields.Char("كود السؤال", required=True, index=True)
     key = fields.Char("المفتاح", required=True, help="Q001، Q002 … داخل المتطلب؛ يستخدم في شروط الظهور.")
     requirement_id = fields.Many2one("azm.fin.requirement", "المتطلب", required=True, ondelete="cascade", index=True)
+    tree_ref = fields.Char(related="requirement_id.tree_ref", store=True, index=True, string="مرجع الشجرة",
+                           help="كود المتطلب/المستند الذي ينتمي إليه السؤال، مثل FIN.PUR.01.01.")
     module_id = fields.Many2one(related="requirement_id.module_id", store=True, string="الموديول")
     module_sequence = fields.Integer(related="requirement_id.module_sequence", store=True)
     topic_id = fields.Many2one(related="requirement_id.topic_id", store=True, string="الموضوع الفرعي")

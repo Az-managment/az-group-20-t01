@@ -23,17 +23,24 @@
                         <a href="#" t-att-class="{'active': this.state.activeMenuId === item.id}"
                            t-att-title="item.name" t-att-data-menu-xmlid="item.menu.xmlid"
                            t-on-click.prevent="() => this.onClick(item)">
-                            <i class="oi" t-att-data-icon="item.icon" t-att-title="item.name"/>
+                            <t t-if="item.mark" t-call="{{item.mark}}"/>
+                            <i t-else="" class="oi" t-att-data-icon="item.icon" t-att-title="item.name"/>
                             <span t-out="item.name"/>
                         </a>
                     </li>
                 </t>
             </ul>
             <div class="o_azm_sidebar_footer">
-                <strong>Together...</strong>
-                <span>Towards a unified operating model for a greater impact</span>
-                <small>One Group</small>
-                <small>A Stronger Tomorrow</small>
+                <div class="o_azm_lang_switch" role="group" aria-label="Language">
+                    <t t-foreach="this.languages" t-as="lang" t-key="lang.code">
+                        <button type="button"
+                                t-att-class="{'active': lang.code === this.currentLang}"
+                                t-att-aria-pressed="lang.code === this.currentLang ? 'true' : 'false'"
+                                t-att-title="lang.name"
+                                t-on-click="() => this.setLanguage(lang.code)"
+                                t-out="lang.label"/>
+                    </t>
+                </div>
             </div>
         </nav>
     </t>

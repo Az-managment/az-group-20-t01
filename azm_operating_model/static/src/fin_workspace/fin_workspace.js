@@ -33,14 +33,72 @@ export class AzmFinWorkspace extends Component {
             output: markup(""),
             showAll: false,
             onlyOpen: false,
+            onlyReturned: false,
             busy: false,
             saving: 0,
             openPrompts: {},
             otherReason: {},
+            // the part a reviewer is sending back, and the reason being typed for it
+            returning: null,
+            returnNote: "",
         });
         this.timers = {};
         onWillStart(() => this.load());
-        onWillUnmount(() => this.flushAll());
+        onWillUnmount(() => {
+            clearTimeout(this.scrollTimer);
+            // the pending saves are still sent — leaving a page should not lose what
+            // was typed — but nothing of their answer is written back into a component
+            // that is going away, and a failure here is reported rather than left as
+            // an unhandled rejection
+            this.leaving = true;
+            Promise.resolve(this.flushAll()).catch((error) =>
+                console.warn("AZM: a pending answer could not be saved on leaving", error));
+        });
+    }
+
+    // ------------------------------------------------------------ review
+    /** Start sending a part back: the current module, or one requirement of it. */
+    startReturn(level, id, name) {
+        this.state.returning = { level, id, name };
+        this.state.returnNote = "";
+    }
+
+    cancelReturn() {
+        this.state.returning = null;
+        this.state.returnNote = "";
+    }
+
+    async confirmReturn() {
+        const note = (this.state.returnNote || "").trim();
+        if (!note || !this.state.returning) {
+            return;
+        }
+        this.state.busy = true;
+        try {
+            await this.orm.call("azm.dashboard", "return_review_part", [], {
+                res_model: MODEL,
+                assessment_id: this.assessmentId,
+                level: this.state.returning.level,
+                part_id: this.state.returning.id,
+                note,
+            });
+            this.cancelReturn();
+            await this.load();
+        } finally {
+            this.state.busy = false;
+        }
+    }
+
+    /** Ask for the work to be reviewed. */
+    async requestReview() {
+        this.state.busy = true;
+        try {
+            await this.flushAll();
+            await this.orm.call(MODEL, "action_submit", [[this.assessmentId]]);
+            await this.load();
+        } finally {
+            this.state.busy = false;
+        }
     }
 
     // ------------------------------------------------------------ data
@@ -60,7 +118,11 @@ export class AzmFinWorkspace extends Component {
         if (this.focusCode) {
             const code = this.focusCode;
             this.focusCode = false;
-            setTimeout(() => document.querySelector(`[data-req="${code}"]`)?.scrollIntoView({ block: "start" }), 50);
+            // held so it can be cancelled: the component can be left before it fires,
+            // and a timer that outlives it reaches into a page that has gone
+            this.scrollTimer = setTimeout(
+                () => document.querySelector(`[data-req="${code}"]`)
+                    ?.scrollIntoView({ block: "start" }), 50);
         }
     }
 
@@ -103,6 +165,10 @@ export class AzmFinWorkspace extends Component {
                 tab: this.state.tab,
                 scope: this.state.scope,
             });
+            if (this.leaving) {
+                // the save was sent and has landed; there is no component left to tell
+                return;
+            }
             this.applyRequirement(result.requirement);
             this.d.header = result.header;
             this.d.modules = result.modules;
@@ -292,11 +358,102 @@ export class AzmFinWorkspace extends Component {
         this.load(module.code);
     }
 
+    /** The modules the nav is showing, in the order it shows them. */
+    get navModules() {
+        return this.d.modules.filter((m) => (this.state.showAll ? m.total : m.applicable));
+    }
+
+    /** Still owed answers. A module is finished when every question it shows is answered. */
+    unfinished(module) {
+        return (module.answered || 0) < (module.questions || 0);
+    }
+
+    get missing() {
+        return this.navModules.filter((m) => this.unfinished(m));
+    }
+
+    get atLastModule() {
+        const mods = this.navModules;
+        return !!mods.length && mods[mods.length - 1].code === this.state.moduleCode;
+    }
+
+    /** Whether the assessment can go for review — the server's answer, not ours. */
+    get canSend() {
+        return !!(this.d && this.d.header && this.d.header.can_send);
+    }
+
+    /**
+     * What the forward button says.
+     *
+     * At the end of the model it stops being "next" and becomes whatever is actually
+     * left to do: the first module still missing answers, or — when there is nothing
+     * missing — sending the whole thing for review, which is what somebody who has just
+     * finished came here to do. It only offers that when the server says it may: the
+     * preparer, from draft, with the whole of it answered.
+     */
+    get nextLabel() {
+        if (!this.atLastModule) {
+            return "الموديول التالي";
+        }
+        const left = this.missing.length;
+        if (left) {
+            return `أكمل الناقص (${left})`;
+        }
+        return this.canSend ? "أرسل للمراجعة" : "عُد إلى البداية";
+    }
+
+    get nextIsSend() {
+        return this.atLastModule && !this.missing.length && this.canSend;
+    }
+
+    async onNext() {
+        if (this.nextIsSend) {
+            await this.sendForReview();
+            return;
+        }
+        this.nextModule(1);
+    }
+
+    /** Hand it to whoever reviews it, through the one guarded way in. */
+    async sendForReview() {
+        if (this.sending) {
+            return;
+        }
+        this.sending = true;
+        try {
+            await this.orm.call("azm.dashboard", "submit_my_work", [], {
+                res_model: "azm.fin.assessment",
+                assessment_id: this.d.header.id,
+            });
+            await this.load();   // so the header reads "with the reviewer"
+        } finally {
+            this.sending = false;
+        }
+    }
+
+    /**
+     * Step through the modules, wrapping round at the ends.
+     *
+     * The last module's "next" used to do nothing at all — the reader reached the end
+     * of the model and the button simply stopped answering. It wraps now, and it wraps
+     * to the first module still missing answers rather than to the top, because at the
+     * end of a pass what is left to do is behind you, not in front.
+     */
     nextModule(step) {
-        const mods = this.d.modules.filter((m) => (this.state.showAll ? m.total : m.applicable));
-        const idx = mods.findIndex((m) => m.code === this.state.moduleCode) + step;
-        if (idx >= 0 && idx < mods.length) {
-            this.load(mods[idx].code);
+        const mods = this.navModules;
+        const at = mods.findIndex((m) => m.code === this.state.moduleCode);
+        const to = at + step;
+        if (to >= 0 && to < mods.length) {
+            this.load(mods[to].code);
+            return;
+        }
+        // wrapped: the rest of the model in the direction of travel, this one aside
+        const rest = step > 0
+            ? [...mods.slice(0, at), ...mods.slice(at + 1)]
+            : [...mods.slice(at + 1), ...mods.slice(0, at)].reverse();
+        const target = rest.find((m) => this.unfinished(m)) || rest[0];
+        if (target) {
+            this.load(target.code);
         }
     }
 
@@ -307,6 +464,11 @@ export class AzmFinWorkspace extends Component {
 
     toggleOnlyOpen() {
         this.state.onlyOpen = !this.state.onlyOpen;
+    }
+
+    /** Show only what the reviewer sent back to be answered again. */
+    toggleOnlyReturned() {
+        this.state.onlyReturned = !this.state.onlyReturned;
     }
 
     togglePrompts(topic) {
@@ -339,15 +501,35 @@ export class AzmFinWorkspace extends Component {
     }
 
     // ------------------------------------------------------------ view helpers
+    get filtering() {
+        return this.state.onlyOpen || this.state.onlyReturned;
+    }
+
     visibleTopics() {
-        if (!this.state.onlyOpen) {
+        if (!this.filtering) {
             return this.d.topics;
         }
-        return this.d.topics.filter((t) => t.requirements.some((r) => !r.done));
+        // a topic earns its place by what survives the filters, so the two can be
+        // used together without one of them quietly winning
+        return this.d.topics.filter((t) => this.topicRequirements(t).length);
     }
 
     topicRequirements(topic) {
-        return this.state.onlyOpen ? topic.requirements.filter((r) => !r.done) : topic.requirements;
+        let requirements = topic.requirements;
+        if (this.state.onlyReturned) {
+            requirements = requirements.filter((r) => r.returned);
+        }
+        if (this.state.onlyOpen) {
+            requirements = requirements.filter((r) => !r.done);
+        }
+        return requirements;
+    }
+
+    /** How many returned parts are in the module being looked at, as against the
+     * whole assessment — what came back may be under a module the reader is not on. */
+    returnedHere() {
+        return this.d.topics.reduce(
+            (n, topic) => n + topic.requirements.filter((r) => r.returned).length, 0);
     }
 
     specific(req) {

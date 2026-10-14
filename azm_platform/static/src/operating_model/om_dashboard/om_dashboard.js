@@ -14,12 +14,12 @@ import {
     bar,
     domainHint,
     domainLabel,
-    openFinding as openFindingRecord,
     openWorkspace,
     pct,
     qtypeLabel,
     stageStatusLabel,
 } from "../om_utils";
+import { AzmOmDetail } from "../detail/om_detail";
 
 const STATUS_COLORS = { full: "#16a34a", partial: "#f59e0b", none: "#ef4444", unknown: "#cbd5e1" };
 const GROUP_COLORS = ["#2563eb", "#7c3aed", "#0d9488"];
@@ -32,7 +32,7 @@ const GROUP_COLORS = ["#2563eb", "#7c3aed", "#0d9488"];
  */
 export class AzmOmDashboard extends Component {
     static template = "azm_platform.OmDashboard";
-    static components = { AzmDonutChart };
+    static components = { AzmDonutChart, AzmOmDetail };
     props = useProps(standardActionServiceProps);
 
     setup() {
@@ -50,6 +50,8 @@ export class AzmOmDashboard extends Component {
             assessmentId: false,
             search: "",
             sort: "sequence",
+            // what is behind a figure, shown beside the page
+            detail: null,
         });
         this.pct = pct;
         this.bar = bar;
@@ -303,39 +305,37 @@ export class AzmOmDashboard extends Component {
         }
     }
 
+    // ------------------------------------------------- what is behind a figure
+    /** Show rows beside the page rather than swapping the page for a list view. */
+    showDetail(kind, scope, heading) {
+        this.state.detail = { kind, scope, heading };
+    }
+
+    closeDetail() {
+        this.state.detail = null;
+    }
+
     openQuestions(stage) {
-        const domain = stage
-            ? [["stage_id", "=", stage.id]]
-            : this.state.domain ? [["azm_domain", "=", this.state.domain]] : [];
-        this.action.doAction({
-            type: "ir.actions.act_window",
-            name: stage ? `${_t("Questions")} · ${stage.name}` : _t("Question Catalogue"),
-            res_model: "azm.question",
-            views: [[false, "list"], [false, "form"]],
-            domain,
-            context: stage ? {} : { search_default_by_stage: 1 },
-        });
+        this.showDetail("questions", {
+            stage_id: stage ? stage.id : false,
+            domain_key: stage ? false : this.state.domain || false,
+        }, stage ? `${_t("Questions")} · ${stage.name}` : _t("Question Catalogue"));
     }
 
     openFindings({ stage = false, open = false } = {}) {
-        const domain = [["assessment_id", "in", this.scopeAssessmentIds]];
-        if (stage) {
-            domain.push(["stage_id", "=", stage.id]);
-        } else if (this.state.domain) {
-            domain.push(["azm_domain", "=", this.state.domain]);
-        }
-        this.action.doAction({
-            type: "ir.actions.act_window",
-            name: stage ? `${_t("Risk Register")} · ${stage.name}` : _t("Risk Register"),
-            res_model: "azm.finding",
-            views: [[false, "kanban"], [false, "list"], [false, "form"]],
-            domain,
-            context: open ? { search_default_open: 1 } : {},
-        });
+        this.showDetail("findings", {
+            assessment_ids: this.scopeAssessmentIds,
+            stage_id: stage ? stage.id : false,
+            domain_key: stage ? false : this.state.domain || false,
+            only_open: !!open,
+        }, stage ? `${_t("Risk Register")} · ${stage.name}` : _t("Risk Register"));
     }
 
     openFinding(finding) {
-        openFindingRecord(this.action, finding.id);
+        this.showDetail("findings", {
+            assessment_ids: this.scopeAssessmentIds,
+            finding_id: finding.id,
+        }, finding.code || _t("Finding"));
     }
 
     newAssessment() {

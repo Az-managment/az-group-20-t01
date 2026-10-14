@@ -1,0 +1,131 @@
+// Operating-model documents (PDF). Simple to read: one column, large text,
+// plain headings, few colours. Tables only (no flex / grid) for wkhtmltopdf.
+//
+// These documents are Arabic and are laid out right to left on purpose. Odoo builds a
+// mirrored stylesheet for a right-to-left *interface* language, reports included — so
+// for an Arabic reader rtlcss would flip this sheet to left-to-right, which is the one
+// direction it must never be. The whole file is therefore left alone.
+/*rtl:begin:ignore*/
+$azm-doc-ink: #1f2937;
+$azm-doc-muted: #6b7280;
+$azm-doc-navy: #0b2a5b;
+$azm-doc-blue: #1f4fd8;
+$azm-doc-line: #e5e7eb;
+$azm-doc-soft: #f6f8fb;
+
+.azm_doc, .azm_doc_header, .azm_doc_footer {
+    direction: rtl;
+    text-align: right;
+    font-family: "Noto Naskh Arabic", "Noto Sans Arabic", "Tajawal", "Cairo", "DejaVu Sans", Arial, sans-serif;
+    color: $azm-doc-ink;
+}
+
+.azm_doc {
+    font-size: 13.5px;
+    line-height: 1.85;
+
+    h1 { font-size: 24px; color: $azm-doc-navy; margin: 2px 0 10px; line-height: 1.5; font-weight: bold; }
+    h3 { font-size: 16px; color: $azm-doc-navy; margin: 0 0 6px; font-weight: bold; }
+    small { color: $azm-doc-muted; font-weight: normal; font-size: 11px; }
+    p { margin: 0 0 6px; }
+    ul, ol { margin: 0 0 6px; padding-right: 22px; padding-left: 0; }
+    li { margin-bottom: 3px; }
+}
+
+.azm_doc_type { color: $azm-doc-blue; font-size: 12px; letter-spacing: .3px; }
+.azm_code {
+    display: inline-block; direction: ltr; font-family: "DejaVu Sans Mono", monospace;
+    font-size: 11.5px; color: $azm-doc-blue; background: #eef3ff; border-radius: 4px; padding: 0 6px;
+}
+.azm_code_big { font-size: 15px; padding: 1px 8px; vertical-align: middle; }
+// where a row carries both, the registry number leads and the tree reference follows
+// it quietly: the first says what the row is, the second only where it sits
+.azm_code_dim { color: $azm-doc-muted; background: #f4f5f7; }
+// A binding carries no registry number, so its cover is marked as the collection it is
+// rather than leaving the reader to wonder why the code looks unlike a deliverable's.
+.azm_binding {
+    display: inline-block; font-size: 11.5px; color: $azm-doc-muted;
+    border: 1px solid $azm-doc-muted; border-radius: 4px; padding: 0 6px; vertical-align: middle;
+}
+.azm_muted { color: $azm-doc-muted; }
+.azm_note { color: $azm-doc-muted; font-size: 11.5px; }
+
+// model › module › topic › requirement
+.azm_path { width: 100%; border-collapse: separate; border-spacing: 0; margin: 4px 0 12px; }
+.azm_path_step { background: $azm-doc-soft; border: 1px solid $azm-doc-line; border-radius: 6px; padding: 6px 10px; vertical-align: top; }
+.azm_path_last { background: #eef3ff; border-color: #c9d7fb; }
+.azm_path_label { font-size: 10.5px; color: $azm-doc-muted; }
+.azm_path_code { direction: ltr; text-align: right; font-family: "DejaVu Sans Mono", monospace; font-size: 11px; color: $azm-doc-blue; }
+.azm_path_name { font-size: 12.5px; font-weight: bold; line-height: 1.5; }
+.azm_path_sep { width: 18px; text-align: center; color: $azm-doc-muted; font-size: 18px; }
+
+.azm_banner { border-radius: 6px; padding: 8px 12px; margin: 0 0 12px; font-size: 13px; }
+.azm_banner_info { background: #eef3ff; color: $azm-doc-navy; }
+.azm_banner_warn { background: #fff4e0; color: #8a4b00; }
+.azm_banner_ok { background: #e7f6ec; color: #17633a; }
+
+.azm_glance { width: 100%; border-collapse: collapse; margin: 0 0 16px; }
+.azm_glance_cell { width: 50%; border: 1px solid $azm-doc-line; padding: 7px 12px; vertical-align: top; }
+.azm_glance_label { font-size: 11.5px; color: $azm-doc-muted; }
+.azm_glance_value { font-size: 14px; font-weight: bold; line-height: 1.6; }
+
+.azm_topic {
+    margin: 18px 0 8px; padding: 6px 10px; background: $azm-doc-navy; color: #fff;
+    border-radius: 6px; font-size: 15px; font-weight: bold; page-break-after: avoid;
+    .azm_code { background: rgba(255, 255, 255, .15); color: #fff; }
+}
+
+.azm_item { margin: 0 0 18px; page-break-inside: avoid; }
+.azm_item + .azm_item { border-top: 1px dashed $azm-doc-line; padding-top: 12px; }
+.azm_item_single { page-break-inside: auto; }
+.azm_item_head { width: 100%; margin: 0 0 8px; td { vertical-align: middle; } }
+.azm_item_title { font-size: 16px; font-weight: bold; color: $azm-doc-navy; }
+.azm_item_status { text-align: left; width: 140px; }
+
+.azm_sec { margin: 0 0 14px; }
+// content sits under its numbered heading
+.azm_sec > p, .azm_sec > table, .azm_sec > ol, .azm_sec > ul { margin-right: 30px; }
+.azm_num {
+    display: inline-block; width: 22px; height: 22px; line-height: 22px; text-align: center;
+    border-radius: 11px; background: $azm-doc-blue; color: #fff; font-size: 12px; margin-left: 8px;
+}
+.azm_lead { font-size: 14.5px; }
+.azm_caption { font-weight: bold; margin-top: 8px; }
+
+.azm_pill { display: inline-block; border-radius: 12px; padding: 1px 12px; font-size: 12px; font-weight: bold; }
+.azm_pill_ok { background: #e7f6ec; color: #17633a; }
+.azm_pill_warn { background: #fff4e0; color: #8a4b00; }
+.azm_pill_bad { background: #fde8e8; color: #b42318; }
+.azm_pill_muted { background: #f1f3f5; color: #4b5563; }
+
+.azm_box { border-radius: 6px; padding: 8px 12px; }
+.azm_box_warn { background: #fff8eb; border-right: 4px solid #f0a020; }
+
+.azm_kv { width: 100%; border-collapse: collapse; }
+.azm_kv th, .azm_kv td { border-bottom: 1px solid $azm-doc-line; padding: 6px 8px; vertical-align: top; text-align: right; }
+.azm_kv th { width: 38%; color: $azm-doc-muted; font-weight: normal; }
+
+.azm_grid { width: 100%; border-collapse: collapse; font-size: 12px; margin: 4px 0 8px; }
+.azm_grid th { background: $azm-doc-soft; font-weight: bold; }
+.azm_grid th, .azm_grid td { border: 1px solid $azm-doc-line; padding: 5px 7px; text-align: right; vertical-align: top; }
+.azm_grid tr { page-break-inside: avoid; }
+
+.azm_steps li { margin-bottom: 6px; }
+.azm_questions li { margin-bottom: 5px; }
+.azm_h2 { font-size: 18px; color: $azm-doc-navy; margin: 18px 0 8px; }
+
+.azm_doc_header table, .azm_doc_footer table { width: 100%; }
+.azm_doc_header { font-size: 11px; color: $azm-doc-muted; border-bottom: 1px solid $azm-doc-line; padding-bottom: 4px; }
+.azm_hdr_company { font-weight: bold; color: $azm-doc-navy; font-size: 12px; }
+.azm_hdr_brand { text-align: left; }
+.azm_doc_footer { font-size: 9.5px; color: $azm-doc-muted; border-top: 1px solid $azm-doc-line; padding-top: 4px; }
+.azm_ftr_mid { text-align: center; direction: ltr; }
+.azm_ftr_page { text-align: left; white-space: nowrap; }
+/*rtl:end:ignore*/
+
+// a work cycle, drawn. wkhtmltopdf lays an svg out like any block, so it only needs
+// its width bounded and a little air around it.
+.azm_flow {
+    margin: 6px 0 12px;
+    svg { width: 100%; height: auto; }
+}

@@ -1,5 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!--
+        Two group hierarchies, on purpose, and they compose rather than duplicate:
+
+          azm_platform.group_azm_user        may use the AZM cockpit — the entities,
+                                             the people, the projects, the documents
+          azm_operating_model.azm_group_user may prepare and read the operating model's
+                                             assessments and their answers
+
+        Somebody can hold the first without the second: they get Home, Entities, Group
+        Structure and Documents, the operating-model menus are not shown to them, and
+        every page that reads a model degrades to "not available for your user" instead
+        of failing. That is why neither group implies the other, and why az_group_base
+        grants both to a seeded user who is meant to do both jobs. test_azm_access pins
+        the composition so this does not read as an accident to the next person.
+
+        noupdate: an upgrade must not re-grant these groups to users an administrator
+        deliberately removed them from.
+    -->
+    <data noupdate="1">
     <record id="module_category_azm" model="ir.module.category">
         <field name="name">AZM Platform</field>
         <field name="sequence">5</field>
@@ -26,4 +45,5 @@
         <field name="user_ids" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
         <field name="comment">Full control over entities, domains and the platform configuration.</field>
     </record>
+    </data>
 </odoo>

@@ -2795,3 +2795,31 @@ msgstr "— AZM"
 #: code:addons/azm_platform/static/src/dashboard/azm_dashboard.xml:0
 msgid "“Governance today... a more sustainable future”"
 msgstr "\"حوكمة اليوم.. مستقبل أكثر استدامة\""
+
+#. module: azm_platform
+#: model:ir.actions.client,name:azm_platform.action_azm_fin_tree
+msgid "Financial Model Tree"
+msgstr "شجرة النموذج المالي"
+
+#. module: azm_platform
+#: model:ir.actions.client,name:azm_platform.action_azm_outputs_library
+#: model:ir.ui.menu,name:azm_platform.menu_outputs_library
+msgid "Outputs Library"
+msgstr "مكتبة المخرجات"
+
+#. module: azm_platform
+#: model:ir.actions.client,name:azm_platform.action_azm_proc_tree
+msgid "Procurement Cycle Tree"
+msgstr "شجرة دورة المشتريات"
+
+#. module: azm_platform
+#: model:ir.actions.client,name:azm_platform.action_azm_trees
+#: model:ir.ui.menu,name:azm_platform.menu_trees
+msgid "Trees"
+msgstr "شجر"
+
+#. module: azm_platform
+#: model:ir.actions.client,name:azm_platform.action_azm_my_work
+#: model:ir.ui.menu,name:azm_platform.menu_my_work
+msgid "My work"
+msgstr "مساحتي"

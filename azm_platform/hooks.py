@@ -30,41 +30,88 @@ ENTITY_PROFILES = {
 # xml id -> (departments, project, [(task, done)])
 DEV_ENTITY_DATA = {
     'az_group_base.company_az_management': (
-        ["Group Finance", "Shared Services"], "Group ERP Rollout",
-        [("Chart of accounts per entity", True), ("Approval matrix", True),
-         ("Consolidation pack", False), ("Entity KPI dashboards", False)]),
+        ["Group Finance", "Shared Services", "Internal Audit"],
+        [("Group ERP Rollout",
+          [("Chart of accounts per entity", True), ("Approval matrix", True),
+           ("Consolidation pack", False), ("Entity KPI dashboards", False)]),
+         ("Group Policy Library",
+          [("Procurement policy", True), ("Delegation of authority", False),
+           ("Travel and expense policy", False)])]),
     'az_group_base.company_future_univ': (
-        ["Academic Affairs", "Student Services"], "Student Lifecycle Programme",
-        [("Admissions intake 2026", True), ("Tuition plan automation", False),
-         ("Alumni register", False), ("Campus asset survey", False)]),
+        ["Academic Affairs", "Student Services", "Finance"],
+        [("Student Lifecycle Programme",
+          [("Admissions intake 2026", True), ("Tuition plan automation", False),
+           ("Alumni register", False), ("Campus asset survey", False)]),
+         ("Accreditation 2026",
+          [("Self-study report", True), ("Programme mapping", True),
+           ("Evidence portfolio", False)])]),
     'az_group_base.company_malvern': (
-        ["Academic Affairs", "Admissions"], "Campus Operations 2026",
-        [("Term fee schedule", True), ("Boarding house audit", True),
-         ("Transport routes review", False)]),
+        ["Academic Affairs", "Admissions", "Operations"],
+        [("Campus Operations 2026",
+          [("Term fee schedule", True), ("Boarding house audit", True),
+           ("Transport routes review", False)]),
+         ("Safeguarding Programme",
+          [("Staff training round", True), ("Policy refresh", False),
+           ("Incident register", False)])]),
     'az_group_base.company_alson_language': (
-        ["Teaching", "Registration"], "Course Catalogue Refresh",
-        [("Level descriptors", True), ("Teacher certification log", False),
-         ("Evening cohort plan", False)]),
+        ["Teaching", "Registration", "Quality"],
+        [("Course Catalogue Refresh",
+          [("Level descriptors", True), ("Teacher certification log", False),
+           ("Evening cohort plan", False)]),
+         ("Corporate Programmes",
+          [("Client needs analysis", True), ("Pricing model", False),
+           ("Trainer roster", False)])]),
     'az_group_base.company_alson_tourism': (
-        ["Training", "Industry Placement"], "Placement Partnerships",
-        [("Hotel partner agreements", True), ("Placement tracker", False),
-         ("Graduate survey", False)]),
+        ["Training", "Industry Placement", "Quality"],
+        [("Placement Partnerships",
+          [("Hotel partner agreements", True), ("Placement tracker", False),
+           ("Graduate survey", False)]),
+         ("Practical Training Kitchen",
+          [("Equipment list", True), ("Safety certification", True),
+           ("Session timetable", False)])]),
     'az_group_base.company_alson_computer': (
-        ["Training", "Labs"], "Lab Modernisation",
-        [("Workstation inventory", True), ("Curriculum mapping", False),
-         ("Certification pathway", False)]),
+        ["Training", "Labs", "Certification"],
+        [("Lab Modernisation",
+          [("Workstation inventory", True), ("Curriculum mapping", False),
+           ("Certification pathway", False)]),
+         ("Vendor Certification Centre",
+          [("Accreditation application", True), ("Exam scheduling", False),
+           ("Trainer certification", False)])]),
     'az_group_base.company_alson_institute': (
-        ["Training", "Corporate Programmes"], "Corporate Training Pipeline",
-        [("Client needs analysis", True), ("Trainer pool", False),
-         ("Course costing model", False)]),
+        ["Training", "Corporate Programmes", "Finance"],
+        [("Corporate Training Pipeline",
+          [("Client needs analysis", True), ("Trainer pool", False),
+           ("Course costing model", False)]),
+         ("Executive Education",
+          [("Programme design", True), ("Venue contracts", True),
+           ("Marketing plan", False)])]),
 }
 
 # Who sits in each entity, and which demo login is that person.
 DEV_EMPLOYEES = {
+    'az_group_base.company_az_management': [
+        ("Khaled Nabil", 0, 'group.admin'), ("Hoda Selim", 0, None),
+        ("Amr Bassiouny", 1, None), ("Nadia Fahmy", 2, None)],
     'az_group_base.company_future_univ': [
-        ("Mona Hassan", 0, 'fue.staff'), ("Sara Adel", 0, 'fue.azm'), ("Hani Lotfy", 1, None)],
+        ("Mona Hassan", 2, 'fue.staff'), ("Sara Adel", 0, 'fue.azm'),
+        ("Hani Lotfy", 1, None), ("Dalia Shawky", 0, None),
+        ("Tamer Riad", 1, None), ("Injy Kamal", 2, None)],
     'az_group_base.company_malvern': [
-        ("Omar Fathy", 0, 'mce.staff'), ("Dina Raafat", 1, None)],
+        ("Omar Fathy", 2, 'mce.staff'), ("Dina Raafat", 1, None),
+        ("Peter Grant", 0, None), ("Mai Soliman", 0, None),
+        ("Hesham Nour", 2, None)],
+    'az_group_base.company_alson_language': [
+        ("Rasha Deeb", 0, None), ("Mostafa Helmy", 1, None),
+        ("Yara Nabil", 0, None), ("Sherif Zaki", 2, None)],
+    'az_group_base.company_alson_tourism': [
+        ("Nermine Saad", 0, None), ("Wael Abdel Aziz", 1, None),
+        ("Heba Farouk", 0, None), ("Ziad Mansour", 2, None)],
+    'az_group_base.company_alson_computer': [
+        ("Ayman Shoukry", 0, None), ("Lina Gaber", 1, None),
+        ("Fady Wassef", 0, None), ("Nourhan Said", 2, None)],
+    'az_group_base.company_alson_institute': [
+        ("Ehab Darwish", 0, None), ("Mirna Atef", 1, None),
+        ("Sameh Labib", 0, None), ("Rana Hegazy", 2, None)],
 }
 # Everyone else gets a couple of unnamed-but-real employees per department.
 DEFAULT_EMPLOYEES = [("Operations Lead", 0, None), ("Coordinator", 1, None)]
@@ -146,13 +193,14 @@ def load_dev_entity_data(env):
     if 'hr.employee' not in env or 'project.project' not in env:
         return
     Users = env['res.users'].with_context(active_test=False)
-    for xml_id, (department_names, project_name, tasks) in DEV_ENTITY_DATA.items():
+    for xml_id, (department_names, projects) in DEV_ENTITY_DATA.items():
         company = env.ref(xml_id, raise_if_not_found=False)
         if not company:
             continue
         departments = _ensure_departments(env, company, department_names)
         _ensure_employees(env, company, departments, Users, xml_id)
-        _ensure_project(env, company, project_name, tasks)
+        for project_name, tasks in projects:
+            _ensure_project(env, company, project_name, tasks)
         _ensure_documents(env, company, DEV_DOCUMENTS.get(xml_id, []))
         _ensure_assessments(env, company)
         _ensure_assessment_book(env, company)
@@ -170,12 +218,14 @@ def _ensure_departments(env, company, names):
 
 def _ensure_employees(env, company, departments, Users, xml_id):
     Employee = env['hr.employee'].with_company(company)
-    if Employee.search_count([('company_id', '=', company.id)]):
-        return
     people = DEV_EMPLOYEES.get(xml_id) or [
         (f"{company.code} {role}", index, None) for role, index, _login in DEFAULT_EMPLOYEES
     ]
     for name, department_index, login in people:
+        # Checked per person, not "does this company have anybody": the roster
+        # grows, and a blanket guard would freeze it at whoever came first.
+        if Employee.search_count([('company_id', '=', company.id), ('name', '=', name)]):
+            continue
         values = {
             'name': name,
             'company_id': company.id,
@@ -321,15 +371,19 @@ def _ensure_assessment_book(env, company):
         ('type', '=', 'folder'), ('name', '=', company.name), ('company_id', '=', company.id),
     ], limit=1)
     try:
-        content, _content_type = report._render(report.report_name, assessment.ids)
+        content, content_type = report._render(report.report_name, assessment.ids)
     except Exception:  # noqa: BLE001 - a missing pdf renderer must not fail the install
         _logger.warning("Could not render the operating model book of %s", company.name, exc_info=True)
         return
+    # Without a pdf renderer the report falls back to HTML. Calling that file .pdf makes
+    # it open as garbage and look like corruption, so the file is named and typed by what
+    # was actually produced — the same rule the published documents follow.
+    pdf = content_type == 'pdf'
     Document.create({
-        'name': f"{title}.pdf",
+        'name': f"{title}.{'pdf' if pdf else 'html'}",
         'type': 'binary',
         'raw': content,
-        'mimetype': 'application/pdf',
+        'mimetype': 'application/pdf' if pdf else 'text/html',
         'folder_id': folder.id if folder else False,
         'company_id': company.id,
         'access_internal': 'view',

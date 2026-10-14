@@ -136,12 +136,14 @@ class TestEntityWiring(TransactionCase):
                 [('company_id', '=', company.id)], limit=1)
             self.assertTrue(entity, f"{company.name} has no entity")
             self.assertTrue(entity.fin_scope_ids, f"{entity.name} has no financial scope")
-            assessment = self.env['azm.assessment'].sudo().search(
-                [('entity_id', '=', entity.id)], limit=1)
-            self.assertTrue(assessment, f"{entity.name} has no assessment")
+            # any of them, not the first one back: an entity holds an assessment per
+            # kind and scenario, and a later empty one says nothing about the seed
+            assessments = self.env['azm.assessment'].sudo().search(
+                [('entity_id', '=', entity.id)])
+            self.assertTrue(assessments, f"{entity.name} has no assessment")
             self.assertTrue(
-                assessment.answer_ids.filtered('has_value'),
-                f"the assessment of {entity.name} is empty",
+                assessments.filtered(lambda a: a.answer_ids.filtered('has_value')),
+                f"no assessment of {entity.name} has been filled in",
             )
             financial = self.env['azm.fin.assessment'].sudo().search(
                 [('entity_id', '=', entity.id)], limit=1)
@@ -154,17 +156,28 @@ class TestEntityWiring(TransactionCase):
         every seeded file looked right in the list, carried a plausible size,
         and opened as garbage. A PDF that does not start with %PDF is the
         cheapest way to catch that coming back.
+
+        A book may legitimately be HTML — without a pdf renderer the report falls back
+        to it — but then it has to be called .html. A file whose name disagrees with its
+        bytes is the same failure to a reader, whatever caused it.
         """
         if os.environ.get('ODOO_STAGE') != 'dev' or 'documents.document' not in self.env:
             self.skipTest("the entity sample data is only loaded on development builds")
         Document = self.env['documents.document'].sudo()
-        books = Document.search([('name', '=like', '% Operating Model Book.pdf')])
+        books = Document.search([('name', '=like', '% Operating Model Book.%')])
         self.assertTrue(books, "no operating model book was filed")
         for book in books:
-            self.assertTrue(
-                bytes(book.raw).startswith(b'%PDF'),
-                f"{book.name} is not a PDF: it holds {bytes(book.raw)[:12]!r}",
-            )
+            head = bytes(book.raw)[:12]
+            if book.name.endswith('.pdf'):
+                self.assertTrue(head.startswith(b'%PDF'),
+                                f"{book.name} is not a PDF: it holds {head!r}")
+                self.assertEqual(book.mimetype, 'application/pdf')
+            else:
+                self.assertTrue(book.name.endswith('.html'),
+                                f"{book.name} is neither a pdf nor an html fallback")
+                self.assertEqual(book.mimetype, 'text/html')
+                self.assertFalse(head.startswith(b'%PDF'),
+                                 f"{book.name} holds a PDF but is not called one")
         for xml_id, files in DEV_DOCUMENTS.items():
             company = self.env.ref(xml_id, raise_if_not_found=False)
             if not company:

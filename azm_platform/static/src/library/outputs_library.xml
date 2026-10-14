@@ -1,0 +1,276 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="azm_platform.OutputsLibrary">
+    <div class="o_action o_azm_dashboard o_azm_om o_azm_library" dir="rtl">
+
+        <div class="o_azm_om_title o_azm_library_title">
+            <!-- the wrapper the model pages use: o_azm_om_title is a column of rows,
+                 and its top row is what lays a title out beside its controls -->
+            <div class="o_azm_om_title_top">
+            <div class="o_azm_library_head">
+                <span class="o_azm_library_mark"><t t-call="azm_platform.TreeMark"/></span>
+                <div>
+                    <h1>مكتبة المخرجات <small class="text-muted">Outputs Library</small></h1>
+                    <p class="text-muted mb-0">
+                        كل ما تنتجه المجموعة من مخرجات، ومن لديه نسخته منها.
+                        <small class="o_azm_en">Every deliverable the group produces, and which entities hold theirs.</small>
+                    </p>
+                </div>
+            </div>
+            <div t-if="this.d" class="o_azm_library_search">
+                <i class="oi" data-icon="search"/>
+                <!-- on input, not on change: change fires when the field is left, so a
+                     code typed and watched did nothing until you clicked away -->
+                <input type="text" class="form-control form-control-sm"
+                       placeholder="ابحث بالكود أو العقدة"
+                       t-att-value="this.state.filters.query"
+                       t-on-input="(ev) => this.onQueryInput(ev.target.value)"/>
+                <small class="o_azm_library_search_hint">مثل AZM-FIN-POL أو FIN.GOV</small>
+            </div>
+            </div>
+        </div>
+
+        <div t-if="!this.state.loaded" class="o_azm_loading">
+            <i class="oi oi-spin" data-icon="progress_activity" title="Loading"/>
+        </div>
+        <div t-elif="this.state.error" class="o_azm_card o_azm_empty">
+            <i class="oi" data-icon="error" title="Error"/>
+            <strong t-out="this.state.error"/>
+        </div>
+        <div t-elif="!this.d.available" class="o_azm_card o_azm_empty">
+            <i class="oi" data-icon="lock" title="No access"/>
+            <strong>لا تتوفّر مخرجات لحسابك</strong>
+            <small>No deliverables are available for your user.</small>
+        </div>
+
+        <t t-else="">
+            <section class="o_azm_kpis o_azm_library_kpis">
+                <div t-foreach="this.kpis" t-as="kpi" t-key="kpi.key"
+                     t-attf-class="o_azm_kpi o_azm_kpi_static o_azm_tone_{{kpi.tone}}">
+                    <span class="o_azm_kpi_text">
+                        <span class="o_azm_kpi_label">
+                            <t t-out="kpi.label"/><em class="o_azm_kpi_en" t-out="kpi.en"/>
+                        </span>
+                        <strong class="o_azm_kpi_value" t-out="kpi.value"/>
+                        <small t-out="kpi.sub"/>
+                    </span>
+                    <span class="o_azm_icon_badge">
+                        <i class="oi" t-att-data-icon="kpi.icon" t-att-title="kpi.label"/>
+                    </span>
+                </div>
+            </section>
+
+            <!-- ============================================ the entities it is read for -->
+            <section t-attf-class="o_azm_library_entities {{this.allEntities ? 'o_azm_every' : ''}}">
+                <span class="o_azm_library_rail_label">
+                    الكيانات <em class="o_azm_en">Entities</em>
+                </span>
+                <!-- with nothing picked the library is read across them all, which is
+                     what this says: the chips beside it are the way to narrow. -->
+                <span t-if="this.allEntities" class="o_azm_library_all">
+                    الكل <em class="o_azm_en">All</em>
+                </span>
+                <button t-foreach="this.d.entity_options" t-as="e" t-key="e.id" type="button"
+                        t-attf-class="o_azm_entity_chip {{this.isEntityOn(e.id) ? 'o_azm_on' : ''}}"
+                        t-att-title="e.name"
+                        t-on-click="() => this.toggleEntity(e.id)">
+                    <t t-out="e.name"/>
+                </button>
+                <button t-if="this.filtering" type="button" class="o_azm_library_clear"
+                        t-on-click="() => this.clearFilters()">
+                    <i class="oi me-1" data-icon="close"/>امسح التصفية
+                </button>
+            </section>
+
+            <!-- ============================================ what kind, which model, which stage -->
+            <section class="o_azm_library_rail">
+                <div class="o_azm_library_row">
+                    <span class="o_azm_library_rail_label">النوع <em class="o_azm_en">Type</em></span>
+                    <button t-foreach="this.d.types" t-as="t" t-key="t.key" type="button"
+                            t-attf-class="o_azm_facet {{this.state.filters.atype === t.key ? 'o_azm_on' : ''}}"
+                            t-attf-title="{{t.label}} · {{t.en}}"
+                            t-on-click="() => this.setFilter('atype', t.key)">
+                        <b t-out="t.key"/><span t-out="t.label"/><em t-out="t.count"/>
+                    </button>
+                </div>
+                <div class="o_azm_library_row">
+                    <span class="o_azm_library_rail_label">النموذج <em class="o_azm_en">Model</em></span>
+                    <button t-foreach="this.d.domains" t-as="m" t-key="m.key" type="button"
+                            t-attf-class="o_azm_facet {{this.state.filters.domain === m.key ? 'o_azm_on' : ''}}"
+                            t-on-click="() => this.setFilter('domain', m.key)">
+                        <b t-out="m.key"/><span t-out="m.label"/><em t-out="m.count"/>
+                    </button>
+                    <span class="o_azm_library_rail_label">المرحلة <em class="o_azm_en">Stage</em></span>
+                    <button t-foreach="this.d.stages" t-as="s" t-key="s.key" type="button"
+                            t-attf-class="o_azm_facet {{this.state.filters.stage === s.key ? 'o_azm_on' : ''}}"
+                            t-attf-title="{{s.label}} · {{s.en}}"
+                            t-on-click="() => this.setFilter('stage', s.key)">
+                        <b t-out="s.key"/><span t-out="s.label"/><em t-out="s.count"/>
+                    </button>
+                </div>
+                <div t-if="this.d.approvals.length" class="o_azm_library_row">
+                    <!-- a file being ready and the answers behind it being approved are
+                         two different things; this is the second -->
+                    <span class="o_azm_library_rail_label">
+                        الاعتماد <em class="o_azm_en">Approval</em>
+                    </span>
+                    <button t-foreach="this.d.approvals" t-as="a" t-key="a.key" type="button"
+                            t-attf-class="o_azm_facet o_azm_appr_{{a.key}} {{this.state.filters.approval === a.key ? 'o_azm_on' : ''}}"
+                            t-attf-title="{{a.label}} · {{a.en}}"
+                            t-on-click="() => this.setFilter('approval', a.key)">
+                        <span t-out="a.label"/><em t-out="a.count"/>
+                    </button>
+                </div>
+
+                <div class="o_azm_library_row">
+                    <span class="o_azm_library_rail_label">الموقع <em class="o_azm_en">Where</em></span>
+                    <select class="form-select form-select-sm o_azm_library_node"
+                            t-on-change="(ev) => this.setFilter('node', ev.target.value || null)">
+                        <option value="">كل المواقع في الشجرة</option>
+                        <option t-foreach="this.d.nodes" t-as="n" t-key="n.key"
+                                t-att-value="n.key" t-att-selected="this.state.filters.node === n.key">
+                            <t t-out="n.key"/> · <t t-out="n.count"/>
+                        </option>
+                    </select>
+                    <button type="button"
+                            t-attf-class="o_azm_facet {{this.state.filters.sheets ? 'o_azm_on' : ''}}"
+                            title="أوراق المتطلبات والأسئلة · the per-requirement and per-question sheets"
+                            t-on-click="() => this.toggleSheets()">
+                        <i class="oi" data-icon="description"/><span>اعرض الأوراق أيضًا</span>
+                    </button>
+
+                    <!-- All of one kind in one volume: the policy manual, the procedure
+                         manual. It needs a kind and an entity, so it appears once a kind
+                         is picked and waits for the entity. -->
+                    <button t-if="this.combining" type="button"
+                            class="o_azm_combine"
+                            t-att-disabled="this.combining.entity ? undefined : 'disabled'"
+                            t-attf-title="{{this.combineLabel}} · Bind them as one document"
+                            t-on-click="() => this.combineOutputs()">
+                        <i class="oi" data-icon="menu_book"/>
+                        <span t-out="this.combineLabel"/>
+                        <em t-out="this.combineHint"/>
+                    </button>
+                </div>
+            </section>
+
+            <!-- ============================================ the deliverables -->
+            <div class="o_azm_library_split">
+                <section class="o_azm_card o_azm_library_list">
+                    <header class="o_azm_card_header">
+                        <h3>
+                            <t t-out="this.d.shown"/> من <t t-out="this.d.total"/> مخرج
+                            <small class="text-muted">showing <t t-out="this.d.shown"/> of <t t-out="this.d.total"/></small>
+                        </h3>
+                    </header>
+
+                    <div t-if="!this.d.rows.length" class="o_azm_library_none">
+                        <t t-call="azm_platform.TreeMark"/>
+                        <h3>لا مخرجات بهذه التصفية</h3>
+                        <button type="button" class="btn btn-sm btn-light"
+                                t-on-click="() => this.clearFilters()">امسح التصفية</button>
+                    </div>
+
+                    <div t-foreach="this.d.rows" t-as="row" t-key="row.id" class="o_azm_output">
+                        <button type="button" class="o_azm_output_head"
+                                t-on-click="() => this.toggleRow(row)">
+                            <span t-attf-class="o_azm_output_type o_azm_d_{{row.domain}}"
+                                  t-attf-title="{{row.type_label}} · {{row.type_en}}"
+                                  t-out="row.atype"/>
+                            <span class="o_azm_output_main">
+                                <!-- The heading is what the deliverable is called. Its
+                                     registry code is an identity, not a title: it reads
+                                     the same down a whole shelf and pushed the one thing
+                                     that tells two policies apart to second place. The
+                                     code is on the panel below, on the document, in the
+                                     file name and in search. -->
+                                <span class="o_azm_output_name" t-out="row.label"/>
+                                <small>
+                                    <span class="o_azm_output_node" t-out="row.node"/>
+                                    · <t t-out="row.stage_label"/>
+                                </small>
+                            </span>
+                            <span class="o_azm_output_cover">
+                                <span class="o_azm_progress o_azm_om_meter o_azm_tone_indigo">
+                                    <span class="o_azm_progress_bar"
+                                          t-attf-style="width: {{this.coverage(row)}}%"/>
+                                </span>
+                                <small><t t-out="row.ready"/>/<t t-out="row.entities"/> جاهز</small>
+                            </span>
+                            <i t-attf-class="oi o_azm_output_caret {{this.isOpen(row.id) ? 'o_azm_open' : ''}}"
+                               data-icon="chevron_left"/>
+                        </button>
+
+                        <div t-if="this.isOpen(row.id)" class="o_azm_output_entities">
+                            <div t-foreach="this.entitiesOf(row)" t-as="e" t-key="e.company_id"
+                                 class="o_azm_output_entity">
+                                <span t-attf-class="o_azm_dot o_azm_dot_{{e.css}}" t-att-title="e.state_label"/>
+                                <span class="o_azm_output_entity_name" t-out="e.name"/>
+                                <!-- Whose copy this row is. The card above carries the
+                                     master code, which every entity here shares, so a
+                                     row that showed only a name left the reader opening
+                                     nine documents that all looked like the one code on
+                                     the card. The copy code was already being sent. -->
+                                <b class="o_azm_code o_azm_entity_code" t-out="e.code"/>
+                                <small t-out="e.state_label"/>
+                                <small t-if="e.approval"
+                                       t-attf-class="o_azm_appr_chip o_azm_appr_{{e.approval}}"
+                                       t-attf-title="{{e.approval_label}} · {{e.approval_en}}"
+                                       t-out="e.approval_label"/>
+                                <span class="o_azm_output_actions">
+                                    <!-- An entity with nothing in this output has no
+                                         document to open: both buttons used to raise
+                                         "no requirement of this module falls in this
+                                         output", which is an error dialog for something
+                                         the row already says. -->
+                                    <button t-if="e.state !== 'empty'" type="button"
+                                            class="btn btn-sm btn-light"
+                                            title="قراءة هنا · Read here"
+                                            t-on-click="() => this.previewDoc(e.doc)">
+                                        <i class="oi" data-icon="visibility"/>
+                                    </button>
+                                    <button t-if="e.state !== 'empty'" type="button"
+                                            class="btn btn-sm btn-light"
+                                            title="تنزيل · Download"
+                                            t-on-click="() => this.openDoc(e.doc, true)">
+                                        <i class="oi" data-icon="download"/>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-light"
+                                            title="تنزيل كتاب هذا الكيان كاملًا · Download this entity's whole book"
+                                            t-on-click="() => this.book(e.company_id, row.domain)">
+                                        <i class="oi" data-icon="menu_book"/>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-light o_azm_output_to_tree"
+                                            title="اعرضه في شجرة هذا الكيان · See it on this entity's tree"
+                                            t-on-click="() => this.openTree(row, e.company_id)">
+                                        <t t-call="azm_platform.TreeMark"/>
+                                    </button>
+                                </span>
+                            </div>
+                            <!-- A tree is one entity's model, so the way onto it belongs
+                                 beside the entity. The row-level button named none of
+                                 them and opened whichever the filter happened to leave. -->
+                            <p class="o_azm_output_hint">
+                                <t t-call="azm_platform.TreeMark"/>
+                                اعرضه في شجرة أي كيان من الأزرار بجواره
+                                <em class="o_azm_en">Open it on any entity's tree from the buttons beside it</em>
+                            </p>
+                        </div>
+                    </div>
+
+                    <div t-if="this.d.total > this.d.shown" class="o_azm_library_more">
+                        تُعرض أول <t t-out="this.d.limit"/> مخرج — ضيّق التصفية لرؤية الباقي.
+                        <small class="o_azm_en">Narrow the filters to reach the rest.</small>
+                    </div>
+                </section>
+
+                <section t-if="this.state.preview" class="o_azm_card o_azm_library_preview">
+                    <t t-call="azm_platform.DocPreview"/>
+                </section>
+            </div>
+        </t>
+    </div>
+</t>
+
+</templates>

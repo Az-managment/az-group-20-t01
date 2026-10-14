@@ -17,7 +17,7 @@
                         <li t-if="this.typeLabel"><i class="oi" data-icon="account_balance" title="Type"/> <span t-out="this.typeLabel"/></li>
                         <li t-if="this.data.country_id"><i class="oi" data-icon="location_on" title="Country"/> <span t-out="this.data.country_id.display_name"/></li>
                         <li t-if="this.data.azm_sector"><i class="oi" data-icon="school" title="Sector"/> <span t-out="this.sectorLabel"/></li>
-                        <li t-if="this.data.website"><i class="oi" data-icon="public" title="Website"/> <a t-att-href="this.data.website" target="_blank" t-out="this.websiteHost"/></li>
+                        <li t-if="this.data.website"><i class="oi" data-icon="public" title="Website"/> <a t-att-href="this.data.website" target="_blank" rel="noopener noreferrer" t-out="this.websiteHost"/></li>
                     </ul>
                 </div>
                 <div class="o_azm_entity_cover" t-att-class="{'o_azm_has_cover': this.coverUrl}" t-att-style="this.coverUrl ? 'background-image: url(' + this.coverUrl + ')' : ''">

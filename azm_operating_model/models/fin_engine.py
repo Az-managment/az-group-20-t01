@@ -13,6 +13,8 @@ item   = {"code", "req_id", "title", "question", "profile", "profile_name", "sco
 
 from html import escape
 
+from .azm_svg import flow
+
 STATE_LABELS = {
     "full": "مطبّق بالكامل",
     "partial": "مطبّق جزئيًا",
@@ -41,7 +43,7 @@ TAB_PROFILES = {
     "reports": ("R",),
     "integration": ("I",),
 }
-DOC_CODES = {"book": "CS-FIN", "rules": "CS-POL", "workflow": "CS-WF", "authority": "CS-AUTH",
+DOC_CODES = {"book": "CS-FIN", "rules": "CS-POL", "workflow": "CS-SOP", "authority": "CS-AUTH",
              "reports": "CS-RPT", "integration": "CS-INT", "gaps": "CS-GAP", "future": "CS-TOM",
              "na": "CS-NA", "coverage": "CS-COV"}
 # who creates / reviews / approves: a person in two of them is a segregation-of-duties warning
@@ -51,7 +53,104 @@ ROLE_WORDS = {
     "approve": ("يعتمد", "يعتمده", "يعتمدها", "المعتمد", "يُعتمد"),
 }
 NOT_A_PERSON = {"لا يوجد", "لا أعرف", "غير مدرج", ""}
-STEP_COLUMNS = ("الخطوة", "المرحلة", "الحدث")
+# A table whose first column names a step is a cycle, and is drawn as one. "بعد (يوم)"
+# is here because an escalation ladder — after so many days, do this, and it is theirs —
+# is an order of work like any other; what differs is that its first column is when the
+# step happens rather than what it is, which is handled below.
+STEP_COLUMNS = ("الخطوة", "المرحلة", "الحدث", "بعد (يوم)")
+
+
+# Who does what, read off the answers that name a role. The labels in this catalogue are
+# verbs — يُعد, يراجع, يعتمد — so a cycle can be put together from them where a
+# requirement holds no table of steps of its own.
+ROLE_VERBS = (
+    (("يُعد", "يعد ", "يُنشئ", "ينشئ", "ينفّذ", "ينفذ", "يسجل", "يُسجل"), "التنفيذ", "Execute"),
+    (("يراجع", "يفحص", "يطابق", "المطابقة"), "المراجعة", "Review"),
+    (("يعتمد", "يوافق", "اعتماد"), "الاعتماد", "Approve"),
+)
+# said beside the first step rather than as a step of its own: how often is not a thing
+# somebody does
+RHYTHM_LABELS = ("الدورية", "دورية", "التوقيت", "المهلة")
+
+
+def generic_cycle(item):
+    """The cycle a requirement describes when it holds no table of steps.
+
+    Who does the work, who checks it, who signs it off — taken from the answers that
+    name each. Nothing is invented: a step appears only where its answer was given, and
+    where none of them was the cycle is not drawn at all, because three empty boxes say
+    less than the facts printed underneath them.
+    """
+    answers = [qa for qa in item.get("qa", []) if qa.get("qtype") in ("select", "multi")]
+
+    def value_for(verbs):
+        for qa in answers:
+            label = (qa.get("label") or "").strip()
+            if any(label.startswith(verb) for verb in verbs) and qa.get("display"):
+                return str(qa["display"]), label
+        return None, None
+
+    rhythm = next((str(qa["display"]) for qa in answers
+                   if any((qa.get("label") or "").startswith(word) for word in RHYTHM_LABELS)
+                   and qa.get("display")), "")
+
+    steps = []
+    for verbs, title, english in ROLE_VERBS:
+        who, label = value_for(verbs)
+        if not who and title == "التنفيذ" and item.get("owner"):
+            # the requirement names an owner even when no answer does
+            who, label = item["owner"], "المسؤول"
+        if not who:
+            continue
+        sub = f"{label}: {who}" if label else who
+        if not steps and rhythm:
+            sub = f"{sub} · الدورية: {rhythm}"
+        steps.append({"title": title, "sub": sub})
+    return steps if len(steps) > 1 else []
+
+
+def step_rows(qa):
+    """``[{"title", "sub"}]`` for a table that reads as a sequence.
+
+    The step's name is the first column that reads as a name: where a table is ordered
+    by a number — days elapsed, a level — that number says *when*, not *what*, so it
+    moves into the line underneath and the next column gives the box its title.
+    """
+    columns, rows = qa["columns"], qa["rows"]
+    if not columns or not rows:
+        return []
+
+    def numeric(index):
+        seen = [row[index] for row in rows if index < len(row) and str(row[index]).strip()]
+        if not seen:
+            return False
+        return all(str(value).strip().replace(".", "", 1).isdigit() for value in seen)
+
+    lead = 1 if (numeric(0) and len(columns) > 1) else 0
+
+    def order_key(row):
+        """Where this row sorts. numeric() ignores blank cells when deciding the
+        column is a number — deliberately, since a half-filled table is still a
+        numbered one — so the sort has to expect them too. float("") raised, and it
+        raised while rendering: the workspace panel, the module's SOP and the book
+        all died on one row whose first cell was left empty."""
+        cell = str(row[0]).strip() if row and row[0] is not None else ""
+        try:
+            return (0, float(cell))
+        except ValueError:
+            # anything unnumbered sorts after the numbered rows, in its own order
+            return (1, 0.0)
+
+    ordered = sorted(rows, key=order_key) if lead else rows
+    steps = []
+    for row in ordered:
+        title = (row[lead] if lead < len(row) else "") or "[لم يُحدد]"
+        detail = " · ".join(
+            f"{columns[i]['label']}: {row[i]}"
+            for i in range(len(columns))
+            if i != lead and i < len(row) and str(row[i]).strip())
+        steps.append({"title": title, "sub": detail})
+    return steps
 
 
 def _e(text):
@@ -213,13 +312,15 @@ def _sod_warning(item):
 
 
 def _steps(qa):
-    cols = qa["columns"]
-    steps = []
-    for row in qa["rows"]:
-        head = row[0] if row else ""
-        rest = " · ".join(f"{cols[i]['label']}: {row[i]}" for i in range(1, min(len(cols), len(row))) if row[i])
-        steps.append(f"<li><b>{_e(head or '[لم يُحدد]')}</b><br/><span class='o_azm_muted'>{_e(rest)}</span></li>")
-    return f'<p class="o_azm_fin_tablecap">{_e(qa["label"])}</p><ol class="o_azm_steps">{"".join(steps)}</ol>'
+    """A work cycle, drawn as the flow it is.
+
+    The answers arrive as a table — a row per step, the columns saying who does it and
+    when — and a table makes the reader reconstruct the order for themselves. The same
+    rows read top to bottom with an arrow between them say it outright, and match the
+    procurement cycle, which has always been drawn this way.
+    """
+    return (f'<p class="o_azm_fin_tablecap">{_e(qa["label"])}</p>'
+            + flow(step_rows(qa), label=qa["label"]))
 
 
 def _by_profile(tab, module, items):
@@ -236,9 +337,18 @@ def _by_profile(tab, module, items):
             continue
         body = [_title(item), _state_line(item)]
         if tab == "workflow":
+            drawn = False
             for qa in item["qa"]:
                 if qa["qtype"] == "table" and qa["rows"] and qa["columns"] and qa["columns"][0]["label"] in STEP_COLUMNS:
                     body.append(_steps(qa))
+                    drawn = True
+            if not drawn:
+                # no table of steps, but the answers still say who does the work, who
+                # checks it and who signs it off — which is a cycle
+                cycle = generic_cycle(item)
+                if cycle:
+                    body.append(f'<p class="o_azm_fin_tablecap">{_e("دورة العمل")}</p>'
+                                + flow(cycle, label="دورة العمل"))
             body.append(_facts({**item, "qa": [q for q in item["qa"] if not (
                 q["qtype"] == "table" and q["columns"] and q["columns"][0]["label"] in STEP_COLUMNS)]}))
         else:

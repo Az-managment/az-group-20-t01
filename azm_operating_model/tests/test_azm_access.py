@@ -1,5 +1,5 @@
 import contextlib
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 from odoo.exceptions import AccessError
 from odoo.http import request_var
@@ -73,6 +73,77 @@ class TestAzmAccess(TransactionCase):
         self.assertEqual(findings.assessment_id, self.a1)
         answers = self.env["azm.answer"].with_user(self.prep_b).search([("assessment_id", "in", (self.a1 | self.b1).ids)])
         self.assertEqual(answers.assessment_id, self.b1)
+
+    # ------------------------------------------------------------ handing work over
+    def test_submitting_reaches_somebody_who_can_open_it(self):
+        """Work left the preparer and arrived in nobody's hands.
+
+        Submitting wrote the state and scheduled an activity *if* a reviewer happened to
+        be named on the record. Where none was, the assessment said "under review" and
+        no human had been told — and the people who should review it could not read it
+        either, because the rules only let through work they were named on.
+        """
+        Activity = self.env["mail.activity"]
+        before = Activity.search_count([("user_id", "=", self.reviewer.id)])
+        self.assertFalse(self.a2.reviewer_id, "nobody was named on it")
+
+        self.a2.with_user(self.prep_2).action_submit()
+
+        self.assertEqual(self.a2.state, "review")
+        self.assertIn(self.reviewer, self.a2._reviewers(),
+                      "the entity's own reviewer is who it goes to")
+        self.assertGreater(Activity.search_count([("user_id", "=", self.reviewer.id)]), before,
+                           "and they were told")
+        # and they can actually open what they were told about
+        self.env["azm.assessment"].with_user(self.reviewer).browse(self.a2.id).check_access("read")
+        self.assertIn(self.a2, self._visible(self.reviewer))
+
+    def test_a_preparer_does_not_review_their_own_work(self):
+        self.a1.reviewer_id = False
+        self.assertNotIn(self.prep_1, self.a1._reviewers(),
+                         "the person who prepared it is never who it goes to")
+
+    def test_work_is_not_sent_where_nobody_is_standing(self):
+        """Better to refuse than to park it in a state nobody is watching."""
+        from odoo.exceptions import UserError
+        lonely = self.env["azm.entity"].create({"code": "LNE", "name": "بلا مراجع"})
+        lonely.user_ids = [(6, 0, [self.prep_1.id])]
+        orphan = self.env["azm.assessment"].with_user(self.prep_1).create(
+            {"entity_id": lonely.id, "purchase_kind": "goods", "scenario": "standard"})
+        # no reviewer named, nobody assigned who reviews — but the managers can always
+        # be reached, so it goes to them rather than nowhere
+        self.assertTrue(orphan._reviewers(), "the managers are the last resort")
+        self.assertIn(self.manager, orphan._reviewers())
+        # and with not even a manager to reach, it refuses rather than disappearing
+        patched = self.env["azm.assessment"]
+        with patch.object(type(patched), "_reviewers", lambda self: self.env["res.users"]):
+            with self.assertRaises(UserError):
+                orphan.with_user(self.prep_1).action_submit()
+        self.assertEqual(orphan.state, "draft", "and it stayed where it was")
+
+    def test_only_people_who_could_do_the_job_are_offered(self):
+        """Assigning somebody who is not on the entity hands them work they cannot open."""
+        # a record being filled in is a NewId one, so the lists are compared by origin
+        def offered(entity, field):
+            draft = self.env["azm.assessment"].new({"entity_id": entity.id})
+            return draft[field]._origin
+
+        self.assertIn(self.prep_1, offered(self.ent_a, "allowed_preparer_ids"))
+        self.assertNotIn(self.prep_b, offered(self.ent_a, "allowed_preparer_ids"),
+                         "somebody on another entity is not offered")
+        self.assertIn(self.reviewer, offered(self.ent_a, "allowed_reviewer_ids"))
+        self.assertNotIn(self.prep_1, offered(self.ent_a, "allowed_reviewer_ids"),
+                         "a preparer is not offered as a reviewer")
+
+        outsider = new_test_user(self.env, "acc_outsider", groups="base.group_user")
+        self.ent_a.user_ids = [(4, outsider.id)]
+        self.assertNotIn(outsider, offered(self.ent_a, "allowed_preparer_ids"),
+                         "being on the entity is not enough without the role")
+
+        # an entity nobody is on yet offers the role at large, rather than nothing
+        bare = self.env["azm.entity"].create({"code": "BRE", "name": "بلا أحد"})
+        self.assertIn(self.reviewer, offered(bare, "allowed_reviewer_ids"))
+        self.assertNotIn(outsider, offered(bare, "allowed_preparer_ids"))
 
     def test_company_follows_entity(self):
         company = self.env["res.company"].create({"name": "كيان ب"})   # same name: the entity is linked to it

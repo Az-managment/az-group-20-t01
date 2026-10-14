@@ -3,6 +3,7 @@ import logging
 import requests
 
 from odoo import _, api, fields, models
+from odoo.exceptions import AccessError
 from odoo.fields import Domain
 from odoo.tools import html2plaintext
 
@@ -243,10 +244,20 @@ class AzmDashboard(models.AbstractModel):
         if project_records.has_access('read'):
             project_records = project_records.search([('company_id', '=', company.id)], limit=6,
                                                      order='sequence, id')
+        # two grouped counts for the whole set, not two searches per project
+        totals, opens = {}, {}
+        if project_records:
+            Task = env['project.task']
+            for project, count in Task._read_group(
+                    [('project_id', 'in', project_records.ids)], ['project_id'], ['__count']):
+                totals[project.id] = count
+            for project, count in Task._read_group(
+                    [('project_id', 'in', project_records.ids), ('is_closed', '=', False)],
+                    ['project_id'], ['__count']):
+                opens[project.id] = count
         for project in project_records:
-            total = env['project.task'].search_count([('project_id', '=', project.id)])
-            opened = env['project.task'].search_count([('project_id', '=', project.id),
-                                                       ('is_closed', '=', False)])
+            total = totals.get(project.id, 0)
+            opened = opens.get(project.id, 0)
             projects.append({
                 'id': project.id,
                 'name': project.name,
@@ -293,8 +304,18 @@ class AzmDashboard(models.AbstractModel):
     # ------------------------------------------------------------------
     @api.model
     def ai_ask(self, question):
-        """Answer a question about the group with an LLM, grounded on live Odoo figures."""
-        question = (question or '').strip()
+        """Answer a question about the group with an LLM, grounded on live Odoo figures.
+
+        The docstring sat two statements down, where Python reads it as an expression
+        and the method has none.
+        """
+        # the key is the group's and the call is billed to it, so the question has to
+        # come from someone the platform is for, and be of a size it is worth answering
+        if not self.env.user.has_group('azm_platform.group_azm_user'):
+            raise AccessError(_("The assistant is available to AZM users."))
+        # stripped before it is cut, not after: leading whitespace used to count
+        # toward the limit and could push the question itself out of it
+        question = (question or '').strip()[:2000]
         if not question:
             return {'ok': False, 'answer': _('Please type a question first.')}
         params = self.env['ir.config_parameter'].sudo()
@@ -328,6 +349,36 @@ class AzmDashboard(models.AbstractModel):
             content = response.json().get('content', [])
             answer = '\n'.join(b.get('text', '') for b in content if b.get('type') == 'text')
             return {'ok': True, 'answer': answer.strip()}
-        except Exception as error:  # noqa: BLE001
+        except (requests.RequestException, ValueError) as error:
+            # the network and the decode, which are the two things that genuinely go
+            # wrong here. A bare except also caught programming errors and reported
+            # them as a failed call, and the message it handed the browser was the
+            # exception's own text — which for a request error carries the URL it
+            # called and whatever the other end said.
             _logger.warning('AZM assistant call failed: %s', error)
-            return {'ok': False, 'answer': _('The assistant could not answer right now (%s).', error)}
+            return {'ok': False,
+                    'answer': _('The assistant could not answer right now. '
+                                'Please try again in a moment.')}
+
+    @api.model
+    def azm_rights(self):
+        """What this reader may actually open, asked as access rather than membership.
+
+        The screens used to decide by group — "is this user in project's user group" —
+        and hide or deaden a link when the answer was no. That is the wrong question:
+        access to a model comes from whatever groups and rules a deployment happens to
+        use, and a reader who reaches Projects from the sidebar every day was being
+        told by the same product that they could not. It asks the model instead.
+        """
+        def can(model):
+            return model in self.env and self.env[model].has_access("read")
+
+        return {
+            "hr": can("hr.employee"),
+            "project": can("project.project"),
+            "tasks": can("project.task"),
+            "documents": True,
+            # these two are about changing configuration, where the group is the point
+            "editCompany": self.env.user.has_group("base.group_erp_manager"),
+            "settings": self.env.user.has_group("base.group_system"),
+        }

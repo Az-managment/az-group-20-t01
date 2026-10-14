@@ -47,7 +47,13 @@ class TestAzmAssessment(TransactionCase):
         policy = self.assessment.workspace_output(stage_id=self.bud.id, tab="policy")
         self.assertIn("عند عدم كفاية المخصص يتم: استمرار الشراء", policy)
         self.assessment.action_sync_findings()
-        self.assertIn("R-BUD-shortage", self.assessment.finding_ids.mapped("code"))
+        # the rule's own code, not a literal: it names the answer that fires it, and
+        # which option that is comes from the catalogue
+        rule = self.env["azm.risk.rule"].search(
+            [("stage_id", "=", self.bud.id), ("question_id.key", "=", "shortage")], limit=1)
+        self.assertTrue(rule, "the catalogue watches this answer")
+        self.assertEqual(rule.trigger_option_id.name, "استمرار الشراء")
+        self.assertIn(rule.code, self.assessment.finding_ids.mapped("code"))
 
     def test_approval_flow_and_lock(self):
         self.assessment.with_user(self.preparer).action_fill_demo()
@@ -63,7 +69,13 @@ class TestAzmAssessment(TransactionCase):
         new = self.env["azm.assessment"].browse(
             self.assessment.with_user(self.manager).action_new_version()["res_id"])
         self.assertEqual((new.version, new.state, self.assessment.state), (2, "draft", "archived"))
-        self.assertEqual(len(new.answer_ids), len(self.assessment.answer_ids))
+        # a copy that produced the right number of *blank* lines would pass a count,
+        # so the answers themselves are compared
+        was = {a.question_id.id: a._engine_value() for a in self.assessment.answer_ids}
+        now = {a.question_id.id: a._engine_value() for a in new.answer_ids}
+        self.assertEqual(now, was, "the new version carries the answers, not just the questions")
+        self.assertTrue([v for v in now.values() if v is not None],
+                        "and there were answers to carry")
 
     def test_every_tab_renders(self):
         self.assessment.action_fill_demo()
@@ -83,6 +95,14 @@ class TestAzmAssessment(TransactionCase):
         self.assertEqual(entity.name, "Zeta Academy")
         other = self.env["res.company"].create({"name": "Zeta Tech Center"})
         self.assertEqual(other.azm_entity_ids.code, "ZTC2")
+        # the code is printed on every document the entity issues, so it reads as the
+        # acronym a person would write: joining words do not count towards it
+        for name, code in (("Zeta University in Egypt", "ZUE"),
+                           ("Zeta Bank of Alexandria", "ZBA"),
+                           ("The Zeta Company for Trade", "ZCT")):
+            made = self.env["res.company"].create({"name": name})
+            self.assertEqual(made.azm_entity_ids.code, code,
+                             f"{name} is {code} to everyone who works there")
         # an entity typed by hand earlier is linked instead of duplicated
         manual = Entity.create({"code": "OMG", "name": "Omega Group"})
         omega = self.env["res.company"].create({"name": "Omega Group"})

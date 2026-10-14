@@ -10,6 +10,19 @@ $fin-muted: #5b7380;
 .o_azm_fin_ws {
     .o_azm_fin_idx { width: auto; min-width: 38px; padding: 0 5px; border-radius: 8px; font: 700 10.5px/26px ui-monospace, SFMono-Regular, Menlo, monospace; }
     .o_azm_fin_showall { display: flex; gap: 6px; align-items: center; font-size: 11.5px; color: $fin-muted; padding: 2px 6px 8px; }
+    // the returned filter carries a count, and reads as the one thing somebody is
+    // being asked to deal with rather than another display preference
+    .o_azm_fin_returned_filter {
+        color: $fin-warn;
+
+        .o_azm_returned_count {
+            margin-inline-start: auto;
+            padding: 0 6px;
+            border-radius: 9px;
+            background: rgba(229, 165, 60, .18);
+            font-weight: 700;
+        }
+    }
     .o_azm_fin_counter { display: inline-flex; gap: 4px; align-items: center;
         i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-inline-start: 4px; } }
     .o_full { background: $fin-ok; } .o_partial { background: $fin-warn; } .o_unavailable { background: $fin-slate; }
@@ -94,3 +107,62 @@ $fin-muted: #5b7380;
     td { padding: 7px 9px; border-bottom: 1px solid #e1e8ec; vertical-align: top; } }
 .o_azm_fin_bar { display: inline-block; width: 90px; height: 6px; border-radius: 99px; background: #e5ebf1; vertical-align: middle; overflow: hidden;
     span { display: block; height: 100%; background: #1f5f73; border-radius: 99px; } }
+
+// ---------------------------------------------------------------- sending work back
+// A review names the part that is wrong and says why. The note is read here, beside
+// the questions, rather than remembered from the page that listed it.
+.o_azm_ws_returns {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 0 0 14px;
+}
+.o_azm_ws_return {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    background: rgba(249, 115, 22, .08);
+    /*rtl:ignore*/
+    box-shadow: inset 3px 0 0 rgba(249, 115, 22, .55);
+    .oi { color: #c2410c; }
+    b { display: block; font-size: 13px; }
+    p { margin: 2px 0; font-size: 12.5px; white-space: pre-line; }
+    small { color: #8a4b00; font-size: 11px; }
+}
+
+.o_azm_ws_compose {
+    margin: 0 0 14px;
+    padding: 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(249, 115, 22, .3);
+    background: rgba(255, 247, 237, .9);
+    label { display: block; margin-bottom: 6px; font-size: 12.5px; }
+    em { font-size: 11px; opacity: .7; margin-inline-start: 6px; }
+}
+.o_azm_ws_compose_actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 8px;
+}
+.o_azm_fin_return_chip {
+    color: #c2410c;
+    .oi { font-size: 12px; }
+}
+
+// a requirement outside what came back: shown, but not open to answering
+.o_azm_fin_locked {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 6px 0 0;
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: 12.5px;
+    color: #8a4b00;
+    background: rgba(249, 115, 22, .09);
+    .oi { font-size: 14px; }
+    em { font-size: 11px; opacity: .75; }
+}

@@ -39,6 +39,14 @@ class AzmStage(models.Model):
             "governance": self.is_governance,
         }
 
+    def _engine_catalogue(self):
+        """(stage dict, question dicts) — the part of a payload that is the same for
+        every assessment, so a scan over many of them builds it once rather than once
+        per assessment and stage. Nothing downstream writes to these dicts."""
+        self.ensure_one()
+        questions = self.question_ids.sorted(lambda q: (q.sequence, q.id))
+        return self._engine_dict(), [q._engine_dict() for q in questions]
+
     # ------------------------------------------------------------ catalogue
     @api.model
     def _load_catalogue(self):
@@ -102,25 +110,43 @@ class AzmStage(models.Model):
                     Option.browse([o.id for o in stale]).write({"active": False})
 
         Rule = self.env["azm.risk.rule"].with_context(active_test=False)
-        counter = {}
+        Finding = self.env["azm.finding"].sudo().with_context(active_test=False)
         for stage_code, key, trigger, fact, risk, control, owner in cat["rules"]:
-            counter[(stage_code, key)] = counter.get((stage_code, key), 0) + 1
-            code = f"R-{stage_code}-{key}" + (f"-{counter[(stage_code, key)]}" if counter[(stage_code, key)] > 1 else "")
             stage = stages[stage_code]
             question = Question.search([("stage_id", "=", stage.id), ("key", "=", key)])
             option = question.option_ids.filtered(lambda o, t=trigger: o.name == t)[:1]
             if not option:
                 continue
+            # The code names the answer that fires the rule, so it is the same on every
+            # database and does not move when the rules are reordered in the catalogue.
+            # It used to be a running counter over the order they happened to be written
+            # in: swapping two lines gave each the other's code, and since a rule is
+            # matched on its code the reload then wrote one rule's text onto the other —
+            # carrying with it every finding a reviewer had scored, treated and closed.
+            code = f"R-{stage_code}-{key}-{option.sequence:02d}"
             vals = {"stage_id": stage.id, "question_id": question.id, "trigger_option_id": option.id,
                     "fact": fact, "risk": risk, "control": control, "owner_hint": owner}
-            rule = Rule.search([("code", "=", code)])
+            # matched on what it watches, not on what it is called, so a rule is found
+            # again even when its code is about to change
+            rule = Rule.search([("question_id", "=", question.id),
+                                ("trigger_option_id", "=", option.id)], limit=1)
+            if not rule:
+                rule = Rule.search([("code", "=", code)], limit=1)
             if rule:
-                rule.write(vals)
+                if rule.code != code:
+                    # the findings raised from it travel with it, or a reviewer's work
+                    # would be left pointing at a code that no longer exists
+                    Finding.search([("code", "=", rule.code)]).write({"code": code})
+                rule.write({"code": code, **vals})
             else:
                 Rule.create({"code": code, **vals})
         return True
 
     def action_reload_catalogue(self):
+        self.env["azm.stage"].check_access("write")
         self._load_catalogue()
+        # a question added here has no answer line on the assessments that already
+        # exist, and the workspace reads one for every visible question
+        self.env["azm.assessment"]._ensure_all_answers()
         return {"type": "ir.actions.client", "tag": "display_notification",
                 "params": {"type": "success", "message": "تم تحديث كتالوج الأسئلة."}}

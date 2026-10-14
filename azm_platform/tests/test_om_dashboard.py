@@ -1,3 +1,4 @@
+from odoo.exceptions import UserError
 from odoo.tests import HttpCase, TransactionCase, new_test_user, tagged
 
 
@@ -119,8 +120,12 @@ class TestOmDashboard(TransactionCase):
         self.assertGreaterEqual(self.company.azm_employee_count, 1)
         plain = new_test_user(self.env, 'azm_no_hr', company_id=self.company.id,
                               company_ids=[(6, 0, [self.company.id])], groups='azm_platform.group_azm_user')
-        if not self.env['hr.employee'].with_user(plain).has_access('read'):
-            self.assertEqual(self.company.with_user(plain).azm_employee_count, 0)
+        # the precondition is asserted rather than branched on: if access config drifts,
+        # the check must fail rather than quietly stop running
+        self.assertFalse(self.env['hr.employee'].with_user(plain).has_access('read'),
+                         "a plain platform user is not an HR reader")
+        self.assertEqual(self.company.with_user(plain).azm_employee_count, 0,
+                         "so the entity's headcount reads zero for them")
         home = self.env['azm.dashboard'].with_user(plain).get_dashboard_data()
         self.assertEqual(home['kpis']['employees'], self.company.with_user(plain).azm_employee_count)
 
@@ -144,7 +149,13 @@ class TestOmDashboard(TransactionCase):
         hrf = Dash.get_financial_model_data(source='HRF')
         self.assertEqual(hrf['kpis']['requirements'], 60)
         one = Dash.get_financial_model_data(assessment_id=fin.id, profile='A')
-        self.assertTrue(all(m['requirements'] == len([1 for _ in range(m['requirements'])]) for m in one['modules']))
+        # the profile filter must actually narrow the catalogue, not be ignored
+        self.assertTrue(one['modules'])
+        self.assertLess(sum(m['requirements'] for m in one['modules']),
+                        sum(m['requirements'] for m in data['modules']),
+                        "asking for one answer template returns fewer requirements than all of them")
+        self.assertTrue(all(p['key'] == 'A' or p['requirements'] == 0 for p in one['profiles']),
+                        "and only that template is represented")
         self.assertTrue(Dash.get_dashboard_data()['fin'])
         self.assertTrue(Dash.get_company_overview(self.company.id)['fin'])
         other = new_test_user(self.env, 'azm_fin_other', company_id=self.company.id,
@@ -200,3 +211,224 @@ class TestOmDashboardTour(HttpCase):
         """The Operating Model page, Home page and an entity page load without JS errors."""
         self.start_tour('/odoo/action-azm_platform.action_azm_dashboard',
                         'azm_om_dashboard_tour', login='admin')
+
+
+@tagged('post_install', '-at_install')
+class TestAzmGroupComposition(TransactionCase):
+    """The two group hierarchies compose; neither implies the other.
+
+    azm_platform.group_azm_user is the right to use the cockpit; azm_operating_model's
+    is the right to work on the assessments. Holding only the first is a real, supported
+    position — the operating-model menus are not shown and every page that reads a model
+    says so rather than failing — and this pins that so it does not read as an accident.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.company = cls.env['res.company'].create({'name': 'AZM Groups Campus'})
+        cls.env.user.company_ids = [(4, cls.company.id)]
+
+    def _user(self, login, groups):
+        return new_test_user(self.env, login, company_id=self.company.id,
+                             company_ids=[(6, 0, [self.company.id])], groups=groups)
+
+    def _azm_menus(self, user):
+        """The pages inside the AZM app this person is offered — the root itself is not
+        a page, so `child_of`, which includes it, has it taken back out."""
+        root = self.env.ref('azm_platform.menu_root')
+        inside = set(self.env['ir.ui.menu'].search([('id', 'child_of', root.id)]).ids)
+        inside.discard(root.id)
+        visible = set(self.env['ir.ui.menu'].with_user(user)._visible_menu_ids()) & inside
+        return set(self.env['ir.ui.menu'].browse(sorted(visible)).mapped('name'))
+
+    def test_the_cockpit_degrades_rather_than_failing_without_the_operating_model(self):
+        """Holding only the platform group is still a supported position: nothing of the
+        operating model is offered, and every page that reads one says so rather than
+        failing. The cockpit pages themselves are now the administrator's — see
+        test_each_role_sees_only_what_it_works_on."""
+        user = self._user('azm_groups_cockpit', 'azm_platform.group_azm_user')
+        menus = self._azm_menus(user)
+        self.assertFalse(menus & {'Operating Models', 'Assessments', 'Risk Register'},
+                         "the operating model's menus are not offered to them")
+
+        dashboard = self.env['azm.dashboard'].with_user(user).with_context(
+            allowed_company_ids=[self.company.id]).with_company(self.company)
+        home = dashboard.get_dashboard_data()
+        self.assertFalse(home['om'], "the page says the model is not theirs, and does not fail")
+        self.assertFalse(home['fin'])
+        self.assertFalse(dashboard.get_trees_hub()['available'])
+        self.assertFalse(dashboard.get_fin_tree(company_id=self.company.id)['available'])
+        dashboard.get_company_overview(self.company.id)   # must not raise
+
+    def test_each_role_sees_only_what_it_works_on(self):
+        """Somebody whose job is answering their entity's questions was being shown the
+        group cockpit, the entity list, the structure and the model dashboards — figures
+        about other people's work that they cannot act on, and a way into the catalogue
+        besides. Each role now gets the pages its job needs and no more."""
+        answerer = self._user(
+            'azm_groups_answerer',
+            'azm_platform.group_azm_user,azm_operating_model.azm_group_user')
+        reviewer = self._user(
+            'azm_groups_reviewer',
+            'azm_platform.group_azm_user,azm_operating_model.azm_group_reviewer')
+        manager = self._user(
+            'azm_groups_manager',
+            'azm_platform.group_azm_user,azm_operating_model.azm_group_manager')
+
+        theirs = self._azm_menus(answerer)
+        # The library is the whole group's shelf of deliverables across every entity,
+        # and fe8e407 took it off an answerer deliberately: they are asked to answer
+        # one entity's model, not to curate the group's output. See ONLY_OFFERED_TO in
+        # azm_platform/models/ir_ui_menu.py, which is where that is said.
+        self.assertEqual(theirs, {'My work'},
+                         'their own work, and nothing about anybody else’s')
+
+        reviewing = self._azm_menus(reviewer)
+        self.assertTrue({'My work', 'Assessments', 'Risk Register', 'Trees'} <= reviewing,
+                        'reviewing needs the work sent in and the risks it raised')
+        self.assertFalse(reviewing & {'Home', 'Entities', 'Group Structure',
+                                      'Operating Models', 'Question Catalogue'},
+                         'but not the cockpit or the catalogue')
+        self.assertLess(theirs, reviewing, 'and an answerer sees less than a reviewer')
+
+        running = self._azm_menus(manager)
+        self.assertTrue({'Home', 'Entities', 'Group Structure', 'Operating Models',
+                         'Progress', 'Question Catalogue'} <= running)
+        # everything the reviewer works on, and more — except مساحتي, which is one
+        # person's own work and is withheld from the people who track everybody's
+        self.assertLess(reviewing - {'My work'}, running,
+                        'a reviewer works on a subset of what a manager does')
+        self.assertNotIn('My work', running)
+
+    def test_a_manager_is_not_offered_their_own_work_alongside_everybody_s(self):
+        """مساحتي is one person's own work; a manager tracks everybody's from التقدّم.
+
+        No group can say this — the hierarchy flows upward, so anything that shows the
+        page to an answerer shows it to a manager too — so it is withheld in the one
+        place every menu listing passes through, rather than hidden in one sidebar.
+        """
+        manager = self._user(
+            'azm_groups_nomywork',
+            'azm_platform.group_azm_user,azm_operating_model.azm_group_manager')
+        self.assertNotIn('My work', self._azm_menus(manager))
+        self.assertIn('Progress', self._azm_menus(manager))
+        # and the people who do the answering keep it
+        answerer = self._user(
+            'azm_groups_keepsmywork',
+            'azm_platform.group_azm_user,azm_operating_model.azm_group_user')
+        self.assertIn('My work', self._azm_menus(answerer))
+        reviewer = self._user(
+            'azm_groups_revkeeps',
+            'azm_platform.group_azm_user,azm_operating_model.azm_group_reviewer')
+        self.assertIn('My work', self._azm_menus(reviewer))
+
+    def test_tracking_is_the_administrator_s_page_not_an_answerer_s(self):
+        """التقدّم is everybody's work; مساحتي is your own. They are different pages for
+        different jobs, and the tracking one is not offered to the people being tracked."""
+        answerer = self._user(
+            'azm_groups_tracked',
+            'azm_platform.group_azm_user,azm_operating_model.azm_group_user')
+        self.assertNotIn('Progress', self._azm_menus(answerer))
+        manager = self._user(
+            'azm_groups_tracker',
+            'azm_platform.group_azm_user,azm_operating_model.azm_group_manager')
+        self.assertIn('Progress', self._azm_menus(manager))
+
+    def test_neither_group_implies_the_other(self):
+        """Linking them would take the supported position above away."""
+        platform = self.env.ref('azm_platform.group_azm_user')
+        model = self.env.ref('azm_operating_model.azm_group_user')
+        self.assertNotIn(model, platform.implied_ids,
+                         "a cockpit user is not automatically an assessment preparer")
+        self.assertNotIn(platform, model.implied_ids,
+                         "and working on assessments does not hand out the cockpit")
+
+
+@tagged('post_install', '-at_install')
+class TestOmDetail(TransactionCase):
+    """The operating model pages show what is behind a figure in place, so the rows
+    they used to reach through a backend list view come from one method instead."""
+
+    def test_each_kind_comes_back_with_rows_it_can_show(self):
+        D = self.env['azm.dashboard']
+        procs = self.env['azm.assessment'].search([]).ids
+        fins = self.env['azm.fin.assessment'].search([]).ids
+        for kind, scope in (('questions', {}),
+                            ('findings', {'assessment_ids': procs}),
+                            ('requirements', {}),
+                            ('gaps', {'assessment_ids': fins})):
+            out = D.om_detail(kind, **scope)
+            self.assertEqual(out['kind'], kind)
+            self.assertIn('rows', out)
+            for row in out['rows'][:5]:
+                # the panel draws exactly these, so a missing one is a blank row
+                self.assertEqual(
+                    sorted(set(('code', 'title', 'meta', 'detail', 'tone')) - set(row)), [],
+                    f'{kind} row is missing what the panel draws')
+
+    def test_the_catalogue_is_searched_whole_not_one_page_of_it(self):
+        """PUR-CLS is the last stage of the cycle, so all 31 of its questions sat
+        outside the first window the panel was given — and searching for them found
+        nothing. The search runs over the catalogue, not over what was already sent."""
+        D = self.env['azm.dashboard']
+        everything = D.om_detail('questions')
+        self.assertEqual(everything['total'],
+                         self.env['azm.question'].search_count([]),
+                         'the panel is told how many there are, not how many it got')
+        self.assertLessEqual(len(everything['rows']), everything['total'])
+
+        last = self.env['azm.stage'].search([], order='sequence desc', limit=1)
+        if not last:
+            self.skipTest('no stages in this database')
+        owed = self.env['azm.question'].search_count([('stage_id', '=', last.id)])
+        if not owed:
+            self.skipTest('the last stage has no questions')
+        found = D.om_detail('questions', query=last.code)
+        self.assertEqual(found['total'], owed,
+                         f'searching {last.code} must reach every one of its questions')
+        self.assertTrue(found['rows'], 'and must return them, not an empty first page')
+
+    def test_paging_reaches_the_end_of_the_catalogue(self):
+        D = self.env['azm.dashboard']
+        seen, offset, guard = 0, 0, 0
+        while guard < 50:
+            page = D.om_detail('questions', offset=offset)
+            seen += len(page['rows'])
+            if not page['has_more']:
+                break
+            offset += page['limit']
+            guard += 1
+        self.assertEqual(seen, page['total'], 'every page is reachable')
+
+    def test_a_scope_narrows_what_comes_back(self):
+        D = self.env['azm.dashboard']
+        stage = self.env['azm.stage'].search([], limit=1)
+        if not stage:
+            self.skipTest('no stages in this database')
+        every = D.om_detail('questions')
+        scoped = D.om_detail('questions', stage_id=stage.id)
+        self.assertTrue(scoped['rows'], 'the stage has questions')
+        self.assertLess(scoped['total'], every['total'],
+                        'a stage is narrower than the catalogue')
+
+    def test_rights_are_asked_of_the_models_not_of_the_groups(self):
+        """A reader who can open Projects from the sidebar must not be told by the
+        Home tiles that they cannot. Access comes from whatever groups and rules a
+        deployment uses, so membership of one group is the wrong question."""
+        user = new_test_user(self.env, 'azm_rights_probe', groups='base.group_user')
+        rights = self.env['azm.dashboard'].with_user(user).azm_rights()
+        for key in ('hr', 'project', 'tasks', 'documents', 'editCompany', 'settings'):
+            self.assertIn(key, rights, f'the screens read rights["{key}"]')
+
+        # whatever the answer is, it is the same answer the model itself gives
+        for key, model in (('project', 'project.project'), ('tasks', 'project.task')):
+            if model in self.env:
+                self.assertEqual(
+                    rights[key], self.env[model].with_user(user).has_access('read'),
+                    f'{key} must follow access to {model}, not group membership')
+
+    def test_an_unknown_kind_is_refused(self):
+        """The kind arrives from a browser; without this it names any model at all."""
+        with self.assertRaises(UserError):
+            self.env['azm.dashboard'].om_detail('res.users')

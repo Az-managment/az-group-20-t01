@@ -1,4 +1,4 @@
-import { user } from "@web/core/user";
+import { rpc } from "@web/core/network/rpc";
 const { DateTime } = luxon;
 
 /** "2 hours ago" style label from a UTC SQL datetime string. */
@@ -33,12 +33,17 @@ let rightsPromise = null;
  */
 export function loadAzmRights() {
     if (!rightsPromise) {
-        rightsPromise = Promise.all([
-            user.hasGroup("hr.group_hr_user"),
-            user.hasGroup("project.group_project_user"),
-            user.hasGroup("base.group_erp_manager"),
-            user.hasGroup("base.group_system"),
-        ]).then(([hr, project, editCompany, settings]) => ({ hr, project, editCompany, settings, documents: true }));
+        // Asked of the models rather than of the groups. Access comes from whatever
+        // groups and rules a deployment uses, so "is this user in project's user
+        // group" answers a different question from "may this user read projects" —
+        // and answered it wrongly for anybody who reaches Projects some other way.
+        rightsPromise = rpc("/web/dataset/call_kw", {
+            model: "azm.dashboard",
+            method: "azm_rights",
+            args: [],
+            kwargs: {},
+        }).catch(() => ({ hr: false, project: false, tasks: false, documents: true,
+                          editCompany: false, settings: false }));
     }
     return rightsPromise;
 }
@@ -48,11 +53,11 @@ const NEEDS = {
     "hr.open_view_employee_list_my": "hr",
     "hr.hr_department_kanban_action": "hr",
     "project.open_view_project_all": "project",
-    "project.action_view_all_task": "project",
+    "project.action_view_all_task": "tasks",
     action_azm_employees: "hr",
     action_azm_departments: "hr",
     action_azm_projects: "project",
-    action_azm_tasks: "project",
+    action_azm_tasks: "tasks",
     action_azm_edit_company: "editCompany",
 };
 

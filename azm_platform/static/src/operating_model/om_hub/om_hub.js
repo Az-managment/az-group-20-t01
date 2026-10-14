@@ -111,6 +111,14 @@ export class AzmOmHub extends Component {
         this.action.doAction(model.action);
     }
 
+    /** A header given a button's role has to answer a button's keys. */
+    openOnKey(ev, model) {
+        if (ev.key === "Enter" || ev.key === " ") {
+            ev.preventDefault();
+            this.open(model);
+        }
+    }
+
     openByKey(key) {
         const model = this.d.models.find((m) => m.key === key);
         if (model) {

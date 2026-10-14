@@ -7,8 +7,21 @@ def _norm(text):
     return " ".join((text or "").split()).casefold()
 
 
+# Words nobody puts in an acronym. "Future University in Egypt" is FUE to everyone who
+# works there, and was FUIE here because the "in" counted — which is the sort of thing
+# that only shows up once the code is printed on every document the entity issues.
+# "Al" is not among them: it is part of a name, not a joining word.
+_NOT_IN_AN_ACRONYM = {
+    "in", "of", "the", "and", "for", "at", "on", "to", "a", "an", "by", "with",
+    "من", "في", "و", "ال",
+}
+
+
 def _initials(text):
-    return "".join(w[0] for w in (text or "").split() if w[0].isalnum()).upper()
+    """The letters somebody would actually write for a name of this shape."""
+    words = [w for w in (text or "").split()
+             if w[0].isalnum() and w.strip("-–—").lower() not in _NOT_IN_AN_ACRONYM]
+    return "".join(w[0] for w in words).upper()
 
 
 class AzmEntity(models.Model):
@@ -47,7 +60,19 @@ class AzmEntity(models.Model):
     # ---------------------------------------------------------------- companies → entities
     @api.model
     def _azm_new_code(self, company, taken):
-        base = re.sub(r"[^A-Z0-9]", "", _initials(company.name))[:6] or f"C{company.id}"
+        """The code this company is known by, preferring the one it already has.
+
+        A company carries an entity code of its own — it prefixes the company's journals
+        and therefore the numbering of everything it files — and that is the code the
+        group knows it by. This used to ignore it and build initials from the name
+        instead, so the two drifted apart: AZ Management & Development is AZM on its
+        journals and was AMD here, and its documents printed AMD-FIN-POL-000001 for an
+        entity nothing else in the system calls AMD.
+
+        Initials are the fallback, for a company that has no code to go on.
+        """
+        own = re.sub(r"[^A-Z0-9]", "", (company.code or "").upper())
+        base = own[:6] or re.sub(r"[^A-Z0-9]", "", _initials(company.name))[:6] or f"C{company.id}"
         code, n = base, 2
         while code in taken:
             code, n = f"{base}{n}", n + 1
@@ -97,6 +122,10 @@ class AzmEntity(models.Model):
         return True
 
     def action_sync_companies(self):
+        """Re-sync entities with companies. The work runs elevated — it touches every
+        company — so the right to ask for it is checked here, or anyone could rename,
+        relink and archive the whole group's entities over RPC."""
+        self.env["azm.entity"].check_access("write")
         self._azm_sync_companies()
         return {"type": "ir.actions.client", "tag": "display_notification",
                 "params": {"type": "success", "message": "تمت مزامنة الكيانات مع الشركات.",

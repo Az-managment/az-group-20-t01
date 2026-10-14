@@ -2,11 +2,31 @@
 <templates xml:space="preserve">
 
     <t t-name="azm_platform.OmDashboard">
-        <div class="o_action o_azm_dashboard o_azm_om">
+        <div class="o_action o_azm_dashboard o_azm_om o_azm_om_page">
             <div class="o_azm_om_title">
-                <div>
-                    <h1>Operating Model</h1>
+                <div class="o_azm_om_title_top">
+                <div class="o_azm_om_title_words">
+                    <span class="o_azm_om_eyebrow">
+                        <i class="oi" data-icon="view_module" title="Operating model"/>
+                        Operating Model
+                    </span>
+                    <h1>Procurement cycle</h1>
                     <p>From answers to policy, procedure, authority and risk, per entity and per domain</p>
+                </div>
+                <div t-if="this.state.loaded and this.d.available" class="o_azm_om_title_gauge">
+                    <span class="o_azm_ring_wrap">
+                        <svg class="o_azm_ring" viewBox="0 0 40 40" aria-hidden="true">
+                            <circle class="o_azm_ring_track" cx="20" cy="20" r="15.9155"/>
+                            <circle t-if="this.bar(this.k.completion)" class="o_azm_ring_value"
+                                    cx="20" cy="20" r="15.9155"
+                                    t-attf-stroke-dasharray="{{this.bar(this.k.completion)}} 100"/>
+                        </svg>
+                        <b class="o_azm_ring_label" t-out="this.pct(this.k.completion)"/>
+                    </span>
+                    <span class="o_azm_title_gauge_words">
+                        Answer completion
+                        <em>across the assessments in scope</em>
+                    </span>
                 </div>
                 <div t-if="this.state.loaded and this.d.available" class="o_azm_om_title_actions">
                     <button type="button" class="btn btn-light" t-on-click="() => this.openQuestions(false)">
@@ -16,6 +36,38 @@
                         <i class="oi" data-icon="add" title="New"/> New Assessment
                     </button>
                 </div>
+                </div>
+                    <section t-attf-class="o_azm_om_toolbar {{this.state.busy ? 'o_azm_om_busy' : ''}}">
+                        <div class="o_azm_om_tabs" role="group" aria-label="Filter by domain">
+                            <button type="button" t-foreach="this.domainTabs" t-as="tab" t-key="tab.key or 'all'"
+                                    t-attf-class="o_azm_om_tab o_azm_tone_{{tab.tone}} {{this.state.domain === tab.key ? 'active' : ''}}"
+                                t-att-aria-pressed="this.state.domain === tab.key ? 'true' : 'false'"
+                                    t-on-click="() => this.setDomain(tab.key)">
+                                <i class="oi" t-att-data-icon="tab.icon" t-att-title="tab.label"/>
+                                <span t-out="tab.label"/>
+                                <span class="o_azm_om_count" t-out="tab.count"/>
+                            </button>
+                        </div>
+                        <div class="o_azm_om_selects">
+                            <span t-if="this.state.companyId" class="o_azm_om_chip">
+                                <i class="oi" data-icon="business" title="Company"/>
+                                <t t-out="this.companyName"/>
+                                <button type="button" class="btn btn-link p-0" title="Clear" t-on-click="() => this.clearCompany()">
+                                    <i class="oi" data-icon="close" title="Clear"/>
+                                </button>
+                            </span>
+                            <select class="form-select" t-on-change="this.onEntityChange" aria-label="Entity">
+                                <option value="" t-att-selected="!this.state.entityId">All entities</option>
+                                <option t-foreach="this.d.entity_options" t-as="opt" t-key="opt.id"
+                                        t-att-value="opt.id" t-att-selected="opt.id === this.state.entityId" t-out="opt.name"/>
+                            </select>
+                            <select class="form-select" t-on-change="this.onAssessmentChange" aria-label="Assessment">
+                                <option value="" t-att-selected="!this.state.assessmentId">All current assessments</option>
+                                <option t-foreach="this.d.assessment_options" t-as="opt" t-key="opt.id"
+                                        t-att-value="opt.id" t-att-selected="opt.id === this.state.assessmentId" t-out="opt.name"/>
+                            </select>
+                        </div>
+                    </section>
             </div>
 
             <t t-call="azm_platform.ModelSwitch"/>
@@ -31,44 +83,12 @@
             </div>
 
             <t t-else="">
-                <!-- ============================== Scope & filters -->
-                <section t-attf-class="o_azm_om_toolbar {{this.state.busy ? 'o_azm_om_busy' : ''}}">
-                    <div class="o_azm_om_tabs" role="tablist">
-                        <button type="button" t-foreach="this.domainTabs" t-as="tab" t-key="tab.key or 'all'"
-                                t-attf-class="o_azm_om_tab o_azm_tone_{{tab.tone}} {{this.state.domain === tab.key ? 'active' : ''}}"
-                                t-on-click="() => this.setDomain(tab.key)">
-                            <i class="oi" t-att-data-icon="tab.icon" t-att-title="tab.label"/>
-                            <span t-out="tab.label"/>
-                            <span class="o_azm_om_count" t-out="tab.count"/>
-                        </button>
-                    </div>
-                    <div class="o_azm_om_selects">
-                        <span t-if="this.state.companyId" class="o_azm_om_chip">
-                            <i class="oi" data-icon="business" title="Company"/>
-                            <t t-out="this.companyName"/>
-                            <button type="button" class="btn btn-link p-0" title="Clear" t-on-click="() => this.clearCompany()">
-                                <i class="oi" data-icon="close" title="Clear"/>
-                            </button>
-                        </span>
-                        <select class="form-select" t-on-change="this.onEntityChange" aria-label="Entity">
-                            <option value="" t-att-selected="!this.state.entityId">All entities</option>
-                            <option t-foreach="this.d.entity_options" t-as="opt" t-key="opt.id"
-                                    t-att-value="opt.id" t-att-selected="opt.id === this.state.entityId" t-out="opt.name"/>
-                        </select>
-                        <select class="form-select" t-on-change="this.onAssessmentChange" aria-label="Assessment">
-                            <option value="" t-att-selected="!this.state.assessmentId">All current assessments</option>
-                            <option t-foreach="this.d.assessment_options" t-as="opt" t-key="opt.id"
-                                    t-att-value="opt.id" t-att-selected="opt.id === this.state.assessmentId" t-out="opt.name"/>
-                        </select>
-                    </div>
-                </section>
-                <p class="o_azm_om_scope">
-                    <i class="oi" data-icon="filter_alt" title="Scope"/>
-                    <t t-out="this.scopeLabel"/>
-                    <t t-if="this.state.domain"> · <strong t-out="this.domainName"/></t>
-                </p>
-
                 <!-- ============================== KPIs -->
+                <h2 class="o_azm_om_block_title">
+                    <span>At a glance</span>
+                    <!-- counted, so the words cannot disagree with the tiles again -->
+                    <em>The cycle in <t t-out="this.kpis.length"/> figures</em>
+                </h2>
                 <section class="o_azm_kpis o_azm_om_kpis">
                     <t t-foreach="this.kpis" t-as="kpi" t-key="kpi.key">
                         <button type="button"
@@ -90,6 +110,10 @@
                 </section>
 
                 <!-- ============================== Domains -->
+                <h2 class="o_azm_om_block_title">
+                    <span>Domains</span>
+                    <em>The three parts of the cycle, and what each one carries</em>
+                </h2>
                 <section class="o_azm_om_domains">
                     <button type="button" t-foreach="this.domains" t-as="dom" t-key="dom.key"
                             t-attf-class="o_azm_card o_azm_om_domain o_azm_tone_{{dom.tone}} {{this.state.domain === dom.key ? 'active' : ''}}"
@@ -228,6 +252,10 @@
                 </section>
 
                 <!-- ============================== Charts -->
+                <h2 class="o_azm_om_block_title">
+                    <span>Breakdown</span>
+                    <em>Findings, assessments and the shape of the question set</em>
+                </h2>
                 <section class="o_azm_om_row_3">
                     <div class="o_azm_card o_azm_donut_card">
                         <header class="o_azm_card_header">
@@ -296,6 +324,10 @@
                 </section>
 
                 <!-- ============================== Entities + top risks -->
+                <h2 class="o_azm_om_block_title">
+                    <span>Entities and risks</span>
+                    <em>Where the work stands, and what is still open</em>
+                </h2>
                 <section class="o_azm_om_row_2">
                     <div class="o_azm_card">
                         <header class="o_azm_card_header">
@@ -310,9 +342,7 @@
                                         <th>Status</th>
                                         <th>Assessments</th>
                                         <th>Completion</th>
-                                        <th>Certainty</th>
-                                        <th>Risks</th>
-                                        <th>Open findings</th>
+                                        <th>Risk</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -331,14 +361,25 @@
                                         <td><span t-attf-class="o_azm_status o_azm_status_{{entity.statusClass}}" t-out="entity.statusLabel"/></td>
                                         <td><t t-out="entity.assessments"/> <small class="text-muted" t-if="entity.approved">(<t t-out="entity.approved"/> ✓)</small></td>
                                         <td>
-                                            <span class="o_azm_mini_progress">
-                                                <span class="o_azm_progress"><span class="o_azm_progress_bar" t-attf-style="width: {{this.bar(entity.completion)}}%"/></span>
-                                                <span t-out="this.pct(entity.completion)"/>
+                                            <span class="o_azm_cell_stack">
+                                                <span class="o_azm_mini_progress">
+                                                    <span class="o_azm_progress"><span class="o_azm_progress_bar" t-attf-style="width: {{this.bar(entity.completion)}}%"/></span>
+                                                    <span t-out="this.pct(entity.completion)"/>
+                                                </span>
+                                                <!-- certainty qualifies the completion above it rather than
+                                                     standing as a column of its own -->
+                                                <small><t t-out="this.pct(entity.certainty)"/> certain</small>
                                             </span>
                                         </td>
-                                        <td t-out="this.pct(entity.certainty)"/>
-                                        <td t-out="entity.risks or '—'"/>
-                                        <td t-att-class="{'text-danger fw-bold': entity.findings_open}" t-out="entity.findings_open or '—'"/>
+                                        <td>
+                                            <span class="o_azm_cell_stack">
+                                                <b t-if="entity.findings_open" class="o_azm_cell_warn">
+                                                    <t t-out="entity.findings_open"/> open
+                                                </b>
+                                                <b t-else="" class="o_azm_cell_quiet">none open</b>
+                                                <small><t t-out="entity.risks or 0"/> risks triggered</small>
+                                            </span>
+                                        </td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -418,7 +459,15 @@
                     </div>
                 </section>
             </t>
-        </div>
+        
+            <!-- what is behind a figure, keyed so asking for something else reloads it -->
+            <AzmOmDetail t-if="this.state.detail"
+                         t-key="this.state.detail.kind + '-' + this.state.detail.heading"
+                         kind="this.state.detail.kind"
+                         scope="this.state.detail.scope"
+                         heading="this.state.detail.heading"
+                         onClose="() => this.closeDetail()"/>
+</div>
     </t>
 
 </templates>

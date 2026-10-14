@@ -18,7 +18,7 @@ def _e(text):
 class AzmFinAssessment(models.Model):
     _name = "azm.fin.assessment"
     _description = "إفادة النموذج المالي الموحد"
-    _inherit = ["mail.thread", "mail.activity.mixin"]
+    _inherit = ["mail.thread", "mail.activity.mixin", "azm.reviewable"]
     _order = "create_date desc, id desc"
 
     name = fields.Char("المرجع", required=True, copy=False, readonly=True, default="جديد")
@@ -38,11 +38,18 @@ class AzmFinAssessment(models.Model):
     ], default="draft", required=True, tracking=True, copy=False, string="الحالة")
     user_id = fields.Many2one("res.users", "مُعد الإفادة", default=lambda self: self.env.user, tracking=True)
     reviewer_id = fields.Many2one("res.users", "المراجع", tracking=True)
+    assignment_ids = fields.One2many("azm.assignment", "fin_assessment_id",
+                                     string="توزيع الموديولات")
     approved_by_id = fields.Many2one("res.users", "اعتمدها", readonly=True, copy=False)
     approved_date = fields.Datetime("تاريخ الاعتماد", readonly=True, copy=False)
     is_demo = fields.Boolean("مثال افتراضي", copy=False)
     previous_id = fields.Many2one("azm.fin.assessment", "الإصدار السابق", readonly=True, copy=False)
-    answer_ids = fields.One2many("azm.fin.answer", "assessment_id", string="الإجابات", copy=True)
+    # A requirement retired from the catalogue is archived, not deleted — so its answers
+    # survive for the record — but it must stop being asked, counted and printed. The
+    # domain keeps it out of everything that reads answer_ids; _ensure_answers goes
+    # around it so a retired requirement is never re-created either.
+    answer_ids = fields.One2many("azm.fin.answer", "assessment_id", string="الإجابات", copy=True,
+                                 domain=[("requirement_active", "=", True)])
     version_ids = fields.One2many("azm.fin.version", "assessment_id", string="الإصدارات المعتمدة")
 
     applicable_count = fields.Integer("متطلبات منطبقة", compute="_compute_stats")
@@ -102,13 +109,26 @@ class AzmFinAssessment(models.Model):
         return records
 
     def _ensure_answers(self):
+        """A line per live requirement, for every assessment given.
+
+        Read through the model rather than answer_ids: that field hides the lines of
+        retired requirements, and they must not be created a second time."""
         requirements = self.env["azm.fin.requirement"].search([])
-        lines = []
-        for rec in self:
-            have = set(rec.answer_ids.requirement_id.ids)
-            lines += [{"assessment_id": rec.id, "requirement_id": r.id} for r in requirements if r.id not in have]
+        Answer = self.env["azm.fin.answer"].with_context(active_test=False)
+        existing = {}
+        for line in Answer.search([("assessment_id", "in", self.ids)]):
+            existing.setdefault(line.assessment_id.id, set()).add(line.requirement_id.id)
+        lines = [{"assessment_id": rec.id, "requirement_id": r.id}
+                 for rec in self for r in requirements
+                 if r.id not in existing.get(rec.id, ())]
         if lines:
-            self.env["azm.fin.answer"].create(lines)
+            Answer.create(lines)
+
+    @api.model
+    def _ensure_all_answers(self):
+        """Top every assessment up after a catalogue reload — a requirement added to the
+        catalogue has no line on the assessments that already existed."""
+        self.search([])._ensure_answers()
 
     # ---------------------------------------------------------------- workspace RPC
     def _modules_nav(self):
@@ -134,6 +154,9 @@ class AzmFinAssessment(models.Model):
             "version": self.version, "is_demo": self.is_demo, "readonly": self.state != "draft",
             "applicable": self.applicable_count, "done": self.done_count, "progress": round(self.progress),
             "questions": self.question_count, "answered": self.answered_count,
+            "outstanding": self._azm_outstanding(), "can_send": self._azm_can_send(),
+            # the review side: who may send a part back, and what is already back
+            **self._azm_review_header(),
             "counts": {key: self[f"{key}_count"] for key, _label in STATES},
             "scopes": [{"code": "ALL", "name": SCOPES["ALL"]}] + [
                 {"code": s.code, "name": s.name} for s in self.scope_ids],
@@ -164,6 +187,7 @@ class AzmFinAssessment(models.Model):
         self.ensure_one()
         modules = self.env["azm.fin.module"].search([])
         module = modules.filtered(lambda m: m.code == module_code)[:1] or modules[:1]
+        returns = self.env["azm.review.return"]._open_for(self)
         lines = self.answer_ids.filtered(lambda a: a.module_id == module).sorted(
             lambda a: (a.topic_sequence, a.requirement_sequence, a.id))
         if not show_all:
@@ -177,11 +201,25 @@ class AzmFinAssessment(models.Model):
                                             "stage": p.stage, "question": p.question, "output": p.output or ""}
                                            for p in topic.prompt_ids],
                                "requirements": []})
-            topics[-1]["requirements"].append(line._workspace_dict())
+            row = line._workspace_dict()
+            # when a review has sent parts back, everything else stands as it was
+            # reviewed: the page says so rather than letting somebody type into a field
+            # the server will refuse
+            covered = bool(returns) and returns._covers(line)
+            row["locked"] = bool(returns) and not covered
+            # said outright rather than left to be read off "locked", which is false
+            # both for a returned requirement and for every requirement when nothing
+            # was returned at all
+            row["returned"] = covered
+            topics[-1]["requirements"].append(row)
         return {
             "header": self._header(),
+            # how many parts are waiting to be answered again, across the whole
+            # assessment: the filter is worth offering only when there are some, and
+            # what came back may be under a module the reader is not looking at
+            "returns_open": len(returns),
             "modules": self._modules_nav(),
-            "module": {"code": module.code, "name": module.name,
+            "module": {"id": module.id, "code": module.code, "name": module.name,
                        "total": len(self.answer_ids.filtered(lambda a: a.module_id == module))},
             "topics": topics,
             "states": [{"key": k, "name": n} for k, n in STATES],
@@ -287,30 +325,66 @@ class AzmFinAssessment(models.Model):
         return Markup("".join(html))
 
     # ---------------------------------------------------------------- actions
-    def action_open_workspace(self):
+    def _azm_outstanding(self):
         self.ensure_one()
+        return max(self.question_count - self.answered_count, 0)
+
+    def _azm_returned_outstanding(self, returns):
+        """What is still owed on the parts a review sent back.
+
+        Counted the way the assessment counts itself, which it did not use to be: over
+        the applicable lines only, and through _question_totals, where «لا ينطبق»
+        is one question answered by its reason. Reading q_total directly counted both
+        the requirements that do not apply to this entity and the ones marked not
+        applicable — neither of which the workspace will ever let anybody answer. A
+        returned module holding one of either could never be sent back for review
+        again: the figure never reached zero, so the button stayed dead for good.
+        """
+        self.ensure_one()
+        lines = self.answer_ids.filtered(
+            lambda line: line.applicable and returns._covers(line))
+        total, answered = lines._question_totals()
+        return max(total - answered, 0)
+
+    def action_open_workspace(self, focus=None):
+        """Open the workspace, on a named part of it when one is asked for.
+
+        Somebody sent to fix a returned module should arrive at that module, not at
+        whichever one the workspace happens to open on first.
+        """
+        self.ensure_one()
+        params = {"assessment_id": self.id}
+        if focus and focus.get("level") == "module":
+            params["module_code"] = self.env["azm.fin.module"].browse(focus["id"]).code
+        elif focus and focus.get("level") == "topic":
+            topic = self.env["azm.fin.topic"].browse(focus["id"])
+            params["module_code"] = topic.module_id.code
+        elif focus and focus.get("level") == "requirement":
+            requirement = self.env["azm.fin.requirement"].browse(focus["id"])
+            params["module_code"] = requirement.module_id.code
+            params["requirement_code"] = requirement.code
         return {"type": "ir.actions.client", "tag": "azm_fin_workspace", "name": self.name,
-                "params": {"assessment_id": self.id}}
+                "params": params}
 
     def action_submit(self):
+        """Send the financial assessment to whoever reviews it."""
         for rec in self.filtered(lambda r: r.state == "draft"):
-            rec.state = "review"
-            if rec.reviewer_id:
-                # the preparer loses write access once the assessment leaves draft: notify as superuser
-                rec.sudo().activity_schedule("mail.mail_activity_data_todo", user_id=rec.reviewer_id.id,
-                                             summary="مراجعة إفادة النموذج المالي")
+            rec._submit_for_review("مراجعة إفادة النموذج المالي")
 
     def action_back_to_draft(self):
-        self.filtered(lambda r: r.state == "review").write({"state": "draft"})
+        self.filtered(lambda r: r.state == "review")._workflow().write({"state": "draft"})
 
     def action_approve(self):
-        if not self.env.user.has_group("azm_operating_model.azm_group_manager"):
-            raise UserError("الاعتماد لمدير النموذج فقط.")
+        # The reviewer is who the work was sent to; making them unable to accept it
+        # left the role with nothing to do but look. What stays is the part that
+        # matters — nobody signs off their own work, which is checked below.
+        if not (self.env.user.has_group("azm_operating_model.azm_group_reviewer")
+                or self.env.user.has_group("azm_operating_model.azm_group_manager")):
+            raise UserError("الاعتماد للمراجع أو مدير النموذج.")
         for rec in self:
             if rec.state != "review":
                 raise UserError("الاعتماد يتم من حالة «تحت المراجعة» فقط.")
-            if rec.user_id == self.env.user and not self.env.is_superuser():
-                raise UserError("مُعد الإفادة لا يعتمدها بنفسه (فصل المهام).")
+            rec._azm_check_not_own_work()
             answers = {a.code: a._snapshot() for a in rec.answer_ids if a.state or a.q_answered}
             self.env["azm.fin.version"].create({
                 "assessment_id": rec.id, "version": rec.version,
@@ -318,7 +392,7 @@ class AzmFinAssessment(models.Model):
                 "summary_html": "".join(str(rec._render(tab)) for tab in ("book", "rules", "workflow", "authority",
                                                                             "reports", "integration", "gaps", "future")),
             })
-            rec.write({"state": "approved", "approved_by_id": self.env.user.id,
+            rec._workflow().write({"state": "approved", "approved_by_id": self.env.user.id,
                        "approved_date": fields.Datetime.now()})
 
     def action_new_version(self):
@@ -327,7 +401,7 @@ class AzmFinAssessment(models.Model):
             raise UserError("الإصدار الجديد يتعمل من إفادة معتمدة.")
         new = self.copy({"version": self.version + 1, "previous_id": self.id, "name": "جديد",
                          "scope_ids": [Command.set(self.scope_ids.ids)]})
-        self.state = "archived"
+        self._workflow().state = "archived"
         return {"type": "ir.actions.act_window", "res_model": self._name, "res_id": new.id, "view_mode": "form"}
 
     def action_view_gaps(self):
@@ -369,6 +443,7 @@ class AzmFinAssessment(models.Model):
 class AzmFinAnswer(models.Model):
     """One line per requirement in an assessment; its status and texts are derived from the question answers."""
     _name = "azm.fin.answer"
+    _inherit = ["azm.assignable"]
     _description = "إجابة متطلب مالي"
     _order = "module_sequence, topic_sequence, requirement_sequence, id"
 
@@ -381,6 +456,8 @@ class AzmFinAnswer(models.Model):
     module_sequence = fields.Integer(related="requirement_id.module_sequence", store=True, string="ترتيب الموديول")
     topic_sequence = fields.Integer(related="requirement_id.topic_sequence", store=True, string="ترتيب الموضوع")
     requirement_sequence = fields.Integer(related="requirement_id.sequence", store=True, string="ترتيب المتطلب")
+    # stored so the assessment can leave a retired requirement out without joining to it
+    requirement_active = fields.Boolean(related="requirement_id.active", store=True, index=True)
     code = fields.Char(related="requirement_id.code", store=True, string="الكود")
     req_id = fields.Char(related="requirement_id.req_id", string="Requirement ID")
     title = fields.Char(related="requirement_id.title", string="المتطلب ")
@@ -559,11 +636,11 @@ class AzmFinAnswer(models.Model):
                         vals["priority"] = "high" if state == "unavailable" else "medium"
                 values[q.key] = {opt.name}
             elif q.qtype == "select":
-                opt = main[s % len(main)]
+                opt = main[s % len(main)] if main else main
                 vals["option_id"] = opt.id
                 values[q.key] = {opt.name}
             elif q.qtype == "multi":
-                chosen = main[s % len(main)] | main[(s // 7) % len(main)]
+                chosen = (main[s % len(main)] | main[(s // 7) % len(main)]) if main else main
                 vals["option_ids"] = [Command.set(chosen.ids)]
                 values[q.key] = set(chosen.mapped("name"))
             elif q.qtype == "number":
@@ -603,7 +680,9 @@ class AzmFinAnswer(models.Model):
             questions.append(data)
         prof = PROFILES[req.profile]
         return {
-            "answer_id": self.id, "code": req.code, "req_id": req.req_id or "", "title": req.title,
+            "answer_id": self.id, "requirement_id": req.id,
+            "code": req.code, "req_id": req.req_id or "", "title": req.title,
+            "tree_ref": req.tree_ref or "",
             "question": req.question, "profile": req.profile, "profile_name": prof[0],
             "scope_code": req.scope_code, "scope_name": SCOPES.get(req.scope_code, ""), "source": req.source,
             "pack": req.pack or "", "owner": req.owner or "", "response_type": req.response_type or "",
@@ -649,10 +728,27 @@ class AzmFinAnswer(models.Model):
         }
 
     def write(self, vals):
-        if {"na", "reason"} & set(vals) and not self.env.context.get("azm_skip_lock"):
+        if {"na", "reason"} & set(vals) and not self.env["azm.answer"]._azm_lock_lifted():
             if any(a.assessment_id.state != "draft" for a in self):
                 raise UserError("الإفادة مش في حالة مسودة؛ لا يمكن تعديل الإجابات.")
+            self._azm_check_assignee()
+            self._azm_check_returns()
         return super().write(vals)
+
+    # ---------------------------------------------------------------- whose part
+    def _azm_part_key(self):
+        self.ensure_one()
+        return (self.assessment_id.id, self.module_id.id)
+
+    def _azm_part_name(self):
+        self.ensure_one()
+        return f"FIN.{self.module_id.code}"
+
+    @api.model
+    def _azm_assignments(self, lines):
+        found = self.env["azm.assignment"].sudo().search(
+            [("fin_assessment_id", "in", lines.assessment_id.ids)])
+        return {(a.fin_assessment_id.id, a.module_id.id): a.user_ids.ids for a in found}
 
 
 class AzmFinQAnswer(models.Model):
@@ -744,21 +840,37 @@ class AzmFinQAnswer(models.Model):
                 "note": self.note or "", "note_tags": self._tags(), "priority": self.priority or False}
 
     def _check_draft(self):
-        if not self.env.context.get("azm_skip_lock") and any(qa.line_id.assessment_id.state != "draft" for qa in self):
+        if not self.env["azm.answer"]._azm_lock_lifted() and any(qa.line_id.assessment_id.state != "draft" for qa in self):
             raise UserError("الإفادة مش في حالة مسودة؛ لا يمكن تعديل الإجابات.")
+
+    def _check_writable(self):
+        """Every reason this answer may not be written, asked in one place.
+
+        The return lock was missing here. A reviewer who sends one module back leaves
+        the rest of the assessment as they reviewed it, and the procurement twin
+        enforces that on every answer — but on this side only «لا ينطبق» and its reason
+        went through it, while every actual answer is written as one of these lines. So
+        a preparer could keep editing modules the reviewer had already accepted, which
+        is the one thing returning named parts exists to prevent.
+        """
+        self._check_draft()
+        self.line_id._azm_check_assignee()
+        self.line_id._azm_check_returns()
 
     @api.model_create_multi
     def create(self, vals_list):
         records = super().create(vals_list)
-        records._check_draft()
+        # a question is first answered by creating this line, so the checks belong here
+        # as much as on write
+        records._check_writable()
         return records
 
     def write(self, vals):
-        self._check_draft()
+        self._check_writable()
         return super().write(vals)
 
     def unlink(self):
-        self._check_draft()
+        self._check_writable()
         return super().unlink()
 
 

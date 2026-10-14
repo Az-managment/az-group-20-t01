@@ -21,7 +21,6 @@ def _figures(answers):
     answered = len(answers) - states['open']
     done = len(answers.filtered('is_done'))
     questions, answered_q = answers._question_totals()
-    implemented = states['full'] + states['partial'] + states['unavailable']
     return {
         'applicable': len(answers),
         'done': done,
@@ -32,8 +31,12 @@ def _figures(answers):
         'question_completion': _pct(answered_q, questions),
         'gaps': states['partial'] + states['unavailable'],
         'completion': _pct(done, len(answers)),
-        # maturity: share of the requirements that exist (not N/A) which are fully applied
-        'maturity': _pct(states['full'], implemented),
+        # maturity: share of the requirements that exist (not N/A) which are fully
+        # applied. The denominator is every applicable requirement, which is what the
+        # line above says: it used to be full+partial+unavailable, dropping the
+        # unknown and the unanswered, so ten requirements with three full and four
+        # "don't know" reported 50% where the sentence promises 30%.
+        'maturity': _pct(states['full'], len(answers) - states['na']),
     }
 
 
@@ -79,10 +82,21 @@ class AzmDashboard(models.AbstractModel):
 
         # ---------------- one card per module
         modules = env['azm.fin.module'].search([])
+        # grouped once: filtering the whole catalogue and every answer per module meant
+        # ~26,000 relational field reads for 19 modules
+        reqs_by_module, lines_by_module = {}, {}
+        for req in requirements:
+            reqs_by_module.setdefault(req.module_id.id, []).append(req.id)
+        for line in answers:
+            lines_by_module.setdefault(line.module_id.id, []).append(line.id)
         cards = []
         for module in modules:
-            reqs = requirements.filtered(lambda r, m=module: r.module_id == m)
-            lines = answers.filtered(lambda a, m=module: a.module_id == m)
+            # with_prefetch keeps the whole catalogue in one prefetch set; a bare browse
+            # would read each slice's fields on its own and cost more than it saved
+            reqs = requirements.browse(reqs_by_module.get(module.id, [])).with_prefetch(
+                requirements._prefetch_ids)
+            lines = answers.browse(lines_by_module.get(module.id, [])).with_prefetch(
+                answers._prefetch_ids)
             fig = _figures(lines)
             profiles = Counter(reqs.mapped('profile'))
             scopes = Counter(reqs.mapped('scope_code'))

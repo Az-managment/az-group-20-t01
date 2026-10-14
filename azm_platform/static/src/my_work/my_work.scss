@@ -1,0 +1,458 @@
+// مساحتي · My work — one person's own page.
+//
+// Logical properties throughout: the page is always rtl, and the bundle is mirrored by
+// the reader's language, so the two must not disagree.
+.o_azm_mywork {
+    @include azm-lit-field(rgba(22, 163, 74, .14), rgba(47, 123, 245, .13));
+
+    // one scale, so every gap on the page is a multiple of something
+    --mw-gap: 14px;
+    --mw-pad: 22px;
+    --mw-section: 34px;
+    --mw-row: 16px;
+    --mw-radius: 18px;
+
+    // This page is not a dashboard: it keeps its own spacing, and its card headings
+    // name a list rather than labelling a panel of figures.
+    //
+    // Said against both of its own classes, because the dashboards' rules carry the
+    // same weight and are loaded after these: at equal specificity the later file
+    // wins, and this one is not it.
+    &.o_azm_om {
+        --om-section: var(--mw-section);
+        --om-pad: var(--mw-pad);
+    }
+    &.o_azm_om .o_azm_card_header {
+        margin-bottom: 14px;
+        padding-bottom: 12px;
+        h3 {
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: -.2px;
+            text-transform: none;
+            color: $azm-ink;
+            small { font-size: 11px; font-weight: 500; color: $azm-muted; }
+        }
+    }
+
+    // ---------------------------------------------------------------- the hero
+    .o_azm_mywork_hero {
+        @include azm-glass(22px);
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        padding: 22px 26px;
+        margin-bottom: 24px;
+        h1 {
+            font-weight: 800;
+            letter-spacing: -.4px;
+            background: linear-gradient(100deg, $azm-ink 10%, map-get($azm-tones, 'green') 60%, $azm-blue 95%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            small { -webkit-text-fill-color: $azm-muted; }
+        }
+        p { margin: 4px 0 0; color: $azm-muted; font-size: 13px; }
+        .o_azm_en { display: block; font-size: 11px; }
+    }
+    .o_azm_mywork_hero_words { flex: 1 1 auto; min-width: 0; }
+    .o_azm_mywork_hero_mark {
+        display: grid;
+        place-items: center;
+        flex: 0 0 auto;
+        width: 58px;
+        height: 58px;
+        border-radius: 18px;
+        background: linear-gradient(145deg, rgba(22, 163, 74, .16), rgba(47, 123, 245, .14));
+        border: 1px solid rgba(22, 163, 74, .22);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, .7), 0 10px 24px rgba(15, 35, 71, .10);
+        .oi { font-size: 26px; color: map-get($azm-tones, 'green'); }
+    }
+
+    // ------------------------------------------------- what a review sent back
+    .o_azm_returned_row {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--mw-gap);
+        padding: var(--mw-row) var(--mw-pad);
+        + .o_azm_returned_row { border-top: 1px solid rgba(15, 35, 71, .06); }
+        /*rtl:ignore*/
+        box-shadow: inset 3px 0 0 rgba(249, 115, 22, .55);
+    }
+    .o_azm_returned_main {
+        flex: 1 1 auto;
+        min-width: 0;
+        b { display: block; font-size: 14px; }
+        small { color: $azm-muted; font-size: 11px; }
+    }
+    .o_azm_returned_level {
+        display: inline-block;
+        margin-inline-end: 6px;
+        padding: 1px 8px;
+        border-radius: 99px;
+        font-size: 10px;
+        font-weight: 700;
+        color: #c2410c;
+        background: rgba(249, 115, 22, .14);
+    }
+    // the reason it came back, in the reviewer's own words
+    .o_azm_returned_note {
+        margin: 4px 0;
+        padding: 8px 12px;
+        border-radius: 10px;
+        font-size: 12.5px;
+        color: $azm-ink;
+        background: rgba(15, 35, 71, .04);
+        white-space: pre-line;
+    }
+
+    // the same glass and the same meter as the pages either side of it
+    .o_azm_card { @include azm-glass(var(--mw-radius)); padding: var(--mw-pad); }
+    .o_azm_kpi {
+        @include azm-glass(16px);
+        position: relative;
+        overflow: hidden;
+        padding: 18px 20px;
+        // a line of the tone along the top edge, as on every other page
+        &::before {
+            content: "";
+            position: absolute;
+            inset-block-start: 0;
+            inset-inline: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--azm-tone, #{$azm-blue}),
+                color-mix(in srgb, var(--azm-tone, #{$azm-blue}) 25%, transparent));
+        }
+        .o_azm_kpi_text { gap: 7px; }
+        .o_azm_kpi_value { font-size: 27px; letter-spacing: -1px; font-variant-numeric: tabular-nums; }
+        .o_azm_kpi_label { font-size: 12px; }
+        .o_azm_icon_badge { width: 32px; height: 32px; border-radius: 9px; .oi { font-size: 17px; } }
+    }
+    .o_azm_kpis { gap: var(--mw-gap); }
+    .o_azm_om_meter, .o_azm_progress { @include azm-meter; }
+
+    // the page is a stack of unlike lists — what came back, what you prepare, what you
+    // review, who is beside you. Each is announced over a rule, so one ends plainly
+    // where the next begins.
+    .o_azm_section_title {
+        display: flex;
+        align-items: baseline;
+        gap: 9px;
+        margin: var(--mw-section) 0 12px;
+        padding-top: 8px;
+        border-top: 1px solid rgba(15, 35, 71, .09);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+        color: $azm-ink;
+        em {
+            font-style: normal;
+            font-size: 11px;
+            font-weight: 400;
+            letter-spacing: 0;
+            text-transform: none;
+            color: $azm-muted;
+            margin-inline-start: 0;
+        }
+        // the first one follows the figures, which are a part of their own already
+        &:first-of-type { margin-top: calc(var(--mw-section) - 6px); }
+    }
+
+    // ---------------------------------------------------------------- what just happened
+    .o_azm_sent {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+        border-inline-start: 3px solid map-get($azm-tones, 'green');
+        small { display: block; color: $azm-muted; font-size: 11px; }
+        > .oi { font-size: 18px; color: map-get($azm-tones, 'green'); }
+        > .btn { margin-inline-start: auto; }
+        &.o_azm_sent_bad {
+            border-inline-start-color: #dc2626;
+            > .oi { color: #dc2626; }
+        }
+    }
+
+    // ---------------------------------------------------------------- an entity's models
+    .o_azm_entity_block { padding: 0; overflow: hidden; }
+    // a block that holds rows lets them run to its edges; an empty state is a message
+    // and keeps the padding that makes it one
+    .o_azm_mywork_returned > .o_azm_card:not(.o_azm_empty),
+    .o_azm_mywork_models > .o_azm_card:not(.o_azm_empty),
+    .o_azm_mywork_reviews > .o_azm_card:not(.o_azm_empty) { padding: 0; overflow: hidden; }
+    .o_azm_entity_head {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px var(--mw-pad);
+        border-bottom: 1px solid rgba(15, 35, 71, .07);
+        background: linear-gradient(180deg, rgba(15, 35, 71, .025), transparent);
+        h3 { margin: 0; font-size: 13px; font-weight: 700; letter-spacing: -.2px; }
+        small { font-size: 10.5px; color: $azm-muted; }
+    }
+    .o_azm_model_row,
+    .o_azm_review_row {
+        display: flex;
+        align-items: center;
+        gap: var(--mw-gap);
+        padding: var(--mw-row) var(--mw-pad);
+        transition: background .14s ease;
+        + .o_azm_model_row,
+        + .o_azm_review_row { border-top: 1px solid rgba(15, 35, 71, .06); }
+        &:hover { background: rgba($azm-blue, .03); }
+    }
+    // a review and the picker under it are one block now, so the line between reviews
+    // belongs to the block rather than to the row inside it
+    .o_azm_review_block + .o_azm_review_block { border-top: 1px solid $azm-border; }
+    .o_azm_model_main {
+        flex: 1 1 auto;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        b { font-size: 12.5px; }
+        small { font-size: 11px; color: $azm-muted; }
+        .o_azm_en { font-size: 10px; }
+    }
+    .o_azm_model_meter {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 4px;
+        .o_azm_progress { width: 150px; }
+        small { white-space: nowrap; }
+    }
+    // the parts of a split model that are this person's
+    .o_azm_parts {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        margin-top: 6px;
+    }
+    .o_azm_part {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 2px 8px;
+        border: 1px solid $azm-border;
+        border-radius: 20px;
+        font-size: 10.5px;
+        color: $azm-ink;
+        em {
+            font-style: normal;
+            font-weight: 700;
+            color: #c2410c;
+        }
+        .oi { font-size: 11px; color: map-get($azm-tones, 'green'); }
+        &.o_azm_part_done {
+            border-color: rgba(map-get($azm-tones, 'green'), .5);
+            background: rgba(map-get($azm-tones, 'green'), .07);
+        }
+    }
+
+    .o_azm_model_side {
+        flex: 0 0 auto;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 3px;
+        small { font-size: 10.5px; }
+    }
+    .o_azm_model_actions {
+        flex: 0 0 auto;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        .o_azm_tree_mark { width: 14px; height: 14px; color: map-get($azm-tones, 'green'); display: block; }
+    }
+
+    // where somebody's work stands, in a word
+    .o_azm_standing {
+        padding: 2px 9px;
+        border-radius: 20px;
+        font-size: 10.5px;
+        font-weight: 600;
+        white-space: nowrap;
+        &.o_azm_standing_warn  { background: rgba(#f97316, .14); color: #c2410c; }
+        &.o_azm_standing_info  { background: rgba($azm-blue, .12); color: $azm-blue; }
+        &.o_azm_standing_ok    { background: rgba(#16a34a, .14); color: #15803d; }
+        &.o_azm_standing_muted { background: rgba($azm-muted, .14); color: $azm-muted; }
+    }
+
+    // the one button that only appears when there is nothing left to answer
+    .o_azm_send {
+        border: 1px solid map-get($azm-tones, 'green');
+        background: rgba(map-get($azm-tones, 'green'), .1);
+        color: #15803d;
+        font-weight: 600;
+        &:hover:not(:disabled) { background: rgba(map-get($azm-tones, 'green'), .18); }
+        &:disabled { opacity: .6; }
+    }
+
+    // their share is done; the assessment is waiting on somebody else
+    .o_azm_waiting {
+        display: inline-flex;
+        align-items: center;
+        padding: 3px 10px;
+        border-radius: 20px;
+        background: rgba($azm-muted, .12);
+        color: $azm-muted;
+        font-size: 10.5px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    // sending it back is the quieter of the two decisions, so it reads quieter
+    .o_azm_return {
+        border: 1px solid $azm-border;
+        color: $azm-muted;
+        &:hover:not(:disabled) { border-color: #c2410c; color: #c2410c; }
+    }
+
+    // ---------------------------------------------------------------- deliverables
+    .o_azm_outputs_card {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+        padding: 14px 16px;
+        text-align: start;
+        border: 1px solid $azm-border;
+        &:hover { border-color: $azm-blue; }
+        b { font-size: 13px; }
+        small { font-size: 11px; color: $azm-muted; }
+        > .oi { margin-inline-start: auto; color: $azm-muted; }
+    }
+
+    // ---------------------------------------------------------------- around the work
+    .o_azm_around_grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 14px;
+        > .o_azm_card { padding: 0; }
+    }
+    .o_azm_line {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        padding: 13px var(--mw-pad);
+        text-align: start;
+        border: 0;
+        background: transparent;
+        + .o_azm_line { border-top: 1px solid rgba(15, 35, 71, .06); }
+        &:not(.o_azm_line_flat):hover { background: rgba($azm-blue, .04); }
+        small { font-size: 10.5px; color: $azm-muted; white-space: nowrap; }
+    }
+    .o_azm_line_main {
+        flex: 1 1 auto;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        b { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        small { font-size: 10.5px; }
+    }
+
+    @media (max-width: 768px) {
+        .o_azm_model_row,
+        .o_azm_review_row { flex-wrap: wrap; }
+        .o_azm_model_meter .o_azm_progress { width: 110px; }
+    }
+}
+
+// ------------------------------------------------- choosing what goes back
+// The review row lists the whole assessment; this is how a reviewer names the parts
+// of it that are wrong without opening the work first.
+.o_azm_picker {
+    margin: 0 16px 14px;
+    padding: 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(249, 115, 22, .3);
+    background: rgba(255, 247, 237, .9);
+}
+// the two ways work can come back, as a choice rather than two buttons that look
+// alike and do very different amounts of damage
+.o_azm_picker_scope {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+
+    .o_azm_scope_option {
+        flex: 1;
+        text-align: start;
+        padding: 8px 10px;
+        border: 1px solid var(--border-color, #dee2e6);
+        border-radius: 6px;
+        background: var(--o-view-background-color, #fff);
+        font-size: 13px;
+        line-height: 1.35;
+        cursor: pointer;
+
+        small {
+            font-size: 11px;
+        }
+
+        &.o_azm_scope_on {
+            border-color: var(--warning, #e5a53c);
+            box-shadow: inset 0 0 0 1px var(--warning, #e5a53c);
+            font-weight: 600;
+        }
+    }
+}
+
+.o_azm_picker_list {
+    max-height: 260px;
+    overflow-y: auto;
+    margin-bottom: 10px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, .7);
+}
+.o_azm_picker_row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    padding: 6px 10px;
+    font-size: 12.5px;
+    cursor: pointer;
+    &:hover { background: rgba(15, 35, 71, .04); }
+    // a topic sits under its module, a requirement under its topic
+    &.o_azm_picker_d1 { padding-inline-start: 28px; color: $azm-ink; }
+    &.o_azm_picker_d2 { padding-inline-start: 46px; color: $azm-muted; }
+    &.o_azm_picker_on { background: rgba(249, 115, 22, .12); font-weight: 600; }
+}
+.o_azm_picker_note {
+    display: block;
+    font-size: 12.5px;
+    em { font-size: 11px; opacity: .7; margin-inline-start: 6px; }
+    textarea { margin-top: 4px; }
+}
+.o_azm_picker_actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 10px;
+    small { margin-inline-end: auto; }
+}
+
+// ------------------------------------------------------------- who else is on it
+.o_azm_mywork .o_azm_team_row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    + .o_azm_team_row { border-top: 1px solid $azm-border; }
+    &.o_azm_team_me { background: rgba(29, 99, 224, .04); }
+}
+.o_azm_mywork .o_azm_team_badge {
+    margin-inline-start: 6px;
+    padding: 1px 7px;
+    border-radius: 99px;
+    font-size: 10px;
+    font-weight: 600;
+    color: $azm-blue;
+    background: rgba(29, 99, 224, .12);
+}

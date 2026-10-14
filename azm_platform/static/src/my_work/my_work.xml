@@ -1,0 +1,424 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="azm_platform.MyWork">
+    <div class="o_action o_azm_dashboard o_azm_om o_azm_mywork" dir="rtl">
+
+        <header class="o_azm_mywork_hero">
+            <span class="o_azm_mywork_hero_mark">
+                <i class="oi" data-icon="person" title="My work"/>
+            </span>
+            <div class="o_azm_mywork_hero_words">
+                <h1>مساحتي <small>My work</small></h1>
+                <p>
+                    <t t-out="this.d and this.d.user ? this.d.user.name : ''"/>
+                    — ما عليك الإجابة عنه، وأين وصل عملك.
+                    <small class="o_azm_en">What you owe, and where your work stands.</small>
+                </p>
+            </div>
+        </header>
+
+        <div t-if="!this.state.loaded" class="o_azm_loading">
+            <i class="oi oi-spin" data-icon="progress_activity" title="Loading"/>
+        </div>
+        <div t-elif="this.state.error" class="o_azm_card o_azm_empty">
+            <i class="oi" data-icon="error" title="Error"/>
+            <strong t-out="this.state.error"/>
+        </div>
+        <div t-elif="!this.d.available" class="o_azm_card o_azm_empty">
+            <i class="oi" data-icon="lock" title="No access"/>
+            <strong>لا توجد مساحة عمل لحسابك</strong>
+            <small>No work is assigned to your user.</small>
+        </div>
+
+        <t t-else="">
+            <!-- what just happened, said where it happened -->
+            <div t-if="this.state.sent" class="o_azm_card o_azm_sent">
+                <i class="oi" data-icon="check_circle" title="Sent"/>
+                <div>
+                    <strong t-if="this.state.sent.note">
+                        <t t-out="this.state.sent.model"/> — <t t-out="this.state.sent.entity"/>
+                    </strong>
+                    <strong t-else="">أُرسلت <t t-out="this.state.sent.model"/> — <t t-out="this.state.sent.entity"/> للمراجعة.</strong>
+                    <small t-if="this.state.sent.reviewers.length">
+                        وصلت إلى: <t t-out="this.state.sent.reviewers.join('، ')"/>
+                    </small>
+                    <small t-if="this.state.sent.note" t-out="this.state.sent.note"/>
+                </div>
+                <button type="button" class="btn btn-sm btn-light"
+                        t-on-click="() => this.dismissSent()">
+                    <i class="oi" data-icon="close" title="Close"/>
+                </button>
+            </div>
+            <div t-if="this.state.sendError" class="o_azm_card o_azm_sent o_azm_sent_bad">
+                <i class="oi" data-icon="error" title="Error"/>
+                <strong t-out="this.state.sendError"/>
+                <button type="button" class="btn btn-sm btn-light"
+                        t-on-click="() => this.dismissSent()">
+                    <i class="oi" data-icon="close" title="Close"/>
+                </button>
+            </div>
+
+            <section class="o_azm_kpis">
+                <div t-foreach="this.kpis" t-as="kpi" t-key="kpi.key"
+                     t-attf-class="o_azm_kpi o_azm_kpi_static o_azm_tone_{{kpi.tone}}">
+                    <span class="o_azm_kpi_text">
+                        <span class="o_azm_kpi_label">
+                            <t t-out="kpi.label"/><em class="o_azm_kpi_en" t-out="kpi.en"/>
+                        </span>
+                        <strong class="o_azm_kpi_value" t-out="kpi.value"/>
+                        <small t-out="kpi.sub"/>
+                    </span>
+                    <span class="o_azm_icon_badge">
+                        <i class="oi" t-att-data-icon="kpi.icon" t-att-title="kpi.label"/>
+                    </span>
+                </div>
+            </section>
+
+            <!-- ====================================================== what you owe -->
+            <!-- what a review sent back. It comes before everything else, because
+                 until it is dealt with nothing else in that assessment can be answered -->
+            <section t-if="this.d.returned.length" class="o_azm_mywork_returned">
+                <h2 class="o_azm_section_title">
+                    عاد إليك <em class="o_azm_en">Sent back to you</em>
+                </h2>
+                <div class="o_azm_card">
+                    <div t-foreach="this.d.returned" t-as="item" t-key="item.id"
+                         class="o_azm_returned_row">
+                        <span class="o_azm_icon_badge o_azm_tone_orange">
+                            <i class="oi" data-icon="undo" title="عاد"/>
+                        </span>
+                        <div class="o_azm_returned_main">
+                            <b>
+                                <span class="o_azm_returned_level" t-out="item.level_label"/>
+                                <t t-out="item.part"/>
+                            </b>
+                            <p class="o_azm_returned_note" t-out="item.note"/>
+                            <small>
+                                <t t-out="item.entity"/> · أعادها <t t-out="item.reviewer"/>
+                            </small>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-primary"
+                                t-on-click="() => this.openReturned(item)">
+                            عالِجها <em class="o_azm_en">Fix it</em>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="o_azm_mywork_models">
+                <h2 class="o_azm_section_title">
+                    ما عليك <em class="o_azm_en">What you owe</em>
+                </h2>
+
+                <div t-if="!this.byEntity.length" class="o_azm_card o_azm_empty">
+                    <i class="oi" data-icon="inbox" title="Nothing"/>
+                    <strong>لم يُسند إليك كيان بعد</strong>
+                    <small>No entity is assigned to you yet. Ask an administrator.</small>
+                </div>
+
+                <div t-foreach="this.byEntity" t-as="block" t-key="block.entity.id"
+                     class="o_azm_card o_azm_entity_block">
+                    <header class="o_azm_entity_head">
+                        <span class="o_azm_icon_badge o_azm_tone_slate">
+                            <i class="oi" data-icon="business" title="Entity"/>
+                        </span>
+                        <div>
+                            <h3 t-out="block.entity.name"/>
+                            <small class="text-muted" t-out="block.entity.code"/>
+                        </div>
+                    </header>
+
+                    <div t-foreach="block.rows" t-as="row" t-key="row.key" class="o_azm_model_row">
+                        <span t-attf-class="o_azm_icon_badge o_azm_tone_{{row.tone}}">
+                            <i class="oi" t-att-data-icon="row.icon" t-att-title="row.label"/>
+                        </span>
+                        <div class="o_azm_model_main">
+                            <b t-out="row.label"/>
+                            <small class="o_azm_en" t-out="row.en"/>
+                            <div t-if="row.started" class="o_azm_model_meter">
+                                <span t-attf-class="o_azm_progress o_azm_om_meter o_azm_tone_{{row.tone}}">
+                                    <span class="o_azm_progress_bar"
+                                          t-attf-style="width: {{row.progress}}%"/>
+                                </span>
+                                <small>
+                                    <t t-out="row.answered"/>/<t t-out="row.total"/> سؤال
+                                    <t t-if="row.left"> · بقي <b t-out="row.left"/></t>
+                                    <t t-else=""> · مكتملة</t>
+                                </small>
+                            </div>
+                            <small t-else="" class="text-muted">
+                                لا توجد إفادة مسندة إليك بعد
+                                <span class="o_azm_en">No assessment assigned to you yet</span>
+                            </small>
+                            <!-- when the model has been split, the parts that are this
+                                 person's — the figures above are already only theirs -->
+                            <div t-if="row.parts.length" class="o_azm_parts">
+                                <span t-foreach="row.parts" t-as="part" t-key="part.id"
+                                      t-attf-class="o_azm_part {{part.left ? '' : 'o_azm_part_done'}}"
+                                      t-attf-title="{{part.answered}}/{{part.total}}">
+                                    <t t-out="part.name"/>
+                                    <em t-if="part.left"><t t-out="part.left"/></em>
+                                    <i t-else="" class="oi" data-icon="check" title="Done"/>
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="o_azm_model_side">
+                            <span t-if="row.standing"
+                                  t-attf-class="o_azm_standing o_azm_standing_{{row.standing.css}}"
+                                  t-att-title="row.standing.note">
+                                <t t-out="row.standing.label"/>
+                            </span>
+                            <small t-if="row.reviewer" class="text-muted">
+                                المراجع: <t t-out="row.reviewer"/>
+                            </small>
+                        </div>
+
+                        <div class="o_azm_model_actions">
+                            <button type="button" class="btn btn-sm btn-primary"
+                                    t-on-click="() => this.openAssessment(row)">
+                                <i class="oi me-1" data-icon="edit_note"/>
+                                <t t-if="row.started">افتح مساحة الاسئلة</t>
+                                <t t-else="">ابدأ</t>
+                            </button>
+                            <!-- only once there is nothing left to answer -->
+                            <button t-if="this.canSend(row)" type="button"
+                                    class="btn btn-sm o_azm_send"
+                                    t-att-disabled="this.state.sending ? 'disabled' : undefined"
+                                    t-on-click="() => this.sendForReview(row)">
+                                <i class="oi me-1" data-icon="send"/>
+                                <t t-if="this.state.sending === row.assessment_id">يُرسل…</t>
+                                <t t-else="">أرسل للمراجعة</t>
+                            </button>
+                            <!-- their share is in, and the rest of the model is not -->
+                            <span t-if="this.waitingOnOthers(row)" class="o_azm_waiting"
+                                  t-attf-title="بقي {{row.whole_left}} سؤالًا في الإفادة كلها">
+                                <i class="oi me-1" data-icon="hourglass_top"/>
+                                بانتظار البقية
+                            </span>
+                            <button t-if="row.started" type="button" class="btn btn-sm btn-light"
+                                    title="اعرض نموذج هذا الكيان في الشجرة"
+                                    t-on-click="() => this.openTree(row)">
+                                <t t-call="azm_platform.TreeMark"/>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ================================================ waiting for your review -->
+            <section t-if="this.d.is_reviewer" class="o_azm_mywork_reviews">
+                <h2 class="o_azm_section_title">
+                    بانتظار مراجعتك <em class="o_azm_en">Waiting for your review</em>
+                </h2>
+                <div t-if="!this.d.reviews.length" class="o_azm_card o_azm_empty">
+                    <i class="oi" data-icon="task_alt" title="Nothing"/>
+                    <strong>لا شيء بانتظارك</strong>
+                    <small>Nothing has been sent to you for review.</small>
+                </div>
+                <div t-else="" class="o_azm_card">
+                    <div t-foreach="this.d.reviews" t-as="review"
+                         t-key="review.res_model + '-' + review.id"
+                         class="o_azm_review_block">
+                      <div class="o_azm_review_row">
+                        <span t-attf-class="o_azm_icon_badge o_azm_tone_{{review.tone}}">
+                            <i class="oi" t-att-data-icon="review.icon" t-att-title="review.model_label"/>
+                        </span>
+                        <div class="o_azm_model_main">
+                            <b t-out="review.entity"/>
+                            <small><t t-out="review.model_label"/> · أعدّها <t t-out="review.preparer"/></small>
+                        </div>
+                        <div class="o_azm_model_side">
+                            <span t-if="review.mine" class="o_azm_standing o_azm_standing_info">
+                                مُسندة إليك
+                            </span>
+                            <small class="text-muted">
+                                نسخة <t t-out="review.version"/>
+                                <t t-if="review.since"> · <t t-out="review.since"/></t>
+                            </small>
+                        </div>
+                        <div class="o_azm_model_actions">
+                            <button type="button" class="btn btn-sm btn-light"
+                                    title="اقرأ الإجابات في مساحة الإجابة"
+                                    t-on-click="() => this.openReviewWorkspace(review)">
+                                <i class="oi me-1" data-icon="fact_check"/>راجع الاجابات
+                            </button>
+                            <button type="button" class="btn btn-sm o_azm_send"
+                                    t-att-disabled="this.state.deciding ? 'disabled' : undefined"
+                                    title="اقبل الإجابات واعتمدها"
+                                    t-on-click="() => this.decide(review, true)">
+                                <i class="oi me-1" data-icon="check_circle"/>
+                                <t t-if="this.state.deciding === review.id">…</t>
+                                <t t-else="">اقبل الإجابات</t>
+                            </button>
+                            <!-- choose the parts that are wrong, without opening the work -->
+                            <button type="button" class="btn btn-sm btn-light o_azm_return"
+                                    t-att-disabled="this.state.deciding ? 'disabled' : undefined"
+                                    title="اختر أجزاءً وأعدها مع ملاحظة"
+                                    t-on-click="() => this.openPicker(review)">
+                                <i class="oi me-1" data-icon="checklist"/>أعد أجزاءً
+                            </button>
+                            <button type="button" class="btn btn-sm btn-light o_azm_return"
+                                    t-att-disabled="this.state.deciding ? 'disabled' : undefined"
+                                    title="أعد النموذج كله للمُعد مع سبب الإعادة"
+                                    t-on-click="() => this.openPicker(review, 'all')">
+                                <i class="oi me-1" data-icon="undo"/>أعد الكل
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- the parts of this review, to tick -->
+                    <div t-if="this.state.picking and this.state.picking.id === review.id"
+                         class="o_azm_picker">
+                        <div t-if="this.state.loadingParts" class="o_azm_loading">
+                            <i class="oi oi-spin" data-icon="progress_activity" title="Loading"/>
+                        </div>
+                        <t t-else="">
+                            <div class="o_azm_picker_scope" role="radiogroup"
+                                 aria-label="ما الذي يعود للمُعد">
+                                <button type="button" role="radio"
+                                        t-att-aria-checked="this.returningAll ? 'false' : 'true'"
+                                        t-attf-class="o_azm_scope_option {{this.returningAll ? '' : 'o_azm_scope_on'}}"
+                                        t-on-click="() => this.state.pickScope = 'parts'">
+                                    <i class="oi me-1" data-icon="checklist"/>أجزاء مختارة
+                                    <small class="d-block text-muted">
+                                        يعود ما تختاره فقط، ويبقى الباقي كما هو
+                                    </small>
+                                </button>
+                                <button type="button" role="radio"
+                                        t-att-aria-checked="this.returningAll ? 'true' : 'false'"
+                                        t-attf-class="o_azm_scope_option {{this.returningAll ? 'o_azm_scope_on' : ''}}"
+                                        t-on-click="() => this.state.pickScope = 'all'">
+                                    <i class="oi me-1" data-icon="undo"/>النموذج كله
+                                    <small class="d-block text-muted">
+                                        يعود النموذج بأكمله للمُعد من جديد
+                                    </small>
+                                </button>
+                            </div>
+                            <div t-if="!this.returningAll" class="o_azm_picker_list">
+                                <label t-foreach="this.state.parts" t-as="part"
+                                       t-key="part.level + '-' + part.id"
+                                       t-attf-class="o_azm_picker_row o_azm_picker_d{{part.depth}} {{this.isChosen(part) ? 'o_azm_picker_on' : ''}}">
+                                    <input type="checkbox" t-att-checked="this.isChosen(part)"
+                                           t-on-change="() => this.togglePart(part)"/>
+                                    <span t-out="part.name"/>
+                                </label>
+                            </div>
+                            <label class="o_azm_picker_note">
+                                سبب الإعادة <em class="o_azm_en">Why it is coming back</em>
+                                <textarea class="form-control" rows="2"
+                                          placeholder="ما الذي يحتاج معالجة؟"
+                                          t-att-value="this.state.pickNote"
+                                          t-on-input="(ev) => this.state.pickNote = ev.target.value"/>
+                            </label>
+                            <div class="o_azm_picker_actions">
+                                <small class="text-muted">
+                                    <t t-if="this.returningAll">يعود النموذج كله</t>
+                                    <t t-else="">اخترت <t t-out="this.chosenCount()"/> جزءًا</t>
+                                </small>
+                                <button type="button" class="btn btn-sm btn-light"
+                                        t-on-click="() => this.closePicker()">تراجع</button>
+                                <button type="button" class="btn btn-sm btn-warning"
+                                        t-att-disabled="!this.canConfirmReturn or this.state.deciding ? 'disabled' : undefined"
+                                        t-on-click="() => this.confirmPicker()">
+                                    <t t-if="this.returningAll">أعد النموذج كله</t>
+                                    <t t-else="">أعدها مع الملاحظة</t>
+                                </button>
+                            </div>
+                        </t>
+                      </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ====================================================== what it produced -->
+            <!-- ====================================================== your team -->
+            <section t-if="this.d.team.length" class="o_azm_mywork_team">
+                <h2 class="o_azm_section_title">
+                    زملاؤك على العمل <em class="o_azm_en">Your team</em>
+                </h2>
+                <div class="o_azm_card">
+                    <div t-foreach="this.d.team" t-as="mate" t-key="mate.id"
+                         t-attf-class="o_azm_team_row {{mate.me ? 'o_azm_team_me' : ''}}">
+                        <span class="o_azm_icon_badge o_azm_tone_slate">
+                            <i class="oi" data-icon="person" title="Person"/>
+                        </span>
+                        <div class="o_azm_model_main">
+                            <b>
+                                <t t-out="mate.name"/>
+                                <span t-if="mate.me" class="o_azm_team_badge">أنت</span>
+                            </b>
+                            <small>
+                                <t t-out="mate.parts"/> جزءًا · <t t-out="mate.entities.join('، ')"/>
+                            </small>
+                            <div class="o_azm_model_meter">
+                                <span class="o_azm_progress o_azm_om_meter o_azm_tone_slate">
+                                    <span class="o_azm_progress_bar"
+                                          t-attf-style="width: {{mate.progress}}%"/>
+                                </span>
+                                <small>
+                                    <t t-out="mate.answered"/>/<t t-out="mate.total"/>
+                                    <t t-if="mate.left"> · بقي <b t-out="mate.left"/></t>
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ====================================================== around the work -->
+            <section t-if="this.d.around.projects.length or this.d.around.tasks.length or this.d.around.team.length"
+                     class="o_azm_mywork_around">
+                <h2 class="o_azm_section_title">
+                    حول عملك <em class="o_azm_en">Around your work</em>
+                </h2>
+                <div class="o_azm_around_grid">
+                    <div t-if="this.d.around.tasks.length" class="o_azm_card">
+                        <header class="o_azm_card_header"><h3>مهامي <small>My tasks</small></h3></header>
+                        <button t-foreach="this.d.around.tasks" t-as="task" t-key="task.id"
+                                type="button" class="o_azm_line"
+                                t-on-click="() => this.openRecord('project.task', task.id)">
+                            <span t-attf-class="o_azm_dot {{task.overdue ? 'o_azm_dot_bad' : 'o_azm_dot_ok'}}"/>
+                            <span class="o_azm_line_main">
+                                <b t-out="task.name"/>
+                                <small t-out="task.project"/>
+                            </span>
+                            <small t-if="task.deadline" t-out="task.deadline"/>
+                        </button>
+                    </div>
+
+                    <div t-if="this.d.around.projects.length" class="o_azm_card">
+                        <header class="o_azm_card_header"><h3>مشاريعي <small>My projects</small></h3></header>
+                        <button t-foreach="this.d.around.projects" t-as="project" t-key="project.id"
+                                type="button" class="o_azm_line"
+                                t-on-click="() => this.openRecord('project.project', project.id)">
+                            <span class="o_azm_dot o_azm_dot_ok"/>
+                            <span class="o_azm_line_main">
+                                <b t-out="project.name"/>
+                                <small t-out="project.entity"/>
+                            </span>
+                            <small><t t-out="project.open_tasks"/> مهمة</small>
+                        </button>
+                    </div>
+
+                    <div t-if="this.d.around.team.length" class="o_azm_card">
+                        <header class="o_azm_card_header">
+                            <h3>فريقي <small t-out="this.d.around.department"/></h3>
+                        </header>
+                        <div t-foreach="this.d.around.team" t-as="mate" t-key="mate.id"
+                             class="o_azm_line o_azm_line_flat">
+                            <span class="o_azm_dot o_azm_dot_muted"/>
+                            <span class="o_azm_line_main">
+                                <b t-out="mate.name"/>
+                                <small t-out="mate.job"/>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </t>
+    </div>
+</t>
+
+</templates>

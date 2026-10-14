@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<!--
+    Reading a document in place. The tree and the outputs library both render this,
+    so a deliverable looks and behaves the same whichever of them you found it on.
+    A component rendering it keeps `preview` on its state (see doc_preview.js).
+-->
+<t t-name="azm_platform.DocPreview">
+    <t t-set="p" t-value="this.state.preview"/>
+    <header class="o_azm_card_header o_azm_tree_preview_head">
+        <div>
+            <!--
+                What is being looked at, named the way the document itself names it:
+                this entity's copy code. A binding carries no code of its own, so it
+                keeps the plain label.
+            -->
+            <span t-if="p.code" class="o_azm_code o_azm_code_big" t-out="p.code"/>
+            <span t-else="" class="o_azm_code o_azm_code_big">معاينة <small>Preview</small></span>
+            <h3 t-out="p.name"/>
+            <small t-if="p.folder" class="text-muted">
+                <i class="oi me-1" data-icon="folder"/><t t-out="p.folder"/>
+            </small>
+        </div>
+        <span class="o_azm_tree_preview_tools">
+            <button type="button" class="btn btn-sm btn-light" title="فتح في تبويب · Open in a tab"
+                    t-on-click="() => this.openDoc(p.doc, false)">
+                <i class="oi" data-icon="open_in_new"/>
+            </button>
+            <button type="button" class="btn btn-sm btn-light" title="تنزيل · Download"
+                    t-on-click="() => this.openDoc(p.doc, true)">
+                <i class="oi" data-icon="download"/>
+            </button>
+            <button type="button" class="btn btn-sm btn-light" title="إغلاق المعاينة · Close"
+                    t-on-click="() => this.closePreview()">
+                <i class="oi" data-icon="close"/>
+            </button>
+        </span>
+    </header>
+
+    <div t-if="p.loading" class="o_azm_loading">
+        <i class="oi oi-spin" data-icon="progress_activity" title="Loading"/>
+        <small class="d-block text-muted mt-2">يُبنى المستند لأول مرة…</small>
+    </div>
+    <div t-elif="p.error" class="o_azm_tree_sec">
+        <p class="o_azm_box o_azm_box_warn" t-out="p.error"/>
+    </div>
+    <t t-else="">
+        <!--
+            Chrome renders a PDF in an iframe with its own viewer, and that viewer needs
+            scripts: sandboxing the frame makes Chrome refuse the page outright. So the
+            sandbox is put only on the HTML a document falls back to when the PDF
+            renderer is unavailable — which is the only case that could run script in
+            the backend page anyway. A PDF is framed as it is.
+        -->
+        <iframe class="o_azm_tree_preview_frame" t-att-src="p.url" t-att-title="p.name"
+                t-att-sandbox="p.mimetype === 'text/html' ? 'allow-same-origin' : false"/>
+        <div t-if="p.outdated" class="o_azm_tree_sec">
+            <p class="o_azm_box o_azm_box_warn">تغيّرت الإجابات بعد إصدار هذا المستند.</p>
+        </div>
+    </t>
+</t>
+
+</templates>

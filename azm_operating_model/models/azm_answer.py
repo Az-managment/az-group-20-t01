@@ -1,9 +1,17 @@
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
+# The value that lifts the answer locks for the server's own recomputes. An object
+# rather than True, because the context of an RPC call is sent by the caller: anything
+# expressible in JSON can be forged, and these locks are the only thing standing
+# between a holder of one part and everybody else's — the access rules cannot say it.
+AZM_SKIP_LOCK_TOKEN = object()
+
+
 
 class AzmAnswer(models.Model):
     _name = "azm.answer"
+    _inherit = ["azm.assignable"]
     _description = "AZM Answer"
     _order = "stage_sequence, group, question_sequence, id"
 
@@ -52,12 +60,35 @@ class AzmAnswer(models.Model):
             return self.value_number or None
         return self.option_id.name or None
 
+    @api.model
+    def _azm_lock_lifted(self):
+        """Whether this write comes from the server rather than from a browser."""
+        return (self.env.context.get("azm_skip_lock") is AZM_SKIP_LOCK_TOKEN
+                or self.env.su)
+
     def write(self, vals):
         value_keys = {"option_id", "option_ids", "value_number"}
-        if value_keys & set(vals) and not self.env.context.get("azm_skip_lock"):
+        if value_keys & set(vals) and not self._azm_lock_lifted():
             if any(a.assessment_id.state != "draft" for a in self):
                 raise UserError("الإفادة مش في حالة مسودة؛ لا يمكن تعديل الإجابات.")
+            self._azm_check_assignee()
+            self._azm_check_returns()
         res = super().write(vals)
         if value_keys & set(vals) and not self.env.context.get("azm_no_visibility"):
             self.assessment_id._refresh_visibility()
         return res
+
+    # ---------------------------------------------------------------- whose part
+    def _azm_part_key(self):
+        self.ensure_one()
+        return (self.assessment_id.id, self.stage_id.id)
+
+    def _azm_part_name(self):
+        self.ensure_one()
+        return f"PUR-{self.stage_id.code}"
+
+    @api.model
+    def _azm_assignments(self, lines):
+        found = self.env["azm.assignment"].sudo().search(
+            [("proc_assessment_id", "in", lines.assessment_id.ids)])
+        return {(a.proc_assessment_id.id, a.stage_id.id): a.user_ids.ids for a in found}

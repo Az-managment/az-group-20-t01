@@ -15,6 +15,8 @@ rule    = {"code", "stage", "key", "trigger", "fact", "risk", "control", "owner"
 
 from html import escape
 
+from .azm_svg import DEFS as SVG_DEFS, arrow as _arrow, box as _svg_box
+
 UNKNOWN = "لا أعرف"
 NOT_LISTED = "غير مدرج"
 NONE = "لا يوجد"
@@ -130,6 +132,16 @@ def source_tag(stage, keys):
     return f'<details class="o_azm_source"><summary>{_e(label)}</summary>{_e(codes)}</details>'
 
 
+def doc_code(stage, default):
+    """The code printed inside an output.
+
+    A published document carries the code its cover carries — the caller passes it in —
+    so one PDF never names itself two different things. The workspace, which previews an
+    output that has not been published, keeps the catalogue's own shorthand.
+    """
+    return _e(stage.get("doc_code") or f"{default}-{stage['code']}")
+
+
 def stage_header(stage):
     return (
         f'<div class="o_azm_stage_head"><span class="o_azm_code">PUR-{_e(stage["code"])}</span>'
@@ -199,7 +211,7 @@ def render_policy(stage, questions, answers):
     ]
     if stage["governance"]:
         sections = [("حوكمة الدورة", clauses(specific))]
-    html = [stage_header(stage), f'<div class="o_azm_doc_code">CS-POL-{_e(stage["code"])}</div>']
+    html = [stage_header(stage), f'<div class="o_azm_doc_code">{doc_code(stage, "CS-POL")}</div>']
     n = 0
     for title, lines in sections:
         if not lines:
@@ -258,7 +270,7 @@ def render_procedure(stage, questions, answers):
     steps.append(("التوثيق والإبلاغ", doc))
     vis = visible_questions(stage, questions, answers)
     rules = [sentence(q, answers) for q in vis if not q.get("is_common") and sentence(q, answers)]
-    html = [stage_header(stage), f'<div class="o_azm_doc_code">CS-SOP-{_e(stage["code"])}</div><ol class="o_azm_steps">']
+    html = [stage_header(stage), f'<div class="o_azm_doc_code">{doc_code(stage, "CS-SOP")}</div><ol class="o_azm_steps">']
     for title, body in steps:
         html.append(f"<li><b>{_e(title)}</b><p>{_e(body)}</p></li>")
     html.append("</ol>")
@@ -274,33 +286,7 @@ def render_procedure(stage, questions, answers):
 
 
 # ---------------------------------------------------------------- svg
-def _svg_box(x, y, w, h, title, sub="", accent=False, dashed=False):
-    stroke = "#1f5f73" if accent else "#8aa1ad"
-    fill = "#e6f1f4" if accent else "#ffffff"
-    dash = ' stroke-dasharray="5 4"' if dashed else ""
-    out = (f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="10" fill="{fill}" '
-           f'stroke="{stroke}" stroke-width="{2 if accent else 1.2}"{dash}/>')
-    cy = y + (h / 2 if not sub else h / 2 - 6)
-    out += (f'<text x="{x + w / 2}" y="{cy + 5}" text-anchor="middle" font-size="13" '
-            f'font-weight="600" fill="#17323d">{_e(title)}</text>')
-    if sub:
-        out += (f'<text x="{x + w / 2}" y="{cy + 23}" text-anchor="middle" font-size="11" '
-                f'fill="#5b7380">{_e(sub)}</text>')
-    return out
-
-
-def _arrow(x1, y1, x2, y2, label=""):
-    out = (f'<path d="M{x1} {y1} L{x2} {y2}" stroke="#8aa1ad" stroke-width="1.3" '
-           f'fill="none" marker-end="url(#azm-arrow)"/>')
-    if label:
-        out += (f'<text x="{(x1 + x2) / 2}" y="{(y1 + y2) / 2 - 6}" text-anchor="middle" '
-                f'font-size="11" fill="#5b7380">{_e(label)}</text>')
-    return out
-
-
-SVG_DEFS = ('<defs><marker id="azm-arrow" viewBox="0 0 10 10" refX="9" refY="5" '
-            'markerWidth="7" markerHeight="7" orient="auto-start-reverse">'
-            '<path d="M0 0L10 5L0 10z" fill="#8aa1ad"/></marker></defs>')
+# the drawing primitives live apart, because the financial engine draws with them too
 
 
 def render_workflow(stage, questions, answers):
@@ -344,7 +330,7 @@ def render_workflow(stage, questions, answers):
     svg.append(_arrow(120, dy + 40, 120, dy + 100))
     svg.append(_svg_box(20, dy + 100, 210, 56, route("reject_route"), "وجهة الرفض", dashed=True))
     svg.append("</svg>")
-    html = [stage_header(stage), f'<div class="o_azm_doc_code">CS-WF-{_e(stage["code"])}</div>', "".join(svg)]
+    html = [stage_header(stage), f'<div class="o_azm_doc_code">{doc_code(stage, "CS-WF")}</div>', "".join(svg)]
     if known(a.get("boundary")) and a.get("boundary") in OUTSIDE:
         html.append(note(f"جزء من الخطوة يتم خارج النظام عبر: {v('channel')}. تسجيل النتيجة: {v('record')}.", "warn"))
     return "".join(html)
@@ -379,7 +365,7 @@ def render_cycle_map(stages_data):
         pos.append((x, y))
         fill, stroke = colors[s["status"]]
         svg.append(f'<rect x="{x}" y="{y}" width="{bw}" height="{bh}" rx="10" fill="{fill}" stroke="{stroke}" stroke-width="1.4"/>')
-        svg.append(f'<text x="{x + bw - 10}" y="{y + 20}" text-anchor="end" font-size="10.5" fill="#5b7380">{i + 1:02d} · {s["stage"]["code"]}</text>')
+        svg.append(f'<text x="{x + bw - 10}" y="{y + 20}" text-anchor="end" font-size="10.5" fill="#5b7380">{i + 1:02d} · {_e(s["stage"]["code"])}</text>')
         name = s["stage"]["name"]
         words = name.split()
         line1, line2 = name, ""
@@ -425,7 +411,7 @@ RACI_COLS = [("owner", "ينفذ"), ("reviewer", "يراجع"), ("approver", "ي
 def render_authority(stage, questions, answers):
     vis = visible_questions(stage, questions, answers)
     roles = [q for q in vis if q.get("is_role") and known(answers.get(q["key"]))]
-    html = [stage_header(stage), f'<div class="o_azm_doc_code">CS-AUTH-{_e(stage["code"])}</div>']
+    html = [stage_header(stage), f'<div class="o_azm_doc_code">{doc_code(stage, "CS-AUTH")}</div>']
     if not roles:
         return "".join(html) + note("لا توجد أدوار محددة بعد.")
     html.append('<div class="o_azm_cards">')

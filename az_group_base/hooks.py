@@ -72,13 +72,50 @@ DEV_STAFF = [
       'hr.group_hr_user']),
 ]
 
-# A couple of posted invoices per entity, so that the separation between the
-# entities is visible rather than theoretical.
+# Posted documents per entity, so that the separation between the entities is
+# visible rather than theoretical and every entity has books of its own to
+# look at: company xml id, partner, amount, line label.
 DEV_INVOICES = [
-    ('company_future_univ', "Nour Ibrahim", 45000.0, "FUE Tuition - Spring"),
-    ('company_future_univ', "Yassin Tarek", 38000.0, "FUE Tuition - Spring"),
-    ('company_malvern', "Laila Samir", 92000.0, "Malvern Term Fees"),
-    ('company_malvern', "Adam Sherif", 88000.0, "Malvern Term Fees"),
+    ('company_az_management', "Al Alson Holding Services", 180000.0, "Group shared services - Q1"),
+    ('company_az_management', "Future University in Egypt", 240000.0, "Group shared services - Q1"),
+    ('company_az_management', "Malvern College Egypt", 150000.0, "Group shared services - Q1"),
+    ('company_future_univ', "Nour Ibrahim", 45000.0, "Tuition - Spring term"),
+    ('company_future_univ', "Yassin Tarek", 38000.0, "Tuition - Spring term"),
+    ('company_future_univ', "Hana Mostafa", 52000.0, "Tuition - Spring term"),
+    ('company_future_univ', "Ministry of Higher Education", 310000.0, "Research grant instalment"),
+    ('company_malvern', "Laila Samir", 92000.0, "Term fees - Spring"),
+    ('company_malvern', "Adam Sherif", 88000.0, "Term fees - Spring"),
+    ('company_malvern', "Karim Zaki", 95000.0, "Term fees - Spring"),
+    ('company_alson_language', "Dalia Fouad", 7800.0, "General English - Level 4"),
+    ('company_alson_language', "Ahmed Sobhy", 6400.0, "Business English - Evening"),
+    ('company_alson_language', "Nile Trading Co.", 54000.0, "Corporate language programme"),
+    ('company_alson_tourism', "Mariam Hosny", 12500.0, "Three-year programme - Year 1"),
+    ('company_alson_tourism', "Youssef Rashad", 12500.0, "Three-year programme - Year 2"),
+    ('company_alson_tourism', "Nile Ritz Hotels", 68000.0, "Staff training programme"),
+    ('company_alson_computer', "Salma Gamal", 9800.0, "Diploma - Software track"),
+    ('company_alson_computer', "Mahmoud Adel", 9800.0, "Diploma - Networks track"),
+    ('company_alson_computer', "Delta Systems", 72000.0, "Corporate IT certification"),
+    ('company_alson_institute', "Rana Ezzat", 14500.0, "Professional diploma"),
+    ('company_alson_institute', "Tarek Mansour", 14500.0, "Professional diploma"),
+    ('company_alson_institute', "Cairo Chamber of Commerce", 96000.0, "Executive training programme"),
+]
+
+# Vendor bills, so each entity has a purchase side and not only revenue.
+DEV_BILLS = [
+    ('company_az_management', "Orange Business Egypt", 42000.0, "Group network and telephony"),
+    ('company_az_management', "PwC Egypt", 85000.0, "Advisory - operating model"),
+    ('company_future_univ', "Elsevier", 120000.0, "Library subscriptions"),
+    ('company_future_univ', "Cairo Facilities Co.", 76000.0, "Campus maintenance - Q1"),
+    ('company_malvern', "Oxford University Press", 54000.0, "Course books"),
+    ('company_malvern', "SafeBus Transport", 48000.0, "School transport - Q1"),
+    ('company_alson_language', "Cambridge Assessment", 31000.0, "Examination fees"),
+    ('company_alson_language', "Delta Print House", 9500.0, "Course material printing"),
+    ('company_alson_tourism', "Hospitality Supplies Egypt", 27000.0, "Training kitchen supplies"),
+    ('company_alson_tourism', "Nile Catering Services", 18500.0, "Practical sessions catering"),
+    ('company_alson_computer', "TechGear Distribution", 143000.0, "Workstation refresh"),
+    ('company_alson_computer', "Microsoft Egypt", 62000.0, "Software licences"),
+    ('company_alson_institute', "Venue Partners Cairo", 36000.0, "Training venue hire"),
+    ('company_alson_institute', "Expert Trainers Network", 58000.0, "External trainer fees"),
 ]
 
 
@@ -307,38 +344,52 @@ def finish_dev_staff(env):
 
 
 def _load_dev_invoices(env, by_xml_id):
-    """Post a couple of customer invoices in two of the entities."""
+    """Post customer invoices and vendor bills in every entity."""
+    for rows, move_type, journal_type, account_type, date in (
+        (DEV_INVOICES, 'out_invoice', 'sale', 'income', '2026-03-01'),
+        (DEV_BILLS, 'in_invoice', 'purchase', 'expense', '2026-03-10'),
+    ):
+        for company_xml_id, partner_name, amount, label in rows:
+            company = by_xml_id.get(company_xml_id)
+            if company:
+                _post_move(env, company, move_type, journal_type, account_type,
+                           date, partner_name, amount, label)
+
+
+def _post_move(env, company, move_type, journal_type, account_type, date,
+               partner_name, amount, label):
+    """Post one document, unless that partner already has one in that company."""
     Move = env['account.move']
-    for company_xml_id, customer, amount, label in DEV_INVOICES:
-        company = by_xml_id.get(company_xml_id)
-        if not company:
-            continue
-        partner = env['res.partner'].search([('name', '=', customer)], limit=1)
-        if not partner:
-            partner = env['res.partner'].create({'name': customer, 'company_id': False})
-        if Move.search_count([('company_id', '=', company.id), ('partner_id', '=', partner.id)]):
-            continue
-        journal = env['account.journal'].search([
-            ('company_id', '=', company.id), ('type', '=', 'sale'),
-        ], limit=1)
-        account = env['account.account'].search([
-            ('company_ids', 'in', company.id), ('account_type', '=', 'income'),
-        ], limit=1)
-        if not journal or not account:
-            continue
-        move = Move.with_company(company).create({
-            'move_type': 'out_invoice',
-            'partner_id': partner.id,
-            'journal_id': journal.id,
-            'invoice_date': '2026-03-01',
-            'invoice_line_ids': [Command.create({
-                'name': label,
-                'quantity': 1,
-                'price_unit': amount,
-                'account_id': account.id,
-            })],
-        })
-        move.action_post()
+    partner = env['res.partner'].search([('name', '=', partner_name)], limit=1)
+    if not partner:
+        partner = env['res.partner'].create({'name': partner_name, 'company_id': False})
+    if Move.search_count([
+        ('company_id', '=', company.id),
+        ('partner_id', '=', partner.id),
+        ('move_type', '=', move_type),
+    ]):
+        return
+    journal = env['account.journal'].search([
+        ('company_id', '=', company.id), ('type', '=', journal_type),
+    ], limit=1)
+    account = env['account.account'].search([
+        ('company_ids', 'in', company.id), ('account_type', '=', account_type),
+    ], limit=1)
+    if not journal or not account:
+        return
+    move = Move.with_company(company).create({
+        'move_type': move_type,
+        'partner_id': partner.id,
+        'journal_id': journal.id,
+        'invoice_date': date,
+        'invoice_line_ids': [Command.create({
+            'name': label,
+            'quantity': 1,
+            'price_unit': amount,
+            'account_id': account.id,
+        })],
+    })
+    move.action_post()
 
 
 def _activate_arabic(env):

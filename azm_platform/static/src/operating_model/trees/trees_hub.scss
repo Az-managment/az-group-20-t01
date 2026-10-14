@@ -1,0 +1,615 @@
+// AZM Platform · the شجر / Trees landing page.
+// The entities, and the trees of whichever one is opened. A tree card carries its
+// model's tone through a CSS variable (--azm-tone, set by o_azm_tone_*), so its edge,
+// its ring and its hover glow are all the colour of that model and nothing has to be
+// told twice.
+//
+// The surface is darker and deeper than the rest of the backend on purpose: this is a
+// page you look *into*, so the cards sit on a lit field rather than on paper, and the
+// light they catch is the colour of what they open.
+.o_azm_trees {
+    @include azm-lit-field;
+
+    // one scale, in eights, for a page of cards
+    --tr-gap: 16px;
+    --tr-pad: 20px;
+    --tr-section: 24px;
+
+    // ---------------------------------------------------------------- the hero
+    .o_azm_trees_hero {
+        padding: 22px 26px;
+        margin-bottom: 26px;
+        border-radius: 22px;
+        border: 1px solid rgba(255, 255, 255, .8);
+        background: linear-gradient(165deg, rgba(255, 255, 255, .92), rgba(244, 249, 255, .8));
+        backdrop-filter: blur(12px);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, .95), 0 14px 36px rgba(15, 35, 71, .08);
+    }
+    .o_azm_trees_hero_head {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+    }
+    .o_azm_trees_hero_words {
+        flex: 1 1 auto;
+        min-width: 0;
+        p { margin: 4px 0 0; color: $azm-muted; font-size: 13px; }
+        .o_azm_en { display: block; font-size: 11px; }
+    }
+    // how far the group has got, beside the name of the page
+    .o_azm_trees_hero_gauge {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex: 0 0 auto;
+        padding-inline-start: 18px;
+        border-inline-start: 1px solid rgba(15, 35, 71, .08);
+        --azm-tone: #{$azm-blue};
+    }
+    .o_azm_trees_hero_gauge_words {
+        display: flex;
+        flex-direction: column;
+        font-size: 13px;
+        font-weight: 600;
+        color: $azm-ink;
+        .o_azm_en { font-size: 11px; font-weight: 400; color: $azm-muted; }
+    }
+
+    .o_azm_trees_title_mark {
+        display: grid;
+        place-items: center;
+        width: 62px;
+        height: 62px;
+        border-radius: 18px;
+        background: linear-gradient(145deg, rgba(47, 123, 245, .14), rgba(16, 185, 129, .14));
+        border: 1px solid rgba(47, 123, 245, .22);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, .7), 0 10px 24px rgba(15, 35, 71, .10);
+    }
+    .o_azm_trees_title_mark .o_azm_tree_mark {
+        width: 36px;
+        height: 36px;
+        color: map-get($azm-tones, 'green');
+        filter: drop-shadow(0 2px 6px rgba(16, 185, 129, .45));
+    }
+    .o_azm_trees_hero h1 {
+        font-weight: 800;
+        letter-spacing: -.4px;
+        // the word itself carries the gradient; the small English gloss stays plain
+        background: linear-gradient(100deg, $azm-ink 10%, $azm-blue 55%, #0ea5e9 90%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        small { -webkit-text-fill-color: $azm-muted; }
+    }
+
+    .o_azm_icon_badge .o_azm_tree_mark { width: 24px; height: 24px; }
+
+    // ------------------------------------------------- which entity is being read
+    .o_azm_trees_crumb {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 14px;
+        margin-bottom: 18px;
+        border-radius: 16px;
+        border: 1px solid rgba(255, 255, 255, .8);
+        background: linear-gradient(170deg, rgba(255, 255, 255, .9), rgba(246, 250, 255, .78));
+        backdrop-filter: blur(10px);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9), 0 8px 22px rgba(15, 35, 71, .06);
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            border-radius: 10px;
+            background: rgba(241, 246, 252, .9);
+            border: 1px solid rgba(15, 35, 71, .06);
+        }
+        em { font-size: 11px; }
+    }
+    .o_azm_trees_crumb_here {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+        img { width: 28px; height: 28px; object-fit: contain; border-radius: 6px; }
+        strong { font-size: 16px; }
+    }
+
+    // what a tree is for, under its name on the card
+    .o_azm_trees_desc {
+        margin: 0 0 4px;
+        font-size: 12px;
+        color: $azm-muted;
+        .o_azm_en { display: block; font-size: 11px; }
+    }
+
+    // ------------------------------------------------- searching and ordering
+    .o_azm_trees_toolbar {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: var(--tr-gap);
+        margin-bottom: var(--tr-section);
+    }
+    .o_azm_trees_search {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex: 1 1 240px;
+        max-width: 340px;
+        padding: 9px 14px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, .85);
+        background: rgba(255, 255, 255, .85);
+        backdrop-filter: blur(8px);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9), 0 6px 18px rgba(15, 35, 71, .05);
+        transition: box-shadow .2s ease, border-color .2s ease;
+        &:focus-within {
+            border-color: rgba($azm-blue, .5);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9), 0 0 0 3px rgba($azm-blue, .12);
+        }
+        .oi { color: $azm-muted; font-size: 15px; }
+        input {
+            flex: 1 1 auto;
+            min-width: 0;
+            border: 0;
+            background: none;
+            outline: none;
+            font-size: 13px;
+            color: $azm-ink;
+            &::placeholder { color: $azm-muted; }
+        }
+        &:focus-within {
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9),
+                        0 0 0 3px rgba(29, 99, 224, .14),
+                        0 6px 18px rgba(15, 35, 71, .06);
+        }
+    }
+    .o_azm_trees_sort {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px;
+        border-radius: 12px;
+        background: rgba(241, 246, 252, .8);
+        border: 1px solid rgba(15, 35, 71, .05);
+    }
+    .o_azm_trees_sort_label {
+        font-size: 11px;
+        color: $azm-muted;
+        padding-inline: 6px;
+        .o_azm_en { margin-inline-start: 4px; }
+    }
+    .o_azm_trees_sort_btn {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 5px;
+        border: 0;
+        border-radius: 9px;
+        padding: 6px 12px;
+        font-size: 12px;
+        font-weight: 600;
+        color: $azm-muted;
+        background: transparent;
+        cursor: pointer;
+        transition: background .18s ease, color .18s ease, box-shadow .18s ease;
+        .o_azm_en { font-size: 10px; font-weight: 400; opacity: .75; }
+        &:hover { color: $azm-ink; background: rgba(255, 255, 255, .7); }
+        &.o_azm_active {
+            color: $azm-blue;
+            background: #fff;
+            box-shadow: 0 2px 8px rgba(15, 35, 71, .10);
+        }
+    }
+    .o_azm_trees_count {
+        margin-inline-start: auto;
+        font-size: 12px;
+        color: $azm-muted;
+        .o_azm_en { margin-inline-start: 4px; }
+    }
+
+    // the gauge in the hero sits outside any card, so it carries its own size
+    .o_azm_ring_wrap {
+        position: relative;
+        display: grid;
+        place-items: center;
+        flex: 0 0 auto;
+        width: 62px;
+        height: 62px;
+        &.o_azm_ring_lg { width: 78px; height: 78px; .o_azm_ring { width: 78px; height: 78px; } }
+        .o_azm_ring_label { position: absolute; font-size: 15px; font-weight: 800; color: $azm-ink; }
+    }
+
+    // How a ring is drawn, said once for the page.
+    //
+    // This lived inside a tree card, so the two rings outside one — the hero's, and
+    // the one on every entity card — never got `fill: none` and were drawn with the
+    // SVG default: a black disk, with the percentage sitting unreadable on top of it.
+    .o_azm_ring {
+        width: 62px;
+        height: 62px;
+        // the gauge starts at twelve o'clock, not at three — and a ring is not a
+        // direction-sensitive drawing, so rtlcss must not mirror it for Arabic
+        /*rtl:ignore*/transform: rotate(-90deg);
+        circle {
+            fill: none;
+            stroke-width: 5;
+            // r is 15.9155: the circumference is exactly 100, so the dash array the
+            // template writes is already a percentage
+            stroke-linecap: round;
+        }
+    }
+    .o_azm_ring_track { stroke: rgba(15, 35, 71, .08); }
+    .o_azm_ring_value {
+        stroke: var(--azm-tone, #{$azm-blue});
+        filter: drop-shadow(0 0 4px color-mix(in srgb, var(--azm-tone, #{$azm-blue}) 55%, transparent));
+        transition: stroke-dasharray .6s cubic-bezier(.2, .8, .2, 1);
+    }
+
+    // ------------------------------------------------------------- a progress bar
+    .o_azm_meter {
+        @include azm-meter;
+        flex: 1 1 auto;
+        &.o_azm_meter_lg { height: 9px; }
+    }
+
+    .o_azm_tree_card {
+        padding: var(--tr-pad);
+        border-radius: 16px;
+        transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+        &:hover { transform: translateY(-3px); }
+        &:focus-visible { outline: 2px solid var(--azm-tone, #{$azm-blue}); outline-offset: 3px; }
+        &:hover .o_azm_tree_card_go { opacity: 1; /*rtl:ignore*/ transform: translateX(-3px); }
+    }
+    // the headline figure of a card, with its words beside it rather than under it
+    .o_azm_entity_overall > b { font-size: 30px; }
+
+    .o_azm_trees_grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(268px, 1fr));
+        gap: var(--tr-gap);
+    }
+    // an entity card carries a line per tree under its ring, so it wants a little more
+    // width than a tree card, which carries two figures
+    .o_azm_entities_grid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+
+
+    // ---------------------------------------------------------------- a card
+    .o_azm_tree_card {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 18px;
+        border: 1px solid rgba(255, 255, 255, .75);
+        border-radius: 18px;
+        // glass: the lit field behind the page shows through, so the card sits in the
+        // light rather than on top of it
+        background:
+            linear-gradient(170deg, rgba(255, 255, 255, .94), rgba(248, 251, 255, .88));
+        backdrop-filter: blur(10px);
+        box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, .9),
+            0 1px 2px rgba(15, 35, 71, .05),
+            0 12px 28px rgba(15, 35, 71, .07);
+        cursor: pointer;
+        overflow: hidden;
+        transition: box-shadow .28s cubic-bezier(.2, .8, .2, 1),
+                    transform .28s cubic-bezier(.2, .8, .2, 1),
+                    border-color .28s ease;
+
+        // an edge of the model's colour, lit along the top and fading down the side
+        &::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            padding: 1px;
+            /*rtl:ignore*/
+            background: linear-gradient(160deg,
+                var(--azm-tone, #{$azm-blue}) 0%,
+                rgba(255, 255, 255, 0) 45%);
+            // draw the gradient as a border and nothing else
+            mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+            mask-composite: exclude;
+            -webkit-mask-composite: xor;
+            opacity: .55;
+            transition: opacity .28s ease;
+            pointer-events: none;
+        }
+
+        // a sheen that crosses the card as it lifts
+        &::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            /*rtl:ignore*/
+            background: linear-gradient(105deg,
+                transparent 30%, rgba(255, 255, 255, .55) 48%, transparent 62%);
+            transform: translateX(-120%);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        &:hover, &:focus-visible {
+            transform: translateY(-5px);
+            border-color: rgba(255, 255, 255, .95);
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, .95),
+                0 18px 40px rgba(15, 35, 71, .14),
+                // the glow is the colour of what the card opens
+                0 0 0 1px color-mix(in srgb, var(--azm-tone, #{$azm-blue}) 35%, transparent),
+                0 10px 34px color-mix(in srgb, var(--azm-tone, #{$azm-blue}) 22%, transparent);
+            outline: none;
+            &::before { opacity: 1; }
+            &::after { animation: azm-tree-sheen .9s ease forwards; }
+            // a nudge that does not care which way the page runs
+            .o_azm_tree_card_go { opacity: 1; transform: scale(1.2); }
+        }
+
+        // ------------------------------------------------ the status, in the corner
+        .o_azm_tree_card_ribbon {
+            position: absolute;
+            top: 10px;
+            inset-inline-end: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            line-height: 1.15;
+            padding: 3px 9px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            .o_azm_en { font-size: 9px; opacity: .8; }
+
+            backdrop-filter: blur(6px);
+            border: 1px solid rgba(255, 255, 255, .6);
+            &.o_azm_ribbon_approved { background: rgba(209, 243, 221, .85); color: #0f5132; }
+            &.o_azm_ribbon_in_progress { background: rgba(255, 237, 200, .85); color: #8a4b00; }
+            &.o_azm_ribbon_not_started { background: rgba(236, 241, 247, .85); color: $azm-muted; }
+        }
+
+        > header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            // room for the ribbon, so a long entity name never runs under it
+            padding-inline-end: 74px;
+            min-height: 38px;
+            min-width: 0;
+            img, .o_azm_tree_card_mono {
+                flex: 0 0 auto;
+                width: 36px;
+                height: 36px;
+                border-radius: 9px;
+                object-fit: contain;
+                background: #f1f5f9;
+            }
+            strong {
+                font-size: 14px;
+                line-height: 1.25;
+                overflow: hidden;
+                display: -webkit-box;
+                -webkit-line-clamp: 2;
+                -webkit-box-orient: vertical;
+            }
+        }
+        .o_azm_tree_card_mono {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 13px;
+            color: $azm-muted;
+            text-transform: uppercase;
+        }
+
+        // ------------------------------------------------ how far it got, and what is left
+        .o_azm_tree_card_body {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .o_azm_ring_wrap {
+            position: relative;
+            flex: 0 0 auto;
+            width: 62px;
+            height: 62px;
+            display: grid;
+            place-items: center;
+        }
+        .o_azm_ring {
+            width: 62px;
+            height: 62px;
+            // the gauge starts at twelve o'clock, not at three — and a ring is not a
+            // direction-sensitive drawing, so rtlcss must not mirror it for Arabic
+            /*rtl:ignore*/transform: rotate(-90deg);
+            circle {
+                fill: none;
+                stroke-width: 4;
+                // r is 15.9155: the circumference is exactly 100, so the dash array
+                // the template writes is already a percentage
+                stroke-linecap: round;
+            }
+        }
+        .o_azm_ring_track { stroke: rgba(15, 35, 71, .08); stroke-width: 5; }
+        .o_azm_ring_value {
+            stroke: var(--azm-tone, $azm-blue);
+            stroke-width: 5;
+            filter: drop-shadow(0 0 4px color-mix(in srgb, var(--azm-tone, #{$azm-blue}) 55%, transparent));
+        }
+        .o_azm_ring_label {
+            position: absolute;
+            font-size: 13px;
+            font-weight: 700;
+            color: $azm-ink;
+        }
+
+        .o_azm_tree_card_figures {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 6px;
+            margin: 0;
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+        .o_azm_chip {
+            display: flex;
+            // the markup pairs dt before dd, as a description list must; the value
+            // still reads first
+            flex-direction: column-reverse;
+            padding: 6px 10px;
+            border-radius: 11px;
+            background: rgba(241, 246, 252, .8);
+            border: 1px solid rgba(15, 35, 71, .05);
+            min-width: 0;
+            dd { margin: 0; font-size: 16px; font-weight: 700; line-height: 1.1; }
+            dt {
+                font-size: 10px;
+                font-weight: 400;
+                color: $azm-muted;
+                overflow: hidden;
+                .o_azm_en { font-size: 9px; }
+            }
+            &.o_azm_chip_warn {
+                background: rgba(255, 240, 214, .85);
+                border-color: rgba(180, 83, 9, .18);
+                dd { color: #b45309; }
+                dt { color: #8a4b00; }
+            }
+        }
+
+        // ------------------------------------------------ the way in
+        > footer {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: auto;
+            padding-top: 10px;
+            border-top: 1px solid $azm-border;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--azm-tone, $azm-blue);
+            .o_azm_tree_mark { width: 16px; height: 16px; flex: 0 0 auto; }
+            > span { flex: 1 1 auto; }
+            .o_azm_en { font-size: 10px; font-weight: 400; color: $azm-muted; }
+            .o_azm_tree_card_go { font-size: 14px; opacity: .55; transition: transform .15s ease, opacity .15s ease; }
+        }
+
+        // ------------------------------------------------ an entity, led by its progress
+        &.o_azm_entity_card {
+            --azm-tone: #{$azm-blue};
+            gap: 10px;
+            > header { padding-inline-end: 0; }
+            // the status sits in the flow here rather than over the corner
+            .o_azm_tree_card_ribbon { position: static; margin-inline-start: auto; flex: 0 0 auto; }
+        }
+        .o_azm_entity_card_who {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+            flex: 1 1 auto;
+            strong { font-size: 15px; }
+            .o_azm_code { align-self: flex-start; font-size: 10px; }
+        }
+        .o_azm_entity_overall {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            margin-top: 4px;
+            > b {
+                font-size: 34px;
+                font-weight: 800;
+                line-height: 1;
+                letter-spacing: -1px;
+                color: $azm-ink;
+            }
+        }
+        .o_azm_entity_overall_words {
+            display: flex;
+            flex-direction: column;
+            line-height: 1.15;
+            font-size: 12px;
+            font-weight: 600;
+            color: $azm-muted;
+            .o_azm_en { font-size: 10px; font-weight: 400; }
+        }
+        .o_azm_entity_open {
+            margin-inline-start: auto;
+            align-self: center;
+            padding: 4px 10px;
+            border-radius: 99px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #8a4b00;
+            background: rgba(255, 240, 214, .9);
+            border: 1px solid rgba(180, 83, 9, .18);
+            .o_azm_en { font-weight: 400; margin-inline-start: 4px; opacity: .8; }
+        }
+        // the same figure again, once per tree
+        .o_azm_entity_trees {
+            list-style: none;
+            margin: 10px 0 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            li {
+                display: grid;
+                grid-template-columns: minmax(0, 1fr) 72px 42px;
+                align-items: center;
+                gap: 10px;
+                padding: 9px 0;
+                font-size: 11.5px;
+                // a hairline between them, so three trees read as three
+                + li { border-top: 1px solid rgba(15, 35, 71, .06); }
+                > b {
+                    flex: 0 0 auto;
+                    text-align: end;
+                    font-weight: 700;
+                    color: $azm-ink;
+                    font-variant-numeric: tabular-nums;
+                }
+            }
+            &.o_azm_status_not_started b { color: $azm-muted; }
+        }
+        .o_azm_entity_tree_name {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            flex: 0 0 96px;
+            min-width: 0;
+            color: $azm-ink;
+            .oi { font-size: 14px; color: var(--azm-tone, $azm-blue); }
+        }
+
+        // an entity that has not started is drawn quieter, but stays open-able:
+        // the tree still shows what the model asks of it
+        &.o_azm_status_not_started {
+            background: linear-gradient(170deg, rgba(252, 253, 255, .9), rgba(246, 249, 253, .85));
+            &::before { opacity: .15; }
+            > header strong { color: $azm-muted; }
+        }
+    }
+
+    @media (max-width: 576px) {
+        .o_azm_trees_crumb { flex-wrap: wrap; }
+    }
+
+    // Nobody should have to watch the page move to use it.
+    @media (prefers-reduced-motion: reduce) {
+        .o_azm_tree_card {
+            transition: none;
+            &:hover, &:focus-visible { transform: none; }
+            &::after { animation: none; }
+        }
+    }
+}
+
+// the sheen that crosses a card as it lifts; it runs once and stays out of the way
+@keyframes azm-tree-sheen {
+    from { transform: translateX(-120%); opacity: 0; }
+    35%  { opacity: 1; }
+    to   { transform: translateX(120%); opacity: 0; }
+}

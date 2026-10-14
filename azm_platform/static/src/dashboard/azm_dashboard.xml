@@ -196,7 +196,7 @@
                         <div class="o_azm_filters">
                             <button type="button" t-att-class="{'active': this.state.taskFilter === 'all'}" t-on-click="() => this.setTaskFilter('all')">All</button>
                             <button type="button" class="o_azm_f_high" t-att-class="{'active': this.state.taskFilter === 'high'}" t-on-click="() => this.setTaskFilter('high')">High</button>
-                            <button type="button" class="o_azm_f_medium" t-att-class="{'active': this.state.taskFilter === 'overdue'}" t-on-click="() => this.setTaskFilter('overdue')">Overdue</button>
+                            <button type="button" class="o_azm_f_overdue" t-att-class="{'active': this.state.taskFilter === 'overdue'}" t-on-click="() => this.setTaskFilter('overdue')">Overdue</button>
                         </div>
                         <ul t-if="this.tasks.length" class="o_azm_list">
                             <li t-foreach="this.tasks" t-as="task" t-key="task.model + task.id + task_index"

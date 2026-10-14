@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<!--
+    The two pieces every tree page draws the same way: its header (which entity, and
+    the way back to the list of trees) and the tree itself. Only the panel on the
+    right — what a leaf actually is — is written once per model.
+-->
+
+<t t-name="azm_platform.TreeHead">
+    <div class="o_azm_om_title o_azm_tree_title">
+        <!-- the same wrapper the model pages use: o_azm_om_title is a column of rows
+             now, and its top row is what lays a title out beside its controls -->
+        <div class="o_azm_om_title_top">
+        <div class="o_azm_tree_title_group">
+            <span class="o_azm_tree_title_mark"><t t-call="azm_platform.TreeMark"/></span>
+            <div>
+                <h1>
+                    <t t-out="this.pageTitle"/>
+                    <small class="text-muted" t-out="this.pageTitleEn"/>
+                </h1>
+                <p class="text-muted mb-0" t-out="this.pageSubtitle"/>
+            </div>
+        </div>
+        <div t-if="this.state.loaded and this.d.available" class="o_azm_om_selects">
+            <button type="button" class="btn btn-sm btn-light o_azm_tree_back"
+                    t-on-click="() => this.openTrees()">
+                <t t-call="azm_platform.TreeMark"/>كل الشجر
+            </button>
+            <button t-if="this.d.summary_doc and this.docsAvailable" type="button"
+                    class="btn btn-sm btn-light" t-att-title="this.d.summary_doc.en"
+                    t-on-click="() => this.previewDoc(this.d.summary_doc)">
+                <i class="oi me-1" data-icon="description"/>
+                <t t-out="this.d.summary_doc.label"/>
+            </button>
+            <button t-if="this.d.book_doc and this.docsAvailable" type="button"
+                    class="btn btn-sm btn-primary o_azm_tree_book"
+                    t-attf-title="{{this.d.book_doc.en}} — كل مستندات هذا الكيان في مجلد واحد"
+                    t-on-click="() => this.previewDoc(this.d.book_doc)">
+                <i class="oi me-1" data-icon="menu_book"/>
+                <t t-out="this.d.book_doc.label"/>
+            </button>
+            <select t-foreach="this.selects" t-as="sel" t-key="sel.key"
+                    class="form-select form-select-sm" t-att-title="sel.title"
+                    t-on-change="(ev) => this.onSelectChange(sel.key, ev)">
+                <option t-foreach="sel.options" t-as="opt" t-key="opt.id"
+                        t-att-value="opt.id" t-att-selected="opt.id === sel.value"
+                        t-out="opt.name"/>
+            </select>
+        </div>
+        </div>
+    </div>
+</t>
+
+<t t-name="azm_platform.TreeOutputs">
+    <!-- Three different things, told apart: what narrows the tree, what the tree
+         holds that cannot be narrowed by, and what is a document in itself. -->
+    <section t-if="this.d.outputs.families.length and this.docsAvailable" class="o_azm_tree_outputs">
+
+        <div class="o_azm_outputs_filters" role="group" aria-label="تصفية المخرجات · Filter outputs">
+            <span class="o_azm_outputs_label">
+                المخرجات <em class="o_azm_en">Outputs</em>
+            </span>
+
+            <!-- where the tree starts, and the way back to it -->
+            <button type="button"
+                    t-attf-class="o_azm_output_chip o_azm_output_all {{!this.state.family ? 'o_azm_active' : ''}}"
+                    t-att-aria-pressed="!this.state.family ? 'true' : 'false'"
+                    t-on-click="() => this.clearFamily()">
+                <span>الكل<em class="o_azm_en">All</em></span>
+                <b t-out="this.outputsTotal"/>
+            </button>
+
+            <button t-foreach="this.outputFilters" t-as="f" t-key="f.tab" type="button"
+                    t-attf-class="o_azm_output_chip {{this.state.family === f.tab ? 'o_azm_active' : ''}}"
+                    t-att-aria-pressed="this.state.family === f.tab ? 'true' : 'false'"
+                    t-attf-title="{{f.label}} · {{f.en}}"
+                    t-on-click="() => this.openOutputs(f)">
+                <span><t t-out="f.label"/><em class="o_azm_en" t-out="f.en"/></span>
+                <b t-out="f.count"/>
+            </button>
+        </div>
+
+        <div t-if="this.outputStats.length or this.outputDocs.length" class="o_azm_outputs_aside">
+            <!-- a count, not a control: there is nothing to narrow the tree to -->
+            <span t-foreach="this.outputStats" t-as="f" t-key="f.tab"
+                  class="o_azm_output_stat" t-attf-title="{{f.label}} · {{f.en}}">
+                <b t-out="f.count"/>
+                <span><t t-out="f.label"/><em class="o_azm_en" t-out="f.en"/></span>
+            </span>
+
+            <!-- these open a document rather than filtering anything -->
+            <button t-foreach="this.outputDocs" t-as="f" t-key="f.tab" type="button"
+                    class="o_azm_output_doc" t-attf-title="{{f.label}} · {{f.en}}"
+                    t-on-click="() => this.openOutputs(f)">
+                <i class="oi" data-icon="description" title="Open"/>
+                <span><t t-out="f.label"/><em class="o_azm_en" t-out="f.en"/></span>
+            </button>
+        </div>
+    </section>
+</t>
+
+<t t-name="azm_platform.TreeKpis">
+    <section class="o_azm_kpis o_azm_om_kpis">
+        <t t-foreach="this.kpis" t-as="kpi" t-key="kpi.key">
+            <div class="o_azm_kpi o_azm_om_kpi o_azm_kpi_static">
+                <span class="o_azm_kpi_text">
+                    <span class="o_azm_kpi_label">
+                        <t t-out="kpi.label"/>
+                        <em t-if="kpi.en" class="o_azm_kpi_en" t-out="kpi.en"/>
+                    </span>
+                    <strong class="o_azm_kpi_value" t-out="kpi.value"/>
+                    <span t-if="kpi.meter !== undefined" t-attf-class="o_azm_progress o_azm_om_meter o_azm_tone_{{kpi.tone}}">
+                        <span class="o_azm_progress_bar" t-attf-style="width: {{kpi.meter or 0}}%"/>
+                    </span>
+                    <small t-if="kpi.sub" t-out="kpi.sub"/>
+                </span>
+                <span t-attf-class="o_azm_icon_badge o_azm_tone_{{kpi.tone}}">
+                    <i class="oi" t-att-data-icon="kpi.icon" t-att-title="kpi.label"/>
+                </span>
+            </div>
+        </t>
+    </section>
+</t>
+
+<t t-name="azm_platform.TreePanel">
+    <aside class="o_azm_card o_azm_tree_panel">
+        <header class="o_azm_card_header">
+            <h3 t-out="this.panelTitle"/>
+            <span class="o_azm_tree_tools">
+                <a href="#" t-on-click.prevent="() => this.expandAll()">فتح الكل</a>
+                <a href="#" t-on-click.prevent="() => this.collapseAll()">طي الكل</a>
+            </span>
+        </header>
+        <div t-if="this.docsNote" class="o_azm_tree_docs_note">
+            <i class="oi" data-icon="info"/>
+            <t t-out="this.docsNote"/>
+        </div>
+        <div class="o_azm_tree_search">
+            <i class="oi" data-icon="search"/>
+            <input type="text" class="form-control form-control-sm"
+                   t-att-placeholder="this.searchHint"
+                   t-att-value="this.state.query"
+                   t-on-input="(ev) => this.state.query = ev.target.value"/>
+        </div>
+
+        <div class="o_azm_tree_scroll">
+            <div t-if="!this.tree.length" class="text-muted p-3">لا نتائج.</div>
+
+            <t t-foreach="this.tree" t-as="n" t-key="n.id">
+                <div class="o_azm_tree_module">
+                    <div class="o_azm_tree_branch">
+                        <button type="button" class="o_azm_tree_row o_azm_tree_l1"
+                                t-on-click="() => this.toggle('n', n.id)">
+                            <i t-attf-class="oi o_azm_tree_caret {{this.isOpen('n', n.id) ? 'o_azm_open' : ''}}"
+                               data-icon="chevron_left"/>
+                            <span class="o_azm_code" t-out="n.code"/>
+                            <span class="o_azm_tree_name" t-out="n.name"/>
+                            <span class="o_azm_tree_meta">
+                                <span t-out="n.meta"/>
+                                <span t-if="n.gaps" class="o_azm_tree_gap" t-out="n.gaps"/>
+                            </span>
+                        </button>
+                        <button t-if="n.docs.length and this.docsAvailable" type="button"
+                                t-attf-class="o_azm_tree_docs_btn {{this.docsOpen(n.id) ? 'o_azm_open' : ''}}"
+                                t-attf-title="المخرجات ({{n.docs.length}}) · Outputs"
+                                t-on-click="() => this.toggleDocs(n.id)">
+                            <i class="oi" data-icon="description"/>
+                            <span t-out="n.docs.length"/>
+                        </button>
+                    </div>
+
+                    <div t-if="this.docsOpen(n.id) and this.docsAvailable" class="o_azm_tree_docs">
+                        <span t-foreach="this.docsOf(n)" t-as="d" t-key="d.tab" class="o_azm_doc_chip">
+                            <button type="button" class="o_azm_doc_open"
+                                    t-attf-title="{{d.azm_code or d.en}} · {{d.atype}} · {{d.stage}}"
+                                    t-on-click="() => this.previewDoc(d)">
+                                <span class="o_azm_doc_type" t-out="d.atype"/>
+                                <t t-out="d.label"/>
+                                <span t-if="d.azm_code" class="o_azm_azm_code"
+                                      t-out="d.azm_code"/>
+                            </button>
+                            <button type="button" class="o_azm_doc_get" title="تنزيل · Download"
+                                    t-on-click="() => this.openDoc(d, true)">
+                                <i class="oi" data-icon="download"/>
+                            </button>
+                        </span>
+                    </div>
+
+                    <t t-if="this.isOpen('n', n.id)">
+                        <t t-foreach="n.children" t-as="c" t-key="c.id">
+                            <button type="button" class="o_azm_tree_row o_azm_tree_l2"
+                                    t-on-click="() => this.toggle('c', c.id)">
+                                <i t-attf-class="oi o_azm_tree_caret {{this.isOpen('c', c.id) ? 'o_azm_open' : ''}}"
+                                   data-icon="chevron_left"/>
+                                <span t-if="c.code" class="o_azm_code o_azm_code_dim" t-out="c.code"/>
+                                <span class="o_azm_tree_name" t-out="c.name"/>
+                                <span class="o_azm_tree_meta" t-out="c.meta"/>
+                            </button>
+
+                            <t t-if="this.isOpen('c', c.id)">
+                                <button type="button" t-foreach="c.items" t-as="i" t-key="i.id"
+                                        t-attf-class="o_azm_tree_row o_azm_tree_l3 {{this.state.selected === i.id ? 'o_azm_selected' : ''}}"
+                                        t-on-click="() => this.select(i)">
+                                    <span t-attf-class="o_azm_dot o_azm_dot_{{i.status.css}}"
+                                          t-att-title="i.status.label"/>
+                                    <span class="o_azm_code o_azm_code_dim" t-out="i.code"/>
+                                    <span class="o_azm_tree_name" t-out="i.title"/>
+                                    <!-- what this entity's copy of the deliverable is
+                                         called; the code above is where it sits -->
+                                    <span t-if="i.azm_code" class="o_azm_azm_code"
+                                          t-att-title="i.azm_code" t-out="i.azm_code"/>
+                                    <span t-if="i.flag" class="o_azm_tree_gap" t-att-title="'ملاحظات خطر مفتوحة'"
+                                          t-out="i.flag"/>
+                                </button>
+                            </t>
+                        </t>
+                    </t>
+                </div>
+            </t>
+        </div>
+    </aside>
+</t>
+
+</templates>
