@@ -180,8 +180,12 @@
         .o_azm_code { font-size: 11px; }
         small { color: $azm-muted; font-size: 10.5px; }
     }
+    // the heading of the card, now that the code no longer sits above it
     .o_azm_output_name {
-        font-size: 13px;
+        font-size: 13.5px;
+        font-weight: 600;
+        color: $azm-ink;
+        line-height: 1.35;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -232,6 +236,28 @@
         + .o_azm_output_entity { border-top: 1px dashed $azm-border; }
         small { color: $azm-muted; font-size: 10.5px; }
     }
+    // The identity of the deliverable, shown once the card is opened. It leads the
+    // panel because everything under it is a copy of this one code.
+    .o_azm_output_identity {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        padding-bottom: 7px;
+        margin-bottom: 4px;
+        border-bottom: 1px solid $azm-border;
+        .o_azm_code {
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 12.5px;
+            font-weight: 700;
+            letter-spacing: -.2px;
+            color: $azm-ink;
+            direction: ltr;
+            unicode-bidi: isolate;
+        }
+        small { color: $azm-muted; font-size: 10.5px; }
+        .o_azm_en { opacity: .72; }
+    }
+
     // Whose copy the row is. It sits between the name and the state, in the same
     // monospace the tree reference uses, so a column of nine codes lines up and the
     // entity prefix is the part that differs down the list.

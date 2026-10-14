@@ -179,7 +179,12 @@
                                   t-attf-title="{{row.type_label}} · {{row.type_en}}"
                                   t-out="row.atype"/>
                             <span class="o_azm_output_main">
-                                <b class="o_azm_code" t-out="row.code"/>
+                                <!-- The heading is what the deliverable is called. Its
+                                     registry code is an identity, not a title: it reads
+                                     the same down a whole shelf and pushed the one thing
+                                     that tells two policies apart to second place. The
+                                     code is on the panel below, on the document, in the
+                                     file name and in search. -->
                                 <span class="o_azm_output_name" t-out="row.label"/>
                                 <small>
                                     <span class="o_azm_output_node" t-out="row.node"/>
@@ -198,6 +203,12 @@
                         </button>
 
                         <div t-if="this.isOpen(row.id)" class="o_azm_output_entities">
+                            <!-- Opened, the deliverable says what it is: the master code
+                                 every entity below holds a copy of. -->
+                            <div class="o_azm_output_identity">
+                                <b class="o_azm_code o_azm_code_big" t-out="row.code"/>
+                                <small>الكود المعتمد <span class="o_azm_en">Master ID</span></small>
+                            </div>
                             <div t-foreach="this.entitiesOf(row)" t-as="e" t-key="e.company_id"
                                  class="o_azm_output_entity">
                                 <span t-attf-class="o_azm_dot o_azm_dot_{{e.css}}" t-att-title="e.state_label"/>

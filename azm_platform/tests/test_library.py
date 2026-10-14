@@ -534,3 +534,56 @@ class TestLibrarySearchesWhatItShows(TransactionCase):
         self.assertFalse(
             self._library(f'{theirs.code}-{tail}', user, mine.company_id)['rows'],
             'another entity\'s copy code must not resolve for them')
+
+
+@tagged('post_install', '-at_install')
+class TestTheCardHeadingIsATitle(TransactionCase):
+    """A card is headed by what the deliverable is called, not by its number.
+
+    A registry code reads the same down a whole shelf -- AZM-FIN-POL-000001,
+    000002, 000003 -- so leading with it pushed the one thing that tells two
+    policies apart into second place. The code is an identity and it is kept
+    everywhere it identifies something: on the opened card, on the document, in
+    the file name, in the payload and in search. It is only the heading it leaves.
+
+    The tours that would normally cover this cannot start a browser in this
+    container, so the template is read directly.
+    """
+
+    def _template(self):
+        import os
+        from odoo.modules.module import get_module_path
+        path = os.path.join(get_module_path('azm_platform'),
+                            'static/src/library/outputs_library.xml')
+        with open(path, encoding='utf-8') as handle:
+            body = handle.read()
+        head, _, rest = body.partition('o_azm_output_entities')
+        return head.rpartition('o_azm_output_head')[2], rest
+
+    def test_the_heading_carries_the_title_and_not_the_code(self):
+        head, _panel = self._template()
+        self.assertIn('t-out="row.label"', head, 'the heading is what it is called')
+        self.assertNotIn('t-out="row.code"', head,
+                         'the registry code is an identity, not a title')
+
+    def test_opening_the_card_still_shows_the_whole_code(self):
+        _head, panel = self._template()
+        self.assertIn('t-out="row.code"', panel,
+                      'the master code every entity below holds a copy of')
+        self.assertIn('t-out="e.code"', panel,
+                      'and which copy each entity holds')
+
+    def test_the_code_is_still_in_the_payload_and_still_searchable(self):
+        """Nothing about the identity moved -- only where it is printed."""
+        D = self.env['azm.dashboard']
+        library = D.get_outputs_library(atype='POL')
+        if not library['rows']:
+            self.skipTest('no policy is registered')
+        row = library['rows'][0]
+        self.assertRegex(row['code'], r"^AZM-(FIN|PUR)-[A-Z]{2,4}-\d{6}$")
+        self.assertTrue(row['label'], 'and it still has a title to be headed by')
+        # the code it no longer prints is still the code it is found by
+        self.assertTrue(D.get_outputs_library(query=row['code'])['rows'],
+                        'searching the code still resolves it')
+        opened = D.get_output_entities(row['id'])
+        self.assertEqual(opened['code'], row['code'])
