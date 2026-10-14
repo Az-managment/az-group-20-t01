@@ -79,11 +79,12 @@ class AzmAnswer(models.Model):
         return res
 
     # ---------------------------------------------------------------- whose part
-    def _azm_part_key(self):
+    def _azm_part_keys(self):
         self.ensure_one()
-        return (self.assessment_id.id, self.stage_id.id)
+        # a stage is the smallest thing the procurement cycle hands out
+        return [(self.assessment_id.id, "stage", self.stage_id.id)]
 
-    def _azm_part_name(self):
+    def _azm_part_name(self, key=None):
         self.ensure_one()
         return f"PUR-{self.stage_id.code}"
 
@@ -91,4 +92,5 @@ class AzmAnswer(models.Model):
     def _azm_assignments(self, lines):
         found = self.env["azm.assignment"].sudo().search(
             [("proc_assessment_id", "in", lines.assessment_id.ids)])
-        return {(a.proc_assessment_id.id, a.stage_id.id): a.user_ids.ids for a in found}
+        return {(a.proc_assessment_id.id, "stage", a.stage_id.id): a.user_ids.ids
+                for a in found}

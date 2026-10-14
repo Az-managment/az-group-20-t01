@@ -204,13 +204,19 @@ class AzmAssignment(models.Model):
     def _check_assignee_can_see_the_entity(self):
         """Giving somebody a part they cannot open is giving them nothing.
 
-        The record rules read the entity's own list of people, so an assignee who is not
-        on it would be shown work and then refused it.
+        Three things decide whether an entity is visible at all, and ir.access spells
+        out all three: the AZM group, being on the entity's own list of people, and
+        having the entity's company among the ones you may work in. This used to check
+        the first two. The third is the one that goes wrong quietly -- somebody is added
+        to the entity, given a module, and their page stays empty, because the company
+        line of ir.access filters the entity out before anything else is asked. They are
+        told they hold a part and shown nowhere to do it.
         """
         group = self.env.ref("azm_operating_model.azm_group_user", raise_if_not_found=False)
         for record in self:
             if not record.entity_id:
                 continue
+            company = record.entity_id.sudo().company_id
             for user in record.user_ids:
                 if group and group not in user.all_group_ids:
                     raise ValidationError(_(
@@ -220,6 +226,13 @@ class AzmAssignment(models.Model):
                         "%(user)s is not on %(entity)s, so they could not open this part. "
                         "Add them to the entity first.",
                         user=user.name, entity=record.entity_id.name))
+                if company and company not in user.sudo().company_ids:
+                    raise ValidationError(_(
+                        "%(user)s may not work in %(company)s, so %(entity)s would not "
+                        "appear for them at all. Add the company to their allowed "
+                        "companies first.",
+                        user=user.name, company=company.name,
+                        entity=record.entity_id.name))
 
 
 class AzmAssignable(models.AbstractModel):
@@ -227,14 +240,19 @@ class AzmAssignable(models.AbstractModel):
     _name = "azm.assignable"
     _description = "AZM assignable answer line"
 
-    def _azm_part_key(self):
-        """``(assessment id, part id)`` this line falls under. Overridden per model."""
+    def _azm_part_keys(self):
+        """The parts this line falls under, narrowest first. Overridden per model.
+
+        A line can sit under more than one: a requirement is in a topic and that topic
+        is in a module, and either may have been handed out. Narrowest first, because
+        dividing a module is how you say "this bit is somebody else's".
+        """
         self.ensure_one()
-        return None
+        return []
 
     @api.model
     def _azm_assignments(self, lines):
-        """``{(assessment id, part id): user id}`` for everything these lines touch."""
+        """``{part key: user ids}`` for everything these lines touch."""
         raise NotImplementedError
 
     def _azm_check_assignee(self):
@@ -253,14 +271,22 @@ class AzmAssignable(models.AbstractModel):
             return
         uid = self.env.uid
         for line in self:
-            key = line._azm_part_key()
-            owners = assignments.get(key)
+            # the narrowest part that was actually handed out wins: a module given to
+            # one person and a topic of it given to another leaves the topic theirs.
+            # This read one key only -- the module -- so a topic handed out separately
+            # was recorded, shown on both their pages, and enforced against nobody.
+            matched = next((key for key in line._azm_part_keys()
+                            if key in assignments), None)
+            owners = assignments.get(matched) if matched else None
             # a part can be held by several people; it is somebody else's only when it
             # was given out and this reader is not among them
             if owners and uid not in owners:
+                # named at the level it was handed out at: being told "FIN.GOV is
+                # somebody else's" when one topic of it was given away sends the
+                # reader looking for a module that is mostly still theirs
                 raise UserError(_(
                     "%s is answered by somebody else. You can read it, but it is not "
-                    "yours to fill in.", line._azm_part_name()))
+                    "yours to fill in.", line._azm_part_name(matched)))
 
     def _azm_check_returns(self):
         """Refuse a write to a part the reviewer did not send back.
@@ -292,6 +318,7 @@ class AzmAssignable(models.AbstractModel):
                         "%s is not one of them. Answer what was returned and send it "
                         "back for review.", len(returns), line._azm_part_name() or line.display_name))
 
-    def _azm_part_name(self):
+    def _azm_part_name(self, key=None):
+        """What to call the part, optionally the one that matched. Overridden per model."""
         self.ensure_one()
         return ""
