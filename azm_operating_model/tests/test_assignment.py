@@ -133,6 +133,88 @@ class TestAssignment(TransactionCase):
                          "between them they still cover the module exactly once")
         self.assertFalse(set(module._lines().ids) & set(carved._lines().ids))
 
+    def test_a_carved_out_topic_is_actually_somebody_elses_to_answer(self):
+        """The carve-out above only checked the accounting -- which lines each part
+        covers -- and that was always right. What was never checked is whether the
+        hand-out is enforced, and it was not: the gate read the module key alone, so a
+        topic given to Omar was recorded, shown on both their pages, and protected from
+        nobody."""
+        topics = self.fin.answer_ids.filtered(lambda a: a.module_id == self.gov).topic_id
+        self.assertTrue(topics, "the module has topics to carve")
+        carved = topics[0]
+        self.Assignment.create({
+            "fin_assessment_id": self.fin.id, "topic_id": carved.id,
+            "user_ids": [(6, 0, [self.omar.id])]})
+        line = self.fin.answer_ids.filtered(
+            lambda a: a.topic_id == carved and a.applicable)[:1]
+        self.assertTrue(line, "the topic has an applicable requirement")
+
+        with self.assertRaises(UserError):
+            line.with_user(self.sara).write({"na": False, "reason": "not mine"})
+        line.with_user(self.omar).write({"na": False, "reason": "mine"})
+
+    def test_carving_a_topic_out_leaves_the_rest_of_the_module_alone(self):
+        """Giving one topic away must not lock the module it came from."""
+        topics = self.fin.answer_ids.filtered(lambda a: a.module_id == self.gov).topic_id
+        if len(topics) < 2:
+            self.skipTest("the module has only one topic")
+        self.Assignment.create({
+            "fin_assessment_id": self.fin.id, "topic_id": topics[0].id,
+            "user_ids": [(6, 0, [self.omar.id])]})
+        elsewhere = self.fin.answer_ids.filtered(
+            lambda a: a.module_id == self.gov and a.topic_id == topics[1]
+            and a.applicable)[:1]
+        self.assertTrue(elsewhere)
+        # nobody was given this one, so it stays with whoever prepares the assessment
+        elsewhere.with_user(self.sara).write({"na": False, "reason": "still open"})
+
+    def test_the_refusal_names_the_part_that_was_handed_out(self):
+        """Being told "FIN.GOV is somebody else's" when one topic of it was given away
+        sends the reader looking for a module that is mostly still theirs."""
+        topics = self.fin.answer_ids.filtered(lambda a: a.module_id == self.gov).topic_id
+        carved = topics[0]
+        self.Assignment.create({
+            "fin_assessment_id": self.fin.id, "topic_id": carved.id,
+            "user_ids": [(6, 0, [self.omar.id])]})
+        line = self.fin.answer_ids.filtered(
+            lambda a: a.topic_id == carved and a.applicable)[:1]
+        with self.assertRaises(UserError) as caught:
+            line.with_user(self.sara).write({"na": False, "reason": "no"})
+        said = str(caught.exception)
+        self.assertIn(carved.code or carved.name, said, said)
+
+    def test_a_part_cannot_be_given_to_somebody_barred_from_the_company(self):
+        """Three things make an entity visible, and ir.access spells out all three: the
+        AZM group, being on the entity, and having its company among your own. Missing
+        the third is the quiet one -- the assignment saves, and their page stays empty.
+        """
+        # The class entity is built without a company, and an entity with no company
+        # cannot be barred from one. A new company gets its own entity automatically
+        # (azm.entity._azm_sync_companies, one entity per company), so that one is used
+        # rather than moving the class entity onto it.
+        company = self.env["res.company"].sudo().create({"name": "شركة التوزيع"})
+        entity = self.env["azm.entity"].sudo().search([("company_id", "=", company.id)])
+        self.assertTrue(entity, "a company gets an entity of its own")
+        owner = new_test_user(
+            self.env, "asn_owner", groups="azm_operating_model.azm_group_user",
+            company_id=company.id, company_ids=[(6, 0, [company.id])])
+        stranger = new_test_user(
+            self.env, "asn_nocompany", groups="azm_operating_model.azm_group_user")
+        entity.user_ids = [(6, 0, [owner.id, stranger.id])]
+        self.assertNotIn(company, stranger.sudo().company_ids,
+                         "the point of the test is that they may not work in it")
+        assessment = self.env["azm.fin.assessment"].sudo().create(
+            {"entity_id": entity.id, "user_id": owner.id})
+        with self.assertRaises(ValidationError) as caught:
+            self.Assignment.sudo().create({
+                "fin_assessment_id": assessment.id, "module_id": self.gov.id,
+                "user_ids": [(6, 0, [stranger.id])]})
+        self.assertIn(company.name, str(caught.exception))
+        # and somebody who may work there is accepted, so the rule refuses the right thing
+        self.Assignment.sudo().create({
+            "fin_assessment_id": assessment.id, "module_id": self.gov.id,
+            "user_ids": [(6, 0, [owner.id])]})
+
     def test_an_assignment_belongs_to_one_model_or_the_other(self):
         from psycopg2 import IntegrityError
         from odoo.tools import mute_logger
