@@ -34,9 +34,10 @@
 
             <t t-else="">
                 <section class="o_azm_om_toolbar">
-                    <div class="o_azm_om_tabs" role="tablist">
+                    <div class="o_azm_om_tabs" role="group" aria-label="Filter by domain">
                         <button type="button" t-foreach="this.modelTabs" t-as="tab" t-key="tab.key or 'all'"
                                 t-attf-class="o_azm_om_tab o_azm_tone_{{tab.key === 'financial' ? 'green' : 'blue'}} {{this.state.model === tab.key ? 'active' : ''}}"
+                                t-att-aria-pressed="this.state.model === tab.key ? 'true' : 'false'"
                                 t-on-click="() => this.setModel(tab.key)">
                             <i class="oi" t-att-data-icon="tab.icon" t-att-title="tab.label"/>
                             <span t-out="tab.label"/>

@@ -214,7 +214,8 @@ class AzmDashboard(models.AbstractModel):
                 out["tasks"].append({
                     "id": task.id, "name": task.name,
                     "project": task.project_id.display_name,
-                    "deadline": fields.Date.to_string(task.date_deadline.date())
+                    "deadline": fields.Date.to_string(
+                        fields.Datetime.context_timestamp(self, task.date_deadline).date())
                                 if task.date_deadline else "",
                     "overdue": bool(task.date_deadline and task.date_deadline < now),
                 })
@@ -489,7 +490,8 @@ class AzmDashboard(models.AbstractModel):
                     "mine": found.reviewer_id == self.env.user,
                     "version": found.version,
                     "progress": round(found.progress),
-                    "since": fields.Date.to_string(found.write_date.date())
+                    "since": fields.Date.to_string(
+                        fields.Datetime.context_timestamp(self, found.write_date).date())
                              if found.write_date else "",
                 })
         return rows

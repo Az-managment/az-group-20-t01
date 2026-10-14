@@ -384,8 +384,7 @@ class AzmFinAssessment(models.Model):
         for rec in self:
             if rec.state != "review":
                 raise UserError("الاعتماد يتم من حالة «تحت المراجعة» فقط.")
-            if rec.user_id == self.env.user and not self.env.is_superuser():
-                raise UserError("مُعد الإفادة لا يعتمدها بنفسه (فصل المهام).")
+            rec._azm_check_not_own_work()
             answers = {a.code: a._snapshot() for a in rec.answer_ids if a.state or a.q_answered}
             self.env["azm.fin.version"].create({
                 "assessment_id": rec.id, "version": rec.version,
@@ -637,11 +636,11 @@ class AzmFinAnswer(models.Model):
                         vals["priority"] = "high" if state == "unavailable" else "medium"
                 values[q.key] = {opt.name}
             elif q.qtype == "select":
-                opt = main[s % len(main)]
+                opt = main[s % len(main)] if main else main
                 vals["option_id"] = opt.id
                 values[q.key] = {opt.name}
             elif q.qtype == "multi":
-                chosen = main[s % len(main)] | main[(s // 7) % len(main)]
+                chosen = (main[s % len(main)] | main[(s // 7) % len(main)]) if main else main
                 vals["option_ids"] = [Command.set(chosen.ids)]
                 values[q.key] = set(chosen.mapped("name"))
             elif q.qtype == "number":

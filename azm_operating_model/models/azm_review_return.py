@@ -114,7 +114,21 @@ class AzmReviewReturn(models.Model):
         records._touch_assessments()
         return records
 
+    # What the person a return was given to may change about it: that they have dealt
+    # with it, and when. The access row grants them write so they can close it, and
+    # write is not a column — without this they could also re-point the return at a
+    # module somebody else holds, which moves the lock onto that person's work, or
+    # rewrite the reviewer's note and who it came from.
+    OWNER_MAY_SET = {"state", "resolved_on"}
+
     def write(self, vals):
+        if not self.env.su and set(vals) - self.OWNER_MAY_SET:
+            reviewing = self.env.user.has_group("azm_operating_model.azm_group_reviewer") \
+                or self.env.user.has_group("azm_operating_model.azm_group_manager")
+            if not reviewing:
+                raise UserError(_(
+                    "A returned part is the reviewer's to describe. You can mark it "
+                    "dealt with."))
         before = self._assessment_sets()
         result = super().write(vals)
         for records in before + self._assessment_sets():

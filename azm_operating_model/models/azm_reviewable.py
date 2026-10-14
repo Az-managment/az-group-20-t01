@@ -158,7 +158,9 @@ class AzmReviewable(models.AbstractModel):
     allowed_reviewer_ids = fields.Many2many(
         "res.users", string="من يمكن أن يراجعها", compute="_compute_allowed_people")
 
-    @api.depends("entity_id")
+    # the entity's membership is read below, so adding somebody to an entity has to
+    # refresh the dropdown that offers them
+    @api.depends("entity_id", "entity_id.user_ids")
     def _compute_allowed_people(self):
         preparers = self.env.ref("azm_operating_model.azm_group_user",
                                  raise_if_not_found=False)
@@ -227,6 +229,27 @@ class AzmReviewable(models.AbstractModel):
         """Visible questions of the whole assessment still unanswered. Per model."""
         self.ensure_one()
         return 0
+
+    def _azm_check_not_own_work(self):
+        """Refuse to sign off work this person did themselves.
+
+        Being the named preparer was the whole of the test, and it is not the whole of
+        the question: a reviewer may also hold a part of the model through an
+        assignment, answer it, and then approve the assessment that contains it. The
+        separation of duties this check exists for is about who wrote the answers, so
+        that is what it asks.
+        """
+        self.ensure_one()
+        if self.env.is_superuser():
+            return
+        if self.user_id == self.env.user:
+            raise UserError(_("The preparer of an assessment does not approve it "
+                              "(separation of duties)."))
+        holding = self.assignment_ids.filtered(lambda a: self.env.user in a.user_ids)
+        if holding:
+            raise UserError(_(
+                "You hold %s of this model and answered it, so it is not yours to "
+                "approve. Ask another reviewer.", holding[0].part_name or ""))
 
     def _azm_can_send(self):
         """Whether this can go for review now, and by this person.

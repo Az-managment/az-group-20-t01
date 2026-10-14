@@ -1147,7 +1147,8 @@ class AzmDocPublication(models.Model):
         elif assessment.is_demo:
             banner = ("warn", "مثال افتراضي للتجربة — ليست بيانات فعلية عن الكيان.")
         elif assessment.state == "approved":
-            approved = assessment.approved_date and fields.Date.to_string(assessment.approved_date) or ""
+            approved = assessment.approved_date and fields.Date.to_string(
+                fields.Datetime.context_timestamp(self, assessment.approved_date).date()) or ""
             banner = ("ok", f"معتمد · الإصدار {assessment.version} · {approved}")
         else:
             banner = ("info", "مسودة — مبنية على إفادة الكيان ولم يتم التحقق من الأدلة بعد.")

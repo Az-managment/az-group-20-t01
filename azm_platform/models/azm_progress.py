@@ -123,12 +123,20 @@ class AzmDashboard(models.AbstractModel):
                             "left": part.left,
                             "progress": round(part.progress),
                         })
-                        # a shared part is shared work: each person is credited with
-                        # what they wrote rather than with the whole part
+                        # A shared part is shared work: each person is credited with
+                        # what they wrote rather than with the whole part. They are
+                        # measured against a share of it, not against nothing — the
+                        # total used to be zeroed the moment a part had two people on
+                        # it, so both of them read 0% however much they had written,
+                        # and the page's "most owed first" order put them last.
                         written = {person["id"]: person["answers"] for person in people_on_it}
-                        for who in part.user_ids:
-                            note(who, "answers", written.get(who.id, 0),
-                                 part.total if len(part.user_ids) == 1 else 0,
+                        holders = len(part.user_ids) or 1
+                        share = part.total // holders
+                        for index, who in enumerate(part.user_ids):
+                            # the division rarely comes out even; the remainder goes to
+                            # the first holder rather than being dropped
+                            mine = share + (part.total % holders if index == 0 else 0)
+                            note(who, "answers", written.get(who.id, 0), mine,
                                  assessment.entity_id.name, part=True)
                 preparer = assessment.user_id or assessment.create_uid
                 # only what is still owed: an assessment under review or approved is no

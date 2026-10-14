@@ -3,7 +3,7 @@
 
     <!-- Switch between the two operating models (same header on both pages) -->
     <t t-name="azm_platform.ModelSwitch">
-        <nav class="o_azm_om_models" role="tablist">
+        <nav class="o_azm_om_models" role="group" aria-label="Operating model">
             <button type="button" class="o_azm_om_model o_azm_om_model_back" t-on-click="() => this.openHub()">
                 <i class="oi" data-icon="folder_open" title="All operating models"/>
                 <span><b>All operating models</b><small>Back to the files</small></span>
@@ -64,9 +64,10 @@
                 </div>
                 </div>
                     <section t-attf-class="o_azm_om_toolbar {{this.state.busy ? 'o_azm_om_busy' : ''}}">
-                        <div class="o_azm_om_tabs" role="tablist">
+                        <div class="o_azm_om_tabs" role="group" aria-label="Filter by domain">
                             <button type="button" t-foreach="this.sourceTabs" t-as="tab" t-key="tab.key or 'all'"
                                     t-attf-class="o_azm_om_tab o_azm_tone_green {{this.state.source === tab.key ? 'active' : ''}}"
+                                t-att-aria-pressed="this.state.source === tab.key ? 'true' : 'false'"
                                     t-on-click="() => this.setSource(tab.key)">
                                 <i class="oi" t-att-data-icon="tab.icon" t-att-title="tab.label"/>
                                 <span t-out="tab.label"/>

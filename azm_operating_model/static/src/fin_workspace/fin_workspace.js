@@ -44,7 +44,16 @@ export class AzmFinWorkspace extends Component {
         });
         this.timers = {};
         onWillStart(() => this.load());
-        onWillUnmount(() => this.flushAll());
+        onWillUnmount(() => {
+            clearTimeout(this.scrollTimer);
+            // the pending saves are still sent — leaving a page should not lose what
+            // was typed — but nothing of their answer is written back into a component
+            // that is going away, and a failure here is reported rather than left as
+            // an unhandled rejection
+            this.leaving = true;
+            Promise.resolve(this.flushAll()).catch((error) =>
+                console.warn("AZM: a pending answer could not be saved on leaving", error));
+        });
     }
 
     // ------------------------------------------------------------ review
@@ -109,7 +118,11 @@ export class AzmFinWorkspace extends Component {
         if (this.focusCode) {
             const code = this.focusCode;
             this.focusCode = false;
-            setTimeout(() => document.querySelector(`[data-req="${code}"]`)?.scrollIntoView({ block: "start" }), 50);
+            // held so it can be cancelled: the component can be left before it fires,
+            // and a timer that outlives it reaches into a page that has gone
+            this.scrollTimer = setTimeout(
+                () => document.querySelector(`[data-req="${code}"]`)
+                    ?.scrollIntoView({ block: "start" }), 50);
         }
     }
 
@@ -152,6 +165,10 @@ export class AzmFinWorkspace extends Component {
                 tab: this.state.tab,
                 scope: this.state.scope,
             });
+            if (this.leaving) {
+                // the save was sent and has landed; there is no component left to tell
+                return;
+            }
             this.applyRequirement(result.requirement);
             this.d.header = result.header;
             this.d.modules = result.modules;

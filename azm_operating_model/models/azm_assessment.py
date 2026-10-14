@@ -156,17 +156,28 @@ class AzmAssessment(models.Model):
             # workspace had no page to send anyone to.
             orphaned = rec.answer_ids.filtered(
                 lambda line: line.stage_id not in stages and line.is_visible)
-            if orphaned:
-                orphaned.with_context(azm_no_visibility=True,
-                                      azm_skip_lock=AZM_SKIP_LOCK_TOKEN).is_visible = False
+            # The index of this assessment's answers is built once for the whole pass,
+            # which is what _stage_payload takes it for. This called it per stage, so
+            # every one of the thirteen rescanned all 396 answers — and then wrote
+            # is_visible a line at a time. It runs on every answer anybody gives.
+            by_stage = rec._answers_by_stage()
+            show = rec.answer_ids.browse()
+            hide = orphaned
             for stage in stages:
-                sdict, qdicts, answers, by_q = rec._stage_payload(stage)
+                sdict, qdicts, answers, by_q = rec._stage_payload(stage, by_stage=by_stage)
                 visible = {q["id"] for q in engine.visible_questions(sdict, qdicts, answers)}
                 for qid, line in by_q.items():
                     flag = qid in visible
                     if line.is_visible != flag:
-                        line.with_context(azm_no_visibility=True,
-                                         azm_skip_lock=AZM_SKIP_LOCK_TOKEN).is_visible = flag
+                        if flag:
+                            show |= line
+                        else:
+                            hide |= line
+            quietly = {"azm_no_visibility": True, "azm_skip_lock": AZM_SKIP_LOCK_TOKEN}
+            if show:
+                show.with_context(**quietly).write({"is_visible": True})
+            if hide:
+                hide.with_context(**quietly).write({"is_visible": False})
 
     # ---------------------------------------------------------------- computes
     @api.depends("answer_ids.has_value", "answer_ids.is_known", "answer_ids.is_visible")
@@ -195,6 +206,7 @@ class AzmAssessment(models.Model):
                     risks += len(engine.findings(sdict, qdicts, answers, rules))
             rec.risk_count = risks
 
+    @api.depends("finding_ids")
     def _compute_finding_count(self):
         for rec in self:
             rec.finding_count = len(rec.finding_ids)
@@ -363,8 +375,7 @@ class AzmAssessment(models.Model):
         for rec in self:
             if rec.state != "review":
                 raise UserError("الاعتماد يتم من حالة «تحت المراجعة» فقط.")
-            if rec.user_id == self.env.user and not self.env.is_superuser():
-                raise UserError("مُعد الإفادة لا يعتمدها بنفسه (فصل المهام).")
+            rec._azm_check_not_own_work()
             snapshot = "".join(str(rec._render(tab)) for tab in ("book", "policy", "procedure",
                                                                     "workflow", "authority", "risks"))
             answers = {a.question_id.code: a._engine_value() for a in rec.answer_ids if a.has_value}

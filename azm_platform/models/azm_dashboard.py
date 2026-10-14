@@ -304,13 +304,18 @@ class AzmDashboard(models.AbstractModel):
     # ------------------------------------------------------------------
     @api.model
     def ai_ask(self, question):
+        """Answer a question about the group with an LLM, grounded on live Odoo figures.
+
+        The docstring sat two statements down, where Python reads it as an expression
+        and the method has none.
+        """
         # the key is the group's and the call is billed to it, so the question has to
         # come from someone the platform is for, and be of a size it is worth answering
         if not self.env.user.has_group('azm_platform.group_azm_user'):
             raise AccessError(_("The assistant is available to AZM users."))
-        question = (question or '')[:2000]
-        """Answer a question about the group with an LLM, grounded on live Odoo figures."""
-        question = (question or '').strip()
+        # stripped before it is cut, not after: leading whitespace used to count
+        # toward the limit and could push the question itself out of it
+        question = (question or '').strip()[:2000]
         if not question:
             return {'ok': False, 'answer': _('Please type a question first.')}
         params = self.env['ir.config_parameter'].sudo()
@@ -344,9 +349,16 @@ class AzmDashboard(models.AbstractModel):
             content = response.json().get('content', [])
             answer = '\n'.join(b.get('text', '') for b in content if b.get('type') == 'text')
             return {'ok': True, 'answer': answer.strip()}
-        except Exception as error:  # noqa: BLE001
+        except (requests.RequestException, ValueError) as error:
+            # the network and the decode, which are the two things that genuinely go
+            # wrong here. A bare except also caught programming errors and reported
+            # them as a failed call, and the message it handed the browser was the
+            # exception's own text — which for a request error carries the URL it
+            # called and whatever the other end said.
             _logger.warning('AZM assistant call failed: %s', error)
-            return {'ok': False, 'answer': _('The assistant could not answer right now (%s).', error)}
+            return {'ok': False,
+                    'answer': _('The assistant could not answer right now. '
+                                'Please try again in a moment.')}
 
     @api.model
     def azm_rights(self):

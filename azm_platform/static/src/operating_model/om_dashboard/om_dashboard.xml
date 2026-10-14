@@ -38,9 +38,10 @@
                 </div>
                 </div>
                     <section t-attf-class="o_azm_om_toolbar {{this.state.busy ? 'o_azm_om_busy' : ''}}">
-                        <div class="o_azm_om_tabs" role="tablist">
+                        <div class="o_azm_om_tabs" role="group" aria-label="Filter by domain">
                             <button type="button" t-foreach="this.domainTabs" t-as="tab" t-key="tab.key or 'all'"
                                     t-attf-class="o_azm_om_tab o_azm_tone_{{tab.tone}} {{this.state.domain === tab.key ? 'active' : ''}}"
+                                t-att-aria-pressed="this.state.domain === tab.key ? 'true' : 'false'"
                                     t-on-click="() => this.setDomain(tab.key)">
                                 <i class="oi" t-att-data-icon="tab.icon" t-att-title="tab.label"/>
                                 <span t-out="tab.label"/>
