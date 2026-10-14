@@ -30,8 +30,13 @@ AZM – Enterprise Operating Model
         "views/azm_assessment_views.xml",
         "views/azm_fin_catalogue_views.xml",
         "views/azm_fin_assessment_views.xml",
-        "views/azm_assignment_views.xml",
         "views/azm_menus.xml",
+        # after the menus: its menuitem hangs off azm_menu_root, and a data file may
+        # only point at an external ID that an earlier file has already created. This
+        # sat before them and so could never be installed from scratch -- an update
+        # found the root already in ir_model_data and passed, which is why it broke
+        # only on a fresh database.
+        "views/azm_assignment_views.xml",
         "views/azm_fin_menus.xml",
         "report/azm_assessment_reports.xml",
         "report/azm_assessment_templates.xml",
