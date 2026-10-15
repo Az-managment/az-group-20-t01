@@ -182,3 +182,75 @@ class TestAzmFinancialModel(TransactionCase):
         QA = self.env["azm.fin.qanswer"]
         self.assertFalse(QA.with_user(self.preparer_b).search([("assessment_id", "=", self.assessment.id)]))
         self.assertTrue(QA.with_user(self.preparer).search([("assessment_id", "=", self.assessment.id)]))
+
+
+@tagged("post_install", "-at_install")
+class TestTheFilterOnlyFilters(TransactionCase):
+    """DEV01 · U02 — «مرشّح العرض لا يكتب في قرار الانطباق».
+
+    مساحة العمل كانت تطبع طول القائمة المعروضة تحت اسم «منطبق». وما دام المرشّح
+    مُطفأ فالرقمان متساويان ولا يظهر الخطأ؛ وحين يُشغَّل «إظهار غير المنطبق» تتسع
+    القائمة وحدها، فقرأ موديول المخزون — وفيه ثلاثة متطلبات لا ينطبق منها شيء —
+    «3 متطلب منطبق من 3».
+
+    المعروض والمنطبق رقمان مختلفان، وتشغيل المرشّك لا يغيّر إجابة ولا حالة ولا نسبة.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.entity = cls.env["azm.entity"].create({"code": "FLT", "name": "كيان المرشّح"})
+        cls.preparer = new_test_user(cls.env, "flt_prep",
+                                     groups="azm_operating_model.azm_group_user")
+        cls.entity.user_ids = [(6, 0, [cls.preparer.id])]
+        cls.assessment = cls.env["azm.fin.assessment"].with_user(cls.preparer).create(
+            {"entity_id": cls.entity.id})
+
+    def _a_module_with_something_inapplicable(self):
+        """كود موديول فيه متطلب واحد على الأقل غير منطبق على هذا الكيان."""
+        for module in self.assessment.answer_ids.module_id:
+            lines = self.assessment.answer_ids.filtered(lambda a, m=module: a.module_id == m)
+            if lines and not all(lines.mapped("applicable")):
+                return module.code
+        self.skipTest("كل المتطلبات منطبقة على هذا الكيان")
+
+    def test_the_count_says_applicable_and_means_applicable(self):
+        code = self._a_module_with_something_inapplicable()
+        data = self.assessment.workspace_data(module_code=code, show_all=True)
+        module = data["module"]
+        shown = sum(len(topic["requirements"]) for topic in data["topics"])
+
+        lines = self.assessment.answer_ids.filtered(lambda a: a.module_id.code == code)
+        really = len(lines.filtered("applicable"))
+
+        self.assertEqual(module["applicable"], really,
+                         "«منطبق» يُحسب من البيانات، لا من طول القائمة المعروضة")
+        self.assertEqual(module["shown"], shown, "«معروض» هو ما عُرض فعلًا")
+        self.assertEqual(module["total"], len(lines))
+        self.assertNotEqual(module["applicable"], module["shown"],
+                            "هذا الموديول يحوي غير منطبق، فلا بد أن يختلف الرقمان")
+
+    def test_turning_the_filter_on_shows_more_without_making_them_applicable(self):
+        code = self._a_module_with_something_inapplicable()
+        closed = self.assessment.workspace_data(module_code=code, show_all=False)
+        opened = self.assessment.workspace_data(module_code=code, show_all=True)
+        self.assertGreater(opened["module"]["shown"], closed["module"]["shown"],
+                           "المرشّح يوسّع المعروض")
+        self.assertEqual(opened["module"]["applicable"], closed["module"]["applicable"],
+                         "ولا يغيّر عدد المنطبق")
+
+    def test_the_filter_writes_nothing_at_all(self):
+        """معيار القبول: تشغيله وإيقافه لا يغيّر أي إجابة أو حالة أو نسبة إنجاز."""
+        code = self._a_module_with_something_inapplicable()
+
+        def snapshot():
+            header = self.assessment._header()
+            lines = self.assessment.answer_ids.filtered(lambda a: a.module_id.code == code)
+            return (header.get("answered"), header.get("progress"),
+                    sorted((l.id, l.applicable, l.state, l.is_done) for l in lines))
+
+        before = snapshot()
+        for show_all in (True, False, True):
+            self.assessment.workspace_data(module_code=code, show_all=show_all)
+        self.assertEqual(snapshot(), before,
+                         "العرض قراءة، ولا يكتب في الانطباق ولا في الإنجاز")

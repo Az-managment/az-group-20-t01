@@ -188,7 +188,8 @@ class AzmFinAssessment(models.Model):
         modules = self.env["azm.fin.module"].search([])
         module = modules.filtered(lambda m: m.code == module_code)[:1] or modules[:1]
         returns = self.env["azm.review.return"]._open_for(self)
-        lines = self.answer_ids.filtered(lambda a: a.module_id == module).sorted(
+        all_lines = self.answer_ids.filtered(lambda a: a.module_id == module)
+        lines = all_lines.sorted(
             lambda a: (a.topic_sequence, a.requirement_sequence, a.id))
         if not show_all:
             lines = lines.filtered("applicable")
@@ -219,8 +220,13 @@ class AzmFinAssessment(models.Model):
             # what came back may be under a module the reader is not looking at
             "returns_open": len(returns),
             "modules": self._modules_nav(),
+            # المعروض والمنطبق رقمان مختلفان، والصفحة كانت تطبع الأول تحت اسم الثاني:
+            # مرشّح «إظهار غير المنطبق» يوسّع ما يُعرض فقط، ولا يجعل متطلبًا منطبقًا.
+            # في المخزون ثلاثة متطلبات لا ينطبق منها شيء، فكان تشغيل المرشّح يقرأ
+            # «3 متطلب منطبق من 3». الانطباق يُحسب هنا من البيانات لا من طول القائمة.
             "module": {"id": module.id, "code": module.code, "name": module.name,
-                       "total": len(self.answer_ids.filtered(lambda a: a.module_id == module))},
+                       "total": len(all_lines), "applicable": len(all_lines.filtered("applicable")),
+                       "shown": len(lines)},
             "topics": topics,
             "states": [{"key": k, "name": n} for k, n in STATES],
             "na_reasons": NA_REASONS,

@@ -239,7 +239,13 @@
                         <span class="o_azm_code">FIN.<t t-out="d.module.code"/></span>
                         <h3 t-out="d.module.name"/>
                         <p class="o_azm_muted">
-                            <t t-out="this.requirements().length"/> متطلب منطبق من <t t-out="d.module.total"/> ·
+                            <t t-if="!this.state.showAll">
+                                <t t-out="d.module.applicable"/> متطلب منطبق من <t t-out="d.module.total"/> ·
+                            </t>
+                            <t t-else="">
+                                معروض <t t-out="d.module.shown"/> من <t t-out="d.module.total"/> ·
+                                منطبق <t t-out="d.module.applicable"/> ·
+                            </t>
                             لكل متطلب أسئلته الخاصة (اختيار، متعدد، رقم، جدول) ثم الوضع الحالي ووسيلة التنفيذ وحالة القاعدة والتوجه المستهدف.
                         </p>
                         <div t-if="d.header.readonly" class="o_azm_note o_azm_note_warn">
