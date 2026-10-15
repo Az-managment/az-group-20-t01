@@ -179,8 +179,7 @@
                             <button type="button" class="btn btn-sm btn-primary"
                                     t-on-click="() => this.openAssessment(row)">
                                 <i class="oi me-1" data-icon="edit_note"/>
-                                <t t-if="row.started">افتح مساحة الاسئلة</t>
-                                <t t-else="">ابدأ</t>
+                                ابدأ
                             </button>
                             <!-- only once there is nothing left to answer -->
                             <button t-if="this.canSend(row)" type="button"
