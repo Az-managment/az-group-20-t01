@@ -547,7 +547,10 @@ class AzmFinAnswer(models.Model):
 
     @api.depends("na", "reason", "requirement_id.question_ids", "qanswer_ids.option_id", "qanswer_ids.option_ids",
                  "qanswer_ids.has_number", "qanswer_ids.value_number", "qanswer_ids.table_json", "qanswer_ids.note",
-                 "qanswer_ids.note_tags", "qanswer_ids.priority")
+                 "qanswer_ids.note_tags", "qanswer_ids.priority",
+                 # applicability يُحسب من هذين، فيُعلنان وإلا بقي محفوظًا على
+                 # قيمة قديمة حين يتغير نطاق الكيان
+                 "applicable", "assessment_id.entity_id.fin_scope_ids")
     def _compute_from_questions(self):
         for line in self:
             qas = line._answers_by_question()
@@ -650,9 +653,16 @@ class AzmFinAnswer(models.Model):
         if "table" in vals:
             rows = [[str(c or "") for c in row] for row in (vals["table"] or []) if isinstance(row, list)]
             rows = [row for row in rows if any(c.strip() for c in row)]
-            # قيمة لا يمكن أن تكون صحيحة تُرفض قبل أن تُحفظ، لا بعد أن تُبنى
-            # عليها مصفوفة صلاحيات
-            question._check_rows(rows)
+            # يُفحص ما كتبه هذا الحفظ وحده.
+            #
+            # القيمة التي لا يمكن أن تكون صحيحة تُرفض قبل أن تُحفظ — لكن أعمدة
+            # مثل «العملة» أُضيفت بعد أن كُتبت صفوف، و14 صفًّا من 282 في هذه
+            # القاعدة يرسب في تحقق لم يكن موجودًا يوم كُتب. فمن يفتح FIN-004
+            # ليعدّل خانة أخرى كان يُرفض طلبه باسم عمود لم يملأه قط. الصف الذي
+            # لم يتغيّر يمرّ كما هو؛ ويُفحص حين يُمسّ.
+            stored = self.qanswer_ids.filtered(
+                lambda a: a.question_id == question)[:1]._rows()
+            question._check_rows([row for row in rows if row not in stored])
             clean["table_json"] = json.dumps(rows, ensure_ascii=False) if rows else False
             if rows:
                 clean["option_id"] = False

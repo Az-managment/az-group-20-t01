@@ -12,7 +12,11 @@ So the stale ones are found by what they are actually called, and their fingerpr
 cleared. Nothing is rendered here — the queue rebuilds them when they are next read,
 which keeps a migration from turning into a publishing run.
 
-Safe to run twice: a document whose name already agrees with its code is left alone.
+Written against the old «CODE · title» naming. The convention has since changed to
+«MASTER__ENTITY__vN__LANG__TITLE», which carries no " · " — so on that shape the
+head is the whole filename and never equals the scoped code, and a second run
+would clear every fingerprint rather than none. It runs once, at this version,
+against the names it was written for; it is not safe to re-run afterwards.
 """
 import logging
 

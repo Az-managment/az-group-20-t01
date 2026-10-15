@@ -18,7 +18,9 @@ from html import escape
 from .azm_svg import DEFS as SVG_DEFS, arrow as _arrow, box as _svg_box
 
 UNKNOWN = "لا أعرف"
-NOT_LISTED = "غير مدرج"
+# الاسمان معًا: «أخرى» هو المعروض الآن، و«غير مدرج» ما قد يبقى في إجابة
+# كُتبت قبل إعادة التسمية. من قال «ليست في القائمة» لم يُجب عن السؤال.
+NOT_LISTED = ("أخرى", "غير مدرج")
 NONE = "لا يوجد"
 NA = "لا ينطبق"
 APPLIED = ("مطبقة بالكامل", "مطبقة جزئيًا")
@@ -58,8 +60,8 @@ def known(value):
     if not exists(value):
         return False
     if isinstance(value, (list, tuple)):
-        return UNKNOWN not in value and NOT_LISTED not in value
-    return value not in (UNKNOWN, NOT_LISTED)
+        return UNKNOWN not in value and not any(x in value for x in NOT_LISTED)
+    return value != UNKNOWN and value not in NOT_LISTED
 
 
 def show(value, unit=""):

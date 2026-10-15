@@ -52,7 +52,10 @@ ROLE_WORDS = {
     "review": ("يراجع", "يراجعها", "يراجعه", "المراجع"),
     "approve": ("يعتمد", "يعتمده", "يعتمدها", "المعتمد", "يُعتمد"),
 }
-NOT_A_PERSON = {"لا يوجد", "لا أعرف", "غير مدرج", ""}
+# «أخرى» ليست اسم شخص. وهي الآن في 367 خيارًا، منها أسئلة أدوار — فلولا
+# وجودها هنا لحُصدت اسمًا، ولأنتج متطلبٌ لم يُسمَّ فيه أحد تحذير فصل مهام
+# يقول إن «أخرى» تظهر في أكثر من مهمة.
+NOT_A_PERSON = {"لا يوجد", "لا أعرف", "أخرى", "غير مدرج", ""}
 # A table whose first column names a step is a cycle, and is drawn as one. "بعد (يوم)"
 # is here because an escalation ladder — after so many days, do this, and it is theirs —
 # is an order of work like any other; what differs is that its first column is when the
@@ -363,8 +366,15 @@ def _by_profile(tab, module, items):
 
 
 def _unassessed(items):
-    """لم تُجب أسئلة هذا الموديول بعد."""
-    return bool(items) and not any(i.get("q_answered") for i in items)
+    """لم تُجب أسئلة هذا الموديول بعد.
+
+    و«لا ينطبق» إجابة: المتطلب الذي أُعلن غير منطبق بسبب مكتوب يبقى q_answered
+    فيه صفرًا، فموديول أُعلنت كل متطلباته غير منطبقة كان يُقرأ موديولًا لم ينظر
+    فيه أحد — وهو عكس ما كُتب هذا الفحص ليمنعه بالضبط.
+    """
+    if not items:
+        return False
+    return not any(i.get("q_answered") or i.get("state") == "na" for i in items)
 
 
 def _nothing_found(items, found_nothing, not_asked):

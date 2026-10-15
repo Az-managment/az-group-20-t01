@@ -1000,3 +1000,87 @@ class TestTheCatalogueCarriesWhatTheBriefAsked(TransactionCase):
         names = q.option_ids.mapped("name")
         for dimension in ("العام الدراسي", "المرحلة", "الفصل الدراسي", "الموقع"):
             self.assertIn(dimension, names, f"الأبعاد تنقصها «{dimension}»")
+
+
+@tagged("post_install", "-at_install")
+class TestWhatTheReviewFound(TransactionCase):
+    """ما كشفته مراجعة الكود، مثبّتًا حتى لا يعود."""
+
+    def test_other_is_not_a_known_answer(self):
+        """إعادة تسمية «غير مدرج» إلى «أخرى» أسقطت الاسم من جدول الأنواع.
+
+        نوع خيار المشتريات يُشتق من اسمه، فحُمِّل 384 خيارًا بنوع normal — أي أن
+        إجابة تقول «ليست في القائمة» صارت تُحتسب إجابة معلومة.
+        """
+        from odoo.addons.azm_operating_model.models.azm_stage import KIND_BY_NAME
+        self.assertEqual(KIND_BY_NAME.get("أخرى"), "not_listed")
+        self.assertEqual(KIND_BY_NAME.get("غير مدرج"), "not_listed",
+                         "والاسم القديم يبقى مفتاحًا لقاعدة لم تُرقَّ بعد")
+        options = self.env["azm.option"].sudo().search(
+            [("name", "=", "أخرى"), ("active", "=", True)])
+        if options:
+            self.assertEqual(set(options.mapped("kind")), {"not_listed"},
+                             "خيار «أخرى» ليس إجابة عادية")
+
+    def test_other_does_not_count_as_a_known_answer(self):
+        from odoo.addons.azm_operating_model.models.engine import known
+        for text in ("أخرى", "غير مدرج", "لا أعرف"):
+            self.assertFalse(known(text), text)
+        self.assertFalse(known(["شيء", "أخرى"]), "وفي القوائم أيضًا")
+        self.assertTrue(known("إجابة حقيقية"))
+
+    def test_other_is_not_a_person(self):
+        """«أخرى» في سؤال دور كانت تُحصد اسمًا، فتنتج تحذير فصل مهام مُختلقًا."""
+        from odoo.addons.azm_operating_model.models.fin_engine import NOT_A_PERSON
+        self.assertIn("أخرى", NOT_A_PERSON)
+        self.assertIn("غير مدرج", NOT_A_PERSON)
+
+    def test_a_module_declared_not_applicable_was_assessed(self):
+        """«لا ينطبق» إجابة، والموديول الذي أُعلنت كل متطلباته كذلك نُظر فيه."""
+        import re
+        entity = self.env["azm.entity"].create({"code": "NAX", "name": "كيان"})
+        assessment = self.env["azm.fin.assessment"].create({"entity_id": entity.id})
+        module = assessment.answer_ids.module_id[:1]
+        if not module:
+            self.skipTest("لا يوجد موديول")
+        for line in assessment.answer_ids.filtered(lambda l: l.module_id == module):
+            line.na = True
+            line.reason = "النشاط غير موجود بالكيان"
+        assessment.invalidate_recordset()
+        said = " ".join(re.sub(r"<[^>]+>", " ", str(assessment._render("gaps", module))).split())
+        self.assertNotIn("لم تُجب", said, "أُعلن ولم يُترك")
+
+    def test_a_row_written_before_a_column_existed_still_saves(self):
+        """العملة أُضيفت بعد أن كُتبت صفوف؛ من يعدّل خانة أخرى لا يُحاسَب عليها."""
+        import json
+        from odoo.exceptions import UserError
+        stored = self.env["azm.fin.qanswer"].sudo().search(
+            [("table_json", "!=", False)], limit=60)
+        if not stored:
+            self.skipTest("لا توجد جداول محفوظة")
+        refused = 0
+        for answer in stored:
+            rows = json.loads(answer.table_json or "[]")
+            try:
+                answer.line_id._set_answer(answer.question_id.id, {"table": rows})
+            except UserError:
+                refused += 1
+        self.assertEqual(refused, 0, "إعادة حفظ صف دون تغييره لا تُرفض")
+
+    def test_a_newly_written_bad_row_is_still_refused(self):
+        """والتسامح عن القديم لا يفتح الباب للجديد."""
+        import json
+        from odoo.exceptions import UserError
+        line = self.env["azm.fin.answer"].sudo().search(
+            [("code", "=", "FIN-004")], limit=1)
+        if not line:
+            self.skipTest("FIN-004 غير موجود")
+        question = line.requirement_id.question_ids.filtered(
+            lambda q: q.key == "Q002")[:1]
+        labels = [c["label"] for c in json.loads(question.columns_json or "[]")]
+        if "العملة" not in labels:
+            self.skipTest("جدول الصلاحيات لم يُحدَّث")
+        row = [""] * len(labels)
+        row[labels.index("حد القيمة")] = "50000"
+        with self.assertRaises(UserError):
+            line._set_answer(question.id, {"table": [row]})

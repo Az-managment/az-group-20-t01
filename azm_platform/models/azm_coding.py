@@ -251,8 +251,14 @@ class AzmArtifact(models.Model):
         # Take the lock before deciding to create. Without it two transactions asking
         # for the same unregistered ref both miss the search above, both allocate, and
         # the second dies on the uniqueness rule — so the search is repeated under it.
-        self.env.cr.execute("SELECT pg_advisory_xact_lock(hashtext(%s))",
-                            (f"azm.artifact:{domain}:{atype}",))
+        # القفل نفسه الذي يأخذه _register_all، لا قفل أضيق منه.
+        #
+        # كان هذا يقفل على النوع و_register_all يقفل على السجل كله، فلا يستبعد
+        # أحدهما الآخر: يقرأ الاثنان أعلى مسلسل لنفس (النموذج، النوع) ويمنحانه
+        # مرتين. وكان ذلك يمرّ حين كان كل تسجيل يُعيد الترقيم؛ أما وقد صار
+        # UNIQUE(domain, atype, serial) غير مؤجَّل فالخاسر يموت بخطأ تكامل —
+        # وقد يكون طلب مستخدم يقرأ مستندًا.
+        self.env.cr.execute("SELECT pg_advisory_xact_lock(hashtext(%s))", ("azm.artifact",))
         found = revive(Artifact.search(identity, limit=1))
         if found:
             return found

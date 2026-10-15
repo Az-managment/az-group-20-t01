@@ -561,8 +561,10 @@ export class AzmFinWorkspace extends Component {
         if (!this.needle) {
             return null;
         }
+        // ما يُعدّ هو ما يُعرض. كان يعدّ المطابق للبحث وحده بينما تُرسم الصفوف
+        // بعد المرشّحات كلها، فيقول «طابق 7» فوق صفّين — أو فوق لا شيء.
         return this.d.topics.reduce(
-            (n, topic) => n + topic.requirements.filter((r) => this.matches(r)).length, 0);
+            (n, topic) => n + this.topicRequirements(topic).length, 0);
     }
 
     visibleTopics() {
