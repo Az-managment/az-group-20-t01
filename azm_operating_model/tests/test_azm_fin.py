@@ -977,6 +977,22 @@ class TestTheCatalogueCarriesWhatTheBriefAsked(TransactionCase):
             self.skipTest("FIN-019/Q00A غير موجود")
         self.assertIn("أكثر من مرة", q.label)
 
+    def test_a_posted_entry_can_be_asked_how_it_is_undone(self):
+        """«إلغاء القيود والقيد العكسي» — لم يكن في بنك الأسئلة كله سؤال عنهما."""
+        q = self._question("FIN-079", "Q00A")
+        if not q:
+            self.skipTest("FIN-079/Q00A غير موجود")
+        names = q.option_ids.mapped("name")
+        self.assertTrue(any("عكسي" in n for n in names), names)
+        self.assertTrue(any("حذف" in n for n in names), names)
+
+    def test_control_accounts_are_asked_about(self):
+        q = self._question("FIN-006", "Q00A")
+        if not q:
+            self.skipTest("FIN-006/Q00A غير موجود")
+        self.assertIn("رقابية", q.label)
+        self.assertTrue(q.option_ids, "ولها خيارات تُختار")
+
     def test_the_dimensions_include_the_ones_a_school_runs_on(self):
         q = self._question("FIN-008", "Q001")
         if not q:
