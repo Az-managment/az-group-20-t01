@@ -558,10 +558,17 @@ class TestACodeIsIssuedOnce(TransactionCase):
         return art
 
     def test_retiring_one_deliverable_moves_no_other_code(self):
+        """ما يُقارَن هو ref لا node_name.
+
+        ref هو ما يشير إليه الكود — العقدة ومخرجها — وهو الهوية. و node_name
+        اسمٌ يُعرض، يتغيّر حين يُعاد تسمية متطلب دون أن ينتقل الكود إلى شيء آخر.
+        مقارنته كانت تقرأ إعادة التسمية انتقالًا، فيسقط الاختبار على تغيير
+        لا علاقة له بما يحرسه.
+        """
         victim = self._a_policy()
-        before = {a.code: a.node_name for a in self.A.search([])}
+        before = {a.code: a.ref for a in self.A.search([])}
         self._retire(victim.ref)
-        after = {a.code: a.node_name for a in self.A.search([])}
+        after = {a.code: a.ref for a in self.A.search([])}
         moved = [c for c in sorted(set(before) & set(after)) if before[c] != after[c]]
         self.assertFalse(moved, f"{len(moved)} codes changed meaning: {moved[:3]}")
 

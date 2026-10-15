@@ -255,10 +255,18 @@
                             <span class="o_azm_rail_text">
                                 <span class="o_azm_rail_name" t-out="mod.name"/>
                                 <span class="o_azm_rail_sub">
-                                    <t t-out="mod.answered"/>/<t t-out="mod.questions"/> إجابة
+                                    <!-- المقام صفر ليس إنجازًا صفرًا: موديول لا
+                                         ينطبق منه شيء على هذا الكيان لا يُقال عنه
+                                         «0٪»، فذلك حكم بالتقصير حيث لا تقصير -->
+                                    <t t-if="this.moduleHasWork(mod)">
+                                        <t t-out="mod.answered"/>/<t t-out="mod.questions"/> إجابة
+                                    </t>
+                                    <t t-else="">لا أسئلة منطبقة</t>
                                     <span t-if="mod.gaps" class="o_azm_risk_dot" t-att-title="mod.gaps + ' فجوة'" t-out="mod.gaps"/>
                                 </span>
-                                <span class="o_azm_rail_bar"><span t-attf-style="width: {{this.modulePercent(mod)}}%"/></span>
+                                <span t-if="this.moduleHasWork(mod)" class="o_azm_rail_bar">
+                                    <span t-attf-style="width: {{this.modulePercent(mod)}}%"/>
+                                </span>
                             </span>
                         </button>
                     </t>

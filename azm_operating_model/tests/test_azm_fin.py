@@ -810,3 +810,55 @@ class TestTheWorkspaceCanBeSearched(TransactionCase):
         req = self._a_requirement()
         self.assertIn("done", req)
         self.assertIsInstance(req["done"], bool)
+
+
+@tagged("post_install", "-at_install")
+class TestAZeroDenominatorIsNotZeroPercent(TransactionCase):
+    """القسم 8 — «إذا كان المقام صفرًا اعرض لا توجد أسئلة منطبقة بدل نسبة مضللة».
+
+    موديول لا ينطبق منه شيء على هذا الكيان كان يُعرض بنسبة 0٪، وهو حكم بالتقصير
+    حيث لا تقصير: لا أحد قصّر في أسئلة لا تخصّه. والمقام صفر ليس إنجازًا صفرًا.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.entity = cls.env["azm.entity"].create({"code": "ZRO", "name": "كيان المقام"})
+        cls.assessment = cls.env["azm.fin.assessment"].create({"entity_id": cls.entity.id})
+
+    def test_a_module_with_nothing_applicable_reports_no_questions(self):
+        nav = self.assessment._modules_nav()
+        empty = [m for m in nav if not m["applicable"]]
+        if not empty:
+            self.skipTest("كل الموديولات منطبقة على هذا الكيان")
+        for module in empty:
+            self.assertEqual(module["questions"], 0,
+                             f"{module['code']}: لا منطبق فيه، فلا أسئلة تُحتسب")
+            self.assertEqual(module["answered"], 0)
+            # المقام صفر: الواجهة تقرأ questions فتعرف أن لا نسبة هنا
+            self.assertFalse(module["questions"],
+                             "ما يقرؤه العرض ليقرر بين نسبة وبين «لا أسئلة منطبقة»")
+
+    def test_the_denominator_counts_applicable_questions_only(self):
+        """المقام هو الأسئلة الإلزامية الفعالة المنطبقة، لا كل ما في الكتالوج."""
+        nav = self.assessment._modules_nav()
+        for module in nav:
+            if not module["applicable"]:
+                continue
+            lines = self.assessment.answer_ids.filtered(
+                lambda a, c=module["code"]: a.module_id.code == c and a.applicable)
+            total, answered = lines._question_totals()
+            self.assertEqual(module["questions"], total, module["code"])
+            self.assertEqual(module["answered"], answered, module["code"])
+
+    def test_a_grant_to_a_student_is_not_a_grant_to_the_entity(self):
+        """القاموس يفرّق بينهما، وكان الاسمان متقاربين لموضوعين مختلفين."""
+        Req = self.env["azm.fin.requirement"].sudo()
+        student = Req.search([("code", "=", "FIN-027")], limit=1)
+        funding = Req.search([("code", "=", "FIN-074")], limit=1)
+        if not (student and funding):
+            self.skipTest("متطلبا المنح غير موجودين")
+        # «الطلاب» ليست جزءًا من «للطلاب» — اللام تبتلع الألف
+        self.assertIn("طلاب", student.title)
+        self.assertIn("كيان", funding.title)
+        self.assertNotEqual(student.title, funding.title)

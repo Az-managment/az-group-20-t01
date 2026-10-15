@@ -640,8 +640,19 @@ export class AzmFinWorkspace extends Component {
         return module.answered ? "partial" : "unknown";
     }
 
+    /** نسبة الإنجاز، أو null إذا لم يكن ثمّة ما يُنجَز.
+     *
+     * المقام هو الأسئلة المنطبقة؛ فإن كان صفرًا فلا نسبة. وكانت تُعرض صفرًا —
+     * فيقرأ القارئ «0٪» عن موديول لا ينطبق منه شيء على كيانه، وهو حكم بالتقصير
+     * حيث لا تقصير. لا أسئلة منطبقة ليست نسبة، وتُقال كما هي.
+     */
     modulePercent(module) {
-        return module.questions ? Math.round((100 * module.answered) / module.questions) : 0;
+        return module.questions ? Math.round((100 * module.answered) / module.questions) : null;
+    }
+
+    /** هل لهذا الموديول ما يُنجَز أصلًا؟ */
+    moduleHasWork(module) {
+        return !!module.questions;
     }
 }
 
