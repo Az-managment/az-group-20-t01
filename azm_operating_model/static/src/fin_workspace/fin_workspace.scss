@@ -166,3 +166,23 @@ $fin-muted: #5b7380;
     .oi { font-size: 14px; }
     em { font-size: 11px; opacity: .75; }
 }
+
+// سؤال عاد مع فرعه: القيمة محفوظة ومعروضة، وتنتظر مراجعة صاحبها. نبرة تنبيه
+// لا خطأ — لم يقع شيء خاطئ، وإنما تغيّر السياق الذي كُتبت فيه.
+.o_azm_q_stale {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin: 8px 0 10px;
+    padding: 9px 12px;
+    border: 1px solid rgba(180, 120, 10, .28);
+    border-inline-start: 3px solid #b4780a;
+    border-radius: 10px;
+    background: rgba(180, 120, 10, .07);
+    font-size: 12.5px;
+    line-height: 1.5;
+    span { flex: 1 1 220px; min-width: 0; }
+    .oi { color: #b4780a; }
+    .btn { flex: 0 0 auto; }
+}

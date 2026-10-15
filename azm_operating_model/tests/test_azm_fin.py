@@ -254,3 +254,121 @@ class TestTheFilterOnlyFilters(TransactionCase):
             self.assessment.workspace_data(module_code=code, show_all=show_all)
         self.assertEqual(snapshot(), before,
                          "العرض قراءة، ولا يكتب في الانطباق ولا في الإنجاز")
+
+
+@tagged("post_install", "-at_install")
+class TestAClosedBranchKeepsItsAnswers(TransactionCase):
+    """DEV05 · U05 — «نعم ثم لا ثم نعم يستعيد التاريخ ويمنع احتساب بيانات قديمة
+    باعتبارها مؤكدة دون مراجعة».
+
+    النصف الأول كان سليمًا: إجابة يخفيها فرعٌ أُغلق تبقى في مكانها وتخرج من العدّ.
+    والنصف الثاني لم يكن: حين يُفتح الفرع ثانيةً كانت القيمة القديمة تعود محسوبةً
+    مؤكدةً بلا أي أثر يقول إنها كُتبت قبل أن يتغيّر ما حولها.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.entity = cls.env["azm.entity"].create({"code": "BRN", "name": "كيان الفروع"})
+        cls.preparer = new_test_user(cls.env, "brn_prep",
+                                     groups="azm_operating_model.azm_group_user")
+        cls.entity.user_ids = [(6, 0, [cls.preparer.id])]
+        cls.assessment = cls.env["azm.fin.assessment"].with_user(cls.preparer).create(
+            {"entity_id": cls.entity.id})
+
+    def _a_branch(self):
+        """(السطر، الأب، الابن، خيار يُظهر، خيار يُخفي) لأول فرع صالح للاختبار."""
+        for line in self.assessment.answer_ids.filtered("applicable"):
+            for child in line.requirement_id.question_ids.filtered("condition_json"):
+                rule = json.loads(child.condition_json)
+                wanted = rule.get("in") or []
+                parent = line.requirement_id.question_ids.filtered(
+                    lambda q: q.key == rule.get("q"))[:1]
+                if not (parent and child.option_ids):
+                    continue
+                opens = parent.option_ids.filtered(lambda o: o.name in wanted)[:1]
+                shuts = parent.option_ids.filtered(lambda o: o.name not in wanted)[:1]
+                if opens and shuts:
+                    return line, parent, child, opens, shuts
+        self.skipTest("لا يوجد فرع شرطي صالح للاختبار")
+
+    def _answer_child(self, line, child):
+        value = ({"option_ids": child.option_ids[:1].ids} if child.qtype == "multi"
+                 else {"option_id": child.option_ids[:1].id})
+        line._set_answer(child.id, value)
+
+    def _qa(self, line, child):
+        line.invalidate_recordset()
+        return line.qanswer_ids.filtered(lambda a: a.question_id == child)[:1]
+
+    def test_closing_a_branch_keeps_the_answer_and_drops_it_from_the_count(self):
+        line, parent, child, opens, shuts = self._a_branch()
+        line._set_answer(parent.id, {"option_id": opens.id})
+        self._answer_child(line, child)
+        line.invalidate_recordset()
+        counted = line.q_total
+
+        line._set_answer(parent.id, {"option_id": shuts.id})
+        line.invalidate_recordset()
+        qa = self._qa(line, child)
+        self.assertTrue(qa, "الإجابة لا تُحذف حين يُغلق الفرع")
+        self.assertTrue(qa.has_value, "وتحتفظ بقيمتها")
+        self.assertTrue(qa.hidden_on, "ويُسجَّل تاريخ إخفائها")
+        self.assertNotIn(child, line._visible(), "ولا تُعرض")
+        self.assertLess(line.q_total, counted, "وتخرج من مقام الإنجاز")
+
+    def test_reopening_asks_for_the_answer_to_be_confirmed(self):
+        line, parent, child, opens, shuts = self._a_branch()
+        line._set_answer(parent.id, {"option_id": opens.id})
+        self._answer_child(line, child)
+        before = self._qa(line, child).value_display
+
+        line._set_answer(parent.id, {"option_id": shuts.id})
+        line._set_answer(parent.id, {"option_id": opens.id})
+
+        qa = self._qa(line, child)
+        self.assertEqual(qa.value_display, before, "القيمة القديمة معروضة كما كُتبت")
+        self.assertTrue(qa.stale, "ومعها طلب تأكيد")
+        self.assertFalse(qa.is_answered,
+                         "ولا تُحتسب مؤكدة قبل أن يراجعها صاحبها")
+
+    def test_confirming_counts_it_again_without_changing_it(self):
+        line, parent, child, opens, shuts = self._a_branch()
+        line._set_answer(parent.id, {"option_id": opens.id})
+        self._answer_child(line, child)
+        kept = self._qa(line, child).value_display
+        line._set_answer(parent.id, {"option_id": shuts.id})
+        line._set_answer(parent.id, {"option_id": opens.id})
+
+        line.confirm_stale_answer(child.id)
+        qa = self._qa(line, child)
+        self.assertFalse(qa.stale)
+        self.assertTrue(qa.is_answered, "التأكيد يعيدها إلى الحساب")
+        self.assertEqual(qa.value_display, kept, "دون أن يغيّر ما كُتب")
+
+    def test_answering_it_afresh_also_settles_it(self):
+        """من يكتب إجابة جديدة قد راجعها بالفعل، فلا يُطلب منه تأكيدها مرتين."""
+        line, parent, child, opens, shuts = self._a_branch()
+        line._set_answer(parent.id, {"option_id": opens.id})
+        self._answer_child(line, child)
+        line._set_answer(parent.id, {"option_id": shuts.id})
+        line._set_answer(parent.id, {"option_id": opens.id})
+        self.assertTrue(self._qa(line, child).stale)
+
+        self._answer_child(line, child)
+        qa = self._qa(line, child)
+        self.assertFalse(qa.stale)
+        self.assertTrue(qa.is_answered)
+
+    def test_the_page_is_told_which_answers_are_waiting(self):
+        """طلب تأكيد لا يراه أحد لا يُراجَع."""
+        line, parent, child, opens, shuts = self._a_branch()
+        line._set_answer(parent.id, {"option_id": opens.id})
+        self._answer_child(line, child)
+        line._set_answer(parent.id, {"option_id": shuts.id})
+        line._set_answer(parent.id, {"option_id": opens.id})
+
+        data = line._workspace_dict()
+        row = next(q for q in data["questions"] if q["key"] == child.key)
+        self.assertTrue(row["stale"], "الواجهة تعرف أنها تنتظر")
+        self.assertFalse(row["answered"], "ولا تعدّها مُجابة")

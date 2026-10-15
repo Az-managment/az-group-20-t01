@@ -10,6 +10,17 @@
             </div>
             <p t-if="q.hint" class="o_azm_fin_hint" t-out="q.hint"/>
 
+            <!-- عادت مع فرعها: القيمة محفوظة ومعروضة، لكنها لا تُحتسب مؤكدة
+                 حتى يراجعها صاحبها، لأنها كُتبت في سياق قد يكون تغيّر -->
+            <div t-if="q.stale" class="o_azm_q_stale">
+                <span>
+                    <i class="oi me-1" data-icon="history"/>
+                    أُخفي هذا السؤال ثم عاد. الإجابة محفوظة ولا تُحتسب حتى تراجعها.
+                </span>
+                <button type="button" class="btn btn-sm btn-primary"
+                        t-on-click="() => this.confirmStale(r, q)">ما زالت صحيحة</button>
+            </div>
+
             <!-- number -->
             <t t-if="q.qtype === 'number'">
                 <div class="o_azm_select_row">

@@ -178,6 +178,11 @@ export class AzmFinWorkspace extends Component {
         }
     }
 
+    /** «ما زالت صحيحة» — تأكيد إجابة عادت مع فرعها دون تغيير قيمتها. */
+    async confirmStale(req, question) {
+        await this.call("workspace_confirm", req, [question.id]);
+    }
+
     applyRequirement(fresh) {
         for (const topic of this.d.topics) {
             const idx = topic.requirements.findIndex((r) => r.answer_id === fresh.answer_id);

@@ -255,6 +255,17 @@ class AzmFinAssessment(models.Model):
         line._set_answer(question_id, vals)
         return self._workspace_result(line, module_code, tab, scope)
 
+    def workspace_confirm(self, answer_id, question_id, module_code=None, tab="book", scope="module"):
+        """«ما زالت صحيحة» — تأكيد إجابة عادت مع فرعها، دون تغيير قيمتها.
+
+        يمر بالبوابة نفسها التي يمر بها الحفظ (_workspace_line)، فالتأكيد كتابة
+        في الإفادة ويخضع لحالتها وصلاحياتها مثل أي إجابة.
+        """
+        self.ensure_one()
+        line = self._workspace_line(answer_id)
+        line.confirm_stale_answer(question_id)
+        return self._workspace_result(line, module_code, tab, scope)
+
     def workspace_requirement(self, answer_id, vals, module_code=None, tab="book", scope="module"):
         """Requirement level: «لا ينطبق على الكيان» and its reason."""
         self.ensure_one()
@@ -592,10 +603,42 @@ class AzmFinAnswer(models.Model):
             clean["priority"] = vals["priority"] if vals["priority"] in dict(PRIORITIES) else False
         qa = self.qanswer_ids.filtered(lambda a: a.question_id == question)
         if qa:
-            qa.write(clean)
+            # الكتابة إجابة جديدة بيد صاحبها، فتُنهي أي انتظار لإعادة التأكيد
+            qa.write({**clean, "stale": False, "hidden_on": False})
         else:
             qa = self.env["azm.fin.qanswer"].create({"line_id": self.id, "question_id": question.id, **clean})
+        # هذه الإجابة قد تكون فتحت فرعًا أو أغلقته، فيُراجَع تاريخ الفروع بعدها
+        self._sync_branch_history()
         return qa
+
+    def _sync_branch_history(self):
+        """ما يحدث للإجابات حين يُغلق فرعٌ أو يُفتح.
+
+        الإجابة التي يخفيها فرعٌ أُغلق لا تُحذف: تبقى بقيمتها ويُسجَّل تاريخ
+        إخفائها، وتخرج من الحساب والمخرجات لأن سؤالها لم يعد ظاهرًا. فإذا فُتح
+        الفرع ثانيةً عادت ظاهرةً — ومعها طلب تأكيد، لأن ما كُتب قبل إغلاق الفرع
+        وُضع في سياق قد لا يصف الوضع الآن. كانت تعود محسوبةً مؤكدةً بلا مراجعة.
+        """
+        self.ensure_one()
+        visible = self._visible()
+        for qa in self.qanswer_ids:
+            shown = qa.question_id in visible
+            if not shown:
+                if qa.has_value and not qa.hidden_on:
+                    qa.hidden_on = fields.Datetime.now()
+            elif qa.hidden_on:
+                # عاد الفرع: تُعرض القيمة القديمة وتنتظر صاحبها
+                qa.write({"stale": True, "hidden_on": False})
+
+    def confirm_stale_answer(self, question_id):
+        """«ما زالت صحيحة» — تأكيد إجابة عادت مع فرعها دون تغيير قيمتها."""
+        self.ensure_one()
+        qa = self.qanswer_ids.filtered(
+            lambda a: a.question_id.id == int(question_id) and a.stale)
+        if not qa:
+            raise UserError("لا توجد إجابة بانتظار التأكيد لهذا السؤال.")
+        qa.stale = False
+        return True
 
     def _fill_demo(self, seed):
         self.ensure_one()
@@ -682,6 +725,9 @@ class AzmFinAnswer(models.Model):
             data = q._schema()
             qa = qas.get(q.id)
             data.update({"visible": q.id in visible, "answered": bool(qa and qa.is_answered),
+                         # عادت مع فرعها وتنتظر صاحبها: تُعرض بقيمتها ومعها طلب
+                         # التأكيد، لأن طلبًا لا يراه أحد لا يُراجَع
+                         "stale": bool(qa and qa.stale),
                          "value": qa._value() if qa else self.env["azm.fin.qanswer"]._empty_value()})
             questions.append(data)
         prof = PROFILES[req.profile]
@@ -789,17 +835,26 @@ class AzmFinQAnswer(models.Model):
     note_tags = fields.Text("اختيارات خانة النص (JSON)")
     priority = fields.Selection(PRIORITIES, "الأولوية")
     value_display = fields.Char("الإجابة", compute="_compute_value_display")
+    # هل تحمل قيمة أصلًا — بصرف النظر عن حاجتها إلى تأكيد
+    has_value = fields.Boolean("لها قيمة", compute="_compute_is_answered", store=True)
     is_answered = fields.Boolean("مُجاب", compute="_compute_is_answered", store=True)
+    # متى أخفاها فرعٌ أُغلق. الإجابة تبقى ولا تُحذف؛ هذا تاريخها لا شطبها.
+    hidden_on = fields.Datetime("أُخفيت في", readonly=True)
+    # عاد الفرع وهذه إجابة كُتبت قبل إغلاقه: تُعرض وتُنتظر إعادة تأكيدها، ولا
+    # تُحتسب مؤكدة قبله — لأن ما أجاب عنه المستخدم وقتها قد لا يصف وضعه الآن.
+    stale = fields.Boolean("بحاجة إعادة تأكيد", readonly=True)
 
     _line_question_uniq = models.Constraint("UNIQUE(line_id, question_id)", "السؤال متكرر في نفس المتطلب.")
 
-    @api.depends("question_id.qtype", "option_id", "option_ids", "has_number", "table_json")
+    @api.depends("question_id.qtype", "option_id", "option_ids", "has_number", "table_json", "stale")
     def _compute_is_answered(self):
         for qa in self:
             qtype = qa.question_id.qtype
-            qa.is_answered = bool(
+            qa.has_value = bool(
                 qa.option_ids if qtype == "multi" else qa.has_number if qtype == "number"
                 else (qa.option_id or qa._rows()) if qtype == "table" else qa.option_id)
+            # إجابة تنتظر التأكيد محفوظة ومعروضة، لكنها ليست مُجابة بعد
+            qa.is_answered = qa.has_value and not qa.stale
 
     def _compute_value_display(self):
         for qa in self:
