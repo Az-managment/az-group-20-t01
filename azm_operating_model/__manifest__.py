@@ -37,6 +37,7 @@ AZM – Enterprise Operating Model
         # found the root already in ir_model_data and passed, which is why it broke
         # only on a fresh database.
         "views/azm_assignment_views.xml",
+        "views/azm_question_comment_views.xml",
         "views/azm_fin_menus.xml",
         "report/azm_assessment_reports.xml",
         "report/azm_assessment_templates.xml",

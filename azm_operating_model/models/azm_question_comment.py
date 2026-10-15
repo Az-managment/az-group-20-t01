@@ -1,0 +1,221 @@
+"""رأي في السؤال نفسه، لا إجابة عنه.
+
+المراجع القائم يراجع ما أُجيب. وهذا دور آخر: من يقرأ بنك الأسئلة ويقول رأيه في
+السؤال — أواضح هو، أمكرر، أينقصه خيار، أيحتاج إعادة صياغة. فالفرق بين الاثنين
+هو الفرق بين «هذه الإجابة ناقصة» و«هذا السؤال لا يُسأل هكذا».
+
+وملاحظة لا تصل أحدًا لا تُراجَع، فلها حالتان: مسودة عند صاحبها، ومُرسَلة إلى
+مدير النموذج. وما أُرسل لا يُعدَّل — وإلا تغيّر تحت عين من يقرؤه.
+
+السؤال يعيش في نموذجين لا واحد، فالملاحظة تشير إلى أحدهما لا إليهما، على نهج
+azm.assignment نفسه.
+
+والدور يقرأ بنك الأسئلة ولا يُجيب: صلاحياته قراءة على الكتالوج وحده. فلا يرى
+إفادة كيان ولا إجاباته — ورأيه في صياغة سؤال لا يحتاج أن يرى ما أجاب به أحد.
+"""
+from odoo import _, api, fields, models
+from odoo.exceptions import UserError
+
+VERDICTS = [
+    ("clear", "واضح ومناسب"),
+    ("wording", "يحتاج إعادة صياغة"),
+    ("duplicate", "مكرر أو يتداخل مع غيره"),
+    ("options", "ينقصه خيار أو خياراته غير دقيقة"),
+    ("scope", "غير منطبق على نشاطنا"),
+    ("other", "أخرى"),
+]
+# الآراء التي تعني أن على أحد أن ينظر، تمييزًا لها عن «واضح ومناسب»
+NEEDS_WORK = ("wording", "duplicate", "options", "scope", "other")
+
+
+class AzmQuestionComment(models.Model):
+    _name = "azm.question.comment"
+    _description = "ملاحظة على سؤال"
+    _order = "create_date desc, id desc"
+    _rec_name = "question_code"
+
+    # أحد النموذجين لا كلاهما — انظر _check_one_question
+    fin_question_id = fields.Many2one("azm.fin.question", "سؤال مالي",
+                                      ondelete="cascade", index=True)
+    proc_question_id = fields.Many2one("azm.question", "سؤال مشتريات",
+                                       ondelete="cascade", index=True)
+
+    question_code = fields.Char("كود السؤال", compute="_compute_question", store=True, index=True)
+    question_label = fields.Char("نص السؤال", compute="_compute_question", store=True)
+    node = fields.Char("الموضع", compute="_compute_question", store=True,
+                       help="الموديول أو المرحلة التي ينتمي إليها السؤال.")
+    model_key = fields.Selection([("financial", "النموذج المالي الموحد"),
+                                  ("procurement", "دورة المشتريات")],
+                                 "النموذج", compute="_compute_question", store=True, index=True)
+
+    verdict = fields.Selection(VERDICTS, "الرأي", required=True, default="wording")
+    comment = fields.Text("الملاحظة", required=True)
+    needs_work = fields.Boolean("يحتاج نظرًا", compute="_compute_needs_work", store=True)
+
+    state = fields.Selection([("draft", "مسودة"), ("sent", "مُرسَلة")],
+                             "الحالة", default="draft", required=True, readonly=True)
+    sent_on = fields.Datetime("تاريخ الإرسال", readonly=True)
+    user_id = fields.Many2one("res.users", "صاحب الملاحظة", required=True, readonly=True,
+                              default=lambda self: self.env.user, index=True)
+
+    _one_question = models.Constraint(
+        "CHECK((fin_question_id IS NULL) <> (proc_question_id IS NULL))",
+        "الملاحظة تخص سؤالًا واحدًا: ماليًا أو من المشتريات.")
+    # رأي واحد لكل مراجع في كل سؤال؛ وتعديله أولى من تكديس آراء متناقضة له
+    _one_per_reviewer = models.Constraint(
+        "UNIQUE(fin_question_id, proc_question_id, user_id)",
+        "لك ملاحظة على هذا السؤال بالفعل؛ عدّلها بدل إضافة أخرى.")
+
+    @api.depends("fin_question_id", "proc_question_id")
+    def _compute_question(self):
+        for note in self:
+            fin, proc = note.fin_question_id, note.proc_question_id
+            if fin:
+                note.question_code = fin.code or fin.key or ""
+                note.question_label = fin.label or ""
+                note.node = f"FIN.{fin.module_id.code}" if fin.module_id else "FIN"
+                note.model_key = "financial"
+            elif proc:
+                note.question_code = proc.code or proc.key or ""
+                note.question_label = proc.label or ""
+                note.node = f"PUR-{proc.stage_id.code}" if proc.stage_id else "PUR"
+                note.model_key = "procurement"
+            else:
+                note.question_code = note.question_label = note.node = False
+                note.model_key = False
+
+    @api.depends("verdict")
+    def _compute_needs_work(self):
+        for note in self:
+            note.needs_work = note.verdict in NEEDS_WORK
+
+    # ------------------------------------------------------------------ الكتابة
+    def write(self, vals):
+        """ما أُرسل لا يُعدَّل — إلا أن يُعيده مدير النموذج إلى صاحبه."""
+        moving_back = vals.get("state") == "draft"
+        if not moving_back and not self.env.su:
+            frozen = self.filtered(lambda n: n.state == "sent")
+            if frozen and set(vals) - {"state", "sent_on"}:
+                raise UserError(_(
+                    "الملاحظة أُرسلت، فلا تُعدَّل. اطلب من مدير النموذج إعادتها إن لزم."))
+        return super().write(vals)
+
+    def action_send(self):
+        """إرسال الملاحظة إلى مدير النموذج."""
+        drafts = self.filtered(lambda n: n.state == "draft")
+        if not drafts:
+            raise UserError(_("لا توجد ملاحظات مسودة لإرسالها."))
+        drafts.write({"state": "sent", "sent_on": fields.Datetime.now()})
+        return True
+
+    def action_back_to_draft(self):
+        if not self.env.user.has_group("azm_operating_model.azm_group_manager"):
+            raise UserError(_("إعادة الملاحظة إلى صاحبها لمدير النموذج."))
+        self.filtered(lambda n: n.state == "sent").write({"state": "draft", "sent_on": False})
+        return True
+
+    # ------------------------------------------------------------------ الواجهة
+    @api.model
+    def _field_for(self, model_key):
+        if model_key == "financial":
+            return "fin_question_id", "azm.fin.question"
+        if model_key == "procurement":
+            return "proc_question_id", "azm.question"
+        raise UserError(_("نموذج غير معروف: %s", model_key))
+
+    @api.model
+    def notes_for(self, model_key, question_ids):
+        """ملاحظاتي على هذه الأسئلة — ``{question id: {...}}``.
+
+        ملاحظاتي وحدها: رأي مراجع في سؤال ليس شيئًا يراه زملاؤه قبل أن يُرسَل.
+        """
+        field, _model = self._field_for(model_key)
+        wanted = [int(i) for i in question_ids or []]
+        if not wanted:
+            return {}
+        found = self.search([(field, "in", wanted), ("user_id", "=", self.env.uid)])
+        return {note[field].id: {
+            "id": note.id, "verdict": note.verdict, "comment": note.comment or "",
+            "state": note.state, "needs_work": note.needs_work,
+        } for note in found}
+
+    @api.model
+    def save_note(self, model_key, question_id, verdict, comment):
+        """يكتب رأيي في سؤال أو يعدّله. وملاحظة بلا نص ليست ملاحظة، فتُحذف."""
+        field, model = self._field_for(model_key)
+        question = self.env[model].browse(int(question_id)).exists()
+        if not question:
+            raise UserError(_("السؤال غير موجود."))
+        if verdict not in dict(VERDICTS):
+            raise UserError(_("رأي غير معروف."))
+        mine = self.search([(field, "=", question.id), ("user_id", "=", self.env.uid)], limit=1)
+        text = (comment or "").strip()
+        if not text:
+            mine.unlink()
+            return {"deleted": True}
+        if mine:
+            mine.write({"verdict": verdict, "comment": text})
+        else:
+            mine = self.create({field: question.id, "verdict": verdict, "comment": text})
+        return {"id": mine.id, "state": mine.state, "needs_work": mine.needs_work}
+
+    @api.model
+    def send_my_notes(self):
+        """إرسال كل مسوداتي دفعةً إلى مدير النموذج."""
+        drafts = self.search([("user_id", "=", self.env.uid), ("state", "=", "draft")])
+        if not drafts:
+            raise UserError(_("لا توجد ملاحظات مسودة لإرسالها."))
+        drafts.action_send()
+        return {"sent": len(drafts)}
+
+    # ------------------------------------------------------------------ الإحصاء
+    @api.model
+    def comment_stats(self):
+        """ما وصل مدير النموذج: كم سؤالًا عليه ملاحظة، وأين، وبأي رأي.
+
+        يُحسب على المُرسَل وحده — فالمسودة رأي لم يُقَل بعد. والعدّ بالأسئلة لا
+        بالملاحظات: سؤال علّق عليه ثلاثة مراجعين سؤال واحد عليه ملاحظة.
+        """
+        if not self.env.user.has_group("azm_operating_model.azm_group_manager"):
+            raise UserError(_("الإحصاء لمدير النموذج."))
+        sent = self.sudo().search([("state", "=", "sent")])
+        verdicts = dict(VERDICTS)
+        by_verdict, by_node, questions = {}, {}, set()
+        for note in sent:
+            key = (note.model_key, note.question_code)
+            questions.add(key)
+            by_verdict[note.verdict] = by_verdict.get(note.verdict, 0) + 1
+            by_node[note.node or "—"] = by_node.get(note.node or "—", 0) + 1
+        totals = {
+            "financial": self.env["azm.fin.question"].sudo().search_count([]),
+            "procurement": self.env["azm.question"].sudo().search_count([]),
+        }
+        commented = {
+            "financial": len({c for m, c in questions if m == "financial"}),
+            "procurement": len({c for m, c in questions if m == "procurement"}),
+        }
+        return {
+            "notes": len(sent),
+            "reviewers": len(sent.mapped("user_id")),
+            "questions_commented": len(questions),
+            "questions_total": totals["financial"] + totals["procurement"],
+            "needs_work": len(sent.filtered("needs_work")),
+            "by_model": [{"key": k, "commented": commented[k], "total": totals[k]}
+                         for k in ("financial", "procurement")],
+            "by_verdict": sorted(
+                ({"key": k, "name": verdicts.get(k, k), "count": n}
+                 for k, n in by_verdict.items()), key=lambda r: -r["count"]),
+            "by_node": sorted(
+                ({"node": k, "count": n} for k, n in by_node.items()),
+                key=lambda r: -r["count"])[:20],
+            # الكود مع ملاحظته، وهو ما طُلب أن يراه المدير
+            "rows": [{
+                "code": note.question_code, "node": note.node,
+                "model": note.model_key, "label": (note.question_label or "")[:120],
+                "verdict": verdicts.get(note.verdict, note.verdict),
+                "needs_work": note.needs_work,
+                "comment": note.comment or "",
+                "by": note.user_id.name,
+                "sent_on": str(note.sent_on or ""),
+            } for note in sent],
+        }

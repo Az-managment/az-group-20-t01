@@ -5,3 +5,4 @@ from . import test_catalogue_reload
 from . import test_assignment
 from . import test_review_return
 from . import test_translations
+from . import test_question_comment

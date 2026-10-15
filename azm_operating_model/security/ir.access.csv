@@ -77,3 +77,13 @@ azm_review_return_owner,azm.review.return owner: closes what was returned to the
 azm_review_return_reviewer,azm.review.return reviewer: raises them on their entities,azm.review.return,azm_group_reviewer,crud,"[('entity_id', 'access', 'read')]"
 azm_review_return_manager,azm.review.return manager,azm.review.return,azm_group_manager,crud,
 azm_review_return_company,azm.review.return company,azm.review.return,,crud,"[('company_id', 'in', company_ids)]"
+azm_question_comment_reviewer,ملاحظات الأسئلة: ملاحظاتي,azm.question.comment,azm_group_question_reviewer,crud,"[('user_id','=',user.id)]"
+azm_question_comment_manager,ملاحظات الأسئلة: المُرسَل إلى المدير,azm.question.comment,azm_group_manager,ru,"[('state','=','sent')]"
+azm_qr_fin_question,مراجع الأسئلة: الأسئلة المالية,azm.fin.question,azm_group_question_reviewer,r,
+azm_qr_fin_option,مراجع الأسئلة: الخيارات,azm.fin.option,azm_group_question_reviewer,r,
+azm_qr_fin_requirement,مراجع الأسئلة: المتطلبات,azm.fin.requirement,azm_group_question_reviewer,r,
+azm_qr_fin_module,مراجع الأسئلة: الموديولات,azm.fin.module,azm_group_question_reviewer,r,
+azm_qr_fin_topic,مراجع الأسئلة: الموضوعات,azm.fin.topic,azm_group_question_reviewer,r,
+azm_qr_proc_question,مراجع الأسئلة: أسئلة المشتريات,azm.question,azm_group_question_reviewer,r,
+azm_qr_stage,مراجع الأسئلة: المراحل,azm.stage,azm_group_question_reviewer,r,
+azm_qr_prompt,مراجع الأسئلة: الأسئلة الافتتاحية,azm.fin.prompt,azm_group_question_reviewer,r,

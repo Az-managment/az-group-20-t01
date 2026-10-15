@@ -209,3 +209,39 @@ $fin-muted: #5b7380;
     font-size: 12px;
     text-align: start;
 }
+
+// رأي مراجع بنك الأسئلة في السؤال نفسه. نبرة محايدة تفصله عن الإجابة: هذا
+// كلام عن السؤال، لا فيه.
+.o_azm_q_review {
+    margin: 8px 0 2px;
+    .o_azm_q_review_toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 3px 9px;
+        border: 1px dashed rgba(90, 110, 130, .4);
+        border-radius: 99px;
+        background: transparent;
+        font-size: 11.5px;
+        color: rgba(40, 60, 80, .8);
+        &:hover { border-style: solid; background: rgba(90, 110, 130, .06); }
+    }
+    .o_azm_q_review_sent {
+        padding: 1px 7px;
+        border-radius: 99px;
+        background: rgba(8, 126, 121, .12);
+        color: #087e79;
+        font-size: 10.5px;
+    }
+    .o_azm_q_review_body {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-top: 7px;
+        padding: 9px 11px;
+        border: 1px solid rgba(90, 110, 130, .22);
+        border-radius: 10px;
+        background: rgba(90, 110, 130, .04);
+        select, textarea { font-size: 12.5px; }
+    }
+}

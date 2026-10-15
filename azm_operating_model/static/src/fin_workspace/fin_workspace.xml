@@ -10,6 +10,39 @@
             </div>
             <p t-if="q.hint" class="o_azm_fin_hint" t-out="q.hint"/>
 
+            <!-- رأي مراجع بنك الأسئلة في السؤال نفسه، لا في الإجابة عنه.
+                 يظهر لمن يحمل الدور وحده، ويبقى ظاهرًا ولو كانت الإفادة
+                 للقراءة فقط — فالرأي في الصياغة لا يتوقف على حالة الإجابة. -->
+            <div t-if="d.header.can_review_questions" class="o_azm_q_review">
+                <button type="button" class="o_azm_q_review_toggle"
+                        t-on-click="() => this.toggleNote(q)">
+                    <i class="oi me-1" data-icon="chat"/>
+                    <t t-if="q.note">رأيي: <t t-out="this.verdictName(q.note.verdict)"/></t>
+                    <t t-else="">اكتب رأيك في هذا السؤال</t>
+                    <span t-if="q.note and q.note.state === 'sent'"
+                          class="o_azm_q_review_sent">مُرسَلة</span>
+                </button>
+                <div t-if="this.state.openNotes[q.id]" class="o_azm_q_review_body">
+                    <select class="form-select form-select-sm"
+                            t-att-disabled="q.note and q.note.state === 'sent' ? 'disabled' : undefined"
+                            t-on-change="(ev) => this.saveNote(r, q, {verdict: ev.target.value})">
+                        <t t-foreach="d.header.verdicts" t-as="v" t-key="v.key">
+                            <option t-att-value="v.key"
+                                    t-att-selected="(q.note ? q.note.verdict : 'wording') === v.key"
+                                    t-out="v.name"/>
+                        </t>
+                    </select>
+                    <textarea class="form-control form-control-sm" rows="2"
+                              placeholder="ما رأيك في هذا السؤال؟"
+                              t-att-disabled="q.note and q.note.state === 'sent' ? 'disabled' : undefined"
+                              t-att-value="q.note ? q.note.comment : ''"
+                              t-on-change="(ev) => this.saveNote(r, q, {comment: ev.target.value})"/>
+                    <small t-if="q.note and q.note.state === 'sent'" class="o_azm_muted">
+                        أُرسلت إلى مدير النموذج، فلا تُعدَّل.
+                    </small>
+                </div>
+            </div>
+
             <!-- عادت مع فرعها: القيمة محفوظة ومعروضة، لكنها لا تُحتسب مؤكدة
                  حتى يراجعها صاحبها، لأنها كُتبت في سياق قد يكون تغيّر -->
             <div t-if="q.stale" class="o_azm_q_stale">

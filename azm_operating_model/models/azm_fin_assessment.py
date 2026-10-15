@@ -7,6 +7,7 @@ from odoo import Command, api, fields, models
 from odoo.exceptions import UserError
 
 from . import fin_engine
+from .azm_question_comment import VERDICTS as QUESTION_VERDICTS
 from .azm_fin_catalogue import (APPLICABILITY, AUTOMATION, AUTOMATION_MANUAL, AUTOMATION_SYSTEM,
                                 EVIDENCE, EXECUTION,
                                 FALLBACK_KINDS, NA_REASONS, NOTE_LISTS, OTHER, PRIORITIES, PROFILES, SCOPES,
@@ -163,6 +164,11 @@ class AzmFinAssessment(models.Model):
             "outstanding": self._azm_outstanding(), "can_send": self._azm_can_send(),
             # the review side: who may send a part back, and what is already back
             **self._azm_review_header(),
+            # من يراجع بنك الأسئلة يكتب رأيه في السؤال نفسه، ولو كانت الإفادة
+            # للقراءة فقط — فرأيه في الصياغة لا يتوقف على حالة الإجابة
+            "can_review_questions": self.env.user.has_group(
+                "azm_operating_model.azm_group_question_reviewer"),
+            "verdicts": [{"key": k, "name": n} for k, n in QUESTION_VERDICTS],
             "counts": {key: self[f"{key}_count"] for key, _label in STATES},
             "scopes": [{"code": "ALL", "name": SCOPES["ALL"]}] + [
                 {"code": s.code, "name": s.name} for s in self.scope_ids],
@@ -795,11 +801,16 @@ class AzmFinAnswer(models.Model):
         req = self.requirement_id
         qas = self._answers_by_question()
         visible = set(self._visible(qas).ids)
+        notes = self.env["azm.question.comment"].notes_for(
+            "financial", req.question_ids.ids) if self.env.user.has_group(
+                "azm_operating_model.azm_group_question_reviewer") else {}
         questions = []
         for q in req.question_ids:
             data = q._schema()
             qa = qas.get(q.id)
             data.update({"visible": q.id in visible, "answered": bool(qa and qa.is_answered),
+                         # رأيي في هذا السؤال إن كنتُ كتبته، ليُعرض حيث يُقرأ
+                         "note": notes.get(q.id),
                          # عادت مع فرعها وتنتظر صاحبها: تُعرض بقيمتها ومعها طلب
                          # التأكيد، لأن طلبًا لا يراه أحد لا يُراجَع
                          "stale": bool(qa and qa.stale),

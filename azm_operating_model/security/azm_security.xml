@@ -21,11 +21,21 @@
             <field name="implied_ids" eval="[(4, ref('azm_group_user'))]"/>
         </record>
 
+        <!-- دور يراجع الأسئلة نفسها لا الإجابات عنها: أواضح السؤال، أمكرر،
+             أينقصه خيار. لا يرث «مُعد إفادات» لأنه لا يُجيب؛ وقد يكون من خارج
+             من يملأ النماذج أصلًا. -->
+        <record id="azm_group_question_reviewer" model="res.groups">
+            <field name="name">مراجع بنك الأسئلة</field>
+            <field name="sequence">25</field>
+            <field name="privilege_id" ref="azm_privilege"/>
+            <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+        </record>
+
         <record id="azm_group_manager" model="res.groups">
             <field name="name">مدير النموذج</field>
             <field name="sequence">30</field>
             <field name="privilege_id" ref="azm_privilege"/>
-            <field name="implied_ids" eval="[(4, ref('azm_group_reviewer'))]"/>
+            <field name="implied_ids" eval="[(4, ref('azm_group_reviewer')), (4, ref('azm_group_question_reviewer'))]"/>
             <field name="user_ids" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
         </record>
     </data>

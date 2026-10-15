@@ -37,6 +37,8 @@ export class AzmFinWorkspace extends Component {
             // DEV19 — بحث بالاسم والكود. الموديول الواحد يبلغ 44 متطلبًا و157
             // سؤالًا، ولم تكن هناك وسيلة للوصول إلى واحد منها إلا بالتمرير.
             search: "",
+            // أي أسئلة فُتح صندوق الرأي عليها
+            openNotes: {},
             busy: false,
             saving: 0,
             openPrompts: {},
@@ -179,6 +181,28 @@ export class AzmFinWorkspace extends Component {
         } finally {
             this.state.saving--;
         }
+    }
+
+    // ------------------------------------------------- رأي مراجع بنك الأسئلة
+    toggleNote(question) {
+        this.state.openNotes[question.id] = !this.state.openNotes[question.id];
+    }
+
+    verdictName(key) {
+        const found = (this.d.header.verdicts || []).find((v) => v.key === key);
+        return found ? found.name : key;
+    }
+
+    /** يحفظ الرأي في السؤال — لا الإجابة عنه، فلا يمرّ بمسار الحفظ المعتاد. */
+    async saveNote(req, question, change) {
+        const note = question.note || {};
+        const verdict = change.verdict ?? note.verdict ?? "wording";
+        const comment = change.comment ?? note.comment ?? "";
+        const saved = await this.orm.call("azm.question.comment", "save_note", [], {
+            model_key: "financial", question_id: question.id,
+            verdict, comment,
+        });
+        question.note = saved.deleted ? false : { ...saved, verdict, comment };
     }
 
     /** «ما زالت صحيحة» — تأكيد إجابة عادت مع فرعها دون تغيير قيمتها. */

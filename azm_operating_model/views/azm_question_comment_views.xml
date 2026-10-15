@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="azm_question_comment_list" model="ir.ui.view">
+        <field name="name">azm.question.comment.list</field>
+        <field name="model">azm.question.comment</field>
+        <field name="arch" type="xml">
+            <list string="ملاحظات على الأسئلة" editable="bottom"
+                  decoration-muted="state == 'sent'" decoration-warning="needs_work and state == 'draft'">
+                <field name="model_key" optional="show"/>
+                <field name="node" optional="show"/>
+                <field name="fin_question_id" optional="show"
+                       domain="[]" options="{'no_create': True}"/>
+                <field name="proc_question_id" optional="hide"
+                       domain="[]" options="{'no_create': True}"/>
+                <field name="question_code" optional="show"/>
+                <field name="question_label" optional="hide"/>
+                <field name="verdict"/>
+                <field name="comment"/>
+                <field name="needs_work" optional="hide"/>
+                <field name="user_id" optional="hide"/>
+                <field name="state" readonly="1"/>
+                <field name="sent_on" optional="hide"/>
+                <button name="action_send" type="object" icon="fa-paper-plane"
+                        title="أرسل إلى مدير النموذج" invisible="state != 'draft'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="azm_question_comment_search" model="ir.ui.view">
+        <field name="name">azm.question.comment.search</field>
+        <field name="model">azm.question.comment</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="question_code"/>
+                <field name="question_label"/>
+                <field name="comment"/>
+                <field name="node"/>
+                <filter name="draft" string="مسودة" domain="[('state','=','draft')]"/>
+                <filter name="sent" string="مُرسَلة" domain="[('state','=','sent')]"/>
+                <separator/>
+                <filter name="needs_work" string="يحتاج نظرًا" domain="[('needs_work','=',True)]"/>
+                <separator/>
+                <filter name="g_verdict" string="الرأي" context="{'group_by':'verdict'}"/>
+                <filter name="g_node" string="الموضع" context="{'group_by':'node'}"/>
+                <filter name="g_model" string="النموذج" context="{'group_by':'model_key'}"/>
+                <filter name="g_user" string="المراجع" context="{'group_by':'user_id'}"/>
+            </search>
+        </field>
+    </record>
+
+    <!-- شاشة المراجع: ملاحظاته هو -->
+    <record id="azm_question_comment_action" model="ir.actions.act_window">
+        <field name="name">مراجعة بنك الأسئلة</field>
+        <field name="res_model">azm.question.comment</field>
+        <field name="view_mode">list</field>
+        <field name="search_view_id" ref="azm_question_comment_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">اكتب رأيك في سؤال</p>
+            <p>اختر السؤال، وقل رأيك فيه: أواضح هو، أمكرر، أينقصه خيار.
+               ثم أرسل ملاحظاتك إلى مدير النموذج.</p>
+        </field>
+    </record>
+
+    <!-- شاشة المدير: ما أُرسل إليه -->
+    <record id="azm_question_comment_sent_action" model="ir.actions.act_window">
+        <field name="name">ملاحظات واردة على الأسئلة</field>
+        <field name="res_model">azm.question.comment</field>
+        <field name="view_mode">list</field>
+        <field name="domain">[('state','=','sent')]</field>
+        <field name="context">{'search_default_g_verdict': 1}</field>
+        <field name="search_view_id" ref="azm_question_comment_search"/>
+    </record>
+
+    <menuitem id="azm_question_comment_menu" name="مراجعة بنك الأسئلة"
+              parent="azm_operating_model.azm_menu_root"
+              action="azm_question_comment_action" sequence="27"
+              groups="azm_operating_model.azm_group_question_reviewer"/>
+    <menuitem id="azm_question_comment_sent_menu" name="ملاحظات الأسئلة الواردة"
+              parent="azm_operating_model.azm_menu_config"
+              action="azm_question_comment_sent_action" sequence="45"
+              groups="azm_operating_model.azm_group_manager"/>
+</odoo>

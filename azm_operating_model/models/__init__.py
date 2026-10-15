@@ -17,3 +17,4 @@ from . import azm_fin_catalogue
 from . import azm_fin_assessment
 from . import res_users_settings
 from . import azm_translations
+from . import azm_question_comment
