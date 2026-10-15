@@ -6,7 +6,9 @@ from odoo.exceptions import ValidationError
 
 class AzmQuestion(models.Model):
     _name = "azm.question"
+    _inherit = ["azm.reviewable.question"]
     _description = "AZM Question"
+    _azm_comment_field = "proc_question_id"
     _order = "stage_sequence, group, sequence, id"
     _rec_names_search = ("label", "code")
 

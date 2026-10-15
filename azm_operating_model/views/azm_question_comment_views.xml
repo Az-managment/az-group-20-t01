@@ -48,6 +48,106 @@
         </field>
     </record>
 
+    <!-- الأب قبل أبنائه: الملف يُنفَّذ بترتيبه، والمعرّف لا يُشار إليه
+         قبل أن يُنشأ. -->
+    <menuitem id="azm_question_comment_menu" name="مراجعة بنك الأسئلة"
+              parent="azm_operating_model.azm_menu_root" sequence="27"
+              groups="azm_operating_model.azm_group_question_reviewer"/>
+
+    <!-- نموذج كتابة الرأي، يُفتح من السؤال نفسه -->
+    <record id="azm_question_comment_form" model="ir.ui.view">
+        <field name="name">azm.question.comment.form</field>
+        <field name="model">azm.question.comment</field>
+        <field name="arch" type="xml">
+            <form string="رأيي في هذا السؤال">
+                <sheet>
+                    <group>
+                        <field name="question_code" readonly="1"/>
+                        <field name="question_label" readonly="1"/>
+                        <field name="state" readonly="1"/>
+                    </group>
+                    <group>
+                        <field name="verdict" readonly="state == 'sent'"/>
+                        <field name="comment" readonly="state == 'sent'"
+                               placeholder="ما رأيك في هذا السؤال؟"/>
+                    </group>
+                    <div invisible="state != 'sent'" class="alert alert-info" role="status">
+                        أُرسلت إلى مدير النموذج، فلا تُعدَّل.
+                    </div>
+                    <field name="fin_question_id" invisible="1"/>
+                    <field name="proc_question_id" invisible="1"/>
+                </sheet>
+                <footer>
+                    <button name="action_send" type="object" string="أرسل إلى مدير النموذج"
+                            class="btn-primary" invisible="state != 'draft'"/>
+                    <button string="إغلاق" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- بنك الأسئلة كما يراه المراجع: السؤال ورأيه فيه -->
+    <record id="azm_fin_question_review_list" model="ir.ui.view">
+        <field name="name">azm.fin.question.review.list</field>
+        <field name="model">azm.fin.question</field>
+        <field name="arch" type="xml">
+            <list string="أسئلة النموذج المالي" create="0" delete="0" edit="0">
+                <field name="code" optional="show"/>
+                <field name="tree_ref" optional="show"/>
+                <field name="label"/>
+                <field name="qtype" optional="hide"/>
+                <field name="my_verdict" optional="show"/>
+                <field name="my_comment" optional="show"/>
+                <field name="my_note_state" optional="show"/>
+                <field name="comment_count" string="ملاحظات" optional="hide"/>
+                <button name="action_write_note" type="object" icon="fa-comment"
+                        title="اكتب رأيك في هذا السؤال"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="azm_question_review_list" model="ir.ui.view">
+        <field name="name">azm.question.review.list</field>
+        <field name="model">azm.question</field>
+        <field name="arch" type="xml">
+            <list string="أسئلة دورة المشتريات" create="0" delete="0" edit="0">
+                <field name="code" optional="show"/>
+                <field name="stage_id" optional="show"/>
+                <field name="label"/>
+                <field name="qtype" optional="hide"/>
+                <field name="my_verdict" optional="show"/>
+                <field name="my_comment" optional="show"/>
+                <field name="my_note_state" optional="show"/>
+                <field name="comment_count" string="ملاحظات" optional="hide"/>
+                <button name="action_write_note" type="object" icon="fa-comment"
+                        title="اكتب رأيك في هذا السؤال"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="azm_fin_question_review_action" model="ir.actions.act_window">
+        <field name="name">أسئلة النموذج المالي</field>
+        <field name="res_model">azm.fin.question</field>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="azm_fin_question_review_list"/>
+    </record>
+
+    <record id="azm_question_review_action" model="ir.actions.act_window">
+        <field name="name">أسئلة دورة المشتريات</field>
+        <field name="res_model">azm.question</field>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="azm_question_review_list"/>
+    </record>
+
+    <menuitem id="azm_fin_question_review_menu" name="أسئلة النموذج المالي"
+              parent="azm_operating_model.azm_question_comment_menu"
+              action="azm_fin_question_review_action" sequence="10"
+              groups="azm_operating_model.azm_group_question_reviewer"/>
+    <menuitem id="azm_question_review_menu" name="أسئلة دورة المشتريات"
+              parent="azm_operating_model.azm_question_comment_menu"
+              action="azm_question_review_action" sequence="20"
+              groups="azm_operating_model.azm_group_question_reviewer"/>
+
     <!-- شاشة المراجع: ملاحظاته هو -->
     <record id="azm_question_comment_action" model="ir.actions.act_window">
         <field name="name">مراجعة بنك الأسئلة</field>
@@ -71,9 +171,9 @@
         <field name="search_view_id" ref="azm_question_comment_search"/>
     </record>
 
-    <menuitem id="azm_question_comment_menu" name="مراجعة بنك الأسئلة"
-              parent="azm_operating_model.azm_menu_root"
-              action="azm_question_comment_action" sequence="27"
+    <menuitem id="azm_my_notes_menu" name="ملاحظاتي"
+              parent="azm_operating_model.azm_question_comment_menu"
+              action="azm_question_comment_action" sequence="30"
               groups="azm_operating_model.azm_group_question_reviewer"/>
     <menuitem id="azm_question_comment_sent_menu" name="ملاحظات الأسئلة الواردة"
               parent="azm_operating_model.azm_menu_config"

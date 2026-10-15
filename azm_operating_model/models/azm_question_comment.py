@@ -219,3 +219,72 @@ class AzmQuestionComment(models.Model):
                 "sent_on": str(note.sent_on or ""),
             } for note in sent],
         }
+
+
+class AzmReviewableQuestion(models.AbstractModel):
+    """سؤال يُكتب رأيٌ فيه من حيث يُقرأ.
+
+    الرأي يُكتب في قائمة الأسئلة نفسها، لا في شاشة منفصلة يُنتقى فيها السؤال من
+    قائمة فيها ألف وخمسمئة — فمن يقرأ السؤال هو من له رأي فيه، وأن يُغادر مكانه
+    ليسجّله يعني ألّا يسجّله.
+
+    والحقول محسوبة غير مخزّنة لأنها تخص قارئها: «رأيي» لا يُخزَّن على السؤال،
+    وإنما يُقرأ من ملاحظة صاحبها.
+    """
+    _name = "azm.reviewable.question"
+    _description = "سؤال قابل للمراجعة"
+
+    # يُحدَّد في كل نموذج: اسم الحقل الذي تشير به الملاحظة إليه
+    _azm_comment_field = None
+
+    # للعرض فقط. الكتابة عبر action_write_note، لأن حفظ حقل على السؤال يستلزم
+    # حق الكتابة عليه — ومراجع بنك الأسئلة يقرأ البنك ولا يعدّله. الرأي في
+    # السؤال شيء، وتعديل السؤال شيء آخر، والحد بينهما هو الحد الذي أُريد.
+    my_verdict = fields.Selection(VERDICTS, "رأيي", compute="_compute_my_note")
+    my_comment = fields.Text("ملاحظتي", compute="_compute_my_note")
+    my_note_state = fields.Selection([("draft", "مسودة"), ("sent", "مُرسَلة")],
+                                     "حالة ملاحظتي", compute="_compute_my_note")
+    comment_count = fields.Integer("ملاحظات مُرسَلة", compute="_compute_comment_count")
+
+    def _azm_my_notes(self):
+        return self.env["azm.question.comment"].search([
+            (self._azm_comment_field, "in", self.ids),
+            ("user_id", "=", self.env.uid),
+        ])
+
+    @api.depends_context("uid")
+    def _compute_my_note(self):
+        mine = {n[self._azm_comment_field].id: n for n in self._azm_my_notes()}
+        for question in self:
+            note = mine.get(question.id)
+            question.my_verdict = note.verdict if note else False
+            question.my_comment = note.comment if note else False
+            question.my_note_state = note.state if note else False
+
+    def action_write_note(self):
+        """يفتح رأيي في هذا السؤال لأكتبه أو أعدّله."""
+        self.ensure_one()
+        Comment = self.env["azm.question.comment"]
+        mine = Comment.search([(self._azm_comment_field, "=", self.id),
+                               ("user_id", "=", self.env.uid)], limit=1)
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("رأيي في هذا السؤال"),
+            "res_model": "azm.question.comment",
+            "view_mode": "form",
+            "target": "new",
+            "res_id": mine.id or False,
+            "context": {f"default_{self._azm_comment_field}": self.id,
+                        "default_verdict": "wording"},
+        }
+
+    def _compute_comment_count(self):
+        """كم مراجعًا علّق على هذا السؤال — المُرسَل وحده، فالمسودة لم تُقَل بعد."""
+        counts = {}
+        if self.ids:
+            rows = self.env["azm.question.comment"].sudo()._read_group(
+                [(self._azm_comment_field, "in", self.ids), ("state", "=", "sent")],
+                [self._azm_comment_field], ["__count"])
+            counts = {q.id: n for q, n in rows}
+        for question in self:
+            question.comment_count = counts.get(question.id, 0)

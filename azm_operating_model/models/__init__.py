@@ -1,3 +1,6 @@
+# azm.reviewable.question يُعرَّف هنا، وترثه نماذج الأسئلة أدناه،
+# فيسبقها في التحميل.
+from . import azm_question_comment
 from . import azm_entity
 from . import azm_stage
 from . import azm_question
@@ -17,4 +20,3 @@ from . import azm_fin_catalogue
 from . import azm_fin_assessment
 from . import res_users_settings
 from . import azm_translations
-from . import azm_question_comment

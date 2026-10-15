@@ -439,7 +439,9 @@ class AzmFinRequirement(models.Model):
 
 class AzmFinQuestion(models.Model):
     _name = "azm.fin.question"
+    _inherit = ["azm.reviewable.question"]
     _description = "سؤال النموذج المالي الموحد"
+    _azm_comment_field = "fin_question_id"
     _order = "module_sequence, requirement_id, sequence, id"
     _rec_names_search = ("label", "code", "tree_ref")
 

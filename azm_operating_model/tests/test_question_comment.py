@@ -116,3 +116,73 @@ class TestReviewingTheQuestionsThemselves(TransactionCase):
                     "proc_question_id": self.proc.id,
                     "verdict": "wording", "comment": "الاثنان معًا",
                 })
+
+
+@tagged("post_install", "-at_install")
+class TestTheReviewerBrowsesBothBanks(TransactionCase):
+    """يرى النموذجين ويكتب رأيه من حيث يقرأ."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.reviewer = new_test_user(
+            cls.env, "qc_browse", groups="azm_operating_model.azm_group_question_reviewer")
+
+    def test_both_banks_are_readable(self):
+        fin = self.env["azm.fin.question"].with_user(self.reviewer).search_count([])
+        proc = self.env["azm.question"].with_user(self.reviewer).search_count([])
+        self.assertTrue(fin, "يرى أسئلة النموذج المالي")
+        self.assertTrue(proc, "ويرى أسئلة دورة المشتريات")
+
+    def test_my_opinion_shows_beside_the_question(self):
+        question = self.env["azm.fin.question"].with_user(self.reviewer).search([], limit=1)
+        if not question:
+            self.skipTest("بنك الأسئلة فارغ")
+        self.assertFalse(question.my_verdict, "لا رأي بعد")
+        self.env["azm.question.comment"].with_user(self.reviewer).save_note(
+            "financial", question.id, "options", "ينقصه خيار")
+        question.invalidate_recordset()
+        self.assertEqual(question.my_verdict, "options")
+        self.assertEqual(question.my_comment, "ينقصه خيار")
+        self.assertEqual(question.my_note_state, "draft")
+
+    def test_my_opinion_is_mine_and_not_a_colleague_s(self):
+        other = new_test_user(
+            self.env, "qc_browse2", groups="azm_operating_model.azm_group_question_reviewer")
+        question = self.env["azm.fin.question"].sudo().search([], limit=1)
+        if not question:
+            self.skipTest("بنك الأسئلة فارغ")
+        self.env["azm.question.comment"].with_user(self.reviewer).save_note(
+            "financial", question.id, "wording", "رأيي")
+        seen_by_other = question.with_user(other)
+        seen_by_other.invalidate_recordset()
+        self.assertFalse(seen_by_other.my_verdict, "«رأيي» يخص قارئه")
+
+    def test_the_button_opens_the_note_for_that_question(self):
+        question = self.env["azm.fin.question"].with_user(self.reviewer).search([], limit=1)
+        if not question:
+            self.skipTest("بنك الأسئلة فارغ")
+        action = question.action_write_note()
+        self.assertEqual(action["res_model"], "azm.question.comment")
+        self.assertEqual(action["context"]["default_fin_question_id"], question.id)
+
+    def test_reading_the_bank_is_not_editing_it(self):
+        """الرأي في السؤال شيء، وتعديل السؤال شيء آخر."""
+        from odoo.exceptions import AccessError
+        question = self.env["azm.fin.question"].with_user(self.reviewer).search([], limit=1)
+        if not question:
+            self.skipTest("بنك الأسئلة فارغ")
+        with self.assertRaises(AccessError):
+            question.write({"label": "تعديل غير مأذون"})
+
+    def test_the_count_shows_only_what_was_sent(self):
+        question = self.env["azm.fin.question"].sudo().search([], limit=1)
+        if not question:
+            self.skipTest("بنك الأسئلة فارغ")
+        self.env["azm.question.comment"].with_user(self.reviewer).save_note(
+            "financial", question.id, "wording", "مسودة")
+        question.invalidate_recordset()
+        self.assertEqual(question.comment_count, 0, "المسودة رأي لم يُقَل بعد")
+        self.env["azm.question.comment"].with_user(self.reviewer).send_my_notes()
+        question.invalidate_recordset()
+        self.assertEqual(question.comment_count, 1)
