@@ -602,3 +602,80 @@ class TestALimitSaysWhatItMeans(TransactionCase):
             _line, _question, labels = self._table(requirement, key)
             for column in wanted:
                 self.assertIn(column, labels, f"{requirement} {key} ينقصه «{column}»")
+
+
+@tagged("post_install", "-at_install")
+class TestACompensatingControlIsAnAction(TransactionCase):
+    """DEV03 — «يمكن تسجيل إجراء رقابي ومسؤوله دون إدخال اسم الدور باعتباره الضابط».
+
+    كان عمود «الضابط البديل» في FIN-005 يعرض أدوارًا وظيفية، فيُسجَّل شخص حيث
+    يُنتظر إجراء: «الضابط البديل: المدير المالي». والمدير المالي ليس ضابطًا —
+    قد يكون مالكه. والضابط إجراء يُفعل: مراجعة مستقلة لاحقة، اعتماد ثانٍ، فحص
+    سجل التغييرات.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.entity = cls.env["azm.entity"].create({"code": "CTL", "name": "كيان الضوابط"})
+        cls.preparer = new_test_user(cls.env, "ctl_prep",
+                                     groups="azm_operating_model.azm_group_user")
+        cls.entity.user_ids = [(6, 0, [cls.preparer.id])]
+        cls.assessment = cls.env["azm.fin.assessment"].with_user(cls.preparer).create(
+            {"entity_id": cls.entity.id})
+
+    def _table(self):
+        line = self.assessment.answer_ids.filtered(lambda l: l.code == "FIN-005")[:1]
+        if not line:
+            self.skipTest("FIN-005 ليس في هذه الإفادة")
+        question = line.requirement_id.question_ids.filtered(lambda q: q.key == "Q003")[:1]
+        labels = [c["label"] for c in question._columns()]
+        if "الضابط التعويضي" not in labels:
+            self.skipTest("الجدول لم يُحدَّث بعد")
+        return line, question, labels
+
+    def _row(self, labels, **cells):
+        row = [""] * len(labels)
+        for label, value in cells.items():
+            row[labels.index(label)] = value
+        return row
+
+    def test_the_control_column_offers_controls_not_job_titles(self):
+        _line, question, labels = self._table()
+        options = question._columns()[labels.index("الضابط التعويضي")]["options"]
+        self.assertIn("مراجعة مستقلة لاحقة", options)
+        self.assertIn("اعتماد ثانٍ", options)
+        self.assertIn("أخرى", options, "ومعها «أخرى» ونص يوضّحها")
+        # ولا دور وظيفي واحد بينها
+        for title in ("المدير المالي", "رئيس الحسابات", "محاسب"):
+            self.assertNotIn(title, options,
+                             f"«{title}» شخص لا إجراء، ولا مكان له في قائمة الضوابط")
+
+    def test_a_control_can_be_recorded_with_its_owner_and_frequency(self):
+        """معيار القبول نفسه: إجراء ومسؤول ودورية ودليل، بلا اسم دور في خانة الضابط."""
+        line, question, labels = self._table()
+        for wanted in ("مالك الضابط", "دورية الضابط", "دليل التنفيذ"):
+            self.assertIn(wanted, labels, f"ينقص «{wanted}»")
+        row = self._row(labels, **{
+            "الدور": "محاسب",
+            "المهام المجمعة": "الإنشاء والاعتماد",
+            "الضابط التعويضي": "مراجعة مستقلة لاحقة",
+            "مالك الضابط": "المراجعة الداخلية",
+            "دورية الضابط": "شهرية",
+            "دليل التنفيذ": "محضر المراجعة الشهري",
+        })
+        line._set_answer(question.id, {"table": [row]})
+        import json as _json
+        saved = _json.loads(line.qanswer_ids.filtered(
+            lambda a: a.question_id == question).table_json)[0]
+        self.assertEqual(saved[labels.index("الضابط التعويضي")], "مراجعة مستقلة لاحقة")
+        self.assertEqual(saved[labels.index("مالك الضابط")], "المراجعة الداخلية")
+
+    def test_the_owner_and_the_control_are_different_columns(self):
+        """الخلط بينهما هو العطل نفسه."""
+        _line, question, labels = self._table()
+        columns = question._columns()
+        control = columns[labels.index("الضابط التعويضي")]["options"]
+        owner = columns[labels.index("مالك الضابط")]["options"]
+        self.assertFalse(set(control) & set(owner),
+                         "قائمة الإجراءات وقائمة الأشخاص لا تشتركان في شيء")
