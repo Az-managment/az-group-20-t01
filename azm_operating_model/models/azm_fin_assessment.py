@@ -7,7 +7,9 @@ from odoo import Command, api, fields, models
 from odoo.exceptions import UserError
 
 from . import fin_engine
-from .azm_fin_catalogue import (FALLBACK_KINDS, NA_REASONS, NOTE_LISTS, OTHER, PRIORITIES, PROFILES, SCOPES,
+from .azm_fin_catalogue import (APPLICABILITY, AUTOMATION, AUTOMATION_MANUAL, AUTOMATION_SYSTEM,
+                                EVIDENCE, EXECUTION,
+                                FALLBACK_KINDS, NA_REASONS, NOTE_LISTS, OTHER, PRIORITIES, PROFILES, SCOPES,
                                 STATES, STATUS_OPTIONS)
 
 
@@ -487,7 +489,23 @@ class AzmFinAnswer(models.Model):
     attachment_ids = fields.Many2many("ir.attachment", string="الأدلة")
 
     # derived from the question answers
-    state = fields.Selection(STATES, "حالة التطبيق", compute="_compute_from_questions", store=True)
+    state = fields.Selection(STATES, "حالة التطبيق", compute="_compute_from_questions", store=True,
+                             help="حقل متوافق مع ما سبق: يجمع الانطباق والتنفيذ في خانة واحدة. "
+                                  "للقراءة الدقيقة استعمل applicability و execution.")
+    # DEV02 — كل حقيقة في خانتها، فلا تمحو واحدة الأخرى
+    applicability = fields.Selection(APPLICABILITY, "الانطباق",
+                                     compute="_compute_from_questions", store=True)
+    execution = fields.Selection(EXECUTION, "التنفيذ",
+                                 compute="_compute_from_questions", store=True,
+                                 help="ما يُنفَّذ فعلًا، مستقلًا عن قرار الانطباق.")
+    automation = fields.Selection(AUTOMATION, "الأتمتة",
+                                  compute="_compute_from_questions", store=True)
+    evidence = fields.Selection(EVIDENCE, "الدليل",
+                                compute="_compute_evidence", store=True)
+    # الدليل ثلاث حقائق لا واحدة: أمطلوب، أمرفق، أمتحقَّق منه
+    evidence_required = fields.Boolean("الدليل مطلوب", default=True, copy=True)
+    evidence_verified = fields.Boolean("تُحقِّق من الدليل", copy=True,
+                                       help="يضعها المراجع بعد فحص المرفق.")
     impl = fields.Char("وسيلة التنفيذ", compute="_compute_from_questions", store=True)
     rule_state = fields.Char("حالة القاعدة", compute="_compute_from_questions", store=True)
     target = fields.Char("التوجه المستهدف", compute="_compute_from_questions", store=True)
@@ -539,6 +557,29 @@ class AzmFinAnswer(models.Model):
             status, impl, rule, target = pick("status"), pick("impl"), pick("rule"), pick("target")
             state = STATUS_OPTIONS.get(status.option_id.name) if status and status.option_id else False
             line.state = "na" if line.na else state
+
+            # الانطباق قرار قائم بذاته: أُعلن «لا ينطبق»، أو أسقطه نطاق الكيان،
+            # أو لم يُحسم بعد لأن الكيان لم تُحدَّد أنشطته.
+            if line.na:
+                line.applicability = "no"
+            elif line.applicable:
+                line.applicability = "yes"
+            elif line.assessment_id.entity_id.fin_scope_ids:
+                line.applicability = "no"          # خارج نطاق مُعلن
+            else:
+                line.applicability = "undetermined"
+
+            # التنفيذ يبقى كما سجّله المجيب، حتى لو أُعلن المتطلب غير منطبق:
+            # «لا ينطبق» ليس إجابةً عن سؤال التنفيذ، وإعلانه لا يمحو ما قيل.
+            line.execution = {"full": "full", "partial": "partial",
+                              "unavailable": "none"}.get(state, "unknown")
+
+            chosen = set(impl.option_ids.mapped("name")) if impl else set()
+            by_system = bool(chosen & AUTOMATION_SYSTEM)
+            by_hand = bool(chosen & AUTOMATION_MANUAL)
+            line.automation = ("mixed" if by_system and by_hand
+                               else "system" if by_system
+                               else "manual" if by_hand else "unknown")
             line.impl = "، ".join(impl.option_ids.mapped("name")) if impl else False
             line.rule_state = rule.option_id.name if rule and rule.option_id else False
             line.target = target.option_id.name if target and target.option_id else False
@@ -552,6 +593,23 @@ class AzmFinAnswer(models.Model):
             line.q_total = len(visible)
             line.q_answered = len(answered)
             line.is_done = bool((line.reason or "").strip()) if line.na else bool(visible) and len(answered) == len(visible)
+
+    @api.depends("evidence_required", "evidence_verified", "attachment_ids")
+    def _compute_evidence(self):
+        """أمطلوبٌ دليل، أمرفقٌ، أمتحقَّق منه — ثلاثة أسئلة في حقل واحد يُقرأ.
+
+        «مرفق» لا يعني «متحقق منه»: الفرق بينهما هو كل الفرق بين ملف رُفع وبين
+        دليل نظر فيه مراجع، وكانا بلا تمييز.
+        """
+        for line in self:
+            if not line.evidence_required:
+                line.evidence = "not_required"
+            elif not line.attachment_ids:
+                line.evidence = "missing"
+            elif line.evidence_verified:
+                line.evidence = "verified"
+            else:
+                line.evidence = "unverified"
 
     def _question_totals(self):
         """(visible questions, answered) — a «لا ينطبق» requirement counts as one question answered by its reason."""

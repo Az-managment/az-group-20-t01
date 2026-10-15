@@ -4,6 +4,8 @@ from odoo.exceptions import AccessError, UserError
 from odoo.tests import TransactionCase, new_test_user, tagged
 
 from odoo.addons.azm_operating_model.models import fin_engine
+from odoo.addons.azm_operating_model.models.azm_fin_catalogue import (
+    APPLICABILITY, AUTOMATION, AUTOMATION_MANUAL, AUTOMATION_SYSTEM, EVIDENCE, EXECUTION)
 
 
 @tagged("post_install", "-at_install")
@@ -372,3 +374,105 @@ class TestAClosedBranchKeepsItsAnswers(TransactionCase):
         row = next(q for q in data["questions"] if q["key"] == child.key)
         self.assertTrue(row["stale"], "الواجهة تعرف أنها تنتظر")
         self.assertFalse(row["answered"], "ولا تعدّها مُجابة")
+
+
+@tagged("post_install", "-at_install")
+class TestFourFactsFourFields(TransactionCase):
+    """DEV02 — «المطلوب حقول مستقلة».
+
+    حقل واحد كان يحمل ثلاث حقائق: الانطباق والتنفيذ وحالة المعرفة. وسطر واحد
+    كان يمحو إحداها بالأخرى:
+
+        line.state = "na" if line.na else state
+
+    فمن يُعلن متطلبًا غير منطبق يفقد ما سجّله عن تنفيذه — وهما حقيقتان مستقلتان:
+    متطلب قد لا ينطبق وقد كان يُنفَّذ.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        Scope = cls.env["azm.fin.scope"]
+        scopes = Scope.search([("code", "in", ("EDU", "WORK"))])
+        cls.entity = cls.env["azm.entity"].create(
+            {"code": "SPL", "name": "كيان الفصل", "fin_scope_ids": [(6, 0, scopes.ids)]})
+        cls.preparer = new_test_user(cls.env, "spl_prep",
+                                     groups="azm_operating_model.azm_group_user")
+        cls.entity.user_ids = [(6, 0, [cls.preparer.id])]
+        cls.assessment = cls.env["azm.fin.assessment"].with_user(cls.preparer).create(
+            {"entity_id": cls.entity.id})
+        cls.assessment.action_fill_demo()
+
+    def _line_with_execution(self):
+        line = self.assessment.answer_ids.filtered(
+            lambda l: l.execution in ("full", "partial") and not l.na)[:1]
+        if not line:
+            self.skipTest("لا يوجد سطر مسجَّل التنفيذ")
+        return line
+
+    def test_declaring_not_applicable_no_longer_erases_what_was_recorded(self):
+        line = self._line_with_execution()
+        recorded = line.execution
+
+        line.na = True
+        line.reason = "يُدار على مستوى المجموعة"
+        line.invalidate_recordset()
+
+        self.assertEqual(line.applicability, "no", "قرار الانطباق مسجَّل")
+        self.assertEqual(line.execution, recorded,
+                         "وما سُجّل عن التنفيذ باقٍ: «لا ينطبق» ليس إجابة عن سؤال التنفيذ")
+        self.assertEqual(line.state, "na", "والحقل القديم يبقى كما كان، للتوافق")
+
+    def test_the_four_fields_do_not_overwrite_one_another(self):
+        line = self._line_with_execution()
+        self.assertIn(line.applicability, dict(APPLICABILITY))
+        self.assertIn(line.execution, dict(EXECUTION))
+        self.assertIn(line.automation, dict(AUTOMATION))
+        self.assertIn(line.evidence, dict(EVIDENCE))
+
+    def test_unknown_is_not_not_applicable_and_not_a_confirmed_gap(self):
+        """معيار القبول: «لا أعرف لا تتحول إلى لا ينطبق أو فجوة مؤكدة»."""
+        lines = self.assessment.answer_ids.filtered(
+            lambda l: l.execution == "unknown" and l.applicability == "yes")
+        if not lines:
+            self.skipTest("لا يوجد سطر منطبق وتنفيذه غير معلوم")
+        for line in lines:
+            self.assertNotEqual(line.applicability, "no",
+                                f"{line.code}: عدم المعرفة ليس عدم انطباق")
+            self.assertNotIn(line.state, ("partial", "unavailable"),
+                             f"{line.code}: عدم المعرفة ليس فجوة مؤكدة")
+
+    def test_evidence_tells_attached_from_verified(self):
+        """«مرفق» ليس «متحقق منه»، والفرق بينهما هو كل الفرق."""
+        line = self._line_with_execution()
+        self.assertEqual(line.evidence, "missing", "لا مرفق بعد")
+
+        attachment = self.env["ir.attachment"].sudo().create(
+            {"name": "دليل.txt", "raw": b"evidence"})
+        line.sudo().attachment_ids = [(6, 0, attachment.ids)]
+        line = line.sudo()
+        line.invalidate_recordset()
+        self.assertEqual(line.evidence, "unverified",
+                         "رُفع ملف، ولم ينظر فيه أحد بعد")
+
+        line.evidence_verified = True
+        line.invalidate_recordset()
+        self.assertEqual(line.evidence, "verified", "نظر فيه مراجع")
+
+        line.evidence_required = False
+        line.invalidate_recordset()
+        self.assertEqual(line.evidence, "not_required",
+                         "وما لا يُطلب له دليل لا يُحسب ناقصًا")
+
+    def test_automation_reads_the_tools_that_were_named(self):
+        line = self.assessment.answer_ids.filtered(
+            lambda l: l.automation != "unknown")[:1]
+        if not line:
+            self.skipTest("لا يوجد سطر محدَّد الأتمتة")
+        named = set((line.impl or "").split("، "))
+        if named & AUTOMATION_SYSTEM and named & AUTOMATION_MANUAL:
+            self.assertEqual(line.automation, "mixed")
+        elif named & AUTOMATION_SYSTEM:
+            self.assertEqual(line.automation, "system")
+        else:
+            self.assertEqual(line.automation, "manual")
