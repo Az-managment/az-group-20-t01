@@ -261,7 +261,18 @@ class AzmDashboard(models.AbstractModel):
         Assignment = self.env.get("azm.assignment")
         if Assignment is None or not entities or not Assignment.has_access("read"):
             return []
-        mine = Assignment.search([("entity_id", "in", entities.ids)])
+        # Read elevated, and scoped to the entities this reader already sees.
+        #
+        # How far a colleague has got is counted off their assessment, and an answerer
+        # may read an assessment only when they prepare it, review it, or hold a part of
+        # it. So asking this panel what everybody owes made the page read assessments
+        # the reader has no claim on, and the whole of My Work died with an AccessError
+        # rather than one panel coming back short: somebody given a financial module
+        # still saw nothing, because a colleague held a procurement stage on the same
+        # entity. The entity is the boundary that matters and it is already applied --
+        # `entities` came back through the record rules -- so the counts are taken with
+        # that scope rather than one assessment at a time.
+        mine = Assignment.sudo().search([("entity_id", "in", entities.ids)])
         people = {}
         for part in mine:
             for user in part.user_ids:
