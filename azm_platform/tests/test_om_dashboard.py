@@ -169,7 +169,12 @@ class TestOmDashboard(TransactionCase):
         hub = self.env['azm.dashboard'].with_user(self.user).get_operating_models_hub()
         self.assertTrue(hub['available'])
         self.assertEqual([m['key'] for m in hub['models']], ['procurement', 'financial'])
-        self.assertEqual(hub['totals']['items'], 396 + 1136)
+        # يُقرأ من الكتالوج لا يُكتب رقمًا: هذا التكليف كله إضافة أسئلة،
+        # وتثبيت العدد هنا يجعل كل إضافة تُسقط اختبارًا لا علاقة له بها
+        self.assertEqual(
+            hub['totals']['items'],
+            self.env['azm.question'].search_count([])
+            + self.env['azm.fin.question'].search_count([]))
         self.assertIn(self.entity.id, [e['id'] for e in hub['entities']])
         none = new_test_user(self.env, 'azm_hub_none', groups='azm_platform.group_azm_user')
         self.assertFalse(self.env['azm.dashboard'].with_user(none).get_operating_models_hub()['available'])
