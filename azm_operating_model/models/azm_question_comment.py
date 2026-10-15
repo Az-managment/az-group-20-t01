@@ -168,6 +168,107 @@ class AzmQuestionComment(models.Model):
         drafts.action_send()
         return {"sent": len(drafts)}
 
+    # ------------------------------------------------------------------ المراجعة
+    @api.model
+    def _review_allowed(self):
+        if not self.env.user.has_group("azm_operating_model.azm_group_question_reviewer"):
+            raise UserError(_("مراجعة بنك الأسئلة لمن يحمل دورها."))
+
+    @api.model
+    def review_models(self):
+        """صفحة المراجع الأولى: النموذجان وما قطعه فيهما.
+
+        تقابل «مهامي» عند من يُجيب — لكن ما يُعدّ هنا أسئلة لا إجابات، وما يُنجَز
+        رأيٌ لا إفادة.
+        """
+        self._review_allowed()
+        mine = self.search([("user_id", "=", self.env.uid)])
+        rows = []
+        for key, model, label in (
+                ("financial", "azm.fin.question", "النموذج المالي الموحد"),
+                ("procurement", "azm.question", "دورة المشتريات")):
+            total = self.env[model].sudo().search_count([])
+            ours = mine.filtered(lambda n, k=key: n.model_key == k)
+            rows.append({
+                "key": key, "name": label, "total": total,
+                "reviewed": len(ours),
+                "drafts": len(ours.filtered(lambda n: n.state == "draft")),
+                "sent": len(ours.filtered(lambda n: n.state == "sent")),
+                "needs_work": len(ours.filtered("needs_work")),
+                "progress": round(100.0 * len(ours) / total) if total else None,
+            })
+        return {"available": True, "models": rows,
+                "verdicts": [{"key": k, "name": n} for k, n in VERDICTS],
+                "user": self.env.user.name}
+
+    @api.model
+    def review_nodes(self, model_key):
+        """أقسام النموذج: موديولاته أو مراحله، وما فيها من أسئلة وآراء."""
+        self._review_allowed()
+        mine = self.search([("user_id", "=", self.env.uid),
+                            ("model_key", "=", model_key)])
+        by_node = {}
+        for note in mine:
+            by_node[note.node] = by_node.get(note.node, 0) + 1
+        nodes = []
+        if model_key == "financial":
+            for module in self.env["azm.fin.module"].sudo().search([], order="sequence, id"):
+                count = self.env["azm.fin.question"].sudo().search_count(
+                    [("module_id", "=", module.id)])
+                code = f"FIN.{module.code}"
+                nodes.append({"code": module.code, "name": module.name,
+                              "questions": count, "reviewed": by_node.get(code, 0)})
+        else:
+            for stage in self.env["azm.stage"].sudo().search([], order="sequence, id"):
+                count = self.env["azm.question"].sudo().search_count(
+                    [("stage_id", "=", stage.id)])
+                nodes.append({"code": stage.code, "name": stage.name,
+                              "questions": count, "reviewed": by_node.get(f"PUR-{stage.code}", 0)})
+        return [n for n in nodes if n["questions"]]
+
+    @api.model
+    def review_questions(self, model_key, node_code):
+        """أسئلة قسم واحد، مجموعةً كما تُقرأ، ومع كل سؤال رأيي فيه."""
+        self._review_allowed()
+        groups = {}
+        if model_key == "financial":
+            module = self.env["azm.fin.module"].sudo().search(
+                [("code", "=", node_code)], limit=1)
+            questions = self.env["azm.fin.question"].sudo().search(
+                [("module_id", "=", module.id)],
+                order="requirement_id, sequence, id")
+            title = module.name
+            def group_of(q):
+                req = q.requirement_id
+                return (req.code or "", f"{req.code} · {req.title}" if req else "")
+        else:
+            stage = self.env["azm.stage"].sudo().search([("code", "=", node_code)], limit=1)
+            questions = self.env["azm.question"].sudo().search(
+                [("stage_id", "=", stage.id)], order="sequence, id")
+            title = stage.name
+            groups_named = dict(self.env["azm.question"]._fields["group"].selection)
+            def group_of(q):
+                return (q.group or "", groups_named.get(q.group, "أسئلة المرحلة"))
+
+        notes = self.notes_for(model_key, questions.ids)
+        for q in questions:
+            key, label = group_of(q)
+            bucket = groups.setdefault(key, {"key": key, "name": label, "questions": []})
+            note = notes.get(q.id)
+            bucket["questions"].append({
+                "id": q.id, "code": q.code or q.key or "", "key": q.key or "",
+                "label": q.label or "",
+                "hint": (q.hint if model_key == "financial" else q.help_text) or "",
+                "qtype": q.qtype or "",
+                "options": (q.option_ids.mapped("name") if model_key == "financial"
+                            else []),
+                "note": note,
+            })
+        return {"title": title, "node": node_code, "model": model_key,
+                "groups": list(groups.values()),
+                "count": len(questions),
+                "reviewed": len([q for q in questions if notes.get(q.id)])}
+
     # ------------------------------------------------------------------ الإحصاء
     @api.model
     def comment_stats(self):

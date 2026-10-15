@@ -1,0 +1,88 @@
+// مساحة مراجعة بنك الأسئلة — السؤال هو المساحة، والرأي تحته حيث يُقرأ.
+.o_azm_qr {
+    --qr-ink: #142b3d;
+    --qr-line: rgba(20, 43, 61, .1);
+    height: 100%;
+    overflow: auto;
+    padding: 20px 24px;
+    background: #f3f6fa;
+    color: var(--qr-ink);
+
+    .o_azm_qr_muted { color: rgba(20, 43, 61, .6); font-size: 12.5px; }
+    .o_azm_qr_loading { padding: 40px; text-align: center; color: rgba(20,43,61,.5); }
+
+    .o_azm_qr_head {
+        margin-bottom: 20px;
+        h1 { font-size: 24px; font-weight: 800; letter-spacing: -.5px; margin: 0 0 8px; }
+        p { margin: 0; max-width: 64ch; font-size: 13px; line-height: 1.7;
+            color: rgba(20, 43, 61, .66); }
+    }
+
+    .o_azm_qr_models { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+    .o_azm_qr_model {
+        display: flex; flex-direction: column; gap: 7px;
+        padding: 18px 20px; text-align: start;
+        border: 1px solid var(--qr-line); border-radius: 16px; background: #fff;
+        transition: transform .15s ease, box-shadow .15s ease;
+        &:hover { transform: translateY(-2px); box-shadow: 0 12px 26px rgba(20,43,61,.1); }
+    }
+    .o_azm_qr_model_name { font-size: 15px; font-weight: 700; }
+    .o_azm_qr_model_sub, .o_azm_qr_model_tail { font-size: 12px; color: rgba(20,43,61,.62); }
+    .o_azm_qr_bar {
+        height: 5px; border-radius: 99px; background: rgba(20,43,61,.08); overflow: hidden;
+        span { display: block; height: 100%; background: #245fdb; }
+    }
+    .o_azm_qr_send_all { margin-top: 18px; }
+
+    .o_azm_qr_bar_top {
+        display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+        padding-bottom: 12px; margin-bottom: 14px; border-bottom: 1px solid var(--qr-line);
+    }
+    .o_azm_qr_search { max-width: 260px; margin-inline-start: auto; }
+
+    .o_azm_qr_body { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 20px; }
+    .o_azm_qr_rail { display: flex; flex-direction: column; gap: 4px; }
+    .o_azm_qr_rail_item {
+        display: flex; align-items: center; justify-content: space-between; gap: 8px;
+        padding: 8px 11px; text-align: start; font-size: 12.5px;
+        border: 1px solid transparent; border-radius: 10px; background: transparent;
+        &:hover { background: rgba(36, 95, 219, .06); }
+        &.o_azm_active { background: #fff; border-color: var(--qr-line); font-weight: 600; }
+        small { color: rgba(20,43,61,.55); font-variant-numeric: tabular-nums; }
+    }
+    .o_azm_qr_rail_name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .o_azm_qr_group {
+        margin: 18px 0 10px; font-size: 12px; font-weight: 700;
+        letter-spacing: .03em; color: rgba(20,43,61,.6);
+    }
+    .o_azm_qr_q {
+        padding: 14px 16px; margin-bottom: 10px;
+        border: 1px solid var(--qr-line); border-radius: 12px; background: #fff;
+        &.o_azm_has_note { border-inline-start: 3px solid #245fdb; }
+    }
+    .o_azm_qr_q_head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+    .o_azm_qr_code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 10.5px; color: rgba(20,43,61,.55);
+        direction: ltr; unicode-bidi: isolate;
+    }
+    .o_azm_qr_label { font-size: 13.5px; font-weight: 600; line-height: 1.45; }
+    .o_azm_qr_hint { margin: 5px 0 0; font-size: 12px; color: rgba(20,43,61,.6); }
+    .o_azm_qr_options { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+    .o_azm_qr_opt {
+        padding: 2px 9px; border-radius: 99px; font-size: 11px;
+        background: rgba(20,43,61,.05); color: rgba(20,43,61,.72);
+    }
+    .o_azm_qr_note {
+        display: flex; flex-direction: column; gap: 6px;
+        margin-top: 11px; padding-top: 11px; border-top: 1px dashed var(--qr-line);
+        select, textarea { font-size: 12.5px; }
+    }
+    .o_azm_qr_sent { font-size: 11px; color: #087e79; }
+
+    @media (max-width: 900px) {
+        .o_azm_qr_body { grid-template-columns: minmax(0, 1fr); }
+        .o_azm_qr_rail { flex-direction: row; flex-wrap: wrap; }
+    }
+}

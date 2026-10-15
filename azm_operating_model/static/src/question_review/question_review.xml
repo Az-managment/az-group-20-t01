@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="azm_operating_model.QuestionReview">
+    <div class="o_azm_qr" dir="rtl">
+        <t t-if="!d.home">
+            <div class="o_azm_qr_loading">جارٍ التحميل…</div>
+        </t>
+
+        <!-- الصفحة الأولى: النموذجان -->
+        <t t-elif="!d.model">
+            <div class="o_azm_qr_head">
+                <h1>مراجعة بنك الأسئلة</h1>
+                <p>اقرأ السؤال وقل رأيك فيه: أواضح هو، أمكرر، أينقصه خيار.
+                   ثم أرسل ملاحظاتك إلى مدير النموذج.</p>
+            </div>
+            <div class="o_azm_qr_models">
+                <button t-foreach="d.home.models" t-as="m" t-key="m.key"
+                        type="button" class="o_azm_qr_model"
+                        t-on-click="() => this.openModel(m.key)">
+                    <span class="o_azm_qr_model_name" t-out="m.name"/>
+                    <span class="o_azm_qr_model_sub">
+                        <t t-out="m.total"/> سؤالًا ·
+                        راجعتُ <t t-out="m.reviewed"/>
+                    </span>
+                    <span class="o_azm_qr_bar">
+                        <span t-attf-style="width: {{m.progress || 0}}%"/>
+                    </span>
+                    <span class="o_azm_qr_model_tail">
+                        <t t-if="m.drafts"><b t-out="m.drafts"/> مسودة</t>
+                        <t t-if="m.sent"> · <t t-out="m.sent"/> مُرسَلة</t>
+                    </span>
+                </button>
+            </div>
+            <div t-if="this.draftCount" class="o_azm_qr_send_all">
+                <button type="button" class="btn btn-primary btn-sm"
+                        t-on-click="() => this.sendAll()">
+                    أرسل <t t-out="this.draftCount"/> ملاحظة إلى مدير النموذج
+                </button>
+            </div>
+        </t>
+
+        <!-- داخل نموذج: الأقسام والأسئلة -->
+        <t t-else="">
+            <div class="o_azm_qr_bar_top">
+                <button type="button" class="btn btn-sm btn-light"
+                        t-on-click="() => this.backHome()">◀ النماذج</button>
+                <b t-out="this.modelName(d.model)"/>
+                <span t-if="d.data" class="o_azm_qr_muted">
+                    <t t-out="d.data.title"/> — راجعتُ <t t-out="d.data.reviewed"/>
+                    من <t t-out="d.data.count"/>
+                </span>
+                <input type="search" class="form-control form-control-sm o_azm_qr_search"
+                       placeholder="ابحث بالكود أو النص"
+                       t-att-value="d.search"
+                       t-on-input="(ev) => this.state.search = ev.target.value"/>
+                <span t-if="d.saving" class="o_azm_qr_muted">يحفظ…</span>
+            </div>
+
+            <div class="o_azm_qr_body">
+                <nav class="o_azm_qr_rail">
+                    <button t-foreach="d.nodes" t-as="n" t-key="n.code" type="button"
+                            t-attf-class="o_azm_qr_rail_item {{n.code === d.node ? 'o_azm_active' : ''}}"
+                            t-on-click="() => this.openNode(n.code)">
+                        <span class="o_azm_qr_rail_name" t-out="n.name"/>
+                        <small><t t-out="n.reviewed"/>/<t t-out="n.questions"/></small>
+                    </button>
+                </nav>
+
+                <section class="o_azm_qr_questions">
+                    <t t-if="!d.data">
+                        <div class="o_azm_qr_muted">اختر قسمًا.</div>
+                    </t>
+                    <t t-else="">
+                        <div t-if="!this.visibleGroups().length" class="o_azm_qr_muted">
+                            لا أسئلة تطابق البحث في هذا القسم.
+                        </div>
+                        <t t-foreach="this.visibleGroups()" t-as="g" t-key="g.key">
+                            <h3 class="o_azm_qr_group" t-out="g.name"/>
+                            <div t-foreach="this.questionsOf(g)" t-as="q" t-key="q.id"
+                                 t-attf-class="o_azm_qr_q {{q.note ? 'o_azm_has_note' : ''}}">
+                                <div class="o_azm_qr_q_head">
+                                    <span class="o_azm_qr_code" t-out="q.code"/>
+                                    <span class="o_azm_qr_label" t-out="q.label"/>
+                                </div>
+                                <p t-if="q.hint" class="o_azm_qr_hint" t-out="q.hint"/>
+                                <div t-if="q.options.length" class="o_azm_qr_options">
+                                    <t t-foreach="q.options" t-as="o" t-key="o_index">
+                                        <span class="o_azm_qr_opt" t-out="o"/>
+                                    </t>
+                                </div>
+
+                                <!-- الرأي، تحت السؤال حيث يُقرأ -->
+                                <div class="o_azm_qr_note">
+                                    <select class="form-select form-select-sm"
+                                            t-att-disabled="q.note and q.note.state === 'sent' ? 'disabled' : undefined"
+                                            t-on-change="(ev) => this.saveNote(q, {verdict: ev.target.value})">
+                                        <t t-foreach="this.verdicts()" t-as="v" t-key="v.key">
+                                            <option t-att-value="v.key"
+                                                    t-att-selected="(q.note ? q.note.verdict : 'wording') === v.key"
+                                                    t-out="v.name"/>
+                                        </t>
+                                    </select>
+                                    <textarea class="form-control form-control-sm" rows="2"
+                                              placeholder="ما رأيك في هذا السؤال؟"
+                                              t-att-disabled="q.note and q.note.state === 'sent' ? 'disabled' : undefined"
+                                              t-att-value="q.note ? q.note.comment : ''"
+                                              t-on-change="(ev) => this.saveNote(q, {comment: ev.target.value})"/>
+                                    <span t-if="q.note and q.note.state === 'sent'"
+                                          class="o_azm_qr_sent">مُرسَلة — لا تُعدَّل</span>
+                                </div>
+                            </div>
+                        </t>
+                    </t>
+                </section>
+            </div>
+        </t>
+    </div>
+</t>
+
+</templates>

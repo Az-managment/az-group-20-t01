@@ -186,3 +186,63 @@ class TestTheReviewerBrowsesBothBanks(TransactionCase):
         self.env["azm.question.comment"].with_user(self.reviewer).send_my_notes()
         question.invalidate_recordset()
         self.assertEqual(question.comment_count, 1)
+
+
+@tagged("post_install", "-at_install")
+class TestTheReviewWorkspace(TransactionCase):
+    """مساحة المراجعة: نموذجان ثم أقسام ثم أسئلة، والرأي تحت كل سؤال."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.reviewer = new_test_user(
+            cls.env, "qc_ws", groups="azm_operating_model.azm_group_question_reviewer")
+        cls.C = cls.env["azm.question.comment"].with_user(cls.reviewer)
+
+    def test_the_landing_shows_both_models(self):
+        home = self.C.review_models()
+        self.assertTrue(home["available"])
+        self.assertEqual([m["key"] for m in home["models"]], ["financial", "procurement"])
+        for model in home["models"]:
+            self.assertTrue(model["total"], model["key"])
+        self.assertTrue(home["verdicts"], "والآراء التي تُختار منها")
+
+    def test_each_model_opens_into_its_sections(self):
+        for key in ("financial", "procurement"):
+            nodes = self.C.review_nodes(key)
+            self.assertTrue(nodes, key)
+            for node in nodes:
+                self.assertTrue(node["questions"], f"{key}/{node['code']} بلا أسئلة")
+
+    def test_a_section_opens_into_its_questions(self):
+        nodes = self.C.review_nodes("financial")
+        data = self.C.review_questions("financial", nodes[0]["code"])
+        self.assertTrue(data["groups"], "الأسئلة مجموعة كما تُقرأ")
+        self.assertEqual(
+            data["count"], sum(len(g["questions"]) for g in data["groups"]))
+        question = data["groups"][0]["questions"][0]
+        for field in ("id", "code", "label", "note"):
+            self.assertIn(field, question)
+
+    def test_an_opinion_written_here_is_read_back_here(self):
+        nodes = self.C.review_nodes("procurement")
+        code = nodes[0]["code"]
+        data = self.C.review_questions("procurement", code)
+        question = data["groups"][0]["questions"][0]
+        self.assertFalse(question["note"], "لا رأي بعد")
+
+        self.C.save_note("procurement", question["id"], "options", "ينقصه خيار")
+        again = self.C.review_questions("procurement", code)
+        found = next(q for g in again["groups"] for q in g["questions"]
+                     if q["id"] == question["id"])
+        self.assertTrue(found["note"])
+        self.assertEqual(found["note"]["verdict"], "options")
+        self.assertEqual(again["reviewed"], data["reviewed"] + 1)
+
+    def test_the_workspace_is_for_the_role_only(self):
+        plain = new_test_user(self.env, "qc_plain", groups="base.group_user")
+        for method in ("review_models", "review_nodes", "review_questions"):
+            with self.assertRaises(UserError, msg=method):
+                args = {"review_nodes": ["financial"],
+                        "review_questions": ["financial", "GOV"]}.get(method, [])
+                getattr(self.env["azm.question.comment"].with_user(plain), method)(*args)
