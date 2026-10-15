@@ -45,9 +45,14 @@ class TestAzmFinancialModel(TransactionCase):
         self.assertEqual(env["azm.fin.requirement"].search_count([("source", "=", "HRF")]), 60)
         self.assertEqual(env["azm.fin.prompt"].search_count([]), 3655)
         Question = env["azm.fin.question"]
-        self.assertEqual(Question.search_count([]), 1136)
+        # أساس الدفتر 1136 سؤالًا، وهذا التكليف يضيف إليها عمدًا — فالمحروس أن
+        # الأساس باقٍ لم ينقص منه شيء، لا أن شيئًا لم يُضف إليه. تثبيت العدد
+        # يجعل كل سؤال يطلبه المستند يُسقط اختبارًا لا علاقة له به.
+        self.assertGreaterEqual(Question.search_count([]), 1136)
         counts = {t: Question.search_count([("qtype", "=", t)]) for t in ("select", "multi", "table", "number")}
-        self.assertEqual(counts, {"select": 791, "multi": 244, "table": 53, "number": 48})
+        baseline = {"select": 791, "multi": 244, "table": 53, "number": 48}
+        for qtype, least in baseline.items():
+            self.assertGreaterEqual(counts[qtype], least, qtype)
         self.assertEqual(Question.search_count([("role", "=", "status")]), 167)
         # every question carries its own answer data
         for q in Question.search([]):

@@ -139,7 +139,8 @@ class TestOmDashboard(TransactionCase):
         self.assertTrue(data['available'])
         self.assertEqual(len(data['modules']), 19)
         self.assertEqual(data['kpis']['requirements'], 167)
-        self.assertEqual(data['kpis']['catalogue_questions'], 1136)
+        self.assertEqual(data['kpis']['catalogue_questions'],
+                         self.env['azm.fin.question'].search_count([]))
         self.assertEqual(data['kpis']['answered_questions'], fin.answered_count)
         self.assertEqual(data['kpis']['questions'], fin.question_count)
         self.assertEqual(data['kpis']['assessments'], 1)
