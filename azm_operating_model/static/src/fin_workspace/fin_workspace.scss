@@ -166,3 +166,46 @@ $fin-muted: #5b7380;
     .oi { font-size: 14px; }
     em { font-size: 11px; opacity: .75; }
 }
+
+// سؤال عاد مع فرعه: القيمة محفوظة ومعروضة، وتنتظر مراجعة صاحبها. نبرة تنبيه
+// لا خطأ — لم يقع شيء خاطئ، وإنما تغيّر السياق الذي كُتبت فيه.
+.o_azm_q_stale {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin: 8px 0 10px;
+    padding: 9px 12px;
+    border: 1px solid rgba(180, 120, 10, .28);
+    border-inline-start: 3px solid #b4780a;
+    border-radius: 10px;
+    background: rgba(180, 120, 10, .07);
+    font-size: 12.5px;
+    line-height: 1.5;
+    span { flex: 1 1 220px; min-width: 0; }
+    .oi { color: #b4780a; }
+    .btn { flex: 0 0 auto; }
+}
+
+// DEV19 — البحث والانتقال في شريط الموديولات.
+.o_azm_fin_find {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 10px 0 6px;
+    .oi { flex: 0 0 auto; opacity: .6; font-size: 15px; }
+    input { flex: 1 1 auto; min-width: 0; font-size: 12.5px; }
+    .btn { flex: 0 0 auto; line-height: 1; padding: 2px 8px; font-size: 15px; }
+}
+.o_azm_fin_found {
+    margin-bottom: 8px;
+    font-size: 11.5px;
+    opacity: .75;
+    line-height: 1.5;
+}
+.o_azm_fin_next {
+    width: 100%;
+    margin-bottom: 10px;
+    font-size: 12px;
+    text-align: start;
+}

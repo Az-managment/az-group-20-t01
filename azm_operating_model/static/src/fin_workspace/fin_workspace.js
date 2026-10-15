@@ -34,6 +34,9 @@ export class AzmFinWorkspace extends Component {
             showAll: false,
             onlyOpen: false,
             onlyReturned: false,
+            // DEV19 — بحث بالاسم والكود. الموديول الواحد يبلغ 44 متطلبًا و157
+            // سؤالًا، ولم تكن هناك وسيلة للوصول إلى واحد منها إلا بالتمرير.
+            search: "",
             busy: false,
             saving: 0,
             openPrompts: {},
@@ -176,6 +179,11 @@ export class AzmFinWorkspace extends Component {
         } finally {
             this.state.saving--;
         }
+    }
+
+    /** «ما زالت صحيحة» — تأكيد إجابة عادت مع فرعها دون تغيير قيمتها. */
+    async confirmStale(req, question) {
+        await this.call("workspace_confirm", req, [question.id]);
     }
 
     applyRequirement(fresh) {
@@ -502,7 +510,61 @@ export class AzmFinWorkspace extends Component {
 
     // ------------------------------------------------------------ view helpers
     get filtering() {
-        return this.state.onlyOpen || this.state.onlyReturned;
+        return this.state.onlyOpen || this.state.onlyReturned || !!this.needle;
+    }
+
+    /** نص البحث بعد تسوية المسافات وحالة الأحرف — فليست من الكود ولا من الاسم. */
+    get needle() {
+        return (this.state.search || "").trim().toLowerCase();
+    }
+
+    /** يُطابَق المتطلب بكوده ومرجعه وعنوانه ونص أسئلته وخياراتها.
+     *
+     * بنصّ السؤال أيضًا، لأن من يبحث عن «تعارض المصالح» يعرف ما يريده ولا يعرف
+     * بالضرورة تحت أي متطلب وُضع.
+     */
+    matches(req) {
+        const needle = this.needle;
+        if (!needle) {
+            return true;
+        }
+        const parts = [req.code, req.req_id, req.tree_ref, req.title, req.question];
+        for (const question of req.questions || []) {
+            parts.push(question.label, question.key, question.hint);
+        }
+        return parts.some((part) => (part || "").toLowerCase().includes(needle));
+    }
+
+    /** ينتقل إلى أول متطلب لم يكتمل — «انتقال للسؤال التالي الناقص». */
+    goToNextOpen(from) {
+        const all = this.d.topics.flatMap((t) => this.topicRequirements(t));
+        const start = from ? all.findIndex((r) => r.code === from) + 1 : 0;
+        const next = all.slice(start).find((r) => !r.done) || all.find((r) => !r.done);
+        if (next) {
+            document.querySelector(`[data-req="${next.code}"]`)
+                ?.scrollIntoView({ block: "start", behavior: "smooth" });
+        }
+        return next;
+    }
+
+    get openCount() {
+        return this.d.topics.reduce(
+            (n, topic) => n + this.topicRequirements(topic).filter((r) => !r.done).length, 0);
+    }
+
+    clearSearch() {
+        this.state.search = "";
+    }
+
+    /** عدد ما طابق البحث في هذا الموديول، ليقول للقارئ ما لا يراه. */
+    get found() {
+        if (!this.needle) {
+            return null;
+        }
+        // ما يُعدّ هو ما يُعرض. كان يعدّ المطابق للبحث وحده بينما تُرسم الصفوف
+        // بعد المرشّحات كلها، فيقول «طابق 7» فوق صفّين — أو فوق لا شيء.
+        return this.d.topics.reduce(
+            (n, topic) => n + this.topicRequirements(topic).length, 0);
     }
 
     visibleTopics() {
@@ -521,6 +583,9 @@ export class AzmFinWorkspace extends Component {
         }
         if (this.state.onlyOpen) {
             requirements = requirements.filter((r) => !r.done);
+        }
+        if (this.needle) {
+            requirements = requirements.filter((r) => this.matches(r));
         }
         return requirements;
     }
@@ -577,8 +642,20 @@ export class AzmFinWorkspace extends Component {
         return module.answered ? "partial" : "unknown";
     }
 
+    /** نسبة الإنجاز، أو null إذا لم يكن ثمّة ما يُنجَز.
+     *
+     * المقام هو الأسئلة المنطبقة؛ فإن كان صفرًا فلا نسبة. وكانت تُعرض صفرًا —
+     * فيقرأ القارئ «0٪» عن موديول لا ينطبق منه شيء على كيانه، وهو حكم بالتقصير
+     * حيث لا تقصير. لا أسئلة منطبقة ليست نسبة، وتُقال كما هي.
+     */
+    /** النسبة كما حسبها الخادم — و null حين لا يوجد ما يُنجَز. */
     modulePercent(module) {
-        return module.questions ? Math.round((100 * module.answered) / module.questions) : 0;
+        return module.percent;
+    }
+
+    /** هل لهذا الموديول ما يُنجَز أصلًا؟ يقرأ حكم الخادم لا يعيد استنتاجه. */
+    moduleHasWork(module) {
+        return module.percent !== null && module.percent !== undefined;
     }
 }
 

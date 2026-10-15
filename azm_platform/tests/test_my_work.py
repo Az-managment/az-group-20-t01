@@ -607,3 +607,83 @@ class TestMyWork(TransactionCase):
         picky.write({'group_ids': [(4, self.env.ref(
             'azm_platform.group_azm_user').id)]})
         self.assertEqual(picky.action_id.id, chosen.id)
+
+
+@tagged('post_install', '-at_install')
+class TestTheWholePageSurvivesSomebodyElsesPart(TransactionCase):
+    """A colleague's work must not take the page down.
+
+    How far somebody has got is counted off their assessment, and an answerer may read
+    an assessment only when they prepare it, review it, or hold a part of it. The team
+    panel counts what *everyone* on the entity owes, so it reached assessments the
+    reader has no claim on — and the whole of My Work died with an AccessError instead
+    of one panel coming back short.
+
+    What made it hard to see is that it never happens to the person who prepares the
+    assessment: they can read it, so every count resolves. It happens to the colleague
+    they hand a part to, which is exactly who the page is for.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.company = cls.env['res.company'].create({'name': 'AZM Team Campus'})
+        cls.entity = cls.company.azm_entity_ids
+        people = dict(company_id=cls.company.id, company_ids=[(6, 0, [cls.company.id])],
+                      groups='azm_operating_model.azm_group_user,azm_platform.group_azm_user')
+        cls.preparer = new_test_user(cls.env, 'azm_team_prep', **people)
+        cls.helper = new_test_user(cls.env, 'azm_team_help', **people)
+        cls.entity.user_ids = [(6, 0, [cls.preparer.id, cls.helper.id])]
+
+        # the preparer owns both models, as they do on a live entity
+        cls.proc = cls.env['azm.assessment'].with_user(cls.preparer).with_company(
+            cls.company).create({'entity_id': cls.entity.id, 'purchase_kind': 'services',
+                                 'scenario': 'urgent', 'user_id': cls.preparer.id})
+        cls.fin = cls.env['azm.fin.assessment'].with_user(cls.preparer).with_company(
+            cls.company).create({'entity_id': cls.entity.id, 'user_id': cls.preparer.id})
+
+    def _page(self, user):
+        return self.env['azm.dashboard'].with_user(user).with_company(
+            self.company).get_my_work()
+
+    def test_a_helper_sees_their_part_though_a_colleague_holds_another_model(self):
+        Assignment = self.env['azm.assignment'].sudo()
+        module = self.fin.answer_ids.module_id[:1]
+        self.assertTrue(module, 'the financial model has a module to hand out')
+        Assignment.create({'fin_assessment_id': self.fin.id, 'module_id': module.id,
+                           'user_ids': [(6, 0, [self.helper.id])]})
+        # and the preparer keeps a procurement stage, which the helper cannot read
+        stage = self.proc.answer_ids.stage_id[:1]
+        if stage:
+            Assignment.create({'proc_assessment_id': self.proc.id, 'stage_id': stage.id,
+                               'user_ids': [(6, 0, [self.preparer.id])]})
+
+        page = self._page(self.helper)          # this used to raise AccessError
+        self.assertTrue(page['available'])
+        rows = [r for r in page['models']
+                if r['entity_id'] == self.entity.id and r['key'] == 'financial']
+        self.assertTrue(rows, 'their entity is on the page')
+        self.assertEqual(len(rows[0]['parts']), 1, 'and the part they were given is on it')
+        self.assertTrue(rows[0]['mine'])
+
+    def test_somebody_holding_nothing_still_gets_a_page(self):
+        """Being on an entity without holding a part is a normal state, not an error."""
+        Assignment = self.env['azm.assignment'].sudo()
+        module = self.fin.answer_ids.module_id[:1]
+        Assignment.create({'fin_assessment_id': self.fin.id, 'module_id': module.id,
+                           'user_ids': [(6, 0, [self.preparer.id])]})
+        page = self._page(self.helper)
+        self.assertTrue(page['available'])
+        self.assertIsInstance(page['team'], list)
+
+    def test_the_team_panel_counts_what_a_colleague_owes(self):
+        """It is the point of the panel: who needs help is the reason to look."""
+        Assignment = self.env['azm.assignment'].sudo()
+        module = self.fin.answer_ids.module_id[:1]
+        Assignment.create({'fin_assessment_id': self.fin.id, 'module_id': module.id,
+                           'user_ids': [(6, 0, [self.preparer.id])]})
+        team = self._page(self.helper)['team']
+        named = {person['name']: person for person in team}
+        self.assertIn(self.preparer.name, named, 'the colleague holding a part is listed')
+        self.assertGreater(named[self.preparer.name]['total'], 0,
+                           'with what they owe, which is what the panel is for')

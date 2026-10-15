@@ -7,7 +7,9 @@ from odoo import Command, api, fields, models
 from odoo.exceptions import UserError
 
 from . import fin_engine
-from .azm_fin_catalogue import (FALLBACK_KINDS, NA_REASONS, NOTE_LISTS, OTHER, PRIORITIES, PROFILES, SCOPES,
+from .azm_fin_catalogue import (APPLICABILITY, AUTOMATION, AUTOMATION_MANUAL, AUTOMATION_SYSTEM,
+                                EVIDENCE, EXECUTION,
+                                FALLBACK_KINDS, NA_REASONS, NOTE_LISTS, OTHER, PRIORITIES, PROFILES, SCOPES,
                                 STATES, STATUS_OPTIONS)
 
 
@@ -142,6 +144,10 @@ class AzmFinAssessment(models.Model):
                 "code": module.code, "name": module.name,
                 "total": len(lines), "applicable": len(app), "done": len(app.filtered("is_done")),
                 "questions": total, "answered": answered,
+                # المقام صفر ليس إنجازًا صفرًا. «لا شيء ينطبق هنا» حكمٌ على
+                # البيانات، فيُقال من عندها مرة واحدة بدل أن تستنتجه كل شاشة —
+                # وكانت الواجهة تستنتجه فتعرض 0٪ على موديول لا يخصّ هذا الكيان.
+                "percent": round(100.0 * answered / total) if total else None,
                 "gaps": len(app.filtered(lambda a: a.state in ("partial", "unavailable"))),
             })
         return nav
@@ -188,7 +194,8 @@ class AzmFinAssessment(models.Model):
         modules = self.env["azm.fin.module"].search([])
         module = modules.filtered(lambda m: m.code == module_code)[:1] or modules[:1]
         returns = self.env["azm.review.return"]._open_for(self)
-        lines = self.answer_ids.filtered(lambda a: a.module_id == module).sorted(
+        all_lines = self.answer_ids.filtered(lambda a: a.module_id == module)
+        lines = all_lines.sorted(
             lambda a: (a.topic_sequence, a.requirement_sequence, a.id))
         if not show_all:
             lines = lines.filtered("applicable")
@@ -219,8 +226,13 @@ class AzmFinAssessment(models.Model):
             # what came back may be under a module the reader is not looking at
             "returns_open": len(returns),
             "modules": self._modules_nav(),
+            # المعروض والمنطبق رقمان مختلفان، والصفحة كانت تطبع الأول تحت اسم الثاني:
+            # مرشّح «إظهار غير المنطبق» يوسّع ما يُعرض فقط، ولا يجعل متطلبًا منطبقًا.
+            # في المخزون ثلاثة متطلبات لا ينطبق منها شيء، فكان تشغيل المرشّح يقرأ
+            # «3 متطلب منطبق من 3». الانطباق يُحسب هنا من البيانات لا من طول القائمة.
             "module": {"id": module.id, "code": module.code, "name": module.name,
-                       "total": len(self.answer_ids.filtered(lambda a: a.module_id == module))},
+                       "total": len(all_lines), "applicable": len(all_lines.filtered("applicable")),
+                       "shown": len(lines)},
             "topics": topics,
             "states": [{"key": k, "name": n} for k, n in STATES],
             "na_reasons": NA_REASONS,
@@ -247,6 +259,17 @@ class AzmFinAssessment(models.Model):
         self.ensure_one()
         line = self._workspace_line(answer_id)
         line._set_answer(question_id, vals)
+        return self._workspace_result(line, module_code, tab, scope)
+
+    def workspace_confirm(self, answer_id, question_id, module_code=None, tab="book", scope="module"):
+        """«ما زالت صحيحة» — تأكيد إجابة عادت مع فرعها، دون تغيير قيمتها.
+
+        يمر بالبوابة نفسها التي يمر بها الحفظ (_workspace_line)، فالتأكيد كتابة
+        في الإفادة ويخضع لحالتها وصلاحياتها مثل أي إجابة.
+        """
+        self.ensure_one()
+        line = self._workspace_line(answer_id)
+        line.confirm_stale_answer(question_id)
         return self._workspace_result(line, module_code, tab, scope)
 
     def workspace_requirement(self, answer_id, vals, module_code=None, tab="book", scope="module"):
@@ -470,7 +493,23 @@ class AzmFinAnswer(models.Model):
     attachment_ids = fields.Many2many("ir.attachment", string="الأدلة")
 
     # derived from the question answers
-    state = fields.Selection(STATES, "حالة التطبيق", compute="_compute_from_questions", store=True)
+    state = fields.Selection(STATES, "حالة التطبيق", compute="_compute_from_questions", store=True,
+                             help="حقل متوافق مع ما سبق: يجمع الانطباق والتنفيذ في خانة واحدة. "
+                                  "للقراءة الدقيقة استعمل applicability و execution.")
+    # DEV02 — كل حقيقة في خانتها، فلا تمحو واحدة الأخرى
+    applicability = fields.Selection(APPLICABILITY, "الانطباق",
+                                     compute="_compute_from_questions", store=True)
+    execution = fields.Selection(EXECUTION, "التنفيذ",
+                                 compute="_compute_from_questions", store=True,
+                                 help="ما يُنفَّذ فعلًا، مستقلًا عن قرار الانطباق.")
+    automation = fields.Selection(AUTOMATION, "الأتمتة",
+                                  compute="_compute_from_questions", store=True)
+    evidence = fields.Selection(EVIDENCE, "الدليل",
+                                compute="_compute_evidence", store=True)
+    # الدليل ثلاث حقائق لا واحدة: أمطلوب، أمرفق، أمتحقَّق منه
+    evidence_required = fields.Boolean("الدليل مطلوب", default=True, copy=True)
+    evidence_verified = fields.Boolean("تُحقِّق من الدليل", copy=True,
+                                       help="يضعها المراجع بعد فحص المرفق.")
     impl = fields.Char("وسيلة التنفيذ", compute="_compute_from_questions", store=True)
     rule_state = fields.Char("حالة القاعدة", compute="_compute_from_questions", store=True)
     target = fields.Char("التوجه المستهدف", compute="_compute_from_questions", store=True)
@@ -508,7 +547,10 @@ class AzmFinAnswer(models.Model):
 
     @api.depends("na", "reason", "requirement_id.question_ids", "qanswer_ids.option_id", "qanswer_ids.option_ids",
                  "qanswer_ids.has_number", "qanswer_ids.value_number", "qanswer_ids.table_json", "qanswer_ids.note",
-                 "qanswer_ids.note_tags", "qanswer_ids.priority")
+                 "qanswer_ids.note_tags", "qanswer_ids.priority",
+                 # applicability يُحسب من هذين، فيُعلنان وإلا بقي محفوظًا على
+                 # قيمة قديمة حين يتغير نطاق الكيان
+                 "applicable", "assessment_id.entity_id.fin_scope_ids")
     def _compute_from_questions(self):
         for line in self:
             qas = line._answers_by_question()
@@ -522,6 +564,29 @@ class AzmFinAnswer(models.Model):
             status, impl, rule, target = pick("status"), pick("impl"), pick("rule"), pick("target")
             state = STATUS_OPTIONS.get(status.option_id.name) if status and status.option_id else False
             line.state = "na" if line.na else state
+
+            # الانطباق قرار قائم بذاته: أُعلن «لا ينطبق»، أو أسقطه نطاق الكيان،
+            # أو لم يُحسم بعد لأن الكيان لم تُحدَّد أنشطته.
+            if line.na:
+                line.applicability = "no"
+            elif line.applicable:
+                line.applicability = "yes"
+            elif line.assessment_id.entity_id.fin_scope_ids:
+                line.applicability = "no"          # خارج نطاق مُعلن
+            else:
+                line.applicability = "undetermined"
+
+            # التنفيذ يبقى كما سجّله المجيب، حتى لو أُعلن المتطلب غير منطبق:
+            # «لا ينطبق» ليس إجابةً عن سؤال التنفيذ، وإعلانه لا يمحو ما قيل.
+            line.execution = {"full": "full", "partial": "partial",
+                              "unavailable": "none"}.get(state, "unknown")
+
+            chosen = set(impl.option_ids.mapped("name")) if impl else set()
+            by_system = bool(chosen & AUTOMATION_SYSTEM)
+            by_hand = bool(chosen & AUTOMATION_MANUAL)
+            line.automation = ("mixed" if by_system and by_hand
+                               else "system" if by_system
+                               else "manual" if by_hand else "unknown")
             line.impl = "، ".join(impl.option_ids.mapped("name")) if impl else False
             line.rule_state = rule.option_id.name if rule and rule.option_id else False
             line.target = target.option_id.name if target and target.option_id else False
@@ -535,6 +600,23 @@ class AzmFinAnswer(models.Model):
             line.q_total = len(visible)
             line.q_answered = len(answered)
             line.is_done = bool((line.reason or "").strip()) if line.na else bool(visible) and len(answered) == len(visible)
+
+    @api.depends("evidence_required", "evidence_verified", "attachment_ids")
+    def _compute_evidence(self):
+        """أمطلوبٌ دليل، أمرفقٌ، أمتحقَّق منه — ثلاثة أسئلة في حقل واحد يُقرأ.
+
+        «مرفق» لا يعني «متحقق منه»: الفرق بينهما هو كل الفرق بين ملف رُفع وبين
+        دليل نظر فيه مراجع، وكانا بلا تمييز.
+        """
+        for line in self:
+            if not line.evidence_required:
+                line.evidence = "not_required"
+            elif not line.attachment_ids:
+                line.evidence = "missing"
+            elif line.evidence_verified:
+                line.evidence = "verified"
+            else:
+                line.evidence = "unverified"
 
     def _question_totals(self):
         """(visible questions, answered) — a «لا ينطبق» requirement counts as one question answered by its reason."""
@@ -571,6 +653,16 @@ class AzmFinAnswer(models.Model):
         if "table" in vals:
             rows = [[str(c or "") for c in row] for row in (vals["table"] or []) if isinstance(row, list)]
             rows = [row for row in rows if any(c.strip() for c in row)]
+            # يُفحص ما كتبه هذا الحفظ وحده.
+            #
+            # القيمة التي لا يمكن أن تكون صحيحة تُرفض قبل أن تُحفظ — لكن أعمدة
+            # مثل «العملة» أُضيفت بعد أن كُتبت صفوف، و14 صفًّا من 282 في هذه
+            # القاعدة يرسب في تحقق لم يكن موجودًا يوم كُتب. فمن يفتح FIN-004
+            # ليعدّل خانة أخرى كان يُرفض طلبه باسم عمود لم يملأه قط. الصف الذي
+            # لم يتغيّر يمرّ كما هو؛ ويُفحص حين يُمسّ.
+            stored = self.qanswer_ids.filtered(
+                lambda a: a.question_id == question)[:1]._rows()
+            question._check_rows([row for row in rows if row not in stored])
             clean["table_json"] = json.dumps(rows, ensure_ascii=False) if rows else False
             if rows:
                 clean["option_id"] = False
@@ -586,10 +678,42 @@ class AzmFinAnswer(models.Model):
             clean["priority"] = vals["priority"] if vals["priority"] in dict(PRIORITIES) else False
         qa = self.qanswer_ids.filtered(lambda a: a.question_id == question)
         if qa:
-            qa.write(clean)
+            # الكتابة إجابة جديدة بيد صاحبها، فتُنهي أي انتظار لإعادة التأكيد
+            qa.write({**clean, "stale": False, "hidden_on": False})
         else:
             qa = self.env["azm.fin.qanswer"].create({"line_id": self.id, "question_id": question.id, **clean})
+        # هذه الإجابة قد تكون فتحت فرعًا أو أغلقته، فيُراجَع تاريخ الفروع بعدها
+        self._sync_branch_history()
         return qa
+
+    def _sync_branch_history(self):
+        """ما يحدث للإجابات حين يُغلق فرعٌ أو يُفتح.
+
+        الإجابة التي يخفيها فرعٌ أُغلق لا تُحذف: تبقى بقيمتها ويُسجَّل تاريخ
+        إخفائها، وتخرج من الحساب والمخرجات لأن سؤالها لم يعد ظاهرًا. فإذا فُتح
+        الفرع ثانيةً عادت ظاهرةً — ومعها طلب تأكيد، لأن ما كُتب قبل إغلاق الفرع
+        وُضع في سياق قد لا يصف الوضع الآن. كانت تعود محسوبةً مؤكدةً بلا مراجعة.
+        """
+        self.ensure_one()
+        visible = self._visible()
+        for qa in self.qanswer_ids:
+            shown = qa.question_id in visible
+            if not shown:
+                if qa.has_value and not qa.hidden_on:
+                    qa.hidden_on = fields.Datetime.now()
+            elif qa.hidden_on:
+                # عاد الفرع: تُعرض القيمة القديمة وتنتظر صاحبها
+                qa.write({"stale": True, "hidden_on": False})
+
+    def confirm_stale_answer(self, question_id):
+        """«ما زالت صحيحة» — تأكيد إجابة عادت مع فرعها دون تغيير قيمتها."""
+        self.ensure_one()
+        qa = self.qanswer_ids.filtered(
+            lambda a: a.question_id.id == int(question_id) and a.stale)
+        if not qa:
+            raise UserError("لا توجد إجابة بانتظار التأكيد لهذا السؤال.")
+        qa.stale = False
+        return True
 
     def _fill_demo(self, seed):
         self.ensure_one()
@@ -676,6 +800,9 @@ class AzmFinAnswer(models.Model):
             data = q._schema()
             qa = qas.get(q.id)
             data.update({"visible": q.id in visible, "answered": bool(qa and qa.is_answered),
+                         # عادت مع فرعها وتنتظر صاحبها: تُعرض بقيمتها ومعها طلب
+                         # التأكيد، لأن طلبًا لا يراه أحد لا يُراجَع
+                         "stale": bool(qa and qa.stale),
                          "value": qa._value() if qa else self.env["azm.fin.qanswer"]._empty_value()})
             questions.append(data)
         prof = PROFILES[req.profile]
@@ -783,17 +910,26 @@ class AzmFinQAnswer(models.Model):
     note_tags = fields.Text("اختيارات خانة النص (JSON)")
     priority = fields.Selection(PRIORITIES, "الأولوية")
     value_display = fields.Char("الإجابة", compute="_compute_value_display")
+    # هل تحمل قيمة أصلًا — بصرف النظر عن حاجتها إلى تأكيد
+    has_value = fields.Boolean("لها قيمة", compute="_compute_is_answered", store=True)
     is_answered = fields.Boolean("مُجاب", compute="_compute_is_answered", store=True)
+    # متى أخفاها فرعٌ أُغلق. الإجابة تبقى ولا تُحذف؛ هذا تاريخها لا شطبها.
+    hidden_on = fields.Datetime("أُخفيت في", readonly=True)
+    # عاد الفرع وهذه إجابة كُتبت قبل إغلاقه: تُعرض وتُنتظر إعادة تأكيدها، ولا
+    # تُحتسب مؤكدة قبله — لأن ما أجاب عنه المستخدم وقتها قد لا يصف وضعه الآن.
+    stale = fields.Boolean("بحاجة إعادة تأكيد", readonly=True)
 
     _line_question_uniq = models.Constraint("UNIQUE(line_id, question_id)", "السؤال متكرر في نفس المتطلب.")
 
-    @api.depends("question_id.qtype", "option_id", "option_ids", "has_number", "table_json")
+    @api.depends("question_id.qtype", "option_id", "option_ids", "has_number", "table_json", "stale")
     def _compute_is_answered(self):
         for qa in self:
             qtype = qa.question_id.qtype
-            qa.is_answered = bool(
+            qa.has_value = bool(
                 qa.option_ids if qtype == "multi" else qa.has_number if qtype == "number"
                 else (qa.option_id or qa._rows()) if qtype == "table" else qa.option_id)
+            # إجابة تنتظر التأكيد محفوظة ومعروضة، لكنها ليست مُجابة بعد
+            qa.is_answered = qa.has_value and not qa.stale
 
     def _compute_value_display(self):
         for qa in self:

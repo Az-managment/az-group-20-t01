@@ -4,6 +4,8 @@ from odoo.exceptions import AccessError, UserError
 from odoo.tests import TransactionCase, new_test_user, tagged
 
 from odoo.addons.azm_operating_model.models import fin_engine
+from odoo.addons.azm_operating_model.models.azm_fin_catalogue import (
+    APPLICABILITY, AUTOMATION, AUTOMATION_MANUAL, AUTOMATION_SYSTEM, EVIDENCE, EXECUTION)
 
 
 @tagged("post_install", "-at_install")
@@ -43,9 +45,14 @@ class TestAzmFinancialModel(TransactionCase):
         self.assertEqual(env["azm.fin.requirement"].search_count([("source", "=", "HRF")]), 60)
         self.assertEqual(env["azm.fin.prompt"].search_count([]), 3655)
         Question = env["azm.fin.question"]
-        self.assertEqual(Question.search_count([]), 1136)
+        # أساس الدفتر 1136 سؤالًا، وهذا التكليف يضيف إليها عمدًا — فالمحروس أن
+        # الأساس باقٍ لم ينقص منه شيء، لا أن شيئًا لم يُضف إليه. تثبيت العدد
+        # يجعل كل سؤال يطلبه المستند يُسقط اختبارًا لا علاقة له به.
+        self.assertGreaterEqual(Question.search_count([]), 1136)
         counts = {t: Question.search_count([("qtype", "=", t)]) for t in ("select", "multi", "table", "number")}
-        self.assertEqual(counts, {"select": 791, "multi": 244, "table": 53, "number": 48})
+        baseline = {"select": 791, "multi": 244, "table": 53, "number": 48}
+        for qtype, least in baseline.items():
+            self.assertGreaterEqual(counts[qtype], least, qtype)
         self.assertEqual(Question.search_count([("role", "=", "status")]), 167)
         # every question carries its own answer data
         for q in Question.search([]):
@@ -93,7 +100,9 @@ class TestAzmFinancialModel(TransactionCase):
         self.assertEqual(visible, {"Q001", "Q002", "Q003", "Q004", "Q005", "Q006"})
         self.assertEqual((line.state, line.gap), ("partial", "المصفوفة لا تغطي الرواتب"))
         self.assertFalse(line.is_done)
-        a.workspace_answer(line.id, table.id, {"table": [["قيد يومية", "محاسب", "رئيس الحسابات", "محاسب", "50000"]]})
+        # الحد صار يلزمه عملة (DEV04): مبلغ بلا عملة لا يُعرف أجنيهٌ هو أم دولار
+        a.workspace_answer(line.id, table.id, {"table": [
+            ["قيد يومية", "محاسب", "رئيس الحسابات", "محاسب", "50000", "جنيه مصري"]]})
         a.workspace_answer(line.id, impl.id, {"option_ids": self._opt(impl, "SAP").ids})
         a.workspace_answer(line.id, rule.id, {"option_id": self._opt(rule, "مطبقة دون توثيق").id})
         res = a.workspace_answer(line.id, target.id, {"option_id": self._opt(target, "تحسين").id,
@@ -109,7 +118,14 @@ class TestAzmFinancialModel(TransactionCase):
         a.workspace_answer(line.id, status.id, {"note_tags": ["إدخال يدوي متكرر", "أخرى"], "note": "مراجعة يدوية"})
         self.assertEqual(line.gap, "إدخال يدوي متكرر، مراجعة يدوية")
         table_q = line.requirement_id.question_ids.filtered(lambda x: x.key == "Q002")
-        self.assertEqual([c.get("type") for c in table_q._columns()], ["list", "list", "list", "list", "number"])
+        # الأعمدة الأصلية في مواضعها — الإضافة إلحاق لا إدراج، وإلا انزاحت
+        # الصفوف المحفوظة عن أعمدتها
+        shape = [c.get("type") for c in table_q._columns()]
+        self.assertEqual(shape[:5], ["list", "list", "list", "list", "number"])
+        # ومعها ما يطلبه DEV04: لكل حد عملته ونطاقه وسريانه وأساسه وبديله
+        labels = [c.get("label") for c in table_q._columns()]
+        for column in ("العملة", "النطاق", "السريان", "الأساس", "البديل عند الغياب"):
+            self.assertIn(column, labels)
         # changing the status hides the dependent questions again
         a.workspace_answer(line.id, status.id, {"option_id": self._opt(status, "لا أعرف").id})
         self.assertEqual((line.state, line.q_total), ("unknown", 3))
@@ -182,3 +198,889 @@ class TestAzmFinancialModel(TransactionCase):
         QA = self.env["azm.fin.qanswer"]
         self.assertFalse(QA.with_user(self.preparer_b).search([("assessment_id", "=", self.assessment.id)]))
         self.assertTrue(QA.with_user(self.preparer).search([("assessment_id", "=", self.assessment.id)]))
+
+
+@tagged("post_install", "-at_install")
+class TestTheFilterOnlyFilters(TransactionCase):
+    """DEV01 · U02 — «مرشّح العرض لا يكتب في قرار الانطباق».
+
+    مساحة العمل كانت تطبع طول القائمة المعروضة تحت اسم «منطبق». وما دام المرشّح
+    مُطفأ فالرقمان متساويان ولا يظهر الخطأ؛ وحين يُشغَّل «إظهار غير المنطبق» تتسع
+    القائمة وحدها، فقرأ موديول المخزون — وفيه ثلاثة متطلبات لا ينطبق منها شيء —
+    «3 متطلب منطبق من 3».
+
+    المعروض والمنطبق رقمان مختلفان، وتشغيل المرشّك لا يغيّر إجابة ولا حالة ولا نسبة.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.entity = cls.env["azm.entity"].create({"code": "FLT", "name": "كيان المرشّح"})
+        cls.preparer = new_test_user(cls.env, "flt_prep",
+                                     groups="azm_operating_model.azm_group_user")
+        cls.entity.user_ids = [(6, 0, [cls.preparer.id])]
+        cls.assessment = cls.env["azm.fin.assessment"].with_user(cls.preparer).create(
+            {"entity_id": cls.entity.id})
+
+    def _a_module_with_something_inapplicable(self):
+        """كود موديول فيه متطلب واحد على الأقل غير منطبق على هذا الكيان."""
+        for module in self.assessment.answer_ids.module_id:
+            lines = self.assessment.answer_ids.filtered(lambda a, m=module: a.module_id == m)
+            if lines and not all(lines.mapped("applicable")):
+                return module.code
+        self.skipTest("كل المتطلبات منطبقة على هذا الكيان")
+
+    def test_the_count_says_applicable_and_means_applicable(self):
+        code = self._a_module_with_something_inapplicable()
+        data = self.assessment.workspace_data(module_code=code, show_all=True)
+        module = data["module"]
+        shown = sum(len(topic["requirements"]) for topic in data["topics"])
+
+        lines = self.assessment.answer_ids.filtered(lambda a: a.module_id.code == code)
+        really = len(lines.filtered("applicable"))
+
+        self.assertEqual(module["applicable"], really,
+                         "«منطبق» يُحسب من البيانات، لا من طول القائمة المعروضة")
+        self.assertEqual(module["shown"], shown, "«معروض» هو ما عُرض فعلًا")
+        self.assertEqual(module["total"], len(lines))
+        self.assertNotEqual(module["applicable"], module["shown"],
+                            "هذا الموديول يحوي غير منطبق، فلا بد أن يختلف الرقمان")
+
+    def test_turning_the_filter_on_shows_more_without_making_them_applicable(self):
+        code = self._a_module_with_something_inapplicable()
+        closed = self.assessment.workspace_data(module_code=code, show_all=False)
+        opened = self.assessment.workspace_data(module_code=code, show_all=True)
+        self.assertGreater(opened["module"]["shown"], closed["module"]["shown"],
+                           "المرشّح يوسّع المعروض")
+        self.assertEqual(opened["module"]["applicable"], closed["module"]["applicable"],
+                         "ولا يغيّر عدد المنطبق")
+
+    def test_the_filter_writes_nothing_at_all(self):
+        """معيار القبول: تشغيله وإيقافه لا يغيّر أي إجابة أو حالة أو نسبة إنجاز."""
+        code = self._a_module_with_something_inapplicable()
+
+        def snapshot():
+            header = self.assessment._header()
+            lines = self.assessment.answer_ids.filtered(lambda a: a.module_id.code == code)
+            return (header.get("answered"), header.get("progress"),
+                    sorted((l.id, l.applicable, l.state, l.is_done) for l in lines))
+
+        before = snapshot()
+        for show_all in (True, False, True):
+            self.assessment.workspace_data(module_code=code, show_all=show_all)
+        self.assertEqual(snapshot(), before,
+                         "العرض قراءة، ولا يكتب في الانطباق ولا في الإنجاز")
+
+
+@tagged("post_install", "-at_install")
+class TestAClosedBranchKeepsItsAnswers(TransactionCase):
+    """DEV05 · U05 — «نعم ثم لا ثم نعم يستعيد التاريخ ويمنع احتساب بيانات قديمة
+    باعتبارها مؤكدة دون مراجعة».
+
+    النصف الأول كان سليمًا: إجابة يخفيها فرعٌ أُغلق تبقى في مكانها وتخرج من العدّ.
+    والنصف الثاني لم يكن: حين يُفتح الفرع ثانيةً كانت القيمة القديمة تعود محسوبةً
+    مؤكدةً بلا أي أثر يقول إنها كُتبت قبل أن يتغيّر ما حولها.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.entity = cls.env["azm.entity"].create({"code": "BRN", "name": "كيان الفروع"})
+        cls.preparer = new_test_user(cls.env, "brn_prep",
+                                     groups="azm_operating_model.azm_group_user")
+        cls.entity.user_ids = [(6, 0, [cls.preparer.id])]
+        cls.assessment = cls.env["azm.fin.assessment"].with_user(cls.preparer).create(
+            {"entity_id": cls.entity.id})
+
+    def _a_branch(self):
+        """(السطر، الأب، الابن، خيار يُظهر، خيار يُخفي) لأول فرع صالح للاختبار."""
+        for line in self.assessment.answer_ids.filtered("applicable"):
+            for child in line.requirement_id.question_ids.filtered("condition_json"):
+                rule = json.loads(child.condition_json)
+                wanted = rule.get("in") or []
+                parent = line.requirement_id.question_ids.filtered(
+                    lambda q: q.key == rule.get("q"))[:1]
+                if not (parent and child.option_ids):
+                    continue
+                opens = parent.option_ids.filtered(lambda o: o.name in wanted)[:1]
+                shuts = parent.option_ids.filtered(lambda o: o.name not in wanted)[:1]
+                if opens and shuts:
+                    return line, parent, child, opens, shuts
+        self.skipTest("لا يوجد فرع شرطي صالح للاختبار")
+
+    def _answer_child(self, line, child):
+        value = ({"option_ids": child.option_ids[:1].ids} if child.qtype == "multi"
+                 else {"option_id": child.option_ids[:1].id})
+        line._set_answer(child.id, value)
+
+    def _qa(self, line, child):
+        line.invalidate_recordset()
+        return line.qanswer_ids.filtered(lambda a: a.question_id == child)[:1]
+
+    def test_closing_a_branch_keeps_the_answer_and_drops_it_from_the_count(self):
+        line, parent, child, opens, shuts = self._a_branch()
+        line._set_answer(parent.id, {"option_id": opens.id})
+        self._answer_child(line, child)
+        line.invalidate_recordset()
+        counted = line.q_total
+
+        line._set_answer(parent.id, {"option_id": shuts.id})
+        line.invalidate_recordset()
+        qa = self._qa(line, child)
+        self.assertTrue(qa, "الإجابة لا تُحذف حين يُغلق الفرع")
+        self.assertTrue(qa.has_value, "وتحتفظ بقيمتها")
+        self.assertTrue(qa.hidden_on, "ويُسجَّل تاريخ إخفائها")
+        self.assertNotIn(child, line._visible(), "ولا تُعرض")
+        self.assertLess(line.q_total, counted, "وتخرج من مقام الإنجاز")
+
+    def test_reopening_asks_for_the_answer_to_be_confirmed(self):
+        line, parent, child, opens, shuts = self._a_branch()
+        line._set_answer(parent.id, {"option_id": opens.id})
+        self._answer_child(line, child)
+        before = self._qa(line, child).value_display
+
+        line._set_answer(parent.id, {"option_id": shuts.id})
+        line._set_answer(parent.id, {"option_id": opens.id})
+
+        qa = self._qa(line, child)
+        self.assertEqual(qa.value_display, before, "القيمة القديمة معروضة كما كُتبت")
+        self.assertTrue(qa.stale, "ومعها طلب تأكيد")
+        self.assertFalse(qa.is_answered,
+                         "ولا تُحتسب مؤكدة قبل أن يراجعها صاحبها")
+
+    def test_confirming_counts_it_again_without_changing_it(self):
+        line, parent, child, opens, shuts = self._a_branch()
+        line._set_answer(parent.id, {"option_id": opens.id})
+        self._answer_child(line, child)
+        kept = self._qa(line, child).value_display
+        line._set_answer(parent.id, {"option_id": shuts.id})
+        line._set_answer(parent.id, {"option_id": opens.id})
+
+        line.confirm_stale_answer(child.id)
+        qa = self._qa(line, child)
+        self.assertFalse(qa.stale)
+        self.assertTrue(qa.is_answered, "التأكيد يعيدها إلى الحساب")
+        self.assertEqual(qa.value_display, kept, "دون أن يغيّر ما كُتب")
+
+    def test_answering_it_afresh_also_settles_it(self):
+        """من يكتب إجابة جديدة قد راجعها بالفعل، فلا يُطلب منه تأكيدها مرتين."""
+        line, parent, child, opens, shuts = self._a_branch()
+        line._set_answer(parent.id, {"option_id": opens.id})
+        self._answer_child(line, child)
+        line._set_answer(parent.id, {"option_id": shuts.id})
+        line._set_answer(parent.id, {"option_id": opens.id})
+        self.assertTrue(self._qa(line, child).stale)
+
+        self._answer_child(line, child)
+        qa = self._qa(line, child)
+        self.assertFalse(qa.stale)
+        self.assertTrue(qa.is_answered)
+
+    def test_the_page_is_told_which_answers_are_waiting(self):
+        """طلب تأكيد لا يراه أحد لا يُراجَع."""
+        line, parent, child, opens, shuts = self._a_branch()
+        line._set_answer(parent.id, {"option_id": opens.id})
+        self._answer_child(line, child)
+        line._set_answer(parent.id, {"option_id": shuts.id})
+        line._set_answer(parent.id, {"option_id": opens.id})
+
+        data = line._workspace_dict()
+        row = next(q for q in data["questions"] if q["key"] == child.key)
+        self.assertTrue(row["stale"], "الواجهة تعرف أنها تنتظر")
+        self.assertFalse(row["answered"], "ولا تعدّها مُجابة")
+
+
+@tagged("post_install", "-at_install")
+class TestFourFactsFourFields(TransactionCase):
+    """DEV02 — «المطلوب حقول مستقلة».
+
+    حقل واحد كان يحمل ثلاث حقائق: الانطباق والتنفيذ وحالة المعرفة. وسطر واحد
+    كان يمحو إحداها بالأخرى:
+
+        line.state = "na" if line.na else state
+
+    فمن يُعلن متطلبًا غير منطبق يفقد ما سجّله عن تنفيذه — وهما حقيقتان مستقلتان:
+    متطلب قد لا ينطبق وقد كان يُنفَّذ.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        Scope = cls.env["azm.fin.scope"]
+        scopes = Scope.search([("code", "in", ("EDU", "WORK"))])
+        cls.entity = cls.env["azm.entity"].create(
+            {"code": "SPL", "name": "كيان الفصل", "fin_scope_ids": [(6, 0, scopes.ids)]})
+        cls.preparer = new_test_user(cls.env, "spl_prep",
+                                     groups="azm_operating_model.azm_group_user")
+        cls.entity.user_ids = [(6, 0, [cls.preparer.id])]
+        cls.assessment = cls.env["azm.fin.assessment"].with_user(cls.preparer).create(
+            {"entity_id": cls.entity.id})
+        cls.assessment.action_fill_demo()
+
+    def _line_with_execution(self):
+        line = self.assessment.answer_ids.filtered(
+            lambda l: l.execution in ("full", "partial") and not l.na)[:1]
+        if not line:
+            self.skipTest("لا يوجد سطر مسجَّل التنفيذ")
+        return line
+
+    def test_declaring_not_applicable_no_longer_erases_what_was_recorded(self):
+        line = self._line_with_execution()
+        recorded = line.execution
+
+        line.na = True
+        line.reason = "يُدار على مستوى المجموعة"
+        line.invalidate_recordset()
+
+        self.assertEqual(line.applicability, "no", "قرار الانطباق مسجَّل")
+        self.assertEqual(line.execution, recorded,
+                         "وما سُجّل عن التنفيذ باقٍ: «لا ينطبق» ليس إجابة عن سؤال التنفيذ")
+        self.assertEqual(line.state, "na", "والحقل القديم يبقى كما كان، للتوافق")
+
+    def test_the_four_fields_do_not_overwrite_one_another(self):
+        line = self._line_with_execution()
+        self.assertIn(line.applicability, dict(APPLICABILITY))
+        self.assertIn(line.execution, dict(EXECUTION))
+        self.assertIn(line.automation, dict(AUTOMATION))
+        self.assertIn(line.evidence, dict(EVIDENCE))
+
+    def test_unknown_is_not_not_applicable_and_not_a_confirmed_gap(self):
+        """معيار القبول: «لا أعرف لا تتحول إلى لا ينطبق أو فجوة مؤكدة»."""
+        lines = self.assessment.answer_ids.filtered(
+            lambda l: l.execution == "unknown" and l.applicability == "yes")
+        if not lines:
+            self.skipTest("لا يوجد سطر منطبق وتنفيذه غير معلوم")
+        for line in lines:
+            self.assertNotEqual(line.applicability, "no",
+                                f"{line.code}: عدم المعرفة ليس عدم انطباق")
+            self.assertNotIn(line.state, ("partial", "unavailable"),
+                             f"{line.code}: عدم المعرفة ليس فجوة مؤكدة")
+
+    def test_evidence_tells_attached_from_verified(self):
+        """«مرفق» ليس «متحقق منه»، والفرق بينهما هو كل الفرق."""
+        line = self._line_with_execution()
+        self.assertEqual(line.evidence, "missing", "لا مرفق بعد")
+
+        attachment = self.env["ir.attachment"].sudo().create(
+            {"name": "دليل.txt", "raw": b"evidence"})
+        line.sudo().attachment_ids = [(6, 0, attachment.ids)]
+        line = line.sudo()
+        line.invalidate_recordset()
+        self.assertEqual(line.evidence, "unverified",
+                         "رُفع ملف، ولم ينظر فيه أحد بعد")
+
+        line.evidence_verified = True
+        line.invalidate_recordset()
+        self.assertEqual(line.evidence, "verified", "نظر فيه مراجع")
+
+        line.evidence_required = False
+        line.invalidate_recordset()
+        self.assertEqual(line.evidence, "not_required",
+                         "وما لا يُطلب له دليل لا يُحسب ناقصًا")
+
+    def test_automation_reads_the_tools_that_were_named(self):
+        line = self.assessment.answer_ids.filtered(
+            lambda l: l.automation != "unknown")[:1]
+        if not line:
+            self.skipTest("لا يوجد سطر محدَّد الأتمتة")
+        named = set((line.impl or "").split("، "))
+        if named & AUTOMATION_SYSTEM and named & AUTOMATION_MANUAL:
+            self.assertEqual(line.automation, "mixed")
+        elif named & AUTOMATION_SYSTEM:
+            self.assertEqual(line.automation, "system")
+        else:
+            self.assertEqual(line.automation, "manual")
+
+
+@tagged("post_install", "-at_install")
+class TestALimitSaysWhatItMeans(TransactionCase):
+    """DEV04 — «تُرفض نسبة خارج المدى المسموح ويُرفض مبلغ بلا عملة».
+
+    لم يكن هناك تحقق من شيء: خانة نوعها «رقم» تقبل نصًّا، وخصم بنسبة 9999 يُحفظ،
+    ومبلغ يُسجَّل بلا عملة فلا يُعرف أجنيهٌ هو أم دولار — وعلى هذه القيم تُبنى
+    مصفوفة صلاحيات الاعتماد.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.entity = cls.env["azm.entity"].create({"code": "LMT", "name": "كيان الحدود"})
+        cls.preparer = new_test_user(cls.env, "lmt_prep",
+                                     groups="azm_operating_model.azm_group_user")
+        cls.entity.user_ids = [(6, 0, [cls.preparer.id])]
+        cls.assessment = cls.env["azm.fin.assessment"].with_user(cls.preparer).create(
+            {"entity_id": cls.entity.id})
+
+    def _table(self, requirement, key):
+        line = self.assessment.answer_ids.filtered(lambda l: l.code == requirement)[:1]
+        if not line:
+            self.skipTest(f"{requirement} ليس في هذه الإفادة")
+        question = line.requirement_id.question_ids.filtered(lambda q: q.key == key)[:1]
+        if not question or question.qtype != "table":
+            self.skipTest(f"{requirement} {key} ليس جدولًا")
+        labels = [c["label"] for c in question._columns()]
+        return line, question, labels
+
+    def _row(self, labels, **cells):
+        row = [""] * len(labels)
+        for label, value in cells.items():
+            row[labels.index(label)] = value
+        return row
+
+    def test_a_percentage_outside_its_range_is_refused(self):
+        line, question, labels = self._table("FIN-026", "Q001")
+        if "نوع الخصم" not in labels:
+            self.skipTest("جدول الخصومات لم يُحدَّث بعد")
+        bad = self._row(labels, **{"الخصم": "تفوق", "نوع الخصم": "نسبة", "القيمة": "9999"})
+        with self.assertRaises(UserError) as caught:
+            line._set_answer(question.id, {"table": [bad]})
+        self.assertIn("المدى", str(caught.exception))
+
+        fine = self._row(labels, **{"الخصم": "تفوق", "نوع الخصم": "نسبة", "القيمة": "15"})
+        line._set_answer(question.id, {"table": [fine]})
+
+    def test_an_amount_without_a_currency_is_refused(self):
+        line, question, labels = self._table("FIN-026", "Q001")
+        if "نوع الخصم" not in labels:
+            self.skipTest("جدول الخصومات لم يُحدَّث بعد")
+        bare = self._row(labels, **{"الخصم": "تفوق", "نوع الخصم": "مبلغ", "القيمة": "5000"})
+        with self.assertRaises(UserError) as caught:
+            line._set_answer(question.id, {"table": [bare]})
+        self.assertIn("عملة", str(caught.exception))
+
+        named = self._row(labels, **{"الخصم": "تفوق", "نوع الخصم": "مبلغ",
+                                     "القيمة": "5000", "العملة": "جنيه مصري"})
+        line._set_answer(question.id, {"table": [named]})
+
+    def test_a_number_column_refuses_prose(self):
+        line, question, labels = self._table("FIN-026", "Q001")
+        row = self._row(labels, **{"الخصم": "تفوق", "القيمة": "كثير"})
+        with self.assertRaises(UserError) as caught:
+            line._set_answer(question.id, {"table": [row]})
+        self.assertIn("ليست رقمًا", str(caught.exception))
+
+    def test_two_limits_may_not_overlap_for_one_scope(self):
+        """حدّان متداخلان يتركان معاملةً بين اعتمادين، ولا يقول الجدول أيهما."""
+        line, question, labels = self._table("FIN-035", "Q001")
+        if "العملة" not in labels:
+            self.skipTest("جدول الاعتمادات لم يُحدَّث بعد")
+        over = [
+            self._row(labels, **{"من مبلغ": "0", "إلى مبلغ": "50000", "النوع": "أصناف",
+                                 "المعتمد": "المدير المالي", "العملة": "جنيه مصري"}),
+            self._row(labels, **{"من مبلغ": "30000", "إلى مبلغ": "100000", "النوع": "أصناف",
+                                 "المعتمد": "الرئيس التنفيذي", "العملة": "جنيه مصري"}),
+        ]
+        with self.assertRaises(UserError) as caught:
+            line._set_answer(question.id, {"table": over})
+        self.assertIn("يتداخلان", str(caught.exception))
+
+    def test_limits_that_meet_without_overlapping_are_fine(self):
+        line, question, labels = self._table("FIN-035", "Q001")
+        if "العملة" not in labels:
+            self.skipTest("جدول الاعتمادات لم يُحدَّث بعد")
+        tidy = [
+            self._row(labels, **{"من مبلغ": "0", "إلى مبلغ": "50000", "النوع": "أصناف",
+                                 "المعتمد": "المدير المالي", "العملة": "جنيه مصري"}),
+            self._row(labels, **{"من مبلغ": "50000", "إلى مبلغ": "100000", "النوع": "أصناف",
+                                 "المعتمد": "الرئيس التنفيذي", "العملة": "جنيه مصري"}),
+        ]
+        line._set_answer(question.id, {"table": tidy})
+
+    def test_the_same_range_under_a_different_type_is_not_an_overlap(self):
+        """النطاق هو ما يُقارَن، ونوع المعاملة جزء منه."""
+        line, question, labels = self._table("FIN-035", "Q001")
+        if "العملة" not in labels:
+            self.skipTest("جدول الاعتمادات لم يُحدَّث بعد")
+        apart = [
+            self._row(labels, **{"من مبلغ": "0", "إلى مبلغ": "50000", "النوع": "أصناف",
+                                 "المعتمد": "المدير المالي", "العملة": "جنيه مصري"}),
+            self._row(labels, **{"من مبلغ": "30000", "إلى مبلغ": "100000", "النوع": "خدمات",
+                                 "المعتمد": "الرئيس التنفيذي", "العملة": "جنيه مصري"}),
+        ]
+        line._set_answer(question.id, {"table": apart})
+
+    def test_every_authority_table_can_now_say_currency_and_effect(self):
+        """المستند: «لكل حد مبلغ عملة ونطاق وسريان وأساس … وبديل عند الغياب»."""
+        for requirement, key, wanted in (
+                ("FIN-004", "Q002", ("العملة", "النطاق", "السريان", "الأساس", "البديل عند الغياب")),
+                ("FIN-035", "Q001", ("العملة", "السريان", "الأساس", "البديل عند الغياب"))):
+            _line, _question, labels = self._table(requirement, key)
+            for column in wanted:
+                self.assertIn(column, labels, f"{requirement} {key} ينقصه «{column}»")
+
+
+@tagged("post_install", "-at_install")
+class TestACompensatingControlIsAnAction(TransactionCase):
+    """DEV03 — «يمكن تسجيل إجراء رقابي ومسؤوله دون إدخال اسم الدور باعتباره الضابط».
+
+    كان عمود «الضابط البديل» في FIN-005 يعرض أدوارًا وظيفية، فيُسجَّل شخص حيث
+    يُنتظر إجراء: «الضابط البديل: المدير المالي». والمدير المالي ليس ضابطًا —
+    قد يكون مالكه. والضابط إجراء يُفعل: مراجعة مستقلة لاحقة، اعتماد ثانٍ، فحص
+    سجل التغييرات.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.entity = cls.env["azm.entity"].create({"code": "CTL", "name": "كيان الضوابط"})
+        cls.preparer = new_test_user(cls.env, "ctl_prep",
+                                     groups="azm_operating_model.azm_group_user")
+        cls.entity.user_ids = [(6, 0, [cls.preparer.id])]
+        cls.assessment = cls.env["azm.fin.assessment"].with_user(cls.preparer).create(
+            {"entity_id": cls.entity.id})
+
+    def _table(self):
+        line = self.assessment.answer_ids.filtered(lambda l: l.code == "FIN-005")[:1]
+        if not line:
+            self.skipTest("FIN-005 ليس في هذه الإفادة")
+        question = line.requirement_id.question_ids.filtered(lambda q: q.key == "Q003")[:1]
+        labels = [c["label"] for c in question._columns()]
+        if "الضابط التعويضي" not in labels:
+            self.skipTest("الجدول لم يُحدَّث بعد")
+        return line, question, labels
+
+    def _row(self, labels, **cells):
+        row = [""] * len(labels)
+        for label, value in cells.items():
+            row[labels.index(label)] = value
+        return row
+
+    def test_the_control_column_offers_controls_not_job_titles(self):
+        _line, question, labels = self._table()
+        options = question._columns()[labels.index("الضابط التعويضي")]["options"]
+        self.assertIn("مراجعة مستقلة لاحقة", options)
+        self.assertIn("اعتماد ثانٍ", options)
+        self.assertIn("أخرى", options, "ومعها «أخرى» ونص يوضّحها")
+        # ولا دور وظيفي واحد بينها
+        for title in ("المدير المالي", "رئيس الحسابات", "محاسب"):
+            self.assertNotIn(title, options,
+                             f"«{title}» شخص لا إجراء، ولا مكان له في قائمة الضوابط")
+
+    def test_a_control_can_be_recorded_with_its_owner_and_frequency(self):
+        """معيار القبول نفسه: إجراء ومسؤول ودورية ودليل، بلا اسم دور في خانة الضابط."""
+        line, question, labels = self._table()
+        for wanted in ("مالك الضابط", "دورية الضابط", "دليل التنفيذ"):
+            self.assertIn(wanted, labels, f"ينقص «{wanted}»")
+        row = self._row(labels, **{
+            "الدور": "محاسب",
+            "المهام المجمعة": "الإنشاء والاعتماد",
+            "الضابط التعويضي": "مراجعة مستقلة لاحقة",
+            "مالك الضابط": "المراجعة الداخلية",
+            "دورية الضابط": "شهرية",
+            "دليل التنفيذ": "محضر المراجعة الشهري",
+        })
+        line._set_answer(question.id, {"table": [row]})
+        import json as _json
+        saved = _json.loads(line.qanswer_ids.filtered(
+            lambda a: a.question_id == question).table_json)[0]
+        self.assertEqual(saved[labels.index("الضابط التعويضي")], "مراجعة مستقلة لاحقة")
+        self.assertEqual(saved[labels.index("مالك الضابط")], "المراجعة الداخلية")
+
+    def test_the_owner_and_the_control_are_different_columns(self):
+        """الخلط بينهما هو العطل نفسه."""
+        _line, question, labels = self._table()
+        columns = question._columns()
+        control = columns[labels.index("الضابط التعويضي")]["options"]
+        owner = columns[labels.index("مالك الضابط")]["options"]
+        self.assertFalse(set(control) & set(owner),
+                         "قائمة الإجراءات وقائمة الأشخاص لا تشتركان في شيء")
+
+
+@tagged("post_install", "-at_install")
+class TestAnEmptyModelSaysSo(TransactionCase):
+    """DEV06 — «نموذج بلا إجابات لا ينتج سياسة معتمدة أو عبارة لا توجد مخاطر».
+
+    القسم الفارغ له سببان لا سبب واحد: أن تكون الأسئلة أُجيبت ولم يظهر فيها ما
+    يُذكر، أو ألّا تكون سُئلت بعد. وكانت العبارة واحدة في الحالين، فإفادة لم
+    يُجب فيها حرف واحد تُخرج «لا توجد فجوات مسجلة في هذا الموديول» — شهادة سلامة
+    لشيء لم ينظر فيه أحد.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.blank_entity = cls.env["azm.entity"].create(
+            {"code": "BLK", "name": "كيان بلا إجابات"})
+        cls.blank = cls.env["azm.fin.assessment"].create(
+            {"entity_id": cls.blank_entity.id})
+        cls.filled_entity = cls.env["azm.entity"].create(
+            {"code": "FLD", "name": "كيان مُجاب"})
+        cls.filled = cls.env["azm.fin.assessment"].create(
+            {"entity_id": cls.filled_entity.id})
+        cls.filled.action_fill_demo()
+
+    @staticmethod
+    def _text(html):
+        import re
+        return " ".join(re.sub(r"<[^>]+>", " ", str(html) or "").split())
+
+    def _module(self, assessment):
+        module = assessment.answer_ids.module_id[:1]
+        if not module:
+            self.skipTest("لا يوجد موديول")
+        return module
+
+    def test_an_unanswered_module_is_not_called_free_of_gaps(self):
+        module = self._module(self.blank)
+        said = self._text(self.blank._render("gaps", module))
+        self.assertIn("لم تُجب", said, said[-120:])
+        self.assertNotIn("لا توجد فجوات مسجلة", said,
+                         "غياب الإجابة ليس غياب الفجوة")
+
+    def test_an_unanswered_module_claims_nothing_about_what_is_needed(self):
+        module = self._module(self.blank)
+        said = self._text(self.blank._render("future", module))
+        self.assertIn("لم تُجب", said)
+
+    def test_an_answered_module_still_reports_plainly(self):
+        """الإصلاح يفرّق بين الحالتين؛ لا يُسكت الحالة الأخرى."""
+        module = self.filled.answer_ids.filtered("q_answered").module_id[:1]
+        if not module:
+            self.skipTest("لم تُملأ البيانات التجريبية")
+        said = self._text(self.filled._render("gaps", module))
+        self.assertNotIn("لم تُجب أسئلة هذا الموديول بعد", said,
+                         "هذا الموديول أُجيب، فلا يُقال إنه لم يُسأل")
+
+    def test_nothing_an_empty_model_produces_calls_itself_approved(self):
+        """لا تخرج سياسة معتمدة من إفادة لم يُجب فيها شيء."""
+        module = self._module(self.blank)
+        for tab in ("rules", "workflow", "gaps", "future"):
+            said = self._text(self.blank._render(tab, module))
+            self.assertIn("مسودة غير معتمدة", said,
+                          f"{tab}: المخرج لا يقول إنه مسودة")
+
+    def test_an_unanswered_requirement_says_so_in_the_output(self):
+        """النقص يظهر، ولا يُملأ بصياغة من عند النظام."""
+        module = self._module(self.blank)
+        said = self._text(self.blank._render("rules", module))
+        self.assertIn("لم تتم الإجابة", said)
+
+
+@tagged("post_install", "-at_install")
+class TestTheWorkspaceCanBeSearched(TransactionCase):
+    """DEV19 — «أضف بحثًا بالاسم والكود».
+
+    الموديول الواحد يبلغ 44 متطلبًا و157 سؤالًا، ولم تكن هناك وسيلة للوصول إلى
+    واحد منها إلا بالتمرير. والبحث في الواجهة يقرأ حقولًا بعينها من الحمولة؛
+    فإن سقط أحدها صار البحث يبحث في العدم بلا أن يشكو. هذا ما يحرسه هذا الاختبار:
+    العقد الذي يقوم عليه، لا الواجهة نفسها — فجولات المتصفح لا تعمل في هذه الحاوية.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.entity = cls.env["azm.entity"].create({"code": "SRCH", "name": "كيان البحث"})
+        cls.preparer = new_test_user(cls.env, "srch_prep",
+                                     groups="azm_operating_model.azm_group_user")
+        cls.entity.user_ids = [(6, 0, [cls.preparer.id])]
+        cls.assessment = cls.env["azm.fin.assessment"].with_user(cls.preparer).create(
+            {"entity_id": cls.entity.id})
+
+    def _a_requirement(self):
+        data = self.assessment.workspace_data(
+            module_code=self.assessment.answer_ids.module_id[:1].code)
+        for topic in data["topics"]:
+            if topic["requirements"]:
+                return topic["requirements"][0]
+        self.skipTest("لا توجد متطلبات في هذا الموديول")
+
+    def test_the_payload_carries_everything_the_search_reads(self):
+        req = self._a_requirement()
+        for field in ("code", "req_id", "tree_ref", "title", "question"):
+            self.assertIn(field, req, f"البحث يقرأ «{field}» وهو غير مرسَل")
+        self.assertTrue(req["code"], "ولا بد أن يحمل قيمة، وإلا لم يُطابق شيئًا")
+
+    def test_a_question_can_be_found_by_its_own_words(self):
+        """من يبحث عن «تعارض المصالح» يعرف ما يريد ولا يعرف تحت أي متطلب وُضع."""
+        req = self._a_requirement()
+        self.assertTrue(req["questions"], "المتطلب له أسئلة")
+        question = req["questions"][0]
+        for field in ("label", "key", "hint"):
+            self.assertIn(field, question, f"البحث يقرأ «{field}» من السؤال")
+
+    def test_the_master_requirement_id_is_searchable_too(self):
+        """AZM-FIN-REQ-000004 معرّف يُطبع، فلا بد أن يكون معرّفًا يُوجد به."""
+        req = self._a_requirement()
+        if not req.get("req_id"):
+            self.skipTest("هذا المتطلب بلا معرّف رئيسي")
+        self.assertRegex(req["req_id"], r"^AZM-FIN-REQ-\d+$")
+
+    def test_done_is_sent_so_the_page_can_offer_the_next_open_one(self):
+        """«انتقال للسؤال التالي الناقص» يحتاج أن يعرف أيها ناقص."""
+        req = self._a_requirement()
+        self.assertIn("done", req)
+        self.assertIsInstance(req["done"], bool)
+
+
+@tagged("post_install", "-at_install")
+class TestAZeroDenominatorIsNotZeroPercent(TransactionCase):
+    """القسم 8 — «إذا كان المقام صفرًا اعرض لا توجد أسئلة منطبقة بدل نسبة مضللة».
+
+    موديول لا ينطبق منه شيء على هذا الكيان كان يُعرض بنسبة 0٪، وهو حكم بالتقصير
+    حيث لا تقصير: لا أحد قصّر في أسئلة لا تخصّه. والمقام صفر ليس إنجازًا صفرًا.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.entity = cls.env["azm.entity"].create({"code": "ZRO", "name": "كيان المقام"})
+        cls.assessment = cls.env["azm.fin.assessment"].create({"entity_id": cls.entity.id})
+
+    def test_a_module_with_nothing_applicable_reports_no_questions(self):
+        nav = self.assessment._modules_nav()
+        empty = [m for m in nav if not m["applicable"]]
+        if not empty:
+            self.skipTest("كل الموديولات منطبقة على هذا الكيان")
+        for module in empty:
+            self.assertEqual(module["questions"], 0,
+                             f"{module['code']}: لا منطبق فيه، فلا أسئلة تُحتسب")
+            self.assertEqual(module["answered"], 0)
+            # وهذا هو موضع الحكم: لا نسبة، لا صفر. الصفر رقمٌ يُقرأ تقصيرًا،
+            # و None لا يُقرأ شيئًا فتقول الشاشة «لا أسئلة منطبقة».
+            self.assertIsNone(module["percent"],
+                              f"{module['code']}: مقامه صفر فلا نسبة له")
+
+    def test_a_module_with_work_reports_a_real_percentage(self):
+        """الإصلاح يفرّق بين الحالتين؛ لا يُسكت الحالة الأخرى."""
+        nav = self.assessment._modules_nav()
+        working = [m for m in nav if m["questions"]]
+        if not working:
+            self.skipTest("لا يوجد موديول فيه أسئلة منطبقة")
+        for module in working:
+            self.assertIsNotNone(module["percent"], module["code"])
+            self.assertEqual(module["percent"],
+                             round(100.0 * module["answered"] / module["questions"]),
+                             module["code"])
+
+    def test_the_denominator_counts_applicable_questions_only(self):
+        """المقام هو الأسئلة الإلزامية الفعالة المنطبقة، لا كل ما في الكتالوج."""
+        nav = self.assessment._modules_nav()
+        for module in nav:
+            if not module["applicable"]:
+                continue
+            lines = self.assessment.answer_ids.filtered(
+                lambda a, c=module["code"]: a.module_id.code == c and a.applicable)
+            total, answered = lines._question_totals()
+            self.assertEqual(module["questions"], total, module["code"])
+            self.assertEqual(module["answered"], answered, module["code"])
+
+    def test_a_grant_to_a_student_is_not_a_grant_to_the_entity(self):
+        """القاموس يفرّق بينهما، وكان الاسمان متقاربين لموضوعين مختلفين."""
+        Req = self.env["azm.fin.requirement"].sudo()
+        student = Req.search([("code", "=", "FIN-027")], limit=1)
+        funding = Req.search([("code", "=", "FIN-074")], limit=1)
+        if not (student and funding):
+            self.skipTest("متطلبا المنح غير موجودين")
+        # «الطلاب» ليست جزءًا من «للطلاب» — اللام تبتلع الألف
+        self.assertIn("طلاب", student.title)
+        self.assertIn("كيان", funding.title)
+        self.assertNotEqual(student.title, funding.title)
+
+
+@tagged("post_install", "-at_install")
+class TestTheCatalogueCarriesWhatTheBriefAsked(TransactionCase):
+    """ما أضافه المستند إلى الكتالوج — يُحرَس أو يضيع في أول إعادة تحميل.
+
+    الكتالوج ملف يُحمَّل، فإن حُمِّل من نسخة أقدم ذهبت هذه الإضافات بلا صوت.
+    وهذه الأسماء والأعمدة هي ما طلبه المستند بالنص، فتُقرأ من البيانات لا تُفترض.
+    """
+
+    def _module(self, code):
+        return self.env["azm.fin.module"].sudo().search([("code", "=", code)], limit=1)
+
+    def _question(self, requirement, key):
+        return self.env["azm.fin.question"].sudo().search(
+            [("requirement_id.code", "=", requirement), ("key", "=", key)], limit=1)
+
+    def _columns(self, requirement, key):
+        import json
+        q = self._question(requirement, key)
+        if not q:
+            self.skipTest(f"{requirement}/{key} غير موجود")
+        return [c.get("label") for c in json.loads(q.columns_json or "[]")]
+
+    # ------------------------------------------------------------------ TREE01
+    def test_the_general_ledger_reads_as_one_name_with_two_branches(self):
+        gld, cls = self._module("GLD"), self._module("CLS")
+        if not (gld and cls):
+            self.skipTest("موديولا الأستاذ العام غير موجودين")
+        self.assertTrue(gld.name.startswith("الأستاذ العام"), gld.name)
+        self.assertTrue(cls.name.startswith("الأستاذ العام"), cls.name)
+        self.assertNotEqual(gld.name, cls.name, "فرعان لا اسم واحد مكرر")
+        self.assertIn("الأبعاد", gld.name)
+        self.assertIn("الإقفال", cls.name)
+
+    def test_the_modules_are_named_for_what_they_hold(self):
+        """كانت أضيق مما تحته: الأصول والاستثمارات تحوي الأصول الثابتة، والعقارات
+        تحوي البيع والتأجير، والتمويل يحوي القروض."""
+        for code, word in (("AST", "الثابتة"), ("REA", "التأجير"), ("FND", "القروض"),
+                           ("RPT", "مؤشرات"), ("DAT", "الترحيل"), ("INV", "التكاليف")):
+            module = self._module(code)
+            if not module:
+                continue
+            self.assertIn(word, module.name, f"{code}: {module.name}")
+
+    def test_nothing_moved_when_the_names_changed(self):
+        """معيار TREE01: المتطلبات ومراجعها كما هي."""
+        Req = self.env["azm.fin.requirement"].sudo()
+        self.assertEqual(Req.search_count([]), 167)
+        for code, module in (("FIN-006", "GLD"), ("FIN-010", "GLD"),
+                             ("FIN-052", "CLS"), ("FIN-077", "CLS")):
+            r = Req.search([("code", "=", code)], limit=1)
+            if r:
+                self.assertEqual(r.module_id.code, module, code)
+                self.assertTrue(r.tree_ref, f"{code} بلا مرجع شجرة")
+
+    # ------------------------------------------------------------------ DEV15
+    def test_treasury_can_record_its_bank_accounts(self):
+        labels = self._columns("FIN-042", "Q00A")
+        for column in ("الحساب", "العملة", "المفوَّض", "حد التفويض",
+                       "يعتمد الفتح أو الإغلاق", "تاريخ الفتح", "تاريخ الإغلاق"):
+            self.assertIn(column, labels, f"سجل البنوك ينقصه «{column}»")
+
+    def test_an_asset_can_be_sold_written_off_or_impaired(self):
+        import json
+        q = self._question("FIN-051", "Q001")
+        if not q:
+            self.skipTest("FIN-051 غير موجود")
+        events = next((c.get("options") for c in json.loads(q.columns_json or "[]")
+                       if c.get("label") == "الحدث"), [])
+        for event in ("استبعاد", "بيع", "شطب", "انخفاض في القيمة"):
+            self.assertIn(event, events, f"أحداث الأصل تنقصها «{event}»")
+
+    def test_input_tax_is_asked_about(self):
+        q = self._question("FIN-056", "Q00A")
+        if not q:
+            self.skipTest("FIN-056/Q00A غير موجود")
+        self.assertIn("المدخلات", q.label)
+        names = q.option_ids.mapped("name")
+        self.assertTrue(any("استرداد" in n for n in names), names)
+        self.assertTrue(any("تُوزَّع" in n or "توزع" in n for n in names), names)
+
+    # ------------------------------------------------------------------ DEV18
+    def test_every_indicator_can_be_defined(self):
+        labels = self._columns("FIN-081", "Q00A")
+        for column in ("المؤشر", "التعريف", "الصيغة", "الوحدة",
+                       "مصدر البيانات", "المالك", "المستهدف", "من يراه"):
+            self.assertIn(column, labels, f"جدول المؤشرات ينقصه «{column}»")
+
+    def test_every_integration_says_which_way_it_runs(self):
+        labels = self._columns("FIN-084", "Q001")
+        for column in ("الاتجاه", "معرّف منع التكرار", "التسوية",
+                       "معالجة الأخطاء", "المسؤول"):
+            self.assertIn(column, labels, f"جدول التكامل ينقصه «{column}»")
+
+    # ------------------------------------------------------------------ DEV11/13
+    def test_the_budget_asks_whether_one_amount_is_taken_twice(self):
+        q = self._question("FIN-019", "Q00A")
+        if not q:
+            self.skipTest("FIN-019/Q00A غير موجود")
+        self.assertIn("أكثر من مرة", q.label)
+
+    def test_a_posted_entry_can_be_asked_how_it_is_undone(self):
+        """«إلغاء القيود والقيد العكسي» — لم يكن في بنك الأسئلة كله سؤال عنهما."""
+        q = self._question("FIN-079", "Q00A")
+        if not q:
+            self.skipTest("FIN-079/Q00A غير موجود")
+        names = q.option_ids.mapped("name")
+        self.assertTrue(any("عكسي" in n for n in names), names)
+        self.assertTrue(any("حذف" in n for n in names), names)
+
+    def test_control_accounts_are_asked_about(self):
+        q = self._question("FIN-006", "Q00A")
+        if not q:
+            self.skipTest("FIN-006/Q00A غير موجود")
+        self.assertIn("رقابية", q.label)
+        self.assertTrue(q.option_ids, "ولها خيارات تُختار")
+
+    def test_the_dimensions_include_the_ones_a_school_runs_on(self):
+        q = self._question("FIN-008", "Q001")
+        if not q:
+            self.skipTest("FIN-008 غير موجود")
+        names = q.option_ids.mapped("name")
+        for dimension in ("العام الدراسي", "المرحلة", "الفصل الدراسي", "الموقع"):
+            self.assertIn(dimension, names, f"الأبعاد تنقصها «{dimension}»")
+
+
+@tagged("post_install", "-at_install")
+class TestWhatTheReviewFound(TransactionCase):
+    """ما كشفته مراجعة الكود، مثبّتًا حتى لا يعود."""
+
+    def test_other_is_not_a_known_answer(self):
+        """إعادة تسمية «غير مدرج» إلى «أخرى» أسقطت الاسم من جدول الأنواع.
+
+        نوع خيار المشتريات يُشتق من اسمه، فحُمِّل 384 خيارًا بنوع normal — أي أن
+        إجابة تقول «ليست في القائمة» صارت تُحتسب إجابة معلومة.
+        """
+        from odoo.addons.azm_operating_model.models.azm_stage import KIND_BY_NAME
+        self.assertEqual(KIND_BY_NAME.get("أخرى"), "not_listed")
+        self.assertEqual(KIND_BY_NAME.get("غير مدرج"), "not_listed",
+                         "والاسم القديم يبقى مفتاحًا لقاعدة لم تُرقَّ بعد")
+        options = self.env["azm.option"].sudo().search(
+            [("name", "=", "أخرى"), ("active", "=", True)])
+        if options:
+            self.assertEqual(set(options.mapped("kind")), {"not_listed"},
+                             "خيار «أخرى» ليس إجابة عادية")
+
+    def test_other_does_not_count_as_a_known_answer(self):
+        from odoo.addons.azm_operating_model.models.engine import known
+        for text in ("أخرى", "غير مدرج", "لا أعرف"):
+            self.assertFalse(known(text), text)
+        self.assertFalse(known(["شيء", "أخرى"]), "وفي القوائم أيضًا")
+        self.assertTrue(known("إجابة حقيقية"))
+
+    def test_other_is_not_a_person(self):
+        """«أخرى» في سؤال دور كانت تُحصد اسمًا، فتنتج تحذير فصل مهام مُختلقًا."""
+        from odoo.addons.azm_operating_model.models.fin_engine import NOT_A_PERSON
+        self.assertIn("أخرى", NOT_A_PERSON)
+        self.assertIn("غير مدرج", NOT_A_PERSON)
+
+    def test_a_module_declared_not_applicable_was_assessed(self):
+        """«لا ينطبق» إجابة، والموديول الذي أُعلنت كل متطلباته كذلك نُظر فيه."""
+        import re
+        entity = self.env["azm.entity"].create({"code": "NAX", "name": "كيان"})
+        assessment = self.env["azm.fin.assessment"].create({"entity_id": entity.id})
+        module = assessment.answer_ids.module_id[:1]
+        if not module:
+            self.skipTest("لا يوجد موديول")
+        for line in assessment.answer_ids.filtered(lambda l: l.module_id == module):
+            line.na = True
+            line.reason = "النشاط غير موجود بالكيان"
+        assessment.invalidate_recordset()
+        said = " ".join(re.sub(r"<[^>]+>", " ", str(assessment._render("gaps", module))).split())
+        self.assertNotIn("لم تُجب", said, "أُعلن ولم يُترك")
+
+    def test_a_row_written_before_a_column_existed_still_saves(self):
+        """العملة أُضيفت بعد أن كُتبت صفوف؛ من يعدّل خانة أخرى لا يُحاسَب عليها."""
+        import json
+        from odoo.exceptions import UserError
+        stored = self.env["azm.fin.qanswer"].sudo().search(
+            [("table_json", "!=", False)], limit=60)
+        if not stored:
+            self.skipTest("لا توجد جداول محفوظة")
+        refused = 0
+        for answer in stored:
+            rows = json.loads(answer.table_json or "[]")
+            try:
+                answer.line_id._set_answer(answer.question_id.id, {"table": rows})
+            except UserError:
+                refused += 1
+        self.assertEqual(refused, 0, "إعادة حفظ صف دون تغييره لا تُرفض")
+
+    def test_a_newly_written_bad_row_is_still_refused(self):
+        """والتسامح عن القديم لا يفتح الباب للجديد."""
+        import json
+        from odoo.exceptions import UserError
+        line = self.env["azm.fin.answer"].sudo().search(
+            [("code", "=", "FIN-004")], limit=1)
+        if not line:
+            self.skipTest("FIN-004 غير موجود")
+        question = line.requirement_id.question_ids.filtered(
+            lambda q: q.key == "Q002")[:1]
+        labels = [c["label"] for c in json.loads(question.columns_json or "[]")]
+        if "العملة" not in labels:
+            self.skipTest("جدول الصلاحيات لم يُحدَّث")
+        row = [""] * len(labels)
+        row[labels.index("حد القيمة")] = "50000"
+        with self.assertRaises(UserError):
+            line._set_answer(question.id, {"table": [row]})

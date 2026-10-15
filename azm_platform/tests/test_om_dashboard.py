@@ -139,7 +139,8 @@ class TestOmDashboard(TransactionCase):
         self.assertTrue(data['available'])
         self.assertEqual(len(data['modules']), 19)
         self.assertEqual(data['kpis']['requirements'], 167)
-        self.assertEqual(data['kpis']['catalogue_questions'], 1136)
+        self.assertEqual(data['kpis']['catalogue_questions'],
+                         self.env['azm.fin.question'].search_count([]))
         self.assertEqual(data['kpis']['answered_questions'], fin.answered_count)
         self.assertEqual(data['kpis']['questions'], fin.question_count)
         self.assertEqual(data['kpis']['assessments'], 1)
@@ -169,7 +170,12 @@ class TestOmDashboard(TransactionCase):
         hub = self.env['azm.dashboard'].with_user(self.user).get_operating_models_hub()
         self.assertTrue(hub['available'])
         self.assertEqual([m['key'] for m in hub['models']], ['procurement', 'financial'])
-        self.assertEqual(hub['totals']['items'], 396 + 1136)
+        # يُقرأ من الكتالوج لا يُكتب رقمًا: هذا التكليف كله إضافة أسئلة،
+        # وتثبيت العدد هنا يجعل كل إضافة تُسقط اختبارًا لا علاقة له بها
+        self.assertEqual(
+            hub['totals']['items'],
+            self.env['azm.question'].search_count([])
+            + self.env['azm.fin.question'].search_count([]))
         self.assertIn(self.entity.id, [e['id'] for e in hub['entities']])
         none = new_test_user(self.env, 'azm_hub_none', groups='azm_platform.group_azm_user')
         self.assertFalse(self.env['azm.dashboard'].with_user(none).get_operating_models_hub()['available'])

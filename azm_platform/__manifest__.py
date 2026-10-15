@@ -1,6 +1,6 @@
 {
     'name': 'AZM Enterprise Operating Model Platform',
-    'version': '20.0.1.37.0',
+    'version': '20.0.1.38.0',
     'summary': 'One Group. Unified Systems. Stronger Tomorrow.',
     'description': """
 AZM Enterprise Operating Model Platform
