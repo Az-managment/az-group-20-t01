@@ -1,6 +1,7 @@
 import json
 
-from odoo import Command, api, fields, models
+from odoo import Command, _, api, fields, models
+from odoo.exceptions import UserError
 from odoo.tools import file_open
 
 # Answer profiles (قوالب الإجابة) — used to route requirements to the output documents
@@ -480,6 +481,111 @@ class AzmFinQuestion(models.Model):
     def _columns(self):
         self.ensure_one()
         return json.loads(self.columns_json) if self.columns_json else []
+
+    # ------------------------------------------------------------------ DEV04
+    def _check_rows(self, rows):
+        """يرفض قيمة لا يمكن أن تكون صحيحة قبل أن تُحفظ.
+
+        لم يكن هناك تحقق من شيء: خانة نوعها «رقم» كانت تقبل نصًّا، وخصمٌ بنسبة
+        9999 يُحفظ كما هو، ومبلغ يُسجَّل بلا عملة فلا يُعرف أهو جنيه أم دولار.
+        وهذه قيم تُبنى عليها مصفوفة صلاحيات.
+
+        ما يُقرأ من تعريف العمود:
+          type: number        → لا بد أن يكون رقمًا
+          unit: "%"           → بين min و max، وافتراضهما 0 و100
+          unit: "amount"      → يلزمه عمود عملة مملوء
+          unit_column: "..."  → الوحدة مكتوبة في عمود آخر من الصف نفسه،
+                                فيُقرأ منه أهذه نسبة أم مبلغ
+        """
+        self.ensure_one()
+        columns = self._columns()
+        if not columns:
+            return
+        index = {col.get("label"): i for i, col in enumerate(columns)}
+
+        def cell(row, label):
+            i = index.get(label)
+            return (row[i] if i is not None and i < len(row) else "") or ""
+
+        for number, row in enumerate(rows, start=1):
+            for i, col in enumerate(columns):
+                raw = (row[i] if i < len(row) else "") or ""
+                text = str(raw).strip()
+                if not text:
+                    continue
+                label = col.get("label") or ""
+                if col.get("type") == "number":
+                    try:
+                        value = float(text.replace(",", ""))
+                    except ValueError:
+                        raise UserError(_(
+                            "الصف %(row)s، «%(col)s»: القيمة «%(bad)s» ليست رقمًا.",
+                            row=number, col=label, bad=text))
+                    unit = col.get("unit")
+                    if col.get("unit_column"):
+                        said = cell(row, col["unit_column"]).strip()
+                        if said == col.get("percent_value"):
+                            unit = "%"
+                        elif said == col.get("amount_value"):
+                            unit = "amount"
+                    if unit == "%":
+                        low = col.get("min", 0)
+                        high = col.get("max", 100)
+                        if not low <= value <= high:
+                            raise UserError(_(
+                                "الصف %(row)s، «%(col)s»: النسبة %(bad)s خارج المدى "
+                                "المسموح (%(low)s–%(high)s).",
+                                row=number, col=label, bad=text, low=low, high=high))
+                    elif unit == "amount":
+                        holder = col.get("currency_column")
+                        if holder and not cell(row, holder).strip():
+                            raise UserError(_(
+                                "الصف %(row)s، «%(col)s»: مبلغ بلا عملة. "
+                                "املأ «%(cur)s» ليُعرف ما هذا المبلغ.",
+                                row=number, col=label, cur=holder))
+                elif col.get("type") == "date":
+                    try:
+                        fields.Date.from_string(text)
+                    except (ValueError, TypeError):
+                        raise UserError(_(
+                            "الصف %(row)s، «%(col)s»: «%(bad)s» ليس تاريخًا.",
+                            row=number, col=label, bad=text))
+        self._check_ranges(rows, columns, index)
+
+    def _check_ranges(self, rows, columns, index):
+        """حدّان متداخلان للنطاق نفسه يعنيان موافقتين لمعاملة واحدة.
+
+        «من 0 إلى 50 ألفًا يعتمدها المدير المالي» و«من 30 ألفًا إلى 100 يعتمدها
+        الرئيس التنفيذي» تتركان مَن يصرف 40 ألفًا بين اعتمادين، ولا يقول الجدول
+        أيهما. يُرفض التداخل ما لم يُعلن استثناءً صريحًا بأولوية.
+        """
+        spec = next((c for c in columns if c.get("range_from")), None)
+        if not spec:
+            return
+        low_i, high_i = index.get(spec["range_from"]), index.get(spec.get("label"))
+        if low_i is None or high_i is None:
+            return
+        scope_cols = [index[c] for c in (spec.get("range_scope") or []) if c in index]
+        seen = {}
+        for number, row in enumerate(rows, start=1):
+            def at(i):
+                return (row[i] if i < len(row) else "") or ""
+            try:
+                low = float(str(at(low_i)).replace(",", "") or 0)
+                high = float(str(at(high_i)).replace(",", "") or 0)
+            except ValueError:
+                continue
+            if high and high < low:
+                raise UserError(_(
+                    "الصف %(row)s: «إلى» أصغر من «من».", row=number))
+            key = tuple(str(at(i)).strip() for i in scope_cols)
+            for other_row, other_low, other_high in seen.get(key, []):
+                if low < (other_high or low + 1) and other_low < (high or other_low + 1):
+                    raise UserError(_(
+                        "الصفّان %(a)s و%(b)s يتداخلان في النطاق نفسه، فلا يُعرف "
+                        "أي اعتماد يسري على مبلغ يقع بينهما.",
+                        a=other_row, b=number))
+            seen.setdefault(key, []).append((number, low, high))
 
     def _schema(self):
         """Static description of the question for the workspace / engine."""

@@ -95,7 +95,9 @@ class TestAzmFinancialModel(TransactionCase):
         self.assertEqual(visible, {"Q001", "Q002", "Q003", "Q004", "Q005", "Q006"})
         self.assertEqual((line.state, line.gap), ("partial", "المصفوفة لا تغطي الرواتب"))
         self.assertFalse(line.is_done)
-        a.workspace_answer(line.id, table.id, {"table": [["قيد يومية", "محاسب", "رئيس الحسابات", "محاسب", "50000"]]})
+        # الحد صار يلزمه عملة (DEV04): مبلغ بلا عملة لا يُعرف أجنيهٌ هو أم دولار
+        a.workspace_answer(line.id, table.id, {"table": [
+            ["قيد يومية", "محاسب", "رئيس الحسابات", "محاسب", "50000", "جنيه مصري"]]})
         a.workspace_answer(line.id, impl.id, {"option_ids": self._opt(impl, "SAP").ids})
         a.workspace_answer(line.id, rule.id, {"option_id": self._opt(rule, "مطبقة دون توثيق").id})
         res = a.workspace_answer(line.id, target.id, {"option_id": self._opt(target, "تحسين").id,
@@ -111,7 +113,14 @@ class TestAzmFinancialModel(TransactionCase):
         a.workspace_answer(line.id, status.id, {"note_tags": ["إدخال يدوي متكرر", "أخرى"], "note": "مراجعة يدوية"})
         self.assertEqual(line.gap, "إدخال يدوي متكرر، مراجعة يدوية")
         table_q = line.requirement_id.question_ids.filtered(lambda x: x.key == "Q002")
-        self.assertEqual([c.get("type") for c in table_q._columns()], ["list", "list", "list", "list", "number"])
+        # الأعمدة الأصلية في مواضعها — الإضافة إلحاق لا إدراج، وإلا انزاحت
+        # الصفوف المحفوظة عن أعمدتها
+        shape = [c.get("type") for c in table_q._columns()]
+        self.assertEqual(shape[:5], ["list", "list", "list", "list", "number"])
+        # ومعها ما يطلبه DEV04: لكل حد عملته ونطاقه وسريانه وأساسه وبديله
+        labels = [c.get("label") for c in table_q._columns()]
+        for column in ("العملة", "النطاق", "السريان", "الأساس", "البديل عند الغياب"):
+            self.assertIn(column, labels)
         # changing the status hides the dependent questions again
         a.workspace_answer(line.id, status.id, {"option_id": self._opt(status, "لا أعرف").id})
         self.assertEqual((line.state, line.q_total), ("unknown", 3))
@@ -476,3 +485,120 @@ class TestFourFactsFourFields(TransactionCase):
             self.assertEqual(line.automation, "system")
         else:
             self.assertEqual(line.automation, "manual")
+
+
+@tagged("post_install", "-at_install")
+class TestALimitSaysWhatItMeans(TransactionCase):
+    """DEV04 — «تُرفض نسبة خارج المدى المسموح ويُرفض مبلغ بلا عملة».
+
+    لم يكن هناك تحقق من شيء: خانة نوعها «رقم» تقبل نصًّا، وخصم بنسبة 9999 يُحفظ،
+    ومبلغ يُسجَّل بلا عملة فلا يُعرف أجنيهٌ هو أم دولار — وعلى هذه القيم تُبنى
+    مصفوفة صلاحيات الاعتماد.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.entity = cls.env["azm.entity"].create({"code": "LMT", "name": "كيان الحدود"})
+        cls.preparer = new_test_user(cls.env, "lmt_prep",
+                                     groups="azm_operating_model.azm_group_user")
+        cls.entity.user_ids = [(6, 0, [cls.preparer.id])]
+        cls.assessment = cls.env["azm.fin.assessment"].with_user(cls.preparer).create(
+            {"entity_id": cls.entity.id})
+
+    def _table(self, requirement, key):
+        line = self.assessment.answer_ids.filtered(lambda l: l.code == requirement)[:1]
+        if not line:
+            self.skipTest(f"{requirement} ليس في هذه الإفادة")
+        question = line.requirement_id.question_ids.filtered(lambda q: q.key == key)[:1]
+        if not question or question.qtype != "table":
+            self.skipTest(f"{requirement} {key} ليس جدولًا")
+        labels = [c["label"] for c in question._columns()]
+        return line, question, labels
+
+    def _row(self, labels, **cells):
+        row = [""] * len(labels)
+        for label, value in cells.items():
+            row[labels.index(label)] = value
+        return row
+
+    def test_a_percentage_outside_its_range_is_refused(self):
+        line, question, labels = self._table("FIN-026", "Q001")
+        if "نوع الخصم" not in labels:
+            self.skipTest("جدول الخصومات لم يُحدَّث بعد")
+        bad = self._row(labels, **{"الخصم": "تفوق", "نوع الخصم": "نسبة", "القيمة": "9999"})
+        with self.assertRaises(UserError) as caught:
+            line._set_answer(question.id, {"table": [bad]})
+        self.assertIn("المدى", str(caught.exception))
+
+        fine = self._row(labels, **{"الخصم": "تفوق", "نوع الخصم": "نسبة", "القيمة": "15"})
+        line._set_answer(question.id, {"table": [fine]})
+
+    def test_an_amount_without_a_currency_is_refused(self):
+        line, question, labels = self._table("FIN-026", "Q001")
+        if "نوع الخصم" not in labels:
+            self.skipTest("جدول الخصومات لم يُحدَّث بعد")
+        bare = self._row(labels, **{"الخصم": "تفوق", "نوع الخصم": "مبلغ", "القيمة": "5000"})
+        with self.assertRaises(UserError) as caught:
+            line._set_answer(question.id, {"table": [bare]})
+        self.assertIn("عملة", str(caught.exception))
+
+        named = self._row(labels, **{"الخصم": "تفوق", "نوع الخصم": "مبلغ",
+                                     "القيمة": "5000", "العملة": "جنيه مصري"})
+        line._set_answer(question.id, {"table": [named]})
+
+    def test_a_number_column_refuses_prose(self):
+        line, question, labels = self._table("FIN-026", "Q001")
+        row = self._row(labels, **{"الخصم": "تفوق", "القيمة": "كثير"})
+        with self.assertRaises(UserError) as caught:
+            line._set_answer(question.id, {"table": [row]})
+        self.assertIn("ليست رقمًا", str(caught.exception))
+
+    def test_two_limits_may_not_overlap_for_one_scope(self):
+        """حدّان متداخلان يتركان معاملةً بين اعتمادين، ولا يقول الجدول أيهما."""
+        line, question, labels = self._table("FIN-035", "Q001")
+        if "العملة" not in labels:
+            self.skipTest("جدول الاعتمادات لم يُحدَّث بعد")
+        over = [
+            self._row(labels, **{"من مبلغ": "0", "إلى مبلغ": "50000", "النوع": "أصناف",
+                                 "المعتمد": "المدير المالي", "العملة": "جنيه مصري"}),
+            self._row(labels, **{"من مبلغ": "30000", "إلى مبلغ": "100000", "النوع": "أصناف",
+                                 "المعتمد": "الرئيس التنفيذي", "العملة": "جنيه مصري"}),
+        ]
+        with self.assertRaises(UserError) as caught:
+            line._set_answer(question.id, {"table": over})
+        self.assertIn("يتداخلان", str(caught.exception))
+
+    def test_limits_that_meet_without_overlapping_are_fine(self):
+        line, question, labels = self._table("FIN-035", "Q001")
+        if "العملة" not in labels:
+            self.skipTest("جدول الاعتمادات لم يُحدَّث بعد")
+        tidy = [
+            self._row(labels, **{"من مبلغ": "0", "إلى مبلغ": "50000", "النوع": "أصناف",
+                                 "المعتمد": "المدير المالي", "العملة": "جنيه مصري"}),
+            self._row(labels, **{"من مبلغ": "50000", "إلى مبلغ": "100000", "النوع": "أصناف",
+                                 "المعتمد": "الرئيس التنفيذي", "العملة": "جنيه مصري"}),
+        ]
+        line._set_answer(question.id, {"table": tidy})
+
+    def test_the_same_range_under_a_different_type_is_not_an_overlap(self):
+        """النطاق هو ما يُقارَن، ونوع المعاملة جزء منه."""
+        line, question, labels = self._table("FIN-035", "Q001")
+        if "العملة" not in labels:
+            self.skipTest("جدول الاعتمادات لم يُحدَّث بعد")
+        apart = [
+            self._row(labels, **{"من مبلغ": "0", "إلى مبلغ": "50000", "النوع": "أصناف",
+                                 "المعتمد": "المدير المالي", "العملة": "جنيه مصري"}),
+            self._row(labels, **{"من مبلغ": "30000", "إلى مبلغ": "100000", "النوع": "خدمات",
+                                 "المعتمد": "الرئيس التنفيذي", "العملة": "جنيه مصري"}),
+        ]
+        line._set_answer(question.id, {"table": apart})
+
+    def test_every_authority_table_can_now_say_currency_and_effect(self):
+        """المستند: «لكل حد مبلغ عملة ونطاق وسريان وأساس … وبديل عند الغياب»."""
+        for requirement, key, wanted in (
+                ("FIN-004", "Q002", ("العملة", "النطاق", "السريان", "الأساس", "البديل عند الغياب")),
+                ("FIN-035", "Q001", ("العملة", "السريان", "الأساس", "البديل عند الغياب"))):
+            _line, _question, labels = self._table(requirement, key)
+            for column in wanted:
+                self.assertIn(column, labels, f"{requirement} {key} ينقصه «{column}»")

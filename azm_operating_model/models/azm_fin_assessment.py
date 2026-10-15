@@ -646,6 +646,9 @@ class AzmFinAnswer(models.Model):
         if "table" in vals:
             rows = [[str(c or "") for c in row] for row in (vals["table"] or []) if isinstance(row, list)]
             rows = [row for row in rows if any(c.strip() for c in row)]
+            # قيمة لا يمكن أن تكون صحيحة تُرفض قبل أن تُحفظ، لا بعد أن تُبنى
+            # عليها مصفوفة صلاحيات
+            question._check_rows(rows)
             clean["table_json"] = json.dumps(rows, ensure_ascii=False) if rows else False
             if rows:
                 clean["option_id"] = False
