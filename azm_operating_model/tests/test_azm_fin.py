@@ -749,3 +749,59 @@ class TestAnEmptyModelSaysSo(TransactionCase):
         module = self._module(self.blank)
         said = self._text(self.blank._render("rules", module))
         self.assertIn("لم تتم الإجابة", said)
+
+
+@tagged("post_install", "-at_install")
+class TestTheWorkspaceCanBeSearched(TransactionCase):
+    """DEV19 — «أضف بحثًا بالاسم والكود».
+
+    الموديول الواحد يبلغ 44 متطلبًا و157 سؤالًا، ولم تكن هناك وسيلة للوصول إلى
+    واحد منها إلا بالتمرير. والبحث في الواجهة يقرأ حقولًا بعينها من الحمولة؛
+    فإن سقط أحدها صار البحث يبحث في العدم بلا أن يشكو. هذا ما يحرسه هذا الاختبار:
+    العقد الذي يقوم عليه، لا الواجهة نفسها — فجولات المتصفح لا تعمل في هذه الحاوية.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.entity = cls.env["azm.entity"].create({"code": "SRCH", "name": "كيان البحث"})
+        cls.preparer = new_test_user(cls.env, "srch_prep",
+                                     groups="azm_operating_model.azm_group_user")
+        cls.entity.user_ids = [(6, 0, [cls.preparer.id])]
+        cls.assessment = cls.env["azm.fin.assessment"].with_user(cls.preparer).create(
+            {"entity_id": cls.entity.id})
+
+    def _a_requirement(self):
+        data = self.assessment.workspace_data(
+            module_code=self.assessment.answer_ids.module_id[:1].code)
+        for topic in data["topics"]:
+            if topic["requirements"]:
+                return topic["requirements"][0]
+        self.skipTest("لا توجد متطلبات في هذا الموديول")
+
+    def test_the_payload_carries_everything_the_search_reads(self):
+        req = self._a_requirement()
+        for field in ("code", "req_id", "tree_ref", "title", "question"):
+            self.assertIn(field, req, f"البحث يقرأ «{field}» وهو غير مرسَل")
+        self.assertTrue(req["code"], "ولا بد أن يحمل قيمة، وإلا لم يُطابق شيئًا")
+
+    def test_a_question_can_be_found_by_its_own_words(self):
+        """من يبحث عن «تعارض المصالح» يعرف ما يريد ولا يعرف تحت أي متطلب وُضع."""
+        req = self._a_requirement()
+        self.assertTrue(req["questions"], "المتطلب له أسئلة")
+        question = req["questions"][0]
+        for field in ("label", "key", "hint"):
+            self.assertIn(field, question, f"البحث يقرأ «{field}» من السؤال")
+
+    def test_the_master_requirement_id_is_searchable_too(self):
+        """AZM-FIN-REQ-000004 معرّف يُطبع، فلا بد أن يكون معرّفًا يُوجد به."""
+        req = self._a_requirement()
+        if not req.get("req_id"):
+            self.skipTest("هذا المتطلب بلا معرّف رئيسي")
+        self.assertRegex(req["req_id"], r"^AZM-FIN-REQ-\d+$")
+
+    def test_done_is_sent_so_the_page_can_offer_the_next_open_one(self):
+        """«انتقال للسؤال التالي الناقص» يحتاج أن يعرف أيها ناقص."""
+        req = self._a_requirement()
+        self.assertIn("done", req)
+        self.assertIsInstance(req["done"], bool)

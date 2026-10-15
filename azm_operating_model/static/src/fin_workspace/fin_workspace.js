@@ -34,6 +34,9 @@ export class AzmFinWorkspace extends Component {
             showAll: false,
             onlyOpen: false,
             onlyReturned: false,
+            // DEV19 — بحث بالاسم والكود. الموديول الواحد يبلغ 44 متطلبًا و157
+            // سؤالًا، ولم تكن هناك وسيلة للوصول إلى واحد منها إلا بالتمرير.
+            search: "",
             busy: false,
             saving: 0,
             openPrompts: {},
@@ -507,7 +510,59 @@ export class AzmFinWorkspace extends Component {
 
     // ------------------------------------------------------------ view helpers
     get filtering() {
-        return this.state.onlyOpen || this.state.onlyReturned;
+        return this.state.onlyOpen || this.state.onlyReturned || !!this.needle;
+    }
+
+    /** نص البحث بعد تسوية المسافات وحالة الأحرف — فليست من الكود ولا من الاسم. */
+    get needle() {
+        return (this.state.search || "").trim().toLowerCase();
+    }
+
+    /** يُطابَق المتطلب بكوده ومرجعه وعنوانه ونص أسئلته وخياراتها.
+     *
+     * بنصّ السؤال أيضًا، لأن من يبحث عن «تعارض المصالح» يعرف ما يريده ولا يعرف
+     * بالضرورة تحت أي متطلب وُضع.
+     */
+    matches(req) {
+        const needle = this.needle;
+        if (!needle) {
+            return true;
+        }
+        const parts = [req.code, req.req_id, req.tree_ref, req.title, req.question];
+        for (const question of req.questions || []) {
+            parts.push(question.label, question.key, question.hint);
+        }
+        return parts.some((part) => (part || "").toLowerCase().includes(needle));
+    }
+
+    /** ينتقل إلى أول متطلب لم يكتمل — «انتقال للسؤال التالي الناقص». */
+    goToNextOpen(from) {
+        const all = this.d.topics.flatMap((t) => this.topicRequirements(t));
+        const start = from ? all.findIndex((r) => r.code === from) + 1 : 0;
+        const next = all.slice(start).find((r) => !r.done) || all.find((r) => !r.done);
+        if (next) {
+            document.querySelector(`[data-req="${next.code}"]`)
+                ?.scrollIntoView({ block: "start", behavior: "smooth" });
+        }
+        return next;
+    }
+
+    get openCount() {
+        return this.d.topics.reduce(
+            (n, topic) => n + this.topicRequirements(topic).filter((r) => !r.done).length, 0);
+    }
+
+    clearSearch() {
+        this.state.search = "";
+    }
+
+    /** عدد ما طابق البحث في هذا الموديول، ليقول للقارئ ما لا يراه. */
+    get found() {
+        if (!this.needle) {
+            return null;
+        }
+        return this.d.topics.reduce(
+            (n, topic) => n + topic.requirements.filter((r) => this.matches(r)).length, 0);
     }
 
     visibleTopics() {
@@ -526,6 +581,9 @@ export class AzmFinWorkspace extends Component {
         }
         if (this.state.onlyOpen) {
             requirements = requirements.filter((r) => !r.done);
+        }
+        if (this.needle) {
+            requirements = requirements.filter((r) => this.matches(r));
         }
         return requirements;
     }

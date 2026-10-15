@@ -220,6 +220,26 @@
                         <input type="checkbox" t-att-checked="this.state.onlyOpen" t-on-change="() => this.toggleOnlyOpen()"/>
                         غير المكتمل فقط
                     </label>
+                    <!-- DEV19: الموديول الواحد يبلغ 44 متطلبًا و157 سؤالًا، ولم
+                         تكن هناك وسيلة للوصول إلى واحد منها إلا بالتمرير -->
+                    <div class="o_azm_fin_find">
+                        <i class="oi" data-icon="search"/>
+                        <input type="search" class="form-control form-control-sm"
+                               placeholder="ابحث بالكود أو الاسم أو نص السؤال"
+                               t-att-value="this.state.search"
+                               t-on-input="(ev) => this.state.search = ev.target.value"/>
+                        <button type="button" t-if="this.needle" class="btn btn-sm btn-light"
+                                title="امسح البحث" t-on-click="() => this.clearSearch()">×</button>
+                    </div>
+                    <div t-if="this.needle" class="o_azm_fin_found">
+                        <t t-if="this.found">طابق <t t-out="this.found"/> متطلبًا في هذا الموديول</t>
+                        <t t-else="">لا شيء في هذا الموديول يطابق البحث — جرّب موديولًا آخر</t>
+                    </div>
+                    <button type="button" t-if="this.openCount" class="btn btn-sm btn-light o_azm_fin_next"
+                            t-on-click="() => this.goToNextOpen()">
+                        <i class="oi me-1" data-icon="arrow_downward"/>
+                        انتقل إلى متطلب ناقص (<t t-out="this.openCount"/>)
+                    </button>
                     <!-- offered only when something actually came back, so it cannot be
                          switched on to reveal an empty page for no reason -->
                     <label t-if="d.returns_open" class="o_azm_fin_showall o_azm_fin_returned_filter">
