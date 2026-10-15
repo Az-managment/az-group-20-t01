@@ -144,6 +144,10 @@ class AzmFinAssessment(models.Model):
                 "code": module.code, "name": module.name,
                 "total": len(lines), "applicable": len(app), "done": len(app.filtered("is_done")),
                 "questions": total, "answered": answered,
+                # المقام صفر ليس إنجازًا صفرًا. «لا شيء ينطبق هنا» حكمٌ على
+                # البيانات، فيُقال من عندها مرة واحدة بدل أن تستنتجه كل شاشة —
+                # وكانت الواجهة تستنتجه فتعرض 0٪ على موديول لا يخصّ هذا الكيان.
+                "percent": round(100.0 * answered / total) if total else None,
                 "gaps": len(app.filtered(lambda a: a.state in ("partial", "unavailable"))),
             })
         return nav

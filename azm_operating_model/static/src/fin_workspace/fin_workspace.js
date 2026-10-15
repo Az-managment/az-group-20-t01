@@ -646,13 +646,14 @@ export class AzmFinWorkspace extends Component {
      * فيقرأ القارئ «0٪» عن موديول لا ينطبق منه شيء على كيانه، وهو حكم بالتقصير
      * حيث لا تقصير. لا أسئلة منطبقة ليست نسبة، وتُقال كما هي.
      */
+    /** النسبة كما حسبها الخادم — و null حين لا يوجد ما يُنجَز. */
     modulePercent(module) {
-        return module.questions ? Math.round((100 * module.answered) / module.questions) : null;
+        return module.percent;
     }
 
-    /** هل لهذا الموديول ما يُنجَز أصلًا؟ */
+    /** هل لهذا الموديول ما يُنجَز أصلًا؟ يقرأ حكم الخادم لا يعيد استنتاجه. */
     moduleHasWork(module) {
-        return !!module.questions;
+        return module.percent !== null && module.percent !== undefined;
     }
 }
 

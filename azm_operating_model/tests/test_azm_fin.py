@@ -835,9 +835,22 @@ class TestAZeroDenominatorIsNotZeroPercent(TransactionCase):
             self.assertEqual(module["questions"], 0,
                              f"{module['code']}: لا منطبق فيه، فلا أسئلة تُحتسب")
             self.assertEqual(module["answered"], 0)
-            # المقام صفر: الواجهة تقرأ questions فتعرف أن لا نسبة هنا
-            self.assertFalse(module["questions"],
-                             "ما يقرؤه العرض ليقرر بين نسبة وبين «لا أسئلة منطبقة»")
+            # وهذا هو موضع الحكم: لا نسبة، لا صفر. الصفر رقمٌ يُقرأ تقصيرًا،
+            # و None لا يُقرأ شيئًا فتقول الشاشة «لا أسئلة منطبقة».
+            self.assertIsNone(module["percent"],
+                              f"{module['code']}: مقامه صفر فلا نسبة له")
+
+    def test_a_module_with_work_reports_a_real_percentage(self):
+        """الإصلاح يفرّق بين الحالتين؛ لا يُسكت الحالة الأخرى."""
+        nav = self.assessment._modules_nav()
+        working = [m for m in nav if m["questions"]]
+        if not working:
+            self.skipTest("لا يوجد موديول فيه أسئلة منطبقة")
+        for module in working:
+            self.assertIsNotNone(module["percent"], module["code"])
+            self.assertEqual(module["percent"],
+                             round(100.0 * module["answered"] / module["questions"]),
+                             module["code"])
 
     def test_the_denominator_counts_applicable_questions_only(self):
         """المقام هو الأسئلة الإلزامية الفعالة المنطبقة، لا كل ما في الكتالوج."""
@@ -862,3 +875,112 @@ class TestAZeroDenominatorIsNotZeroPercent(TransactionCase):
         self.assertIn("طلاب", student.title)
         self.assertIn("كيان", funding.title)
         self.assertNotEqual(student.title, funding.title)
+
+
+@tagged("post_install", "-at_install")
+class TestTheCatalogueCarriesWhatTheBriefAsked(TransactionCase):
+    """ما أضافه المستند إلى الكتالوج — يُحرَس أو يضيع في أول إعادة تحميل.
+
+    الكتالوج ملف يُحمَّل، فإن حُمِّل من نسخة أقدم ذهبت هذه الإضافات بلا صوت.
+    وهذه الأسماء والأعمدة هي ما طلبه المستند بالنص، فتُقرأ من البيانات لا تُفترض.
+    """
+
+    def _module(self, code):
+        return self.env["azm.fin.module"].sudo().search([("code", "=", code)], limit=1)
+
+    def _question(self, requirement, key):
+        return self.env["azm.fin.question"].sudo().search(
+            [("requirement_id.code", "=", requirement), ("key", "=", key)], limit=1)
+
+    def _columns(self, requirement, key):
+        import json
+        q = self._question(requirement, key)
+        if not q:
+            self.skipTest(f"{requirement}/{key} غير موجود")
+        return [c.get("label") for c in json.loads(q.columns_json or "[]")]
+
+    # ------------------------------------------------------------------ TREE01
+    def test_the_general_ledger_reads_as_one_name_with_two_branches(self):
+        gld, cls = self._module("GLD"), self._module("CLS")
+        if not (gld and cls):
+            self.skipTest("موديولا الأستاذ العام غير موجودين")
+        self.assertTrue(gld.name.startswith("الأستاذ العام"), gld.name)
+        self.assertTrue(cls.name.startswith("الأستاذ العام"), cls.name)
+        self.assertNotEqual(gld.name, cls.name, "فرعان لا اسم واحد مكرر")
+        self.assertIn("الأبعاد", gld.name)
+        self.assertIn("الإقفال", cls.name)
+
+    def test_the_modules_are_named_for_what_they_hold(self):
+        """كانت أضيق مما تحته: الأصول والاستثمارات تحوي الأصول الثابتة، والعقارات
+        تحوي البيع والتأجير، والتمويل يحوي القروض."""
+        for code, word in (("AST", "الثابتة"), ("REA", "التأجير"), ("FND", "القروض"),
+                           ("RPT", "مؤشرات"), ("DAT", "الترحيل"), ("INV", "التكاليف")):
+            module = self._module(code)
+            if not module:
+                continue
+            self.assertIn(word, module.name, f"{code}: {module.name}")
+
+    def test_nothing_moved_when_the_names_changed(self):
+        """معيار TREE01: المتطلبات ومراجعها كما هي."""
+        Req = self.env["azm.fin.requirement"].sudo()
+        self.assertEqual(Req.search_count([]), 167)
+        for code, module in (("FIN-006", "GLD"), ("FIN-010", "GLD"),
+                             ("FIN-052", "CLS"), ("FIN-077", "CLS")):
+            r = Req.search([("code", "=", code)], limit=1)
+            if r:
+                self.assertEqual(r.module_id.code, module, code)
+                self.assertTrue(r.tree_ref, f"{code} بلا مرجع شجرة")
+
+    # ------------------------------------------------------------------ DEV15
+    def test_treasury_can_record_its_bank_accounts(self):
+        labels = self._columns("FIN-042", "Q00A")
+        for column in ("الحساب", "العملة", "المفوَّض", "حد التفويض",
+                       "يعتمد الفتح أو الإغلاق", "تاريخ الفتح", "تاريخ الإغلاق"):
+            self.assertIn(column, labels, f"سجل البنوك ينقصه «{column}»")
+
+    def test_an_asset_can_be_sold_written_off_or_impaired(self):
+        import json
+        q = self._question("FIN-051", "Q001")
+        if not q:
+            self.skipTest("FIN-051 غير موجود")
+        events = next((c.get("options") for c in json.loads(q.columns_json or "[]")
+                       if c.get("label") == "الحدث"), [])
+        for event in ("استبعاد", "بيع", "شطب", "انخفاض في القيمة"):
+            self.assertIn(event, events, f"أحداث الأصل تنقصها «{event}»")
+
+    def test_input_tax_is_asked_about(self):
+        q = self._question("FIN-056", "Q00A")
+        if not q:
+            self.skipTest("FIN-056/Q00A غير موجود")
+        self.assertIn("المدخلات", q.label)
+        names = q.option_ids.mapped("name")
+        self.assertTrue(any("استرداد" in n for n in names), names)
+        self.assertTrue(any("تُوزَّع" in n or "توزع" in n for n in names), names)
+
+    # ------------------------------------------------------------------ DEV18
+    def test_every_indicator_can_be_defined(self):
+        labels = self._columns("FIN-081", "Q00A")
+        for column in ("المؤشر", "التعريف", "الصيغة", "الوحدة",
+                       "مصدر البيانات", "المالك", "المستهدف", "من يراه"):
+            self.assertIn(column, labels, f"جدول المؤشرات ينقصه «{column}»")
+
+    def test_every_integration_says_which_way_it_runs(self):
+        labels = self._columns("FIN-084", "Q001")
+        for column in ("الاتجاه", "معرّف منع التكرار", "التسوية",
+                       "معالجة الأخطاء", "المسؤول"):
+            self.assertIn(column, labels, f"جدول التكامل ينقصه «{column}»")
+
+    # ------------------------------------------------------------------ DEV11/13
+    def test_the_budget_asks_whether_one_amount_is_taken_twice(self):
+        q = self._question("FIN-019", "Q00A")
+        if not q:
+            self.skipTest("FIN-019/Q00A غير موجود")
+        self.assertIn("أكثر من مرة", q.label)
+
+    def test_the_dimensions_include_the_ones_a_school_runs_on(self):
+        q = self._question("FIN-008", "Q001")
+        if not q:
+            self.skipTest("FIN-008 غير موجود")
+        names = q.option_ids.mapped("name")
+        for dimension in ("العام الدراسي", "المرحلة", "الفصل الدراسي", "الموقع"):
+            self.assertIn(dimension, names, f"الأبعاد تنقصها «{dimension}»")
