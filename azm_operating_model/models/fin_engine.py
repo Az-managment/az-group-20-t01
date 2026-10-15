@@ -362,11 +362,31 @@ def _by_profile(tab, module, items):
     return "".join(html)
 
 
+def _unassessed(items):
+    """لم تُجب أسئلة هذا الموديول بعد."""
+    return bool(items) and not any(i.get("q_answered") for i in items)
+
+
+def _nothing_found(items, found_nothing, not_asked):
+    """ما يُقال حين يخرج القسم فارغًا.
+
+    القسم الفارغ له سببان لا سبب واحد: إمّا أن الأسئلة أُجيبت ولم يظهر فيها ما
+    يُذكر، وإمّا أنها لم تُسأل بعد. وكانت العبارة واحدة في الحالين، فإفادة لم
+    يُجب فيها حرف واحد تُخرج «لا توجد فجوات مسجلة في هذا الموديول» — وهي شهادة
+    سلامة لشيء لم ينظر فيه أحد.
+    """
+    return not_asked if _unassessed(items) else found_nothing
+
+
 def _gaps(module, items):
     html = [module_header(module, "gaps")]
     rel = [i for i in items if i["state"] in ("partial", "unavailable")]
     if not rel:
-        return html[0] + note("لا توجد فجوات مسجلة في هذا الموديول.")
+        return html[0] + note(_nothing_found(
+            items,
+            "لا توجد فجوات مسجلة في هذا الموديول.",
+            "لم تُجب أسئلة هذا الموديول بعد، فلا يُقال إنه بلا فجوات: "
+            "غياب الإجابة ليس غياب الفجوة."))
     for item in rel:
         html.append(
             f'<div class="o_azm_risk"><span class="o_azm_code">{_e(item["code"])}</span>'
@@ -384,7 +404,10 @@ def _future(module, items):
     rel = [i for i in items if i["state"] in ("unavailable", "partial", "unknown")
            or (i["target"] and i["target"] != "استمرار")]
     if not rel:
-        return html[0] + note("لا توجد متطلبات تحتاج تصميمًا مستهدفًا في هذا الموديول.")
+        return html[0] + note(_nothing_found(
+            items,
+            "لا توجد متطلبات تحتاج تصميمًا مستهدفًا في هذا الموديول.",
+            "لم تُجب أسئلة هذا الموديول بعد، فلا يُعرف ما يحتاج تصميمًا مستهدفًا."))
     for item in rel:
         html.append(f'<div class="o_azm_section">{_title(item)}'
                     f'<p class="o_azm_muted">{_e(STATE_LABELS.get(item["state"], "لم تتم الإجابة"))} · '
@@ -397,7 +420,10 @@ def _na(module, items):
     html = [module_header(module, "na")]
     rel = [i for i in items if i["state"] == "na"]
     if not rel:
-        return html[0] + note("لا توجد متطلبات معلنة «لا ينطبق».")
+        return html[0] + note(_nothing_found(
+            items,
+            "لا توجد متطلبات معلنة «لا ينطبق».",
+            "لم تُجب أسئلة هذا الموديول بعد، فلم يُعلن شيء «لا ينطبق» ولم يُنفَ."))
     html.append(note("كل متطلب «لا ينطبق» يُراجع ولا يُستبعد تلقائيًا."))
     html.append("<ul>")
     html += [f"<li><b>{_e(i['code'])} · {_e(i['title'])}</b> — {_e(i['reason'] or '[لم يُذكر سبب]')}</li>" for i in rel]

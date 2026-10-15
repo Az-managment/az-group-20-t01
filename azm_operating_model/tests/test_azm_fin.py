@@ -679,3 +679,73 @@ class TestACompensatingControlIsAnAction(TransactionCase):
         owner = columns[labels.index("مالك الضابط")]["options"]
         self.assertFalse(set(control) & set(owner),
                          "قائمة الإجراءات وقائمة الأشخاص لا تشتركان في شيء")
+
+
+@tagged("post_install", "-at_install")
+class TestAnEmptyModelSaysSo(TransactionCase):
+    """DEV06 — «نموذج بلا إجابات لا ينتج سياسة معتمدة أو عبارة لا توجد مخاطر».
+
+    القسم الفارغ له سببان لا سبب واحد: أن تكون الأسئلة أُجيبت ولم يظهر فيها ما
+    يُذكر، أو ألّا تكون سُئلت بعد. وكانت العبارة واحدة في الحالين، فإفادة لم
+    يُجب فيها حرف واحد تُخرج «لا توجد فجوات مسجلة في هذا الموديول» — شهادة سلامة
+    لشيء لم ينظر فيه أحد.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.blank_entity = cls.env["azm.entity"].create(
+            {"code": "BLK", "name": "كيان بلا إجابات"})
+        cls.blank = cls.env["azm.fin.assessment"].create(
+            {"entity_id": cls.blank_entity.id})
+        cls.filled_entity = cls.env["azm.entity"].create(
+            {"code": "FLD", "name": "كيان مُجاب"})
+        cls.filled = cls.env["azm.fin.assessment"].create(
+            {"entity_id": cls.filled_entity.id})
+        cls.filled.action_fill_demo()
+
+    @staticmethod
+    def _text(html):
+        import re
+        return " ".join(re.sub(r"<[^>]+>", " ", str(html) or "").split())
+
+    def _module(self, assessment):
+        module = assessment.answer_ids.module_id[:1]
+        if not module:
+            self.skipTest("لا يوجد موديول")
+        return module
+
+    def test_an_unanswered_module_is_not_called_free_of_gaps(self):
+        module = self._module(self.blank)
+        said = self._text(self.blank._render("gaps", module))
+        self.assertIn("لم تُجب", said, said[-120:])
+        self.assertNotIn("لا توجد فجوات مسجلة", said,
+                         "غياب الإجابة ليس غياب الفجوة")
+
+    def test_an_unanswered_module_claims_nothing_about_what_is_needed(self):
+        module = self._module(self.blank)
+        said = self._text(self.blank._render("future", module))
+        self.assertIn("لم تُجب", said)
+
+    def test_an_answered_module_still_reports_plainly(self):
+        """الإصلاح يفرّق بين الحالتين؛ لا يُسكت الحالة الأخرى."""
+        module = self.filled.answer_ids.filtered("q_answered").module_id[:1]
+        if not module:
+            self.skipTest("لم تُملأ البيانات التجريبية")
+        said = self._text(self.filled._render("gaps", module))
+        self.assertNotIn("لم تُجب أسئلة هذا الموديول بعد", said,
+                         "هذا الموديول أُجيب، فلا يُقال إنه لم يُسأل")
+
+    def test_nothing_an_empty_model_produces_calls_itself_approved(self):
+        """لا تخرج سياسة معتمدة من إفادة لم يُجب فيها شيء."""
+        module = self._module(self.blank)
+        for tab in ("rules", "workflow", "gaps", "future"):
+            said = self._text(self.blank._render(tab, module))
+            self.assertIn("مسودة غير معتمدة", said,
+                          f"{tab}: المخرج لا يقول إنه مسودة")
+
+    def test_an_unanswered_requirement_says_so_in_the_output(self):
+        """النقص يظهر، ولا يُملأ بصياغة من عند النظام."""
+        module = self._module(self.blank)
+        said = self._text(self.blank._render("rules", module))
+        self.assertIn("لم تتم الإجابة", said)
