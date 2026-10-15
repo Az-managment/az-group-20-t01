@@ -116,8 +116,12 @@ class AzmTranslations(models.AbstractModel):
                 report["hints"] += 1
 
             wanted = [x for x in (row.get("options_en") or "").split(SEPARATOR)]
-            options = question.option_ids if "option_ids" in question._fields \
-                else self.env["azm.fin.option"]
+            # الخيارات الحيّة وحدها. السجل يُقرأ بسياق active_test=False ليجد
+            # سؤالًا أُرشف، فيرث option_ids ذلك السياق ويعدّ خيارات مؤرشفة لا
+            # وجود لها في الورقة — فيختلف العدد ويُرفض كل صف بلا سبب ظاهر.
+            options = (question.option_ids.filtered("active")
+                       if "option_ids" in question._fields
+                       else self.env["azm.fin.option"])
             if any(w.strip() for w in wanted):
                 if len(wanted) != len(options):
                     # ترجمة تُسند إلى خيار غير خيارها أسوأ من لا ترجمة

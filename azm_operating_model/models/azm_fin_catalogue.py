@@ -86,7 +86,10 @@ ROLES = [
     ("target", "التوجه المستهدف"),
 ]
 QTYPES = [("select", "اختيار واحد"), ("multi", "اختيار متعدد"), ("table", "جدول"), ("number", "رقم")]
-OPTION_KINDS = [("unknown", "لا أعرف"), ("not_listed", "غير مدرج"), ("none", "لا يوجد")]
+# «أخرى» لا «غير مدرج»: المستند يطلب أن يقرأها المجيب دعوةً إلى التوضيح لا
+# إعلانًا بأن إجابته خارج القائمة. والنوع not_listed باقٍ كما هو، فهو ما
+# يقرؤه المحرك ليعرف أن الإجابة ليست من المعروض.
+OPTION_KINDS = [("unknown", "لا أعرف"), ("not_listed", "أخرى"), ("none", "لا يوجد")]
 FALLBACK_KINDS = ("unknown", "not_listed", "none")
 
 CATALOGUE = "azm_operating_model/data/fin_catalogue.json"
