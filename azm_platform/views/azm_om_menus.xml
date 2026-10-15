@@ -74,6 +74,17 @@
               action="action_azm_my_work" sequence="0"
               groups="azm_operating_model.azm_group_user"/>
 
+    <!-- ==================================================== My review work
+         مساحتي is the answerer's page; this is the same page for somebody whose job
+         is the questions rather than the answers. It belongs in the shell beside it,
+         not in the technical menu: the technical menu is the administrator's, so a
+         question reviewer who had only that entry had no app at all — the menu was
+         under a root they cannot see, and the platform shell is gated on a group a
+         question reviewer has no reason to hold. -->
+    <menuitem id="menu_question_review" name="Question Review" parent="azm_platform.menu_root"
+              action="azm_operating_model.azm_question_review_client_action" sequence="0"
+              groups="azm_operating_model.azm_group_question_reviewer"/>
+
     <!-- =========================================================== Outputs library
          The trees read one model for one entity; the library reads one deliverable
          across every entity, which is the question the trees cannot answer. -->
@@ -119,6 +130,17 @@
          people's work that they cannot act on. A reviewer gets what reviewing needs on
          top of that. The rest is the administrator's.
     -->
+    <!-- The shell itself. It carried only the platform's own user group, which a
+         question reviewer does not hold and should not be given — that group opens the
+         entities, the people and the documents, none of which reading a question needs.
+         The app is listed for them so that the one page that is theirs can be reached;
+         every entry under it keeps its own gate, so what they find inside is that page
+         and nothing else. Said as a replacement: `groups=` on a menuitem adds. -->
+    <record id="azm_platform.menu_root" model="ir.ui.menu">
+        <field name="group_ids" eval="[(6, 0, [
+            ref('azm_platform.group_azm_user'),
+            ref('azm_operating_model.azm_group_question_reviewer')])]"/>
+    </record>
     <record id="azm_platform.menu_home" model="ir.ui.menu">
         <field name="group_ids" eval="[(6, 0, [
             ref('azm_operating_model.azm_group_manager'),

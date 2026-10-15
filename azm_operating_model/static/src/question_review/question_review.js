@@ -138,6 +138,33 @@ export class AzmQuestionReview extends Component {
     get draftCount() {
         return (this.state.home?.models || []).reduce((n, m) => n + m.drafts, 0);
     }
+
+    /**
+     * الأرقام الأربعة أعلى الصفحة. تقابل أرقام «مساحتي» عند من يُجيب، ويُعدّ فيها
+     * ما يخص المراجعة: كم سؤالًا أمامه، وكم قال رأيه فيه، وكم رأيًا لم يُرسله بعد.
+     */
+    get kpis() {
+        const models = this.state.home?.models || [];
+        const sum = (field) => models.reduce((n, m) => n + (m[field] || 0), 0);
+        const total = sum("total");
+        const reviewed = sum("reviewed");
+        const left = total - reviewed;
+        return [
+            { key: "total", label: "أسئلة البنك", en: "Questions in the bank",
+                value: total, icon: "help", tone: "slate",
+                sub: `في ${models.length} نموذج` },
+            { key: "reviewed", label: "قلتُ رأيي فيها", en: "Reviewed",
+                value: reviewed, icon: "rate_review", tone: "indigo",
+                sub: total ? `${Math.round((100 * reviewed) / total)}% من البنك` : "" },
+            { key: "left", label: "لم أقرأها بعد", en: "Left to review",
+                value: left, icon: "pending", tone: left ? "orange" : "green",
+                sub: left ? "بانتظارك" : "اكتملت المراجعة" },
+            { key: "drafts", label: "مسودات لم تُرسل", en: "Unsent notes",
+                value: this.draftCount, icon: "drafts",
+                tone: this.draftCount ? "orange" : "green",
+                sub: `أُرسل منها ${sum("sent")}` },
+        ];
+    }
 }
 
 registry.category("actions").add("azm_question_review", AzmQuestionReview);

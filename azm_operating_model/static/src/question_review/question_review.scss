@@ -1,39 +1,77 @@
 // مساحة مراجعة بنك الأسئلة — السؤال هو المساحة، والرأي تحته حيث يُقرأ.
+//
+// الصفحة الأولى تُقرأ كما تُقرأ «مساحتي» عند من يُجيب: الترويسة نفسها، ثم أربعة
+// أرقام، ثم بطاقة فيها صفٌّ لكل نموذج. ما تحتها — الأقسام والأسئلة — خاص بهذه
+// الصفحة وحدها. الأصناف المشتركة (o_azm_card وo_azm_kpi وo_azm_icon_badge) تأتي
+// من هيئة المنصة نفسها، فلا تُكتب مرتين ولا تنحرف إحداهما عن الأخرى.
 .o_azm_qr {
     --qr-ink: #142b3d;
     --qr-line: rgba(20, 43, 61, .1);
-    height: 100%;
-    overflow: auto;
-    padding: 20px 24px;
-    background: #f3f6fa;
     color: var(--qr-ink);
 
     .o_azm_qr_muted { color: rgba(20, 43, 61, .6); font-size: 12.5px; }
-    .o_azm_qr_loading { padding: 40px; text-align: center; color: rgba(20,43,61,.5); }
 
-    .o_azm_qr_head {
-        margin-bottom: 20px;
-        h1 { font-size: 24px; font-weight: 800; letter-spacing: -.5px; margin: 0 0 8px; }
-        p { margin: 0; max-width: 64ch; font-size: 13px; line-height: 1.7;
-            color: rgba(20, 43, 61, .66); }
+    // ------------------------------------------------------------- الترويسة
+    .o_azm_qr_hero {
+        display: flex; align-items: center; gap: 18px;
+        padding: 22px 26px; margin-bottom: 24px;
+        border: 1px solid rgba(255, 255, 255, .6); border-radius: 22px;
+        background: rgba(255, 255, 255, .72);
+        box-shadow: 0 18px 40px rgba(15, 35, 71, .08);
+        h1 { font-size: 24px; font-weight: 800; letter-spacing: -.4px; margin: 0;
+             small { font-size: 13px; font-weight: 600; color: rgba(20,43,61,.5); } }
+        p { margin: 4px 0 0; color: rgba(20,43,61,.62); font-size: 13px; }
+        .o_azm_en { display: block; font-size: 11px; }
+    }
+    .o_azm_qr_hero_words { flex: 1 1 auto; min-width: 0; }
+    .o_azm_qr_hero_mark {
+        display: grid; place-items: center; flex: 0 0 auto;
+        width: 58px; height: 58px; border-radius: 18px;
+        background: linear-gradient(145deg, rgba(79, 70, 229, .16), rgba(47, 123, 245, .14));
+        border: 1px solid rgba(79, 70, 229, .22);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, .7), 0 10px 24px rgba(15, 35, 71, .10);
+        .oi { font-size: 26px; color: #4f46e5; }
     }
 
-    .o_azm_qr_models { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
-    .o_azm_qr_model {
-        display: flex; flex-direction: column; gap: 7px;
-        padding: 18px 20px; text-align: start;
-        border: 1px solid var(--qr-line); border-radius: 16px; background: #fff;
-        transition: transform .15s ease, box-shadow .15s ease;
-        &:hover { transform: translateY(-2px); box-shadow: 0 12px 26px rgba(20,43,61,.1); }
+    // --------------------------------------------------- النموذجان، صفًّا صفًّا
+    .o_azm_qr_section {
+        margin: 26px 0 12px; font-size: 15px; font-weight: 700;
+        em { display: block; font-size: 11px; font-weight: 500; font-style: normal;
+             color: rgba(20,43,61,.5); unicode-bidi: isolate; }
     }
-    .o_azm_qr_model_name { font-size: 15px; font-weight: 700; }
-    .o_azm_qr_model_sub, .o_azm_qr_model_tail { font-size: 12px; color: rgba(20,43,61,.62); }
-    .o_azm_qr_bar {
-        height: 5px; border-radius: 99px; background: rgba(20,43,61,.08); overflow: hidden;
-        span { display: block; height: 100%; background: #245fdb; }
+    .o_azm_qr_model_row {
+        display: flex; align-items: center; gap: 14px; padding: 14px 2px;
+        + .o_azm_qr_model_row { border-top: 1px solid rgba(15, 35, 71, .06); }
     }
-    .o_azm_qr_send_all { margin-top: 18px; }
+    .o_azm_qr_model_main {
+        flex: 1 1 auto; min-width: 0;
+        b { display: block; font-size: 14px; }
+        small { color: rgba(20,43,61,.55); font-size: 11px; }
+    }
+    .o_azm_qr_model_meter { margin-top: 6px; }
+    .o_azm_qr_meter {
+        display: block; height: 6px; max-width: 320px; margin-bottom: 4px;
+        border-radius: 99px; background: rgba(20,43,61,.08); overflow: hidden;
+        span { display: block; height: 100%; background: var(--azm-tone, #245fdb); }
+    }
+    .o_azm_qr_model_side {
+        display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
+        flex: 0 0 auto;
+    }
+    .o_azm_qr_chip {
+        padding: 2px 10px; border-radius: 99px; font-size: 11px; font-weight: 600;
+        white-space: nowrap;
+    }
+    .o_azm_qr_chip_draft { color: #c2410c; background: rgba(249, 115, 22, .14); }
+    .o_azm_qr_chip_sent { color: #087e79; background: rgba(13, 148, 136, .14); }
+    .o_azm_qr_model_actions { flex: 0 0 auto; }
 
+    .o_azm_qr_send_all {
+        margin-top: 22px;
+        .o_azm_card { display: flex; align-items: center; gap: 14px; }
+    }
+
+    // ------------------------------------------------- داخل نموذج: قسم وأسئلته
     .o_azm_qr_bar_top {
         display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
         padding-bottom: 12px; margin-bottom: 14px; border-bottom: 1px solid var(--qr-line);

@@ -184,13 +184,18 @@ class AzmQuestionComment(models.Model):
         self._review_allowed()
         mine = self.search([("user_id", "=", self.env.uid)])
         rows = []
-        for key, model, label in (
-                ("financial", "azm.fin.question", "النموذج المالي الموحد"),
-                ("procurement", "azm.question", "دورة المشتريات")):
+        # الاسم والأيقونة واللون كما في مساحة الإجابة، فالنموذج واحد وإن اختلف
+        # ما يُفعل به: من رأى «دورة المشتريات» زرقاء هناك يراها زرقاء هنا.
+        for key, model, label, en, icon, tone in (
+                ("financial", "azm.fin.question", "النموذج المالي الموحد",
+                 "Unified financial model", "payments", "green"),
+                ("procurement", "azm.question", "دورة المشتريات",
+                 "Procurement cycle", "shopping_cart", "blue")):
             total = self.env[model].sudo().search_count([])
             ours = mine.filtered(lambda n, k=key: n.model_key == k)
             rows.append({
-                "key": key, "name": label, "total": total,
+                "key": key, "name": label, "en": en, "icon": icon, "tone": tone,
+                "total": total,
                 "reviewed": len(ours),
                 "drafts": len(ours.filtered(lambda n: n.state == "draft")),
                 "sent": len(ours.filtered(lambda n: n.state == "sent")),

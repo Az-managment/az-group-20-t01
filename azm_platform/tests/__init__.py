@@ -10,3 +10,4 @@ from . import test_coding
 from . import test_library
 from . import test_my_work
 from . import test_install_order
+from . import test_question_review_menu

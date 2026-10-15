@@ -2,49 +2,116 @@
 <templates xml:space="preserve">
 
 <t t-name="azm_operating_model.QuestionReview">
-    <div class="o_azm_qr" dir="rtl">
-        <t t-if="!d.home">
-            <div class="o_azm_qr_loading">جارٍ التحميل…</div>
-        </t>
+    <div class="o_action o_azm_dashboard o_azm_om o_azm_qr" dir="rtl">
+        <div t-if="!d.home" class="o_azm_loading">
+            <i class="oi oi-spin" data-icon="progress_activity" title="Loading"/>
+        </div>
 
-        <!-- الصفحة الأولى: النموذجان -->
+        <!-- الصفحة الأولى: النموذجان، بالشكل الذي تُقرأ به «مساحتي» -->
         <t t-elif="!d.model">
-            <div class="o_azm_qr_head">
-                <h1>مراجعة بنك الأسئلة</h1>
-                <p>اقرأ السؤال وقل رأيك فيه: أواضح هو، أمكرر، أينقصه خيار.
-                   ثم أرسل ملاحظاتك إلى مدير النموذج.</p>
-            </div>
-            <div class="o_azm_qr_models">
-                <button t-foreach="d.home.models" t-as="m" t-key="m.key"
-                        type="button" class="o_azm_qr_model"
-                        t-on-click="() => this.openModel(m.key)">
-                    <span class="o_azm_qr_model_name" t-out="m.name"/>
-                    <span class="o_azm_qr_model_sub">
-                        <t t-out="m.total"/> سؤالًا ·
-                        راجعتُ <t t-out="m.reviewed"/>
+            <header class="o_azm_qr_hero">
+                <span class="o_azm_qr_hero_mark">
+                    <i class="oi" data-icon="fact_check" title="Question review"/>
+                </span>
+                <div class="o_azm_qr_hero_words">
+                    <h1>مساحتي للمراجعة <small>My review work</small></h1>
+                    <p>
+                        <t t-out="d.home.user"/>
+                        — اقرأ السؤال وقل رأيك فيه: أواضح هو، أمكرر، أينقصه خيار.
+                        <small class="o_azm_en">Read each question, say what you think of it,
+                            then send your notes to the model's administrator.</small>
+                    </p>
+                </div>
+            </header>
+
+            <section class="o_azm_kpis">
+                <div t-foreach="this.kpis" t-as="kpi" t-key="kpi.key"
+                     t-attf-class="o_azm_kpi o_azm_kpi_static o_azm_tone_{{kpi.tone}}">
+                    <span class="o_azm_kpi_text">
+                        <span class="o_azm_kpi_label">
+                            <t t-out="kpi.label"/><em class="o_azm_kpi_en" t-out="kpi.en"/>
+                        </span>
+                        <strong class="o_azm_kpi_value" t-out="kpi.value"/>
+                        <small t-out="kpi.sub"/>
                     </span>
-                    <span class="o_azm_qr_bar">
-                        <span t-attf-style="width: {{m.progress || 0}}%"/>
+                    <span class="o_azm_icon_badge">
+                        <i class="oi" t-att-data-icon="kpi.icon" t-att-title="kpi.label"/>
                     </span>
-                    <span class="o_azm_qr_model_tail">
-                        <t t-if="m.drafts"><b t-out="m.drafts"/> مسودة</t>
-                        <t t-if="m.sent"> · <t t-out="m.sent"/> مُرسَلة</t>
+                </div>
+            </section>
+
+            <section class="o_azm_qr_models">
+                <h2 class="o_azm_qr_section">
+                    ما عليك مراجعته <em class="o_azm_en">What you review</em>
+                </h2>
+                <div class="o_azm_card">
+                    <div t-foreach="d.home.models" t-as="m" t-key="m.key"
+                         class="o_azm_qr_model_row">
+                        <span t-attf-class="o_azm_icon_badge o_azm_tone_{{m.tone}}">
+                            <i class="oi" t-att-data-icon="m.icon" t-att-title="m.name"/>
+                        </span>
+                        <div class="o_azm_qr_model_main">
+                            <b t-out="m.name"/>
+                            <small class="o_azm_en" t-out="m.en"/>
+                            <div class="o_azm_qr_model_meter">
+                                <span t-attf-class="o_azm_qr_meter o_azm_tone_{{m.tone}}">
+                                    <span t-attf-style="width: {{m.progress || 0}}%"/>
+                                </span>
+                                <small>
+                                    راجعتُ <t t-out="m.reviewed"/> من <t t-out="m.total"/> سؤالًا
+                                    <t t-if="m.total - m.reviewed"> · بقي
+                                        <b t-out="m.total - m.reviewed"/></t>
+                                    <t t-else=""> · اكتملت</t>
+                                </small>
+                            </div>
+                        </div>
+                        <div class="o_azm_qr_model_side">
+                            <span t-if="m.drafts" class="o_azm_qr_chip o_azm_qr_chip_draft">
+                                <t t-out="m.drafts"/> مسودة
+                            </span>
+                            <span t-if="m.sent" class="o_azm_qr_chip o_azm_qr_chip_sent">
+                                <t t-out="m.sent"/> مُرسَلة
+                            </span>
+                            <small t-if="m.needs_work" class="text-muted">
+                                منها <t t-out="m.needs_work"/> تحتاج تعديلًا
+                            </small>
+                        </div>
+                        <div class="o_azm_qr_model_actions">
+                            <button type="button" class="btn btn-sm btn-primary"
+                                    t-on-click="() => this.openModel(m.key)">
+                                <i class="oi me-1" data-icon="edit_note"/>
+                                ابدأ
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section t-if="this.draftCount" class="o_azm_qr_send_all">
+                <div class="o_azm_card">
+                    <span class="o_azm_icon_badge o_azm_tone_orange">
+                        <i class="oi" data-icon="outgoing_mail" title="Send"/>
                     </span>
-                </button>
-            </div>
-            <div t-if="this.draftCount" class="o_azm_qr_send_all">
-                <button type="button" class="btn btn-primary btn-sm"
-                        t-on-click="() => this.sendAll()">
-                    أرسل <t t-out="this.draftCount"/> ملاحظة إلى مدير النموذج
-                </button>
-            </div>
+                    <div class="o_azm_qr_model_main">
+                        <b>عندك <t t-out="this.draftCount"/> ملاحظة لم تُرسل بعد</b>
+                        <small class="o_azm_en">Notes you have written but not yet sent.</small>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-primary"
+                            t-on-click="() => this.sendAll()">
+                        <i class="oi me-1" data-icon="send"/>
+                        أرسلها إلى مدير النموذج
+                    </button>
+                </div>
+            </section>
         </t>
 
-        <!-- داخل نموذج: الأقسام والأسئلة -->
+        <!-- داخل نموذج: الأقسام والأسئلة، والرأي تحت كل سؤال -->
         <t t-else="">
             <div class="o_azm_qr_bar_top">
                 <button type="button" class="btn btn-sm btn-light"
-                        t-on-click="() => this.backHome()">◀ النماذج</button>
+                        t-on-click="() => this.backHome()">
+                    <i class="oi me-1" data-icon="arrow_forward"/>مساحتي
+                </button>
                 <b t-out="this.modelName(d.model)"/>
                 <span t-if="d.data" class="o_azm_qr_muted">
                     <t t-out="d.data.title"/> — راجعتُ <t t-out="d.data.reviewed"/>
