@@ -122,6 +122,13 @@
                        t-att-value="this.d.search"
                        t-on-input="(ev) => this.state.search = ev.target.value"/>
                 <span t-if="this.d.saving" class="o_azm_qr_muted">يحفظ…</span>
+                <!-- الإرسال حيث يُكتب الرأي، لا في صفحة لا يمرّ بها من يعمل هنا -->
+                <button t-if="this.draftCount" type="button"
+                        class="btn btn-sm btn-primary o_azm_qr_send_here"
+                        t-on-click="() => this.sendAll()">
+                    <i class="oi me-1" data-icon="send"/>
+                    أرسل <t t-out="this.draftCount"/> ملاحظة إلى مدير النموذج
+                </button>
             </div>
 
             <div class="o_azm_qr_body">
@@ -159,6 +166,17 @@
 
                                 <!-- الرأي، تحت السؤال حيث يُقرأ -->
                                 <div class="o_azm_qr_note">
+                                    <!-- الحالة الغالبة بضغطة: لا شيء على السؤال -->
+                                    <button type="button"
+                                            t-attf-class="o_azm_qr_ok {{this.isApproved(q) ? 'o_azm_active' : ''}}"
+                                            t-att-disabled="q.note and q.note.state === 'sent' ? 'disabled' : undefined"
+                                            t-att-title="this.isApproved(q) ? 'اضغط لتتراجع' : 'هذا السؤال سليم ولا يحتاج تغييرًا'"
+                                            t-on-click="() => this.approve(q)">
+                                        <i class="oi me-1"
+                                           t-att-data-icon="this.isApproved(q) ? 'check_circle' : 'check'"/>
+                                        <t t-if="this.isApproved(q)">سليم — لا يحتاج تغييرًا</t>
+                                        <t t-else="">سليم، لا يحتاج تغييرًا</t>
+                                    </button>
                                     <select class="form-select form-select-sm"
                                             t-att-disabled="q.note and q.note.state === 'sent' ? 'disabled' : undefined"
                                             t-on-change="(ev) => this.saveNote(q, {verdict: ev.target.value})">

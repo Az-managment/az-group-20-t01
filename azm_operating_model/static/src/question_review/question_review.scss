@@ -77,6 +77,7 @@
         padding-bottom: 12px; margin-bottom: 14px; border-bottom: 1px solid var(--qr-line);
     }
     .o_azm_qr_search { max-width: 260px; margin-inline-start: auto; }
+    .o_azm_qr_send_here { white-space: nowrap; }
 
     .o_azm_qr_body { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 20px; }
     .o_azm_qr_rail { display: flex; flex-direction: column; gap: 4px; }
@@ -118,6 +119,22 @@
         select, textarea { font-size: 12.5px; }
     }
     .o_azm_qr_sent { font-size: 11px; color: #087e79; }
+
+    // الضغطة الواحدة: ظاهرة قبل السطر الذي تُغني عن كتابته، ومضيئة حين تُضغط
+    .o_azm_qr_ok {
+        align-self: flex-start;
+        padding: 4px 13px; border-radius: 99px;
+        font-size: 12px; font-weight: 600;
+        border: 1px solid rgba(13, 148, 136, .35);
+        background: rgba(13, 148, 136, .08); color: #0b6b66;
+        transition: background .12s ease, color .12s ease;
+        &:hover:not(:disabled) { background: rgba(13, 148, 136, .16); }
+        &.o_azm_active { background: #0d9488; border-color: #0d9488; color: #fff; }
+        &:disabled { opacity: .55; }
+    }
+    .o_azm_qr_q.o_azm_has_note:has(.o_azm_qr_ok.o_azm_active) {
+        border-inline-start-color: #0d9488;
+    }
 
     @media (max-width: 900px) {
         .o_azm_qr_body { grid-template-columns: minmax(0, 1fr); }

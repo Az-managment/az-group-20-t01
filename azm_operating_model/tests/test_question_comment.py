@@ -257,6 +257,69 @@ class TestTheReviewWorkspace(TransactionCase):
         self.assertEqual(found["note"]["verdict"], "options")
         self.assertEqual(again["reviewed"], data["reviewed"] + 1)
 
+    def _a_question(self, model_key="financial"):
+        nodes = self.C.review_nodes(model_key)
+        data = self.C.review_questions(model_key, nodes[0]["code"])
+        return data["groups"][0]["questions"][0]
+
+    def test_one_press_says_the_question_is_right(self):
+        """ولا يُترك للمدير حكمٌ بلا نص: الضغطة تصل سطرًا يُقرأ."""
+        question = self._a_question()
+        saved = self.C.approve_question("financial", question["id"])
+        self.assertEqual(saved["verdict"], "clear")
+        self.assertFalse(saved["needs_work"], "ليس مما يُنظر فيه")
+        note = self.env["azm.question.comment"].sudo().browse(saved["id"])
+        self.assertTrue(note.comment.strip(), "الملاحظة بنصّها لا خانة فارغة")
+
+    def test_pressing_it_again_takes_it_back(self):
+        """من ضغط سهوًا لا يحتاج من يحذف له."""
+        question = self._a_question("procurement")
+        self.C.approve_question("procurement", question["id"])
+        self.assertTrue(self.C.approve_question("procurement", question["id"])["deleted"])
+        self.assertFalse(self.env["azm.question.comment"].sudo().search_count(
+            [("proc_question_id", "=", question["id"]),
+             ("user_id", "=", self.reviewer.id)]))
+
+    def test_it_changes_the_verdict_without_erasing_what_was_written(self):
+        question = self._a_question()
+        self.C.save_note("financial", question["id"], "wording", "الصياغة مركّبة")
+        saved = self.C.approve_question("financial", question["id"])
+        self.assertEqual(saved["verdict"], "clear")
+        self.assertEqual(saved["comment"], "الصياغة مركّبة", "نصّه له")
+
+    def test_what_was_sent_is_not_pressed_again(self):
+        question = self._a_question()
+        self.C.approve_question("financial", question["id"])
+        self.C.send_my_notes()
+        with self.assertRaises(UserError):
+            self.C.approve_question("financial", question["id"])
+
+    def test_every_save_says_how_much_is_still_unsent(self):
+        """الصفحة تعرض العدد حيث يُكتب الرأي، فمن كتب داخل موديول يرى أن عليه إرسالها.
+
+        كانت لا تُعرَض إلا في الصفحة الأولى، فكان من يكتب ولا يعود إليها يحسب
+        ملاحظاته وصلت وهي عنده.
+        """
+        first, second = self._a_question(), self._a_question("procurement")
+        self.assertEqual(
+            self.C.save_note("financial", first["id"], "wording", "أولى")["drafts"], 1)
+        self.assertEqual(
+            self.C.approve_question("procurement", second["id"])["drafts"], 2)
+        self.assertEqual(
+            self.C.save_note("financial", first["id"], "wording", "")["drafts"], 1,
+            "وحذفُها يُنقصه")
+        self.C.send_my_notes()
+        self.assertEqual(
+            self.C.save_note("financial", first["id"], "wording", "ثانية")["drafts"], 1,
+            "وما أُرسل لا يُعدّ مسودة")
+
+    def test_the_press_is_for_the_role_only(self):
+        plain = new_test_user(self.env, "qc_plain_ok", groups="base.group_user")
+        question = self._a_question()
+        with self.assertRaises(UserError):
+            self.env["azm.question.comment"].with_user(plain).approve_question(
+                "financial", question["id"])
+
     def test_the_workspace_is_for_the_role_only(self):
         plain = new_test_user(self.env, "qc_plain", groups="base.group_user")
         for method in ("review_models", "review_nodes", "review_questions"):

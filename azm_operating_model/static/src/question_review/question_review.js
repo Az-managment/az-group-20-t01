@@ -28,6 +28,7 @@ export class AzmQuestionReview extends Component {
             busy: false,
             saving: 0,
             search: "",
+            drafts: 0,        // ما كتبتُه ولم أرسله — يُعرض حيث يُكتب
         });
         onWillStart(() => this.loadHome());
     }
@@ -38,6 +39,7 @@ export class AzmQuestionReview extends Component {
 
     async loadHome() {
         this.state.home = await this.orm.call(MODEL, "review_models", []);
+        this.state.drafts = this.state.home.models.reduce((n, m) => n + m.drafts, 0);
         this.state.model = null;
         this.state.node = null;
         this.state.data = null;
@@ -117,6 +119,7 @@ export class AzmQuestionReview extends Component {
             });
             const had = !!question.note;
             question.note = saved.deleted ? false : { ...saved, verdict, comment };
+            this.state.drafts = saved.drafts ?? this.state.drafts;
             if (had !== !!question.note) {
                 this.state.data.reviewed += question.note ? 1 : -1;
             }
@@ -125,10 +128,39 @@ export class AzmQuestionReview extends Component {
         }
     }
 
+    /**
+     * «سليم» بضغطة. أكثر ما يُقال عن سؤال أنه لا شيء عليه، ومن اضطُرّ إلى كتابة
+     * ذلك ألف مرة لم يراجع. وضغطة ثانية تتراجع عنها ما دامت لم تُرسَل.
+     */
+    async approve(question) {
+        if (question.note && question.note.state === "sent") {
+            return;
+        }
+        this.state.saving++;
+        try {
+            const saved = await this.orm.call(MODEL, "approve_question", [], {
+                model_key: this.state.model, question_id: question.id,
+            });
+            const had = !!question.note;
+            question.note = saved.deleted ? false : saved;
+            this.state.drafts = saved.drafts ?? this.state.drafts;
+            if (had !== !!question.note) {
+                this.state.data.reviewed += question.note ? 1 : -1;
+            }
+        } finally {
+            this.state.saving--;
+        }
+    }
+
+    isApproved(question) {
+        return !!question.note && question.note.verdict === "clear";
+    }
+
     async sendAll() {
         const result = await this.orm.call(MODEL, "send_my_notes", []);
         this.notification.add(`أُرسلت ${result.sent} ملاحظة إلى مدير النموذج.`,
                               { type: "success" });
+        this.state.drafts = 0;
         if (this.state.node) {
             await this.openNode(this.state.node);
         }
@@ -136,7 +168,7 @@ export class AzmQuestionReview extends Component {
     }
 
     get draftCount() {
-        return (this.state.home?.models || []).reduce((n, m) => n + m.drafts, 0);
+        return this.state.drafts;
     }
 
     /**

@@ -27,6 +27,9 @@ VERDICTS = [
 # الآراء التي تعني أن على أحد أن ينظر، تمييزًا لها عن «واضح ومناسب»
 NEEDS_WORK = ("wording", "duplicate", "options", "scope", "other")
 
+# نصّ الضغطة الواحدة: ما يصل المدير حين يقول المراجع إن السؤال لا شيء عليه
+APPROVED = "سليم كما هو — لا يحتاج تغييرًا."
+
 
 class AzmQuestionComment(models.Model):
     _name = "azm.question.comment"
@@ -152,12 +155,57 @@ class AzmQuestionComment(models.Model):
         text = (comment or "").strip()
         if not text:
             mine.unlink()
-            return {"deleted": True}
+            return {"deleted": True, "drafts": self._my_draft_count()}
         if mine:
             mine.write({"verdict": verdict, "comment": text})
         else:
             mine = self.create({field: question.id, "verdict": verdict, "comment": text})
-        return {"id": mine.id, "state": mine.state, "needs_work": mine.needs_work}
+        return {"id": mine.id, "state": mine.state, "needs_work": mine.needs_work,
+                "drafts": self._my_draft_count()}
+
+    @api.model
+    def _my_draft_count(self):
+        """كم رأيًا كتبتُه ولم أرسله بعد.
+
+        يعود مع كل حفظ لأن الصفحة تعرضه حيث يُكتب: من كتب ملاحظاته داخل موديول
+        ولم يعد إلى الصفحة الأولى لم يكن يرى أن عليه إرسالها، فكانت تبقى عنده
+        وهو يحسبها وصلت.
+        """
+        return self.search_count([("user_id", "=", self.env.uid),
+                                  ("state", "=", "draft")])
+
+    @api.model
+    def approve_question(self, model_key, question_id):
+        """زرٌّ واحد: هذا السؤال سليم ولا يحتاج تغييرًا.
+
+        أكثر ما يُقال عن سؤال أنه لا شيء عليه، وكتابة ذلك ألف مرة ليست مراجعة.
+        فتُكتب الضغطة رأيًا كاملًا بنصّه، ليصل المدير سطرٌ يُقرأ لا خانة فارغة.
+
+        وضغطة ثانية تتراجع عنها ما دامت لم تُرسَل — فمن ضغط سهوًا لا يحتاج إلى
+        من يحذف له. أما إن كان قد كتب رأيًا قبلها فنصّه يبقى: الزر يغيّر الحكم،
+        ولا يمحو ما كتبه صاحبه.
+        """
+        self._review_allowed()
+        field, model = self._field_for(model_key)
+        question = self.env[model].browse(int(question_id)).exists()
+        if not question:
+            raise UserError(_("السؤال غير موجود."))
+        mine = self.search(
+            [(field, "=", question.id), ("user_id", "=", self.env.uid)], limit=1)
+        if mine.state == "sent":
+            raise UserError(_("ما أُرسل إلى مدير النموذج لا يُعدَّل."))
+        if not mine:
+            mine = self.create({field: question.id, "verdict": "clear",
+                                "comment": APPROVED})
+        elif mine.verdict == "clear":
+            mine.unlink()
+            return {"deleted": True, "drafts": self._my_draft_count()}
+        else:
+            # حكمه يتغيّر، ونصّه له
+            mine.write({"verdict": "clear"})
+        return {"id": mine.id, "state": mine.state, "verdict": mine.verdict,
+                "comment": mine.comment, "needs_work": mine.needs_work,
+                "drafts": self._my_draft_count()}
 
     @api.model
     def send_my_notes(self):

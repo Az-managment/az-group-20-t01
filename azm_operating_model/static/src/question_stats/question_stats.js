@@ -32,7 +32,11 @@ export class AzmQuestionStats extends Component {
     }
 
     async load() {
-        this.state.stats = await this.orm.call(MODEL, "comment_stats", []);
+        const stats = await this.orm.call(MODEL, "comment_stats", []);
+        this.state.stats = stats;
+        // تُفتح على ما يُعمل به إن كان فيه ما يُعمل به. وأكثر ما يُقال عن سؤال
+        // أنه سليم، فلو فُتحت على الكل لغرق ما يحتاج نظرًا في ما لا يحتاجه.
+        this.state.only = stats.needs_work ? "needs_work" : "all";
     }
 
     modelName(key) {
