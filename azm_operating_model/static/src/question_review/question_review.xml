@@ -3,12 +3,12 @@
 
 <t t-name="azm_operating_model.QuestionReview">
     <div class="o_action o_azm_dashboard o_azm_om o_azm_qr" dir="rtl">
-        <div t-if="!d.home" class="o_azm_loading">
+        <div t-if="!this.d.home" class="o_azm_loading">
             <i class="oi oi-spin" data-icon="progress_activity" title="Loading"/>
         </div>
 
         <!-- الصفحة الأولى: النموذجان، بالشكل الذي تُقرأ به «مساحتي» -->
-        <t t-elif="!d.model">
+        <t t-elif="!this.d.model">
             <header class="o_azm_qr_hero">
                 <span class="o_azm_qr_hero_mark">
                     <i class="oi" data-icon="fact_check" title="Question review"/>
@@ -16,7 +16,7 @@
                 <div class="o_azm_qr_hero_words">
                     <h1>مساحتي للمراجعة <small>My review work</small></h1>
                     <p>
-                        <t t-out="d.home.user"/>
+                        <t t-out="this.d.home.user"/>
                         — اقرأ السؤال وقل رأيك فيه: أواضح هو، أمكرر، أينقصه خيار.
                         <small class="o_azm_en">Read each question, say what you think of it,
                             then send your notes to the model's administrator.</small>
@@ -45,7 +45,7 @@
                     ما عليك مراجعته <em class="o_azm_en">What you review</em>
                 </h2>
                 <div class="o_azm_card">
-                    <div t-foreach="d.home.models" t-as="m" t-key="m.key"
+                    <div t-foreach="this.d.home.models" t-as="m" t-key="m.key"
                          class="o_azm_qr_model_row">
                         <span t-attf-class="o_azm_icon_badge o_azm_tone_{{m.tone}}">
                             <i class="oi" t-att-data-icon="m.icon" t-att-title="m.name"/>
@@ -112,22 +112,22 @@
                         t-on-click="() => this.backHome()">
                     <i class="oi me-1" data-icon="arrow_forward"/>مساحتي
                 </button>
-                <b t-out="this.modelName(d.model)"/>
-                <span t-if="d.data" class="o_azm_qr_muted">
-                    <t t-out="d.data.title"/> — راجعتُ <t t-out="d.data.reviewed"/>
-                    من <t t-out="d.data.count"/>
+                <b t-out="this.modelName(this.d.model)"/>
+                <span t-if="this.d.data" class="o_azm_qr_muted">
+                    <t t-out="this.d.data.title"/> — راجعتُ <t t-out="this.d.data.reviewed"/>
+                    من <t t-out="this.d.data.count"/>
                 </span>
                 <input type="search" class="form-control form-control-sm o_azm_qr_search"
                        placeholder="ابحث بالكود أو النص"
-                       t-att-value="d.search"
+                       t-att-value="this.d.search"
                        t-on-input="(ev) => this.state.search = ev.target.value"/>
-                <span t-if="d.saving" class="o_azm_qr_muted">يحفظ…</span>
+                <span t-if="this.d.saving" class="o_azm_qr_muted">يحفظ…</span>
             </div>
 
             <div class="o_azm_qr_body">
                 <nav class="o_azm_qr_rail">
-                    <button t-foreach="d.nodes" t-as="n" t-key="n.code" type="button"
-                            t-attf-class="o_azm_qr_rail_item {{n.code === d.node ? 'o_azm_active' : ''}}"
+                    <button t-foreach="this.d.nodes" t-as="n" t-key="n.code" type="button"
+                            t-attf-class="o_azm_qr_rail_item {{n.code === this.d.node ? 'o_azm_active' : ''}}"
                             t-on-click="() => this.openNode(n.code)">
                         <span class="o_azm_qr_rail_name" t-out="n.name"/>
                         <small><t t-out="n.reviewed"/>/<t t-out="n.questions"/></small>
@@ -135,7 +135,7 @@
                 </nav>
 
                 <section class="o_azm_qr_questions">
-                    <t t-if="!d.data">
+                    <t t-if="!this.d.data">
                         <div class="o_azm_qr_muted">اختر قسمًا.</div>
                     </t>
                     <t t-else="">
