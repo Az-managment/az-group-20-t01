@@ -11,6 +11,7 @@ const ROOT_XMLID = "azm_platform.menu_root";
 const ICONS = {
     "azm_platform.menu_my_work": "assignment_ind",
     "azm_platform.menu_question_review": "fact_check",
+    "azm_platform.menu_question_notes": "insights",
     "azm_platform.menu_progress": "monitoring",
     "azm_platform.menu_home": "home",
     "azm_platform.menu_entities": "business",

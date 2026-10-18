@@ -96,9 +96,27 @@ class TestReviewingTheQuestionsThemselves(TransactionCase):
         self.assertEqual(stats["notes"], 2)
         self.assertEqual(stats["questions_commented"], 1, "سؤال واحد")
         self.assertEqual(stats["reviewers"], 2)
-        self.assertTrue(stats["rows"], "والمدير يرى الكود مع الملاحظة")
-        self.assertIn("code", stats["rows"][0])
-        self.assertIn("comment", stats["rows"][0])
+        # والسؤال سطر واحد تحته رأيان، لا سطران لا يظهر أنهما عن سؤال واحد
+        self.assertEqual(len(stats["questions"]), 1, "سؤال واحد")
+        entry = stats["questions"][0]
+        self.assertEqual(entry["code"], self.fin[0].code or self.fin[0].key)
+        self.assertEqual(len(entry["notes"]), 2, "ورأيان تحته")
+        self.assertEqual({n["by"] for n in entry["notes"]},
+                         {self.reviewer.name, self.other.name})
+        self.assertTrue(all(n["comment"] for n in entry["notes"]))
+
+    def test_what_needs_work_is_read_first(self):
+        """الصفحة تُفتح على ما يُعمل به، لا على ما طُمئن إليه."""
+        if len(self.fin) < 2:
+            self.skipTest("بنك الأسئلة أصغر من أن يُرتَّب")
+        mine = self._mine(self.reviewer)
+        mine.save_note("financial", self.fin[0].id, "clear", "واضح")
+        mine.save_note("financial", self.fin[1].id, "duplicate", "مكرر")
+        mine.send_my_notes()
+        order = [q["code"] for q in
+                 self.C.with_user(self.manager).comment_stats()["questions"]]
+        self.assertEqual(order[0], self.fin[1].code or self.fin[1].key,
+                         "ما يحتاج نظرًا قبل ما لا يحتاجه")
 
     def test_statistics_are_for_the_manager(self):
         with self.assertRaises(UserError):

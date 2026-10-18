@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="azm_operating_model.QuestionStats">
+    <div class="o_action o_azm_dashboard o_azm_om o_azm_qs" dir="rtl">
+        <div t-if="!this.d.stats" class="o_azm_loading">
+            <i class="oi oi-spin" data-icon="progress_activity" title="Loading"/>
+        </div>
+
+        <t t-else="">
+            <header class="o_azm_qs_hero">
+                <span class="o_azm_qs_hero_mark">
+                    <i class="oi" data-icon="insights" title="Question notes"/>
+                </span>
+                <div class="o_azm_qs_hero_words">
+                    <h1>ملاحظات المراجعين على الأسئلة <small>Question notes</small></h1>
+                    <p>
+                        ما أرسله مراجعو بنك الأسئلة: السؤال بكوده، وتحته ما قيل فيه.
+                        <small class="o_azm_en">What the question reviewers sent in —
+                            each question by its code, with the opinions written under it.</small>
+                    </p>
+                </div>
+                <button type="button" class="btn btn-sm btn-light"
+                        t-on-click="() => this.openFullList()">
+                    <i class="oi me-1" data-icon="list"/>القائمة الكاملة
+                </button>
+            </header>
+
+            <section class="o_azm_kpis">
+                <div t-foreach="this.kpis" t-as="kpi" t-key="kpi.key"
+                     t-attf-class="o_azm_kpi o_azm_kpi_static o_azm_tone_{{kpi.tone}}">
+                    <span class="o_azm_kpi_text">
+                        <span class="o_azm_kpi_label">
+                            <t t-out="kpi.label"/><em class="o_azm_kpi_en" t-out="kpi.en"/>
+                        </span>
+                        <strong class="o_azm_kpi_value" t-out="kpi.value"/>
+                        <small t-out="kpi.sub"/>
+                    </span>
+                    <span class="o_azm_icon_badge">
+                        <i class="oi" t-att-data-icon="kpi.icon" t-att-title="kpi.label"/>
+                    </span>
+                </div>
+            </section>
+
+            <!-- لا شيء بعد: الصفحة تقول السبب، فالفراغ هنا ليس عطلًا -->
+            <div t-if="!this.d.stats.notes" class="o_azm_card o_azm_qs_empty">
+                <i class="oi" data-icon="inbox" title="Nothing"/>
+                <div>
+                    <strong>لم تصل ملاحظات بعد</strong>
+                    <small>الملاحظة لا تظهر هنا حتى يرسلها المراجع. ما يكتبه قبل ذلك
+                        مسودة عنده، ورأيٌ لم يُقَل بعد.</small>
+                </div>
+            </div>
+
+            <t t-else="">
+                <div class="o_azm_qs_grid">
+                    <!-- بأي رأي -->
+                    <section class="o_azm_card">
+                        <h2 class="o_azm_qs_section">
+                            الآراء <em class="o_azm_en">By verdict</em>
+                        </h2>
+                        <div t-foreach="this.d.stats.by_verdict" t-as="v" t-key="v.key"
+                             t-attf-class="o_azm_qs_bar_row {{v.key === 'clear' ? '' : 'o_azm_qs_flagged'}}">
+                            <span class="o_azm_qs_bar_name" t-out="v.name"/>
+                            <span class="o_azm_qs_bar">
+                                <span t-attf-style="width: {{100 * v.count / this.peak(this.d.stats.by_verdict, 'count')}}%"/>
+                            </span>
+                            <b t-out="v.count"/>
+                        </div>
+                    </section>
+
+                    <!-- في أي نموذج -->
+                    <section class="o_azm_card">
+                        <h2 class="o_azm_qs_section">
+                            النموذجان <em class="o_azm_en">By model</em>
+                        </h2>
+                        <div t-foreach="this.d.stats.by_model" t-as="m" t-key="m.key"
+                             class="o_azm_qs_bar_row">
+                            <span class="o_azm_qs_bar_name" t-out="this.modelName(m.key)"/>
+                            <span class="o_azm_qs_bar">
+                                <span t-attf-style="width: {{m.total ? 100 * m.commented / m.total : 0}}%"/>
+                            </span>
+                            <b><t t-out="m.commented"/>/<t t-out="m.total"/></b>
+                        </div>
+                    </section>
+
+                    <!-- وأين منه -->
+                    <section class="o_azm_card">
+                        <h2 class="o_azm_qs_section">
+                            أكثر المواضع <em class="o_azm_en">Where the notes fall</em>
+                        </h2>
+                        <div t-foreach="this.d.stats.by_node" t-as="n" t-key="n.node"
+                             class="o_azm_qs_bar_row">
+                            <span class="o_azm_qs_bar_name o_azm_qs_code" t-out="n.node"/>
+                            <span class="o_azm_qs_bar">
+                                <span t-attf-style="width: {{100 * n.count / this.peak(this.d.stats.by_node, 'count')}}%"/>
+                            </span>
+                            <b t-out="n.count"/>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- السؤال بكوده، وتحته ما قيل فيه -->
+                <section class="o_azm_qs_questions">
+                    <h2 class="o_azm_qs_section">
+                        الأسئلة وما قيل فيها <em class="o_azm_en">The questions, and what was said</em>
+                    </h2>
+
+                    <div class="o_azm_qs_tools">
+                        <button t-foreach="this.filters" t-as="f" t-key="f.key" type="button"
+                                t-attf-class="o_azm_qs_chip {{f.key === this.d.only ? 'o_azm_active' : ''}}"
+                                t-on-click="() => this.state.only = f.key">
+                            <t t-out="f.name"/> <small t-out="f.count"/>
+                        </button>
+                        <input type="search" class="form-control form-control-sm o_azm_qs_search"
+                               placeholder="ابحث بالكود أو بنص السؤال أو بنص الملاحظة"
+                               t-att-value="this.d.search"
+                               t-on-input="(ev) => this.state.search = ev.target.value"/>
+                    </div>
+
+                    <div t-if="!this.questions.length" class="o_azm_card o_azm_qs_empty">
+                        <i class="oi" data-icon="search_off" title="Nothing"/>
+                        <strong>لا أسئلة تطابق ما اخترت.</strong>
+                    </div>
+
+                    <div t-foreach="this.questions" t-as="q" t-key="q.model + q.code"
+                         t-attf-class="o_azm_card o_azm_qs_q {{q.needs_work ? 'o_azm_qs_flagged' : ''}}">
+                        <div class="o_azm_qs_q_head">
+                            <span class="o_azm_qs_code" t-out="q.code"/>
+                            <span class="o_azm_qs_node" t-out="q.node"/>
+                            <span class="o_azm_qs_model" t-out="this.modelName(q.model)"/>
+                        </div>
+                        <p class="o_azm_qs_label" t-out="q.label"/>
+                        <div t-foreach="q.notes" t-as="n" t-key="n_index" class="o_azm_qs_note">
+                            <span t-attf-class="o_azm_qs_verdict {{n.needs_work ? 'o_azm_qs_verdict_work' : ''}}"
+                                  t-out="n.verdict_name"/>
+                            <p t-if="n.comment" class="o_azm_qs_comment" t-out="n.comment"/>
+                            <small class="o_azm_qs_by">
+                                <t t-out="n.by"/><t t-if="n.sent_on"> · <t t-out="n.sent_on"/></t>
+                            </small>
+                        </div>
+                    </div>
+
+                    <p t-if="this.d.stats.questions_listed > this.d.stats.questions_shown"
+                       class="o_azm_qs_more">
+                        معروض <t t-out="this.d.stats.questions_shown"/> سؤالًا من
+                        <t t-out="this.d.stats.questions_listed"/>.
+                        <button type="button" class="btn btn-link btn-sm p-0"
+                                t-on-click="() => this.openFullList()">افتح القائمة الكاملة</button>
+                    </p>
+                </section>
+            </t>
+        </t>
+    </div>
+</t>
+
+</templates>

@@ -275,6 +275,8 @@ class AzmQuestionComment(models.Model):
                 "reviewed": len([q for q in questions if notes.get(q.id)])}
 
     # ------------------------------------------------------------------ الإحصاء
+    _STATS_LIMIT = 400
+
     @api.model
     def comment_stats(self):
         """ما وصل مدير النموذج: كم سؤالًا عليه ملاحظة، وأين، وبأي رأي.
@@ -300,6 +302,28 @@ class AzmQuestionComment(models.Model):
             "financial": len({c for m, c in questions if m == "financial"}),
             "procurement": len({c for m, c in questions if m == "procurement"}),
         }
+        # السؤال سطرًا واحدًا وتحته آراؤه. المدير يقرأ سؤالًا اختُلف عليه، لا
+        # ملاحظتين متباعدتين في قائمة لا يظهر فيها أنهما عن سؤال واحد.
+        by_question = {}
+        for note in sent:
+            entry = by_question.setdefault((note.model_key, note.question_code), {
+                "code": note.question_code, "node": note.node,
+                "model": note.model_key, "label": (note.question_label or "")[:160],
+                "needs_work": False, "notes": [],
+            })
+            entry["needs_work"] = entry["needs_work"] or note.needs_work
+            entry["notes"].append({
+                "verdict": note.verdict,
+                "verdict_name": verdicts.get(note.verdict, note.verdict),
+                "needs_work": note.needs_work,
+                "comment": note.comment or "",
+                "by": note.user_id.name,
+                "sent_on": str(note.sent_on or ""),
+            })
+        # ما يحتاج نظرًا أولًا: الصفحة تُفتح على ما يُعمل به، لا على ما طُمئن إليه
+        listed = sorted(by_question.values(),
+                        key=lambda r: (not r["needs_work"], r["model"],
+                                       r["node"] or "", r["code"] or ""))
         return {
             "notes": len(sent),
             "reviewers": len(sent.mapped("user_id")),
@@ -314,16 +338,12 @@ class AzmQuestionComment(models.Model):
             "by_node": sorted(
                 ({"node": k, "count": n} for k, n in by_node.items()),
                 key=lambda r: -r["count"])[:20],
-            # الكود مع ملاحظته، وهو ما طُلب أن يراه المدير
-            "rows": [{
-                "code": note.question_code, "node": note.node,
-                "model": note.model_key, "label": (note.question_label or "")[:120],
-                "verdict": verdicts.get(note.verdict, note.verdict),
-                "needs_work": note.needs_work,
-                "comment": note.comment or "",
-                "by": note.user_id.name,
-                "sent_on": str(note.sent_on or ""),
-            } for note in sent],
+            # الكود مع ملاحظته، وهو ما طُلب أن يراه المدير. يُقطع عند حدٍّ تبقى
+            # الصفحة عنده قابلة للقراءة، وتُقال البقية بعددها لا بالصمت عنها:
+            # القائمة الكاملة بجانبها لمن أراد الكل.
+            "questions": listed[:self._STATS_LIMIT],
+            "questions_listed": len(listed),
+            "questions_shown": min(len(listed), self._STATS_LIMIT),
         }
 
 

@@ -186,4 +186,15 @@
               parent="azm_operating_model.azm_menu_config"
               action="azm_question_comment_sent_action" sequence="45"
               groups="azm_operating_model.azm_group_manager"/>
+
+    <!-- صفحة المدير: الأرقام أولًا، ثم السؤال بكوده وتحته ما قيل فيه. القائمة
+         أعلاه تبقى لمن أراد الفرز والتصدير؛ هذه للقراءة. -->
+    <record id="azm_question_stats_client_action" model="ir.actions.client">
+        <field name="name">ملاحظات المراجعين على الأسئلة</field>
+        <field name="tag">azm_question_stats</field>
+    </record>
+    <menuitem id="azm_question_stats_menu" name="لوحة ملاحظات الأسئلة"
+              parent="azm_operating_model.azm_menu_root" sequence="28"
+              action="azm_question_stats_client_action"
+              groups="azm_operating_model.azm_group_manager"/>
 </odoo>

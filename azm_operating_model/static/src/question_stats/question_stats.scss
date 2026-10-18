@@ -1,0 +1,109 @@
+// ملاحظات المراجعين كما يقرأها المدير: الأرقام أولًا، ثم الأسئلة بأكوادها.
+// الأصناف المشتركة (o_azm_card وo_azm_kpi وo_azm_icon_badge) من هيئة المنصة.
+.o_azm_qs {
+    --qs-ink: #142b3d;
+    --qs-line: rgba(20, 43, 61, .1);
+    color: var(--qs-ink);
+
+    .o_azm_qs_hero {
+        display: flex; align-items: center; gap: 18px;
+        padding: 22px 26px; margin-bottom: 24px;
+        border: 1px solid rgba(255, 255, 255, .6); border-radius: 22px;
+        background: rgba(255, 255, 255, .72);
+        box-shadow: 0 18px 40px rgba(15, 35, 71, .08);
+        h1 { font-size: 24px; font-weight: 800; letter-spacing: -.4px; margin: 0;
+             small { font-size: 13px; font-weight: 600; color: rgba(20,43,61,.5); } }
+        p { margin: 4px 0 0; color: rgba(20,43,61,.62); font-size: 13px; }
+        .o_azm_en { display: block; font-size: 11px; }
+    }
+    .o_azm_qs_hero_words { flex: 1 1 auto; min-width: 0; }
+    .o_azm_qs_hero_mark {
+        display: grid; place-items: center; flex: 0 0 auto;
+        width: 58px; height: 58px; border-radius: 18px;
+        background: linear-gradient(145deg, rgba(13, 148, 136, .16), rgba(47, 123, 245, .14));
+        border: 1px solid rgba(13, 148, 136, .22);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, .7), 0 10px 24px rgba(15, 35, 71, .10);
+        .oi { font-size: 26px; color: #0d9488; }
+    }
+
+    .o_azm_qs_section {
+        margin: 0 0 12px; font-size: 15px; font-weight: 700;
+        em { display: block; font-size: 11px; font-weight: 500; font-style: normal;
+             color: rgba(20,43,61,.5); unicode-bidi: isolate; }
+    }
+
+    // ------------------------------------------------------------- التوزيعات
+    .o_azm_qs_grid {
+        display: grid; gap: 16px; margin-top: 24px;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        align-items: start;
+    }
+    .o_azm_qs_bar_row {
+        display: grid; grid-template-columns: minmax(0, 11ch) 1fr auto;
+        align-items: center; gap: 10px; padding: 5px 0;
+        font-size: 12.5px;
+        b { font-variant-numeric: tabular-nums; }
+    }
+    .o_azm_qs_bar_name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .o_azm_qs_bar {
+        height: 6px; border-radius: 99px; background: rgba(20,43,61,.08); overflow: hidden;
+        span { display: block; height: 100%; background: #245fdb; }
+    }
+    .o_azm_qs_flagged .o_azm_qs_bar span { background: #f97316; }
+
+    // ------------------------------------------------- الأسئلة وما قيل فيها
+    .o_azm_qs_questions { margin-top: 26px; }
+    .o_azm_qs_tools {
+        display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 14px;
+    }
+    .o_azm_qs_chip {
+        padding: 4px 12px; border-radius: 99px; font-size: 12px;
+        border: 1px solid var(--qs-line); background: #fff; color: var(--qs-ink);
+        small { color: rgba(20,43,61,.5); margin-inline-start: 4px;
+                font-variant-numeric: tabular-nums; }
+        &.o_azm_active { background: #142b3d; color: #fff; border-color: #142b3d;
+                         small { color: rgba(255,255,255,.65); } }
+    }
+    .o_azm_qs_search { max-width: 320px; margin-inline-start: auto; }
+
+    .o_azm_qs_q {
+        margin-bottom: 10px;
+        &.o_azm_qs_flagged { border-inline-start: 3px solid #f97316; }
+    }
+    .o_azm_qs_q_head {
+        display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+        font-size: 11px; color: rgba(20,43,61,.55);
+    }
+    .o_azm_qs_code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 10.5px; direction: ltr; unicode-bidi: isolate;
+    }
+    .o_azm_qs_node { font-weight: 600; }
+    .o_azm_qs_model { margin-inline-start: auto; }
+    .o_azm_qs_label { margin: 6px 0 10px; font-size: 13.5px; font-weight: 600; line-height: 1.5; }
+
+    .o_azm_qs_note {
+        padding-top: 9px; margin-top: 9px; border-top: 1px dashed var(--qs-line);
+        &:first-of-type { border-top: 0; margin-top: 0; }
+    }
+    .o_azm_qs_verdict {
+        display: inline-block; padding: 2px 10px; border-radius: 99px;
+        font-size: 11px; font-weight: 600;
+        color: #087e79; background: rgba(13, 148, 136, .14);
+        &.o_azm_qs_verdict_work { color: #c2410c; background: rgba(249, 115, 22, .14); }
+    }
+    .o_azm_qs_comment { margin: 6px 0 2px; font-size: 13px; line-height: 1.65; }
+    .o_azm_qs_by { color: rgba(20,43,61,.5); font-size: 11px; }
+
+    .o_azm_qs_empty {
+        display: flex; align-items: center; gap: 14px; margin-top: 20px;
+        .oi { font-size: 26px; color: rgba(20,43,61,.35); }
+        strong { display: block; }
+        small { color: rgba(20,43,61,.6); }
+    }
+    .o_azm_qs_more { margin-top: 12px; font-size: 12.5px; color: rgba(20,43,61,.6); }
+
+    @media (max-width: 720px) {
+        .o_azm_qs_search { margin-inline-start: 0; max-width: 100%; }
+    }
+}

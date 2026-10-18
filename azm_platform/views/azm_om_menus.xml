@@ -85,6 +85,13 @@
               action="azm_operating_model.azm_question_review_client_action" sequence="0"
               groups="azm_operating_model.azm_group_question_reviewer"/>
 
+    <!-- The other end of the same thread: what those reviewers sent in. It is the
+         administrator's page, so it sits beside التقدّم rather than beside the
+         reviewer's own — one of them reads the bank, the other reads the reading. -->
+    <menuitem id="menu_question_notes" name="Question Notes" parent="azm_platform.menu_root"
+              action="azm_operating_model.azm_question_stats_client_action" sequence="2"
+              groups="azm_operating_model.azm_group_manager"/>
+
     <!-- =========================================================== Outputs library
          The trees read one model for one entity; the library reads one deliverable
          across every entity, which is the question the trees cannot answer. -->
