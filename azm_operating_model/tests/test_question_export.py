@@ -64,6 +64,43 @@ class TestTheQuestionBankFile(TransactionCase):
         with self.assertRaises(UserError):
             self.X.with_user(self.reviewer).question_bank_xlsx()
 
+    def test_a_question_opens_with_its_options_and_its_notes(self):
+        """من قرأ «ينقصه خيار» لا يسعه الحكم حتى يرى الخيارات التي عندها قيل."""
+        C = self.env["azm.question.comment"]
+        question = self.env["azm.fin.question"].sudo().search(
+            [("option_ids", "!=", False)], limit=1)
+        if not question:
+            self.skipTest("لا سؤال بخيارات")
+        C.with_user(self.reviewer).save_note(
+            "financial", question.id, "options", "ينقصه خيار «لا ينطبق»")
+        C.with_user(self.reviewer).send_my_notes()
+
+        detail = C.with_user(self.manager).question_detail(
+            "financial", question.code or question.key)
+        self.assertEqual(detail["label"], question.label)
+        self.assertEqual([o["name"] for o in detail["options"]],
+                         question.option_ids.mapped("name"), "الخيارات بترتيبها")
+        self.assertTrue(detail["place"], "وموضعه من الشجرة")
+        self.assertIn("ينقصه خيار «لا ينطبق»",
+                      [n["comment"] for n in detail["notes"]])
+
+    def test_opening_a_question_is_the_manager_s(self):
+        question = self.env["azm.fin.question"].sudo().search([], limit=1)
+        with self.assertRaises(UserError):
+            self.env["azm.question.comment"].with_user(
+                self.reviewer).question_detail("financial", question.code)
+
+    def test_a_draft_is_not_shown_under_the_question_either(self):
+        """ما لم يُرسَل لا يُقرأ، في الصفحة وفي الملف وهنا."""
+        C = self.env["azm.question.comment"]
+        question = self.env["azm.fin.question"].sudo().search([], limit=1)
+        C.with_user(self.reviewer).save_note(
+            "financial", question.id, "wording", "مسودة لا تُقرأ هنا")
+        detail = C.with_user(self.manager).question_detail(
+            "financial", question.code or question.key)
+        self.assertNotIn("مسودة لا تُقرأ هنا",
+                         [n["comment"] for n in detail["notes"]])
+
     def test_the_route_exists_and_can_hand_the_file_over(self):
         """ما يسقط عند الطلب لا عند التحميل.
 

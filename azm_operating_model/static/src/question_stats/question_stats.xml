@@ -140,7 +140,15 @@
                             <span class="o_azm_qs_node" t-out="q.node"/>
                             <span class="o_azm_qs_model" t-out="this.modelName(q.model)"/>
                         </div>
-                        <p class="o_azm_qs_label" t-out="q.label"/>
+                        <!-- السطر يفتح السؤال نفسه: خياراته وشرطه وكل ما قيل فيه -->
+                        <button type="button" class="o_azm_qs_open"
+                                t-on-click="() => this.openQuestion(q)">
+                            <span class="o_azm_qs_label" t-out="q.label"/>
+                            <small>
+                                <t t-if="this.d.opening === q.model + q.code">يفتح…</t>
+                                <t t-else="">افتح السؤال وخياراته</t>
+                            </small>
+                        </button>
                         <div t-foreach="q.notes" t-as="n" t-key="n_index" class="o_azm_qs_note">
                             <span t-attf-class="o_azm_qs_verdict {{n.needs_work ? 'o_azm_qs_verdict_work' : ''}}"
                                   t-out="n.verdict_name"/>
@@ -160,6 +168,74 @@
                     </p>
                 </section>
             </t>
+
+            <!-- ============================================ السؤال مفتوحًا -->
+            <div t-if="this.d.detail" class="o_azm_qs_overlay"
+                 t-on-click="() => this.closeDetail()">
+                <div class="o_azm_qs_panel" t-on-click.stop="() => {}">
+                    <header class="o_azm_qs_panel_head">
+                        <div>
+                            <span class="o_azm_qs_code" t-out="this.d.detail.code"/>
+                            <small class="o_azm_qs_place">
+                                <t t-foreach="this.d.detail.place" t-as="p" t-key="p_index">
+                                    <t t-if="!p_first"> › </t><t t-out="p"/>
+                                </t>
+                            </small>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-light"
+                                t-on-click="() => this.closeDetail()">
+                            <i class="oi" data-icon="close" title="أغلق"/>
+                        </button>
+                    </header>
+
+                    <h3 class="o_azm_qs_panel_label" t-out="this.d.detail.label"/>
+                    <p t-if="this.d.detail.hint" class="o_azm_qs_panel_hint"
+                       t-out="this.d.detail.hint"/>
+
+                    <dl class="o_azm_qs_facts">
+                        <div>
+                            <dt>شكل الإجابة</dt>
+                            <dd t-out="this.d.detail.qtype || '—'"/>
+                        </div>
+                        <div>
+                            <dt>النموذج</dt>
+                            <dd t-out="this.modelName(this.d.detail.model)"/>
+                        </div>
+                        <div t-if="this.d.detail.condition">
+                            <dt>يظهر لو</dt>
+                            <dd t-out="this.d.detail.condition"/>
+                        </div>
+                    </dl>
+
+                    <h4 class="o_azm_qs_panel_section">
+                        الخيارات كما تُعرض على المجيب
+                        <small t-out="this.d.detail.options.length"/>
+                    </h4>
+                    <ol t-if="this.d.detail.options.length" class="o_azm_qs_options">
+                        <li t-foreach="this.d.detail.options" t-as="o" t-key="o_index">
+                            <t t-out="o.name"/>
+                            <em t-if="o.kind" t-out="o.kind"/>
+                        </li>
+                    </ol>
+                    <p t-else="" class="o_azm_qs_muted">
+                        لا خيارات — الإجابة تُكتب أو تُدخل رقمًا.
+                    </p>
+
+                    <h4 class="o_azm_qs_panel_section">
+                        ما قيل في هذا السؤال
+                        <small t-out="this.d.detail.notes.length"/>
+                    </h4>
+                    <div t-foreach="this.d.detail.notes" t-as="n" t-key="n_index"
+                         class="o_azm_qs_note">
+                        <span t-attf-class="o_azm_qs_verdict {{n.needs_work ? 'o_azm_qs_verdict_work' : ''}}"
+                              t-out="n.verdict"/>
+                        <p t-if="n.comment" class="o_azm_qs_comment" t-out="n.comment"/>
+                        <small class="o_azm_qs_by">
+                            <t t-out="n.by"/><t t-if="n.sent_on"> · <t t-out="n.sent_on"/></t>
+                        </small>
+                    </div>
+                </div>
+            </div>
         </t>
     </div>
 </t>

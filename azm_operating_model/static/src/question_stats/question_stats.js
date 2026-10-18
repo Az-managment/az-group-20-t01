@@ -24,7 +24,8 @@ export class AzmQuestionStats extends Component {
     setup() {
         this.orm = useService("orm");
         this.action = useService("action");
-        this.state = proxy({ stats: null, search: "", only: "all", downloading: false });
+        this.state = proxy({ stats: null, search: "", only: "all", downloading: false,
+                             detail: null, opening: null });
         onWillStart(() => this.load());
     }
 
@@ -110,6 +111,26 @@ export class AzmQuestionStats extends Component {
             { key: "procurement", name: "المشتريات",
                 count: s ? s.questions.filter((q) => q.model === "procurement").length : 0 },
         ];
+    }
+
+    /**
+     * السؤال كما هو في البنك: نصّه كاملًا، وموضعه من الشجرة، وخياراته كما
+     * تُعرض على المجيب، وشرط ظهوره — ثم ما قيل فيه. فمن قرأ «ينقصه خيار» لا
+     * يسعه الحكم حتى يرى الخيارات التي عندها قيل ذلك.
+     */
+    async openQuestion(question) {
+        this.state.opening = question.model + question.code;
+        try {
+            this.state.detail = await this.orm.call(MODEL, "question_detail", [], {
+                model_key: question.model, code: question.code,
+            });
+        } finally {
+            this.state.opening = null;
+        }
+    }
+
+    closeDetail() {
+        this.state.detail = null;
     }
 
     /**

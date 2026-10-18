@@ -313,8 +313,9 @@ class AzmQuestionComment(models.Model):
                 "label": q.label or "",
                 "hint": (q.hint if model_key == "financial" else q.help_text) or "",
                 "qtype": q.qtype or "",
-                "options": (q.option_ids.mapped("name") if model_key == "financial"
-                            else []),
+                # خيارات السؤالين معًا: كانت خيارات المشتريات لا تُعرض للمراجع
+                # أصلًا، ومن لا يرى الخيارات لا يسعه أن يقول إن أحدها ناقص.
+                "options": q.option_ids.mapped("name"),
                 "note": note,
             })
         return {"title": title, "node": node_code, "model": model_key,
@@ -324,6 +325,56 @@ class AzmQuestionComment(models.Model):
 
     # ------------------------------------------------------------------ الإحصاء
     _STATS_LIMIT = 400
+
+    @api.model
+    def question_detail(self, model_key, code):
+        """سؤال واحد كما هو في البنك، وما قيل فيه — لمدير النموذج.
+
+        الصفحة تعرض السطر؛ وهذا ما تحته: السؤال بنصّه كاملًا، وموضعه من الشجرة،
+        وخياراته كما تُعرض على المجيب، وشرط ظهوره إن كان مشروطًا، ثم كل رأي قيل
+        فيه. فمن قرأ «ينقصه خيار» لا يسعه الحكم حتى يرى الخيارات التي عندها قيل.
+        """
+        if not self.env.user.has_group("azm_operating_model.azm_group_manager"):
+            raise UserError(_("قراءة السؤال وملاحظاته لمدير النموذج."))
+        field, model = self._field_for(model_key)
+        questions = self.env[model].sudo()
+        question = questions.search([("code", "=", code)], limit=1) \
+            or questions.search([("key", "=", code)], limit=1)
+        if not question:
+            raise UserError(_("لم يُعثر على السؤال %s.", code))
+
+        kinds = dict(question.option_ids._fields["kind"].selection or [])
+        qtypes = dict(questions._fields["qtype"].selection or [])
+        if model_key == "financial":
+            req = question.requirement_id
+            place = [p for p in (question.module_id.name, question.topic_id.name,
+                                 f"{req.code} · {req.title}" if req else "") if p]
+            node = f"FIN.{question.module_id.code}" if question.module_id else "FIN"
+            hint, condition = question.hint, question.condition_text
+        else:
+            groups = dict(questions._fields["group"].selection or [])
+            place = [p for p in (question.stage_id.name,
+                                 groups.get(question.group, "")) if p]
+            node = f"PUR-{question.stage_id.code}" if question.stage_id else "PUR"
+            hint, condition = question.help_text, question.condition
+
+        verdicts = dict(VERDICTS)
+        notes = self.sudo().search(
+            [(field, "=", question.id), ("state", "=", "sent")], order="sent_on, id")
+        return {
+            "model": model_key, "code": question.code or question.key or "",
+            "key": question.key or "", "node": node, "place": place,
+            "label": question.label or "", "hint": hint or "",
+            "qtype": qtypes.get(question.qtype, question.qtype or ""),
+            "condition": condition or "",
+            "options": [{"name": o.name,
+                         "kind": kinds.get(o.kind, "") if o.kind else ""}
+                        for o in question.option_ids],
+            "notes": [{"verdict": verdicts.get(n.verdict, n.verdict),
+                       "needs_work": n.needs_work, "comment": n.comment or "",
+                       "by": n.user_id.name, "sent_on": str(n.sent_on or "")}
+                      for n in notes],
+        }
 
     @api.model
     def comment_stats(self):
