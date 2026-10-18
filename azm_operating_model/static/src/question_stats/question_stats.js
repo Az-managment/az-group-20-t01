@@ -9,6 +9,7 @@ import { Component, onWillStart, proxy, useProps } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 import { standardActionServiceProps } from "@web/webclient/actions/action_plugin";
+import { download } from "@web/core/network/download";
 
 const MODEL = "azm.question.comment";
 const MODEL_NAMES = {
@@ -23,7 +24,7 @@ export class AzmQuestionStats extends Component {
     setup() {
         this.orm = useService("orm");
         this.action = useService("action");
-        this.state = proxy({ stats: null, search: "", only: "all" });
+        this.state = proxy({ stats: null, search: "", only: "all", downloading: false });
         onWillStart(() => this.load());
     }
 
@@ -109,6 +110,20 @@ export class AzmQuestionStats extends Component {
             { key: "procurement", name: "المشتريات",
                 count: s ? s.questions.filter((q) => q.model === "procurement").length : 0 },
         ];
+    }
+
+    /**
+     * البنك كله ملفَّ إكسل: ورقة فيها كل سؤال في النموذجين ومعه ما قيل فيه،
+     * وورقة فيها كل ملاحظة على حدة. والأسئلة كلها لا المعلَّق عليها وحدها —
+     * سؤال لم يقل فيه أحد شيئًا خبرٌ عن المراجعة كالذي قيل فيه.
+     */
+    async downloadBank() {
+        this.state.downloading = true;
+        try {
+            await download({ url: "/azm/question_bank.xlsx", data: {} });
+        } finally {
+            this.state.downloading = false;
+        }
     }
 
     /** القائمة الكاملة، لمن أراد ما لا تسعه الصفحة أو أراد تصديره. */

@@ -20,3 +20,5 @@ from . import azm_fin_catalogue
 from . import azm_fin_assessment
 from . import res_users_settings
 from . import azm_translations
+# بنك الأسئلة وملاحظاته في ملف واحد
+from . import azm_question_export

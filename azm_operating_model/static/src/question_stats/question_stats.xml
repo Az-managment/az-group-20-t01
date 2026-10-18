@@ -20,10 +20,20 @@
                             each question by its code, with the opinions written under it.</small>
                     </p>
                 </div>
-                <button type="button" class="btn btn-sm btn-light"
-                        t-on-click="() => this.openFullList()">
-                    <i class="oi me-1" data-icon="list"/>القائمة الكاملة
-                </button>
+                <div class="o_azm_qs_hero_actions">
+                    <button type="button" class="btn btn-sm btn-light"
+                            t-on-click="() => this.openFullList()">
+                        <i class="oi me-1" data-icon="list"/>القائمة الكاملة
+                    </button>
+                    <!-- البنك كله في ملف، لا المعلَّق عليه وحده -->
+                    <button type="button" class="btn btn-sm btn-primary"
+                            t-att-disabled="this.d.downloading ? 'disabled' : undefined"
+                            t-on-click="() => this.downloadBank()">
+                        <i class="oi me-1" data-icon="download"/>
+                        <t t-if="this.d.downloading">يُجهَّز…</t>
+                        <t t-else="">نزّل بنك الأسئلة (Excel)</t>
+                    </button>
+                </div>
             </header>
 
             <section class="o_azm_kpis">

@@ -17,6 +17,10 @@
         .o_azm_en { display: block; font-size: 11px; }
     }
     .o_azm_qs_hero_words { flex: 1 1 auto; min-width: 0; }
+    .o_azm_qs_hero_actions {
+        display: flex; align-items: center; gap: 8px; flex: 0 0 auto; flex-wrap: wrap;
+        .btn { white-space: nowrap; }
+    }
     .o_azm_qs_hero_mark {
         display: grid; place-items: center; flex: 0 0 auto;
         width: 58px; height: 58px; border-radius: 18px;

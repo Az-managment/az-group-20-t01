@@ -16,8 +16,17 @@ class TestReviewingTheQuestionsThemselves(TransactionCase):
             cls.env, "qc_rev2", groups="azm_operating_model.azm_group_question_reviewer")
         cls.manager = new_test_user(
             cls.env, "qc_mgr", groups="azm_operating_model.azm_group_manager")
-        cls.fin = cls.env["azm.fin.question"].sudo().search([], limit=2)
-        cls.proc = cls.env["azm.question"].sudo().search([], limit=1)
+        # أسئلة لم يقل فيها أحد شيئًا بعد. القاعدة التي تُشغَّل عليها هذه
+        # الاختبارات يعمل عليها مراجعون، فأخذُ أول سؤال يعني أن يرث الاختبار
+        # آراءهم ويحسبها من صنعه.
+        cls.fin = cls._untouched("azm.fin.question", "fin_question_id", 2)
+        cls.proc = cls._untouched("azm.question", "proc_question_id", 1)
+
+    @classmethod
+    def _untouched(cls, model, field, limit):
+        spoken_for = cls.env["azm.question.comment"].sudo().search(
+            [(field, "!=", False)])[field].ids
+        return cls.env[model].sudo().search([("id", "not in", spoken_for)], limit=limit)
 
     def _mine(self, user=None):
         return self.C.with_user(user or self.reviewer)
@@ -86,20 +95,27 @@ class TestReviewingTheQuestionsThemselves(TransactionCase):
         self.assertEqual(set(seen.mapped("state")), {"sent"})
 
     def test_the_statistics_count_questions_not_notes(self):
-        """سؤال علّق عليه ثلاثة مراجعين سؤال واحد عليه ملاحظة."""
+        """سؤال علّق عليه ثلاثة مراجعين سؤال واحد عليه ملاحظة.
+
+        يُقاس بالفرق لا بالمجموع: هذه قاعدة يعمل عليها مراجعون، فما فيها من
+        ملاحظات ليس من صنع الاختبار وليس له أن يفترض أنها خالية.
+        """
         if not self.fin:
             self.skipTest("بنك الأسئلة فارغ")
+        before = self.C.with_user(self.manager).comment_stats()
         for user in (self.reviewer, self.other):
             self._mine(user).save_note("financial", self.fin[0].id, "wording", f"رأي {user.login}")
             self._mine(user).send_my_notes()
         stats = self.C.with_user(self.manager).comment_stats()
-        self.assertEqual(stats["notes"], 2)
-        self.assertEqual(stats["questions_commented"], 1, "سؤال واحد")
-        self.assertEqual(stats["reviewers"], 2)
+        self.assertEqual(stats["notes"] - before["notes"], 2)
+        self.assertEqual(stats["questions_commented"] - before["questions_commented"], 1,
+                         "سؤال واحد")
+        self.assertEqual(stats["reviewers"] - before["reviewers"], 2)
         # والسؤال سطر واحد تحته رأيان، لا سطران لا يظهر أنهما عن سؤال واحد
-        self.assertEqual(len(stats["questions"]), 1, "سؤال واحد")
-        entry = stats["questions"][0]
-        self.assertEqual(entry["code"], self.fin[0].code or self.fin[0].key)
+        code = self.fin[0].code or self.fin[0].key
+        entries = [q for q in stats["questions"] if q["code"] == code]
+        self.assertEqual(len(entries), 1, "سطر واحد لهذا السؤال")
+        entry = entries[0]
         self.assertEqual(len(entry["notes"]), 2, "ورأيان تحته")
         self.assertEqual({n["by"] for n in entry["notes"]},
                          {self.reviewer.name, self.other.name})
@@ -115,8 +131,9 @@ class TestReviewingTheQuestionsThemselves(TransactionCase):
         mine.send_my_notes()
         order = [q["code"] for q in
                  self.C.with_user(self.manager).comment_stats()["questions"]]
-        self.assertEqual(order[0], self.fin[1].code or self.fin[1].key,
-                         "ما يحتاج نظرًا قبل ما لا يحتاجه")
+        self.assertLess(order.index(self.fin[1].code or self.fin[1].key),
+                        order.index(self.fin[0].code or self.fin[0].key),
+                        "ما يحتاج نظرًا قبل ما لا يحتاجه")
 
     def test_statistics_are_for_the_manager(self):
         with self.assertRaises(UserError):
@@ -194,9 +211,13 @@ class TestTheReviewerBrowsesBothBanks(TransactionCase):
             question.write({"label": "تعديل غير مأذون"})
 
     def test_the_count_shows_only_what_was_sent(self):
-        question = self.env["azm.fin.question"].sudo().search([], limit=1)
+        # سؤال لم يقل فيه أحد شيئًا بعد: العدّ يبدأ من صفر فيُقاس عليه
+        spoken_for = self.env["azm.question.comment"].sudo().search(
+            [("fin_question_id", "!=", False)]).fin_question_id.ids
+        question = self.env["azm.fin.question"].sudo().search(
+            [("id", "not in", spoken_for)], limit=1)
         if not question:
-            self.skipTest("بنك الأسئلة فارغ")
+            self.skipTest("لا سؤال بلا ملاحظة")
         self.env["azm.question.comment"].with_user(self.reviewer).save_note(
             "financial", question.id, "wording", "مسودة")
         question.invalidate_recordset()
