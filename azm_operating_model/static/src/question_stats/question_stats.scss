@@ -99,54 +99,188 @@
     .o_azm_qs_comment { margin: 6px 0 2px; font-size: 13px; line-height: 1.65; }
     .o_azm_qs_by { color: rgba(20,43,61,.5); font-size: 11px; }
 
-    // ------------------------------------------------- السؤال مفتوحًا على حِدَة
+    // ------------------------------------------- السؤال في بطاقة منبثقة
     .o_azm_qs_open {
         display: block; width: 100%; text-align: start;
         padding: 0; border: 0; background: transparent; color: inherit;
-        small { display: block; margin-top: 2px; font-size: 11px; color: #245fdb; }
-        &:hover .o_azm_qs_label { text-decoration: underline; }
+        small { display: block; margin-top: 3px; font-size: 11px; font-weight: 600;
+                color: #245fdb; opacity: 0; transition: opacity .12s ease; }
+        &:hover {
+            .o_azm_qs_label { color: #245fdb; }
+            small { opacity: 1; }
+        }
     }
-    .o_azm_qs_overlay {
-        position: fixed; inset: 0; z-index: 1050;
-        display: flex; align-items: center; justify-content: center;
-        padding: 24px; background: rgba(15, 35, 71, .38);
-    }
-    .o_azm_qs_panel {
-        width: min(720px, 100%); max-height: 88vh; overflow: auto;
-        padding: 22px 24px; border-radius: 18px; background: #fff;
-        box-shadow: 0 30px 70px rgba(15, 35, 71, .3);
-        text-align: start;
-    }
-    .o_azm_qs_panel_head {
-        display: flex; align-items: flex-start; justify-content: space-between;
-        gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--qs-line);
-    }
-    .o_azm_qs_place { display: block; margin-top: 3px; font-size: 11px;
-                      color: rgba(20,43,61,.55); }
-    .o_azm_qs_panel_label { margin: 14px 0 6px; font-size: 16px; font-weight: 700;
-                            line-height: 1.6; }
-    .o_azm_qs_panel_hint { margin: 0 0 10px; font-size: 12.5px;
-                           color: rgba(20,43,61,.6); }
-    .o_azm_qs_facts {
-        display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 12px 0 0;
-        dt { font-size: 10.5px; color: rgba(20,43,61,.5); margin: 0; }
-        dd { margin: 0; font-size: 12.5px; font-weight: 600; }
-    }
-    .o_azm_qs_panel_section {
-        margin: 20px 0 8px; font-size: 12px; font-weight: 700;
-        letter-spacing: .02em; color: rgba(20,43,61,.62);
-        small { margin-inline-start: 6px; padding: 1px 7px; border-radius: 99px;
-                background: rgba(20,43,61,.07); font-weight: 600; }
-    }
-    .o_azm_qs_options {
-        margin: 0; padding-inline-start: 20px;
-        li { font-size: 13px; line-height: 1.9; }
-        em { margin-inline-start: 6px; font-size: 10.5px; font-style: normal;
-             padding: 1px 7px; border-radius: 99px;
-             background: rgba(20,43,61,.07); color: rgba(20,43,61,.6); }
-    }
-    .o_azm_qs_muted { font-size: 12.5px; color: rgba(20,43,61,.55); }
+}
 
+// البطاقة طبقة فوق الصفحة لا جزء منها، فأصنافها تُكتب في الجذر لا تحت
+// ‎.o_azm_qs: تثبيتها إلى النافذة شأنها هي، لا شأن الحاوية التي تمرّر الصفحة.
+// ولونها لون النموذج، يأتيها من ‎--azm-tone الذي تحمله هي بصنف o_azm_tone_*.
+.o_azm_qs_overlay {
+    position: fixed; inset: 0; z-index: 1055;
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px;
+    background: rgba(12, 26, 46, .46);
+    backdrop-filter: blur(3px);
+    animation: o_azm_qs_fade .14s ease-out;
+}
+@keyframes o_azm_qs_fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes o_azm_qs_rise {
+    from { opacity: 0; transform: translateY(14px) scale(.985); }
+    to { opacity: 1; transform: none; }
+}
+
+.o_azm_qs_card {
+    --qs-ink: #142b3d;
+    --qs-line: rgba(20, 43, 61, .1);
+    // لا min(760px, 100%): ساس يحسبها بنفسه ويرفض خلط الوحدتين، فيسقط الحزمة كلها
+    width: 760px; max-width: 100%; max-height: 88vh;
+    display: flex; flex-direction: column;
+    border-radius: 20px; background: #fff; color: var(--qs-ink);
+    box-shadow: 0 34px 80px rgba(12, 26, 46, .34);
+    overflow: hidden; text-align: start;
+    animation: o_azm_qs_rise .18s cubic-bezier(.2, .8, .3, 1);
+
+    // ------------------------------------------------------------ الترويسة
+    .o_azm_qs_card_head {
+        display: flex; align-items: center; gap: 14px;
+        padding: 18px 22px;
+        background:
+            linear-gradient(135deg,
+                var(--azm-tone-bg, rgba(36, 95, 219, .1)),
+                rgba(255, 255, 255, 0) 70%),
+            #fbfdff;
+        border-bottom: 1px solid var(--qs-line);
+        /*rtl:ignore*/
+        box-shadow: inset 4px 0 0 var(--azm-tone, #245fdb);
+    }
+    .o_azm_qs_card_mark {
+        display: grid; place-items: center; flex: 0 0 auto;
+        width: 44px; height: 44px; border-radius: 13px;
+        color: var(--azm-tone, #245fdb);
+        background: #fff;
+        border: 1px solid var(--azm-tone-bg, rgba(36, 95, 219, .12));
+        box-shadow: 0 6px 16px rgba(15, 35, 71, .08);
+        .oi { font-size: 22px; }
+    }
+    .o_azm_qs_card_ids { flex: 1 1 auto; min-width: 0; }
+    .o_azm_qs_close {
+        flex: 0 0 auto; width: 32px; height: 32px; border-radius: 50%;
+        border: 1px solid var(--qs-line); background: #fff;
+        color: rgba(20, 43, 61, .6);
+        &:hover { background: rgba(20, 43, 61, .06); color: var(--qs-ink); }
+    }
+    .o_azm_qs_code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 11.5px; font-weight: 600; color: var(--qs-ink);
+        direction: ltr; unicode-bidi: isolate;
+    }
+    .o_azm_qs_place {
+        display: block; margin-top: 3px; font-size: 11px; line-height: 1.6;
+        color: rgba(20, 43, 61, .55);
+    }
+
+    // ---------------------------------------------------------------- المتن
+    .o_azm_qs_card_body { padding: 20px 22px; overflow: auto; }
+    .o_azm_qs_card_label { margin: 0; font-size: 17px; font-weight: 700; line-height: 1.65; }
+    .o_azm_qs_card_hint {
+        margin: 9px 0 0; padding: 9px 12px; border-radius: 10px;
+        font-size: 12.5px; line-height: 1.7;
+        color: rgba(20, 43, 61, .72); background: rgba(20, 43, 61, .04);
+        .oi { color: rgba(20, 43, 61, .4); }
+    }
+
+    .o_azm_qs_facts {
+        display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px;
+    }
+    .o_azm_qs_fact {
+        display: flex; flex-direction: column; gap: 1px;
+        padding: 7px 13px; border-radius: 11px;
+        border: 1px solid var(--qs-line); background: #fcfdfe;
+        small { font-size: 10px; color: rgba(20, 43, 61, .5); }
+        b { font-size: 12.5px; font-weight: 600; }
+    }
+    .o_azm_qs_fact_wide { flex: 1 1 100%; }
+
+    .o_azm_qs_block { margin-top: 22px; }
+    .o_azm_qs_block_title {
+        display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+        margin: 0 0 10px; font-size: 12px; font-weight: 700;
+        letter-spacing: .02em; color: rgba(20, 43, 61, .6);
+        .oi { font-size: 15px; opacity: .55; }
+        small {
+            padding: 1px 8px; border-radius: 99px; font-weight: 700;
+            background: rgba(20, 43, 61, .07); color: rgba(20, 43, 61, .65);
+        }
+    }
+    .o_azm_qs_needs {
+        margin-inline-start: auto; padding: 2px 10px; border-radius: 99px;
+        font-size: 11px; font-weight: 600;
+        color: #c2410c; background: rgba(249, 115, 22, .14);
+    }
+
+    // الخيارات كما يراها المجيب: مرقّمة، فما قيل «ينقصه خيار» يُحكم عليه بالنظر
+    .o_azm_qs_options {
+        list-style: none; margin: 0; padding: 0;
+        border: 1px solid var(--qs-line); border-radius: 13px; overflow: hidden;
+        li {
+            display: flex; align-items: baseline; gap: 10px;
+            padding: 9px 13px; font-size: 13px; line-height: 1.6;
+            + li { border-top: 1px solid rgba(20, 43, 61, .07); }
+            &:nth-child(odd) { background: #fcfdfe; }
+        }
+        em {
+            margin-inline-start: auto; font-style: normal; font-size: 10.5px;
+            padding: 1px 8px; border-radius: 99px; white-space: nowrap;
+            background: rgba(20, 43, 61, .07); color: rgba(20, 43, 61, .6);
+        }
+    }
+    .o_azm_qs_opt_n {
+        flex: 0 0 auto; width: 20px; height: 20px; border-radius: 50%;
+        display: grid; place-items: center;
+        font-size: 10.5px; font-weight: 700;
+        color: var(--azm-tone, #245fdb); background: var(--azm-tone-bg, rgba(36, 95, 219, .1));
+    }
+    .o_azm_qs_opt_name { flex: 1 1 auto; min-width: 0; }
+
+    .o_azm_qs_card_note {
+        padding: 11px 13px; border-radius: 12px; background: #fcfdfe;
+        border: 1px solid var(--qs-line);
+        + .o_azm_qs_card_note { margin-top: 8px; }
+        /*rtl:ignore*/
+        &.o_azm_qs_flagged { box-shadow: inset 3px 0 0 rgba(249, 115, 22, .6); }
+    }
+    .o_azm_qs_card_note_top {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 10px; flex-wrap: wrap;
+    }
+    .o_azm_qs_verdict {
+        display: inline-block; padding: 2px 10px; border-radius: 99px;
+        font-size: 11px; font-weight: 600;
+        color: #087e79; background: rgba(13, 148, 136, .14);
+        &.o_azm_qs_verdict_work { color: #c2410c; background: rgba(249, 115, 22, .14); }
+    }
+    .o_azm_qs_comment { margin: 7px 0 0; font-size: 13px; line-height: 1.75; }
+    .o_azm_qs_by { color: rgba(20, 43, 61, .5); font-size: 11px; }
+    .o_azm_qs_muted { margin: 0; font-size: 12.5px; color: rgba(20, 43, 61, .55); }
+
+    // --------------------------------------------------------------- الذيل
+    .o_azm_qs_card_foot {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 12px; padding: 13px 22px;
+        border-top: 1px solid var(--qs-line); background: #fbfdff;
+        small { font-size: 11px; color: rgba(20, 43, 61, .55); }
+    }
+}
+
+@media (max-width: 600px) {
+    .o_azm_qs_overlay { padding: 0; align-items: flex-end; }
+    .o_azm_qs_card {
+        width: 100%; max-height: 94vh;
+        border-radius: 20px 20px 0 0;
+    }
+}
+
+.o_azm_qs {
     .o_azm_qs_empty {
         display: flex; align-items: center; gap: 14px; margin-top: 20px;
         .oi { font-size: 26px; color: rgba(20,43,61,.35); }

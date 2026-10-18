@@ -169,12 +169,18 @@
                 </section>
             </t>
 
-            <!-- ============================================ السؤال مفتوحًا -->
+            <!-- ===================================== السؤال في بطاقة منبثقة -->
             <div t-if="this.d.detail" class="o_azm_qs_overlay"
                  t-on-click="() => this.closeDetail()">
-                <div class="o_azm_qs_panel" t-on-click.stop="() => {}">
-                    <header class="o_azm_qs_panel_head">
-                        <div>
+                <div t-attf-class="o_azm_qs_card o_azm_tone_{{this.modelLook(this.d.detail.model).tone}}"
+                     role="dialog" t-on-click.stop="() => {}">
+
+                    <header class="o_azm_qs_card_head">
+                        <span class="o_azm_qs_card_mark">
+                            <i class="oi" t-att-data-icon="this.modelLook(this.d.detail.model).icon"
+                               t-att-title="this.modelName(this.d.detail.model)"/>
+                        </span>
+                        <div class="o_azm_qs_card_ids">
                             <span class="o_azm_qs_code" t-out="this.d.detail.code"/>
                             <small class="o_azm_qs_place">
                                 <t t-foreach="this.d.detail.place" t-as="p" t-key="p_index">
@@ -182,58 +188,88 @@
                                 </t>
                             </small>
                         </div>
-                        <button type="button" class="btn btn-sm btn-light"
+                        <button type="button" class="o_azm_qs_close" title="أغلق (Esc)"
                                 t-on-click="() => this.closeDetail()">
-                            <i class="oi" data-icon="close" title="أغلق"/>
+                            <i class="oi" data-icon="close"/>
                         </button>
                     </header>
 
-                    <h3 class="o_azm_qs_panel_label" t-out="this.d.detail.label"/>
-                    <p t-if="this.d.detail.hint" class="o_azm_qs_panel_hint"
-                       t-out="this.d.detail.hint"/>
+                    <div class="o_azm_qs_card_body">
+                        <h3 class="o_azm_qs_card_label" t-out="this.d.detail.label"/>
+                        <p t-if="this.d.detail.hint" class="o_azm_qs_card_hint">
+                            <i class="oi me-1" data-icon="info"/>
+                            <t t-out="this.d.detail.hint"/>
+                        </p>
 
-                    <dl class="o_azm_qs_facts">
-                        <div>
-                            <dt>شكل الإجابة</dt>
-                            <dd t-out="this.d.detail.qtype || '—'"/>
+                        <div class="o_azm_qs_facts">
+                            <span class="o_azm_qs_fact">
+                                <small>شكل الإجابة</small>
+                                <b t-out="this.d.detail.qtype || '—'"/>
+                            </span>
+                            <span class="o_azm_qs_fact">
+                                <small>النموذج</small>
+                                <b t-out="this.modelName(this.d.detail.model)"/>
+                            </span>
+                            <span class="o_azm_qs_fact">
+                                <small>الموضع</small>
+                                <b class="o_azm_qs_code" t-out="this.d.detail.node"/>
+                            </span>
+                            <span t-if="this.d.detail.condition"
+                                  class="o_azm_qs_fact o_azm_qs_fact_wide">
+                                <small>يظهر لو</small>
+                                <b t-out="this.d.detail.condition"/>
+                            </span>
                         </div>
-                        <div>
-                            <dt>النموذج</dt>
-                            <dd t-out="this.modelName(this.d.detail.model)"/>
-                        </div>
-                        <div t-if="this.d.detail.condition">
-                            <dt>يظهر لو</dt>
-                            <dd t-out="this.d.detail.condition"/>
-                        </div>
-                    </dl>
 
-                    <h4 class="o_azm_qs_panel_section">
-                        الخيارات كما تُعرض على المجيب
-                        <small t-out="this.d.detail.options.length"/>
-                    </h4>
-                    <ol t-if="this.d.detail.options.length" class="o_azm_qs_options">
-                        <li t-foreach="this.d.detail.options" t-as="o" t-key="o_index">
-                            <t t-out="o.name"/>
-                            <em t-if="o.kind" t-out="o.kind"/>
-                        </li>
-                    </ol>
-                    <p t-else="" class="o_azm_qs_muted">
-                        لا خيارات — الإجابة تُكتب أو تُدخل رقمًا.
-                    </p>
+                        <section class="o_azm_qs_block">
+                            <h4 class="o_azm_qs_block_title">
+                                <i class="oi me-1" data-icon="list"/>
+                                الخيارات كما تُعرض على المجيب
+                                <small t-out="this.d.detail.options.length"/>
+                            </h4>
+                            <ul t-if="this.d.detail.options.length" class="o_azm_qs_options">
+                                <li t-foreach="this.d.detail.options" t-as="o" t-key="o_index">
+                                    <span class="o_azm_qs_opt_n" t-out="o_index + 1"/>
+                                    <span class="o_azm_qs_opt_name" t-out="o.name"/>
+                                    <em t-if="o.kind" t-out="o.kind"/>
+                                </li>
+                            </ul>
+                            <p t-else="" class="o_azm_qs_muted">
+                                لا خيارات — الإجابة تُكتب أو تُدخل رقمًا.
+                            </p>
+                        </section>
 
-                    <h4 class="o_azm_qs_panel_section">
-                        ما قيل في هذا السؤال
-                        <small t-out="this.d.detail.notes.length"/>
-                    </h4>
-                    <div t-foreach="this.d.detail.notes" t-as="n" t-key="n_index"
-                         class="o_azm_qs_note">
-                        <span t-attf-class="o_azm_qs_verdict {{n.needs_work ? 'o_azm_qs_verdict_work' : ''}}"
-                              t-out="n.verdict"/>
-                        <p t-if="n.comment" class="o_azm_qs_comment" t-out="n.comment"/>
-                        <small class="o_azm_qs_by">
-                            <t t-out="n.by"/><t t-if="n.sent_on"> · <t t-out="n.sent_on"/></t>
-                        </small>
+                        <section class="o_azm_qs_block">
+                            <h4 class="o_azm_qs_block_title">
+                                <i class="oi me-1" data-icon="chat"/>
+                                ما قيل في هذا السؤال
+                                <small t-out="this.d.detail.notes.length"/>
+                                <span t-if="this.detailNeedsWork" class="o_azm_qs_needs">
+                                    منها <t t-out="this.detailNeedsWork"/> تطلب تغييرًا
+                                </span>
+                            </h4>
+                            <div t-foreach="this.d.detail.notes" t-as="n" t-key="n_index"
+                                 t-attf-class="o_azm_qs_card_note {{n.needs_work ? 'o_azm_qs_flagged' : ''}}">
+                                <div class="o_azm_qs_card_note_top">
+                                    <span t-attf-class="o_azm_qs_verdict {{n.needs_work ? 'o_azm_qs_verdict_work' : ''}}"
+                                          t-out="n.verdict"/>
+                                    <small class="o_azm_qs_by">
+                                        <t t-out="n.by"/><t t-if="n.sent_on"> · <t t-out="n.sent_on"/></t>
+                                    </small>
+                                </div>
+                                <p t-if="n.comment" class="o_azm_qs_comment" t-out="n.comment"/>
+                            </div>
+                            <p t-if="!this.d.detail.notes.length" class="o_azm_qs_muted">
+                                لم يُرسَل في هذا السؤال رأي بعد.
+                            </p>
+                        </section>
                     </div>
+
+                    <footer class="o_azm_qs_card_foot">
+                        <small>الرأي المُرسَل لا يُعدَّل؛ المسودات لا تظهر هنا.</small>
+                        <button type="button" class="btn btn-sm btn-primary"
+                                t-on-click="() => this.closeDetail()">تمام</button>
+                    </footer>
                 </div>
             </div>
         </t>

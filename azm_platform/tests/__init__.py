@@ -12,3 +12,4 @@ from . import test_my_work
 from . import test_install_order
 from . import test_question_review_menu
 from . import test_owl_templates
+from . import test_styles_compile

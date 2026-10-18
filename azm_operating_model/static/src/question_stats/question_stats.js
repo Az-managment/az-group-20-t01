@@ -5,7 +5,7 @@
  * الأسئلة نفسها بأكوادها وتحت كل سؤال ما قيل فيه. ما يحتاج نظرًا أولًا — فالصفحة
  * تُفتح على ما يُعمل به لا على ما طُمئن إليه.
  */
-import { Component, onWillStart, proxy, useProps } from "@odoo/owl";
+import { Component, onWillStart, proxy, useListener, useProps } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 import { standardActionServiceProps } from "@web/webclient/actions/action_plugin";
@@ -15,6 +15,11 @@ const MODEL = "azm.question.comment";
 const MODEL_NAMES = {
     financial: "النموذج المالي الموحد",
     procurement: "دورة المشتريات",
+};
+// اللون والأيقونة كما في مساحة الإجابة ومساحة المراجعة: النموذج يُعرف بلونه
+const MODEL_LOOK = {
+    financial: { tone: "green", icon: "payments" },
+    procurement: { tone: "blue", icon: "shopping_cart" },
 };
 
 export class AzmQuestionStats extends Component {
@@ -27,6 +32,12 @@ export class AzmQuestionStats extends Component {
         this.state = proxy({ stats: null, search: "", only: "all", downloading: false,
                              detail: null, opening: null });
         onWillStart(() => this.load());
+        // البطاقة المنبثقة تُغلق بالمفتاح كما تُغلق بالنقر خارجها
+        useListener(window, "keydown", (ev) => {
+            if (ev.key === "Escape" && this.state.detail) {
+                this.closeDetail();
+            }
+        });
     }
 
     get d() {
@@ -43,6 +54,15 @@ export class AzmQuestionStats extends Component {
 
     modelName(key) {
         return MODEL_NAMES[key] || key;
+    }
+
+    modelLook(key) {
+        return MODEL_LOOK[key] || { tone: "slate", icon: "help" };
+    }
+
+    /** كم رأيًا من آراء هذا السؤال يطلب تغييرًا. */
+    get detailNeedsWork() {
+        return (this.state.detail?.notes || []).filter((n) => n.needs_work).length;
     }
 
     get kpis() {
