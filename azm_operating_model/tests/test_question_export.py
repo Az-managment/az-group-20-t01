@@ -63,3 +63,22 @@ class TestTheQuestionBankFile(TransactionCase):
     def test_the_file_is_the_manager_s(self):
         with self.assertRaises(UserError):
             self.X.with_user(self.reviewer).question_bank_xlsx()
+
+    def test_the_route_exists_and_can_hand_the_file_over(self):
+        """ما يسقط عند الطلب لا عند التحميل.
+
+        أول نسخة من هذا المسار نادت content_disposition من odoo.http وليست فيه.
+        الاستيراد مرّ، والاختبارات مرّت — لأنها كانت تختبر بناء الملف لا تسليمه —
+        ومات عند أول ضغطة على الزر بخطأ 500. فيُستدعى هنا ما يستدعيه المسار.
+        """
+        from odoo.addons.azm_operating_model.controllers.question_export import (
+            FILENAME, delivery_headers,
+        )
+        headers = dict(delivery_headers(b"x" * 11))
+        self.assertEqual(headers["Content-Length"], 11)
+        self.assertIn("spreadsheetml", headers["Content-Type"])
+        self.assertIn(FILENAME, headers["Content-Disposition"])
+        self.assertIn("attachment", headers["Content-Disposition"])
+
+        routes = [r.rule for r in self.env["ir.http"].routing_map().iter_rules()]
+        self.assertIn("/azm/question_bank.xlsx", routes, "والزر ينادي مسارًا قائمًا")
